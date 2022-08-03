@@ -31,10 +31,10 @@ class JBuildCli {
             '\nRun with the --help option to see usage.');
     final compile = await compileTask(files.jbuildJar, config, cache);
 
-    activateLogging(log.Level.FINE);
+    activateLogging(log.Level.INFO);
 
     await runBasic({compile}, const {},
-        Options(tasksInvocation: const ['-q', 'compile']), cache);
+        Options(tasksInvocation: const ['compile']), cache);
   }
 
   Future<CompileConfiguration?> createConfig() async {

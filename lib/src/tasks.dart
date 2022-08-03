@@ -18,8 +18,8 @@ Future<Task> compileTask(
       description: 'Compile Java source code.');
 }
 
-Future<Never> _compile(File jbuildJar, CompileConfiguration config) async {
-  return exit(await exec(Process.start(
-      'java', ['-jar', jbuildJar.path, 'compile', ...config.asArgs()],
-      runInShell: true)));
+Future<void> _compile(File jbuildJar, CompileConfiguration config) async {
+  await exec(Process.start(
+      'java', ['-jar', jbuildJar.path, '-q', 'compile', ...config.asArgs()],
+      runInShell: true));
 }
