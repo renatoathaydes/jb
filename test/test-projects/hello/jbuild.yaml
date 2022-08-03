@@ -1,0 +1,4 @@
+sourceDirs:
+  - src
+classpath:
+  - lib
