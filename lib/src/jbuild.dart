@@ -2,9 +2,7 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
-import 'package:dartle/dartle_dart.dart';
 import 'package:yaml/yaml.dart';
-import 'package:logging/logging.dart' as log;
 
 import 'config.dart';
 import 'utils.dart';
@@ -25,8 +23,15 @@ class JBuildCli {
       : files = JBuildFiles(jbuildJar, configFile);
 
   Future<void> start(List<String> args) async {
+    final options = parseOptions(args);
+    activateLogging(options.logLevel, colorfulLog: options.colorfulLog);
+
+    if (options.showHelp) {
+      print('JBuild CLI\n');
+      return print(optionsDescription);
+    }
+
     final cache = DartleCache('.jbuild-cache');
-    activateLogging(log.Level.INFO);
 
     final config =
         (await createConfig()).orThrow('${files.configFile.path} not found.'
@@ -37,7 +42,7 @@ class JBuildCli {
     final install = await installTask(files, config, cache);
 
     await runBasic({compile, writeDeps, install}, const {},
-        Options(tasksInvocation: const ['install', 'compile']), cache);
+        options.copyWith(tasksInvocation: const ['compile']), cache);
   }
 
   Future<CompileConfiguration?> createConfig() async {
