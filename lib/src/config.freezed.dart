@@ -26,6 +26,7 @@ mixin _$CompileConfiguration {
   Set<String> get resourceDirs => throw _privateConstructorUsedError;
   String get mainClass => throw _privateConstructorUsedError;
   List<String> get javacArgs => throw _privateConstructorUsedError;
+  Set<String> get dependencies => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -44,7 +45,8 @@ abstract class $CompileConfigurationCopyWith<$Res> {
       CompileOutput output,
       Set<String> resourceDirs,
       String mainClass,
-      List<String> javacArgs});
+      List<String> javacArgs,
+      Set<String> dependencies});
 
   $CompileOutputCopyWith<$Res> get output;
 }
@@ -66,6 +68,7 @@ class _$CompileConfigurationCopyWithImpl<$Res>
     Object? resourceDirs = freezed,
     Object? mainClass = freezed,
     Object? javacArgs = freezed,
+    Object? dependencies = freezed,
   }) {
     return _then(_value.copyWith(
       sourceDirs: sourceDirs == freezed
@@ -92,6 +95,10 @@ class _$CompileConfigurationCopyWithImpl<$Res>
           ? _value.javacArgs
           : javacArgs // ignore: cast_nullable_to_non_nullable
               as List<String>,
+      dependencies: dependencies == freezed
+          ? _value.dependencies
+          : dependencies // ignore: cast_nullable_to_non_nullable
+              as Set<String>,
     ));
   }
 
@@ -115,7 +122,8 @@ abstract class _$$_ConfigCopyWith<$Res>
       CompileOutput output,
       Set<String> resourceDirs,
       String mainClass,
-      List<String> javacArgs});
+      List<String> javacArgs,
+      Set<String> dependencies});
 
   @override
   $CompileOutputCopyWith<$Res> get output;
@@ -139,6 +147,7 @@ class __$$_ConfigCopyWithImpl<$Res>
     Object? resourceDirs = freezed,
     Object? mainClass = freezed,
     Object? javacArgs = freezed,
+    Object? dependencies = freezed,
   }) {
     return _then(_$_Config(
       sourceDirs: sourceDirs == freezed
@@ -165,6 +174,10 @@ class __$$_ConfigCopyWithImpl<$Res>
           ? _value._javacArgs
           : javacArgs // ignore: cast_nullable_to_non_nullable
               as List<String>,
+      dependencies: dependencies == freezed
+          ? _value._dependencies
+          : dependencies // ignore: cast_nullable_to_non_nullable
+              as Set<String>,
     ));
   }
 }
@@ -181,11 +194,13 @@ class _$_Config extends _Config {
         'resources'
       },
       this.mainClass = '',
-      final List<String> javacArgs = const []})
+      final List<String> javacArgs = const [],
+      final Set<String> dependencies = const {}})
       : _sourceDirs = sourceDirs,
         _classpath = classpath,
         _resourceDirs = resourceDirs,
         _javacArgs = javacArgs,
+        _dependencies = dependencies,
         super._();
 
   factory _$_Config.fromJson(Map<String, dynamic> json) =>
@@ -229,9 +244,17 @@ class _$_Config extends _Config {
     return EqualUnmodifiableListView(_javacArgs);
   }
 
+  final Set<String> _dependencies;
+  @override
+  @JsonKey()
+  Set<String> get dependencies {
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableSetView(_dependencies);
+  }
+
   @override
   String toString() {
-    return 'CompileConfiguration(sourceDirs: $sourceDirs, classpath: $classpath, output: $output, resourceDirs: $resourceDirs, mainClass: $mainClass, javacArgs: $javacArgs)';
+    return 'CompileConfiguration(sourceDirs: $sourceDirs, classpath: $classpath, output: $output, resourceDirs: $resourceDirs, mainClass: $mainClass, javacArgs: $javacArgs, dependencies: $dependencies)';
   }
 
   @override
@@ -248,7 +271,9 @@ class _$_Config extends _Config {
                 .equals(other._resourceDirs, _resourceDirs) &&
             const DeepCollectionEquality().equals(other.mainClass, mainClass) &&
             const DeepCollectionEquality()
-                .equals(other._javacArgs, _javacArgs));
+                .equals(other._javacArgs, _javacArgs) &&
+            const DeepCollectionEquality()
+                .equals(other._dependencies, _dependencies));
   }
 
   @JsonKey(ignore: true)
@@ -260,7 +285,8 @@ class _$_Config extends _Config {
       const DeepCollectionEquality().hash(output),
       const DeepCollectionEquality().hash(_resourceDirs),
       const DeepCollectionEquality().hash(mainClass),
-      const DeepCollectionEquality().hash(_javacArgs));
+      const DeepCollectionEquality().hash(_javacArgs),
+      const DeepCollectionEquality().hash(_dependencies));
 
   @JsonKey(ignore: true)
   @override
@@ -282,7 +308,8 @@ abstract class _Config extends CompileConfiguration {
       final CompileOutput output,
       final Set<String> resourceDirs,
       final String mainClass,
-      final List<String> javacArgs}) = _$_Config;
+      final List<String> javacArgs,
+      final Set<String> dependencies}) = _$_Config;
   const _Config._() : super._();
 
   factory _Config.fromJson(Map<String, dynamic> json) = _$_Config.fromJson;
@@ -299,6 +326,8 @@ abstract class _Config extends CompileConfiguration {
   String get mainClass;
   @override
   List<String> get javacArgs;
+  @override
+  Set<String> get dependencies;
   @override
   @JsonKey(ignore: true)
   _$$_ConfigCopyWith<_$_Config> get copyWith =>

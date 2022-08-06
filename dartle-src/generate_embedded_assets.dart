@@ -12,6 +12,7 @@ final generateEmbeddedAssetsTask = Task(generateEmbeddedAssets,
 void setupTaskDependencies(DartleDart dartleDart) {
   dartleDart.formatCode.dependsOn(const {'generateEmbeddedAssets'});
   dartleDart.analyzeCode.dependsOn(const {'generateEmbeddedAssets'});
+  dartleDart.test.dependsOn(const {'compileExe'});
 }
 
 String jbuildHome() {

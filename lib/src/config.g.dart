@@ -27,6 +27,10 @@ _$_Config _$$_ConfigFromJson(Map<String, dynamic> json) => _$_Config(
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      dependencies: (json['dependencies'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toSet() ??
+          const {},
     );
 
 Map<String, dynamic> _$$_ConfigToJson(_$_Config instance) => <String, dynamic>{
@@ -36,6 +40,7 @@ Map<String, dynamic> _$$_ConfigToJson(_$_Config instance) => <String, dynamic>{
       'resourceDirs': instance.resourceDirs.toList(),
       'mainClass': instance.mainClass,
       'javacArgs': instance.javacArgs,
+      'dependencies': instance.dependencies.toList(),
     };
 
 _$Dir _$$DirFromJson(Map<String, dynamic> json) => _$Dir(

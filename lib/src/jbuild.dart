@@ -13,8 +13,9 @@ import 'tasks.dart';
 class JBuildFiles {
   final File jbuildJar;
   final File configFile;
+  final Directory tempDir = Directory('.jbuild-cache/tmp');
 
-  const JBuildFiles(this.jbuildJar, this.configFile);
+  JBuildFiles(this.jbuildJar, this.configFile);
 }
 
 class JBuildCli {
@@ -25,16 +26,18 @@ class JBuildCli {
 
   Future<void> start(List<String> args) async {
     final cache = DartleCache('.jbuild-cache');
+    activateLogging(log.Level.INFO);
 
     final config =
         (await createConfig()).orThrow('${files.configFile.path} not found.'
             '\nRun with the --help option to see usage.');
+
     final compile = await compileTask(files.jbuildJar, config, cache);
+    final writeDeps = await writeDependenciesTask(files, config, cache);
+    final install = await installTask(files, config, cache);
 
-    activateLogging(log.Level.INFO);
-
-    await runBasic({compile}, const {},
-        Options(tasksInvocation: const ['compile']), cache);
+    await runBasic({compile, writeDeps, install}, const {},
+        Options(tasksInvocation: const ['install', 'compile']), cache);
   }
 
   Future<CompileConfiguration?> createConfig() async {

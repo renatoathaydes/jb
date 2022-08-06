@@ -12,6 +12,7 @@ class CompileConfiguration with _$CompileConfiguration {
     @Default({'src/main/resources', 'resources'}) Set<String> resourceDirs,
     @Default('') String mainClass,
     @Default([]) List<String> javacArgs,
+    @Default({}) Set<String> dependencies,
   }) = _Config;
 
   const CompileConfiguration._();
