@@ -11,6 +11,8 @@ void main() {
           resourceDirs: const {},
           mainClass: '',
           dependencies: const {},
+          exclusions: const {},
+          repositories: const {},
           javacArgs: const []);
 
       expect(config.output.when(dir: (d) => 'dir', jar: (j) => j), 'lib.jar');

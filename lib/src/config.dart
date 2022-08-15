@@ -5,6 +5,7 @@ import 'package:dartle/dartle.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:jbuild_cli/src/utils.dart';
 import 'package:logging/logging.dart' as log;
+import 'package:yaml/yaml.dart';
 
 part 'config.freezed.dart';
 
@@ -21,24 +22,37 @@ class CompileConfiguration with _$CompileConfiguration {
     required Set<String> resourceDirs,
     required String mainClass,
     required List<String> javacArgs,
+    required Set<String> repositories,
     required Map<String, DependencySpec> dependencies,
+    required Set<String> exclusions,
   }) = _Config;
 
   static CompileConfiguration fromMap(Map<String, Object?> map) {
     return CompileConfiguration(
-      sourceDirs: _stringIterableValue(map, 'sourceDirs', const {}).toSet(),
+      sourceDirs: _stringIterableValue(map, 'source-dirs', const {}).toSet(),
       classpath: _stringIterableValue(map, 'classpath', const {}).toSet(),
-      output: _compileOutputValue(map, 'outputDir', 'outputJar') ??
+      output: _compileOutputValue(map, 'output-dir', 'output-jar') ??
           _defaultOutputValue(),
-      resourceDirs: _stringIterableValue(map, 'resourceDirs', const {}).toSet(),
-      mainClass: _stringValue(map, 'mainClass', ''),
-      javacArgs: _stringIterableValue(map, 'javacArgs', const [])
+      resourceDirs:
+          _stringIterableValue(map, 'resource-dirs', const {}).toSet(),
+      mainClass: _stringValue(map, 'main-class', ''),
+      javacArgs: _stringIterableValue(map, 'javac-args', const [])
           .toList(growable: false),
       dependencies: _dependencies(map, 'dependencies', const {}),
+      repositories: _stringIterableValue(map, 'repositories', const {}).toSet(),
+      exclusions:
+          _stringIterableValue(map, 'exclusion-patterns', const {}).toSet(),
     );
   }
 
-  List<String> asArgs() {
+  List<String> preArgs() {
+    if (repositories.isNotEmpty) {
+      return repositories.expand((r) => ['-r', r]).toList();
+    }
+    return const [];
+  }
+
+  List<String> compileArgs() {
     final result = <String>[];
     result.addAll(sourceDirs);
     for (final cp in classpath) {
@@ -57,6 +71,20 @@ class CompileConfiguration with _$CompileConfiguration {
       result.add('--');
       result.addAll(javacArgs);
     }
+    return result;
+  }
+
+  List<String> installForCompilationArgs() {
+    final result = <String>[];
+    for (final exclude in exclusions) {
+      result.add('--exclusion');
+      result.add(exclude);
+    }
+    dependencies.forEach((dependency, spec) {
+      if (spec.scope != DependencyScope.runtimeOnly) {
+        result.add(dependency);
+      }
+    });
     return result;
   }
 }
@@ -101,7 +129,7 @@ bool _boolValue(Map<String, Object?> map, String key, bool defaultValue) {
     }
   }
   throw DartleException(
-      message: "expecting a boolean value for $key, "
+      message: "expecting a boolean value for '$key', "
           "but got '$value'");
 }
 
@@ -112,7 +140,7 @@ String _stringValue(Map<String, Object?> map, String key, String defaultValue) {
     return value;
   }
   throw DartleException(
-      message: "expecting a String value for $key, "
+      message: "expecting a String value for '$key', "
           "but got '$value'");
 }
 
@@ -124,12 +152,12 @@ DependencyScope _scopeValue(
     return DependencyScope.values
         .firstWhere((enumValue) => enumValue.name == value, orElse: () {
       throw DartleException(
-          message: "expecting one of ${DependencyScope.values} for $key, "
+          message: "expecting one of ${DependencyScope.values} for '$key', "
               "but got '$value'");
     });
   }
   throw DartleException(
-      message: "expecting a String value for $key, "
+      message: "expecting a String value for '$key', "
           "but got '$value'");
 }
 
@@ -137,12 +165,20 @@ Iterable<String> _stringIterableValue(
     Map<String, Object?> map, String key, Iterable<String> defaultValue) {
   final value = map[key];
   if (value == null) return defaultValue;
-  if (value is Iterable<String>) {
-    return value;
+  if (value is YamlList) {
+    // value is not even an Iterable!!!
+    return value.map((e) {
+      if (e == null || e is Iterable || e is Map) {
+        throw DartleException(
+            message: "expecting a list of String values for '$key', "
+                "but got item which has type ${e?.runtimeType}: '$e'");
+      }
+      return e.toString();
+    });
   }
   throw DartleException(
-      message: "expecting a Set<String> value for $key, "
-          "but got '$value'");
+      message: "expecting a list of String values for '$key', "
+          "but got '$value' which has type ${value.runtimeType}");
 }
 
 CompileOutput? _compileOutputValue(
@@ -157,14 +193,14 @@ CompileOutput? _compileOutputValue(
       return CompileOutput.dir(dir);
     }
     throw DartleException(
-        message: "expecting a String value for $dirKey, "
+        message: "expecting a String value for '$dirKey', "
             "but got '$dir'");
   }
   if (jar is String) {
     return CompileOutput.jar(jar);
   }
   throw DartleException(
-      message: "expecting a String value for $jarKey, "
+      message: "expecting a String value for '$jarKey', "
           "but got '$jar'");
 }
 
@@ -178,7 +214,7 @@ Map<String, DependencySpec> _dependencies(Map<String, Object?> map, String key,
         key, DependencySpec.fromMap(_mapValue(value, 'dependencies->value'))));
   }
   throw DartleException(
-      message: "expecting a Map value for $key, "
+      message: "expecting a Map value for '$key', "
           "but got '$value'");
 }
 
@@ -190,7 +226,7 @@ Map<String, Object?> _mapValue(dynamic value, String key) {
     return asJsonMap(value);
   }
   throw DartleException(
-      message: "expecting a Map value for $key, "
+      message: "expecting a Map value for '$key', "
           "but got '$value'");
 }
 

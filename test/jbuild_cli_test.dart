@@ -31,6 +31,14 @@ void main() {
   });
 
   projectGroup(withDepsProjectDir, 'with-deps project', () {
+    tearDown(() async {
+      await deleteAll(dirs([
+        '$withDepsProjectDir/java-libs',
+        '$withDepsProjectDir/.jbuild-cache'
+      ], includeHidden: true));
+      await deleteAll(file('$withDepsProjectDir/with-deps.jar'));
+    });
+
     test('can install dependencies and compile project', () async {
       var exitCode = await exec(Process.start(jbuildExecutable, const [],
           workingDirectory: withDepsProjectDir));

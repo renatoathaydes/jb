@@ -23,7 +23,15 @@ Future<Task> compileTask(
 
 Future<void> _compile(File jbuildJar, CompileConfiguration config) async {
   await exec(Process.start(
-      'java', ['-jar', jbuildJar.path, '-q', 'compile', ...config.asArgs()],
+      'java',
+      [
+        '-jar',
+        jbuildJar.path,
+        '-q',
+        ...config.preArgs(),
+        'compile',
+        ...config.compileArgs()
+      ],
       runInShell: true));
 }
 
@@ -68,7 +76,15 @@ Future<Task> installTask(
 }
 
 Future<void> _install(File jbuildJar, CompileConfiguration config) async {
-  await exec(Process.start('java',
-      ['-jar', jbuildJar.path, '-q', 'install', ...config.dependencies.keys],
+  await exec(Process.start(
+      'java',
+      [
+        '-jar',
+        jbuildJar.path,
+        '-q',
+        ...config.preArgs(),
+        'install',
+        ...config.installForCompilationArgs(),
+      ],
       runInShell: true));
 }

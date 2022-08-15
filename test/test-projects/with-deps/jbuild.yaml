@@ -1,2 +1,9 @@
+repositories:
+  - test/test-repo
+
 dependencies:
   com.google.guava:guava:31.0.1-jre:
+
+exclusion-patterns:
+  - com\.google\.errorprone:.*
+  - org\.checkerframework:.*

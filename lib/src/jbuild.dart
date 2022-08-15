@@ -37,6 +37,8 @@ class JBuildCli {
         (await createConfig()).orThrow('${files.configFile.path} not found.'
             '\nRun with the --help option to see usage.');
 
+    logger.fine(() => 'Parsed JBuild configuration: $config');
+
     final compile = await compileTask(files.jbuildJar, config, cache);
     final writeDeps = await writeDependenciesTask(files, config, cache);
     final install = await installTask(files, config, cache);
