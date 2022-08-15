@@ -10,6 +10,7 @@ void main() {
           output: CompileOutput.jar('lib.jar'),
           resourceDirs: const {},
           mainClass: '',
+          dependencies: const {},
           javacArgs: const []);
 
       expect(config.output.when(dir: (d) => 'dir', jar: (j) => j), 'lib.jar');

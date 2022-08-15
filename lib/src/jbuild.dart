@@ -47,10 +47,20 @@ class JBuildCli {
 
   Future<CompileConfiguration?> createConfig() async {
     if (await files.configFile.exists()) {
-      final config = asJsonMap(loadYaml(await files.configFile.readAsString()));
-      return CompileConfiguration.fromJson(config);
-    } else {
-      return null;
+      return _config(loadYaml(await files.configFile.readAsString(),
+          sourceUrl: Uri.parse(files.configFile.path)));
     }
+    return null;
+  }
+}
+
+CompileConfiguration _config(dynamic json) {
+  if (json is Map) {
+    final map = asJsonMap(json);
+    return CompileConfiguration.fromMap(map);
+  } else {
+    throw DartleException(
+        message: 'Expecting jbuild configuration to be a Map, '
+            'but it is ${json?.runtimeType}');
   }
 }

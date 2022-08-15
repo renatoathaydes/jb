@@ -49,7 +49,7 @@ Future<Task> writeDependenciesTask(
 
 Future<void> _writeDependencies(
     File dependenciesFile, CompileConfiguration config) async {
-  await dependenciesFile.writeAsString(config.dependencies.join());
+  await dependenciesFile.writeAsString(config.dependencies.keys.join(','));
 }
 
 Future<Task> installTask(
@@ -68,7 +68,7 @@ Future<Task> installTask(
 }
 
 Future<void> _install(File jbuildJar, CompileConfiguration config) async {
-  await exec(Process.start(
-      'java', ['-jar', jbuildJar.path, '-q', 'install', ...config.dependencies],
+  await exec(Process.start('java',
+      ['-jar', jbuildJar.path, '-q', 'install', ...config.dependencies.keys],
       runInShell: true));
 }

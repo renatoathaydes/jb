@@ -8,11 +8,13 @@ void main(List<String> arguments) async {
   final configFile = File('jbuild.yaml');
   try {
     await JBuildCli(jbuildJar, configFile).start(arguments);
-  } on DartleException catch (e) {
+  } on DartleException catch (e, st) {
     print(e.message);
+    print(st);
     exit(e.exitCode);
-  } catch (e) {
+  } catch (e, st) {
     print('$e');
+    print(st);
     exit(1);
   }
 }

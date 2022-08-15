@@ -19,7 +19,9 @@ Future<void> _createJBuildJar(File jar) async {
 }
 
 Map<String, Object?> asJsonMap(Map map) {
-  return map.map((key, value) => MapEntry(key.toString(), value));
+  return map.map((dynamic key, dynamic value) {
+    return MapEntry(key is String ? key : '$key', value);
+  });
 }
 
 extension AnyExtension<T> on T? {
