@@ -22,7 +22,7 @@ Future<Task> compileTask(
 }
 
 Future<void> _compile(File jbuildJar, CompileConfiguration config) async {
-  await exec(Process.start(
+  final exitCode = await exec(Process.start(
       'java',
       [
         '-jar',
@@ -33,6 +33,11 @@ Future<void> _compile(File jbuildJar, CompileConfiguration config) async {
         ...config.compileArgs()
       ],
       runInShell: true));
+
+  if (exitCode != 0) {
+    throw DartleException(
+        message: 'jbuild compile command failed', exitCode: exitCode);
+  }
 }
 
 File _dependenciesFile(JBuildFiles files) {
@@ -76,7 +81,7 @@ Future<Task> installTask(
 }
 
 Future<void> _install(File jbuildJar, CompileConfiguration config) async {
-  await exec(Process.start(
+  final exitCode = await exec(Process.start(
       'java',
       [
         '-jar',
@@ -87,4 +92,9 @@ Future<void> _install(File jbuildJar, CompileConfiguration config) async {
         ...config.installForCompilationArgs(),
       ],
       runInShell: true));
+
+  if (exitCode != 0) {
+    throw DartleException(
+        message: 'jbuild install command failed', exitCode: exitCode);
+  }
 }

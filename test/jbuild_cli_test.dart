@@ -43,8 +43,7 @@ void main() {
       var exitCode = await exec(Process.start(jbuildExecutable, const [],
           workingDirectory: withDepsProjectDir));
       expect(exitCode, 0);
-      expect(await File('$withDepsProjectDir/out/com/foo/Foo.class').exists(),
-          isTrue);
+      expect(await File('$withDepsProjectDir/with-deps.jar').exists(), isTrue);
 
       final output = <String>[];
       exitCode = await exec(
@@ -52,12 +51,17 @@ void main() {
               'java',
               [
                 '-cp',
-                classpath(['out', 'java-libs/*']),
+                classpath(['with-deps.jar', 'java-libs/*']),
                 'com.foo.Foo',
               ],
               workingDirectory: withDepsProjectDir),
           onStdoutLine: output.add);
-      expect(exitCode, 0);
+
+      expect(exitCode, 0,
+          reason: "should succeed:\n"
+              "------------------\n"
+              "${output.join('\n')}\n"
+              "------------------");
       expect(output, equals(const ['[1, 2, 3]']));
     });
   });

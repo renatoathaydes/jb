@@ -1,9 +1,9 @@
 package com.foo;
 
-import com.google.common.collect.ImmutableList;
+import lists.*;
 
 public class Foo {
     public static void main( String[] args ) {
-        System.out.println(ImmutableList.of(1, 2, 3));
+        System.out.println(ListFactory.listOf(1, 2, 3));
     }
 }

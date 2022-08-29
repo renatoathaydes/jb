@@ -3,6 +3,7 @@
 .dartle_tool/
 .jbuild-cache/
 .idea/
+test/test-projects/test-repo/
 .packages
 
 *.iml

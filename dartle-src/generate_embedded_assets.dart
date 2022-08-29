@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:dartle/dartle_dart.dart';
-import 'package:path/path.dart' as path;
 
-final _jbuildHome = Platform.environment['JBUILD_HOME'];
+import 'package:dartle/dartle_dart.dart';
+
+import 'paths.dart';
 
 final generateEmbeddedAssetsTask = Task(generateEmbeddedAssets,
     description: 'Generates Dart sources containing embedded assets.',
-    runCondition: RunOnChanges(outputs: file(jbuildGeneratedDartFilePath())));
+    runCondition: RunOnChanges(outputs: file(jbuildGeneratedDartFilePath)));
 
 void setupTaskDependencies(DartleDart dartleDart) {
   dartleDart.formatCode.dependsOn(const {'generateEmbeddedAssets'});
@@ -15,24 +15,8 @@ void setupTaskDependencies(DartleDart dartleDart) {
   dartleDart.test.dependsOn(const {'compileExe'});
 }
 
-String jbuildHome() {
-  final result = _jbuildHome;
-  if (result == null) {
-    throw Exception('JBUILD_HOME is not set.');
-  }
-  return result;
-}
-
-String jbuildJarPath() {
-  return path.join(jbuildHome(), 'jbuild.jar');
-}
-
-String jbuildGeneratedDartFilePath() {
-  return path.join('lib', 'src', 'jbuild_jar.g.dart');
-}
-
 Future<void> generateEmbeddedAssets(_) async {
-  final jbuildJar = File(jbuildJarPath());
+  final jbuildJar = File(jbuildJarPath);
   if (await jbuildJar.exists()) {
     print('Generating Dart asset embedding jbuild jar: ${jbuildJar.path}');
     await _generateEmbeddedJar(jbuildJar);
@@ -43,7 +27,7 @@ Future<void> generateEmbeddedAssets(_) async {
 
 Future<void> _generateEmbeddedJar(File jar) async {
   final encoded = await _b64Encode(jar);
-  final out = File(jbuildGeneratedDartFilePath());
+  final out = File(jbuildGeneratedDartFilePath);
   final outHandle = await out.open(mode: FileMode.writeOnly);
   try {
     await outHandle.writeString("const jbuildJarB64 = '");
