@@ -90,7 +90,7 @@ class JBuildConfiguration with _$JBuildConfiguration {
       result.add(exclude);
     }
     dependencies.forEach((dependency, spec) {
-      if (spec.scope != DependencyScope.runtimeOnly) {
+      if (spec.scope.includedInCompilation()) {
         result.add(dependency);
       }
     });
@@ -105,7 +105,19 @@ class CompileOutput with _$CompileOutput {
   const factory CompileOutput.jar(String jar) = Jar;
 }
 
-enum DependencyScope { all, compileOnly, runtimeOnly }
+enum DependencyScope {
+  all,
+  compileOnly,
+  runtimeOnly;
+
+  bool includedInCompilation() {
+    return this != DependencyScope.runtimeOnly;
+  }
+
+  bool includedAtRuntime() {
+    return this != DependencyScope.compileOnly;
+  }
+}
 
 @freezed
 class DependencySpec with _$DependencySpec {
