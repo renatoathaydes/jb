@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   group('CompileConfiguration', () {
     test('can load', () {
-      final config = CompileConfiguration(
+      final config = JBuildConfiguration(
           sourceDirs: {'src'},
           classpath: const {},
           output: CompileOutput.jar('lib.jar'),

@@ -6,7 +6,7 @@ import 'tasks.dart';
 
 class JBuildDartle {
   final JBuildFiles files;
-  final CompileConfiguration config;
+  final JBuildConfiguration config;
   final DartleCache cache;
 
   late final Task compile, writeDeps, install;

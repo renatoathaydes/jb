@@ -37,7 +37,7 @@ class JBuildCli {
         jbuildDartle.tasks, jbuildDartle.defaultTasks, options, cache);
   }
 
-  Future<CompileConfiguration?> createConfig() async {
+  Future<JBuildConfiguration?> createConfig() async {
     if (await files.configFile.exists()) {
       return _config(loadYaml(await files.configFile.readAsString(),
           sourceUrl: Uri.parse(files.configFile.path)));
@@ -46,10 +46,10 @@ class JBuildCli {
   }
 }
 
-CompileConfiguration _config(dynamic json) {
+JBuildConfiguration _config(dynamic json) {
   if (json is Map) {
     final map = asJsonMap(json);
-    return CompileConfiguration.fromMap(map);
+    return JBuildConfiguration.fromMap(map);
   } else {
     throw DartleException(
         message: 'Expecting jbuild configuration to be a Map, '

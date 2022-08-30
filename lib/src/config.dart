@@ -20,10 +20,10 @@ class JBuildFiles {
 }
 
 @freezed
-class CompileConfiguration with _$CompileConfiguration {
-  const CompileConfiguration._();
+class JBuildConfiguration with _$JBuildConfiguration {
+  const JBuildConfiguration._();
 
-  const factory CompileConfiguration({
+  const factory JBuildConfiguration({
     required Set<String> sourceDirs,
     required Set<String> classpath,
     required CompileOutput output,
@@ -35,8 +35,8 @@ class CompileConfiguration with _$CompileConfiguration {
     required Set<String> exclusions,
   }) = _Config;
 
-  static CompileConfiguration fromMap(Map<String, Object?> map) {
-    return CompileConfiguration(
+  static JBuildConfiguration fromMap(Map<String, Object?> map) {
+    return JBuildConfiguration(
       sourceDirs: _stringIterableValue(map, 'source-dirs', const {}).toSet(),
       classpath: _stringIterableValue(map, 'classpath', const {}).toSet(),
       output: _compileOutputValue(map, 'output-dir', 'output-jar') ??

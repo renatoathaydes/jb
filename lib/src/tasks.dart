@@ -7,7 +7,7 @@ import 'package:path/path.dart';
 import 'config.dart';
 
 Task compileTask(
-    File jbuildJar, CompileConfiguration config, DartleCache cache) {
+    File jbuildJar, JBuildConfiguration config, DartleCache cache) {
   final outputs = config.output.when(dir: (d) => dir(d), jar: (j) => file(j));
   final compileRunCondition = RunOnChanges(
       inputs: dirs(config.sourceDirs, fileExtensions: const {'.java'}),
@@ -20,7 +20,7 @@ Task compileTask(
       description: 'Compile Java source code.');
 }
 
-Future<void> _compile(File jbuildJar, CompileConfiguration config) async {
+Future<void> _compile(File jbuildJar, JBuildConfiguration config) async {
   final exitCode = await exec(Process.start(
       'java',
       [
@@ -44,7 +44,7 @@ File _dependenciesFile(JBuildFiles files) {
 }
 
 Task writeDependenciesTask(
-    JBuildFiles files, CompileConfiguration config, DartleCache cache) {
+    JBuildFiles files, JBuildConfiguration config, DartleCache cache) {
   final dependenciesFile = _dependenciesFile(files);
 
   final compileRunCondition = RunOnChanges(
@@ -59,13 +59,13 @@ Task writeDependenciesTask(
 }
 
 Future<void> _writeDependencies(
-    File dependenciesFile, CompileConfiguration config) async {
+    File dependenciesFile, JBuildConfiguration config) async {
   await dependenciesFile.parent.create();
   await dependenciesFile.writeAsString(config.dependencies.keys.join(','));
 }
 
 Task installTask(
-    JBuildFiles files, CompileConfiguration config, DartleCache cache) {
+    JBuildFiles files, JBuildConfiguration config, DartleCache cache) {
   final outputs = config.output.when(dir: (d) => dir(d), jar: (j) => file(j));
   final compileRunCondition = RunOnChanges(
       inputs: file(_dependenciesFile(files).path),
@@ -79,7 +79,7 @@ Task installTask(
       description: 'Install dependencies.');
 }
 
-Future<void> _install(File jbuildJar, CompileConfiguration config) async {
+Future<void> _install(File jbuildJar, JBuildConfiguration config) async {
   final exitCode = await exec(Process.start(
       'java',
       [
