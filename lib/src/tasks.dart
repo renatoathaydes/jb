@@ -61,7 +61,11 @@ Task writeDependenciesTask(
 Future<void> _writeDependencies(
     File dependenciesFile, JBuildConfiguration config) async {
   await dependenciesFile.parent.create();
-  await dependenciesFile.writeAsString(config.dependencies.keys.join(','));
+  await dependenciesFile.writeAsString(config.dependencies.entries
+      .map((e) => e.value == DependencySpec.defaultSpec
+          ? e.key
+          : "${e.key}->${e.value}")
+      .join('\n'));
 }
 
 Task installTask(
