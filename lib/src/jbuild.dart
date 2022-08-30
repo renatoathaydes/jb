@@ -2,19 +2,11 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'jbuild_dartle.dart';
 import 'package:yaml/yaml.dart';
 
 import 'config.dart';
 import 'utils.dart';
-import 'tasks.dart';
-
-class JBuildFiles {
-  final File jbuildJar;
-  final File configFile;
-  final Directory tempDir = Directory('.jbuild-cache/tmp');
-
-  JBuildFiles(this.jbuildJar, this.configFile);
-}
 
 class JBuildCli {
   final JBuildFiles files;
@@ -39,12 +31,10 @@ class JBuildCli {
 
     logger.fine(() => 'Parsed JBuild configuration: $config');
 
-    final compile = await compileTask(files.jbuildJar, config, cache);
-    final writeDeps = await writeDependenciesTask(files, config, cache);
-    final install = await installTask(files, config, cache);
+    final jbuildDartle = JBuildDartle(files, config, cache);
 
-    await runBasic({compile, writeDeps, install}, const {},
-        options.copyWith(tasksInvocation: const ['compile']), cache);
+    await runBasic(
+        jbuildDartle.tasks, jbuildDartle.defaultTasks, options, cache);
   }
 
   Future<CompileConfiguration?> createConfig() async {

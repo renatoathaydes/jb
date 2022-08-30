@@ -1,15 +1,23 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as path;
 import 'package:dartle/dartle.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:jbuild_cli/src/utils.dart';
 import 'package:logging/logging.dart' as log;
+import 'package:path/path.dart' as path;
 import 'package:yaml/yaml.dart';
 
 part 'config.freezed.dart';
 
 final logger = log.Logger('jbuild');
+
+class JBuildFiles {
+  final File jbuildJar;
+  final File configFile;
+  final Directory tempDir = Directory('.jbuild-cache/tmp');
+
+  JBuildFiles(this.jbuildJar, this.configFile);
+}
 
 @freezed
 class CompileConfiguration with _$CompileConfiguration {

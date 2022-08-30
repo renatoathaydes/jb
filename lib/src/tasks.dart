@@ -2,13 +2,12 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
-import 'package:dartle/dartle_dart.dart';
-import 'package:jbuild_cli/jbuild_cli.dart';
-import 'package:jbuild_cli/src/config.dart';
 import 'package:path/path.dart';
 
-Future<Task> compileTask(
-    File jbuildJar, CompileConfiguration config, DartleCache cache) async {
+import 'config.dart';
+
+Task compileTask(
+    File jbuildJar, CompileConfiguration config, DartleCache cache) {
   final outputs = config.output.when(dir: (d) => dir(d), jar: (j) => file(j));
   final compileRunCondition = RunOnChanges(
       inputs: dirs(config.sourceDirs, fileExtensions: const {'.java'}),
@@ -44,10 +43,9 @@ File _dependenciesFile(JBuildFiles files) {
   return File(join(files.tempDir.path, 'dependencies'));
 }
 
-Future<Task> writeDependenciesTask(
-    JBuildFiles files, CompileConfiguration config, DartleCache cache) async {
+Task writeDependenciesTask(
+    JBuildFiles files, CompileConfiguration config, DartleCache cache) {
   final dependenciesFile = _dependenciesFile(files);
-  await dependenciesFile.parent.create();
 
   final compileRunCondition = RunOnChanges(
       inputs: file(files.configFile.path),
@@ -62,11 +60,12 @@ Future<Task> writeDependenciesTask(
 
 Future<void> _writeDependencies(
     File dependenciesFile, CompileConfiguration config) async {
+  await dependenciesFile.parent.create();
   await dependenciesFile.writeAsString(config.dependencies.keys.join(','));
 }
 
-Future<Task> installTask(
-    JBuildFiles files, CompileConfiguration config, DartleCache cache) async {
+Task installTask(
+    JBuildFiles files, CompileConfiguration config, DartleCache cache) {
   final outputs = config.output.when(dir: (d) => dir(d), jar: (j) => file(j));
   final compileRunCondition = RunOnChanges(
       inputs: file(_dependenciesFile(files).path),
