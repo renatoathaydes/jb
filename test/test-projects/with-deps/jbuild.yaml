@@ -2,4 +2,4 @@ repositories:
   - ../test-repo
 
 dependencies:
-  com.example:lists:1.0:
+  - com.example:lists:1.0

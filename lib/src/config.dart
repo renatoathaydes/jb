@@ -5,7 +5,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:jbuild_cli/src/utils.dart';
 import 'package:logging/logging.dart' as log;
 import 'package:path/path.dart' as path;
-import 'package:yaml/yaml.dart';
+
+import 'utils.dart';
 
 part 'config.freezed.dart';
 
@@ -110,12 +111,20 @@ enum DependencyScope { all, compileOnly, runtimeOnly }
 class DependencySpec with _$DependencySpec {
   const DependencySpec._();
 
+  static const DependencySpec defaultSpec =
+      DependencySpec(transitive: true, scope: DependencyScope.all);
+
   const factory DependencySpec({
     required bool transitive,
     required DependencyScope scope,
   }) = _DependencySpec;
 
   static DependencySpec fromMap(Map<String, Object?> map) {
+    if (map.keys.any(const {'transitive', 'scope'}.contains.not)) {
+      throw DartleException(
+          message: 'invalid dependency definition, '
+              'only "transitive" and "scope" fields can be set: $map');
+    }
     return DependencySpec(
         transitive: _boolValue(map, 'transitive', true),
         scope: _scopeValue(map, 'scope', DependencyScope.all));
@@ -137,8 +146,7 @@ bool _boolValue(Map<String, Object?> map, String key, bool defaultValue) {
     }
   }
   throw DartleException(
-      message: "expecting a boolean value for '$key', "
-          "but got '$value'");
+      message: "expecting a boolean value for '$key', but got '$value'.");
 }
 
 String _stringValue(Map<String, Object?> map, String key, String defaultValue) {
@@ -148,8 +156,7 @@ String _stringValue(Map<String, Object?> map, String key, String defaultValue) {
     return value;
   }
   throw DartleException(
-      message: "expecting a String value for '$key', "
-          "but got '$value'");
+      message: "expecting a String value for '$key', but got '$value'.");
 }
 
 DependencyScope _scopeValue(
@@ -161,32 +168,35 @@ DependencyScope _scopeValue(
         .firstWhere((enumValue) => enumValue.name == value, orElse: () {
       throw DartleException(
           message: "expecting one of ${DependencyScope.values} for '$key', "
-              "but got '$value'");
+              "but got '$value'.");
     });
   }
   throw DartleException(
       message: "expecting a String value for '$key', "
-          "but got '$value'");
+          "but got '$value'.");
 }
 
 Iterable<String> _stringIterableValue(
     Map<String, Object?> map, String key, Iterable<String> defaultValue) {
   final value = map[key];
   if (value == null) return defaultValue;
-  if (value is YamlList) {
+  if (value is Iterable) {
     // value is not even an Iterable!!!
     return value.map((e) {
       if (e == null || e is Iterable || e is Map) {
         throw DartleException(
             message: "expecting a list of String values for '$key', "
-                "but got item which has type ${e?.runtimeType}: '$e'");
+                "but got '$e'.");
       }
       return e.toString();
     });
   }
+  if (value is String) {
+    return {value};
+  }
   throw DartleException(
       message: "expecting a list of String values for '$key', "
-          "but got '$value' which has type ${value.runtimeType}");
+          "but got '$value'.");
 }
 
 CompileOutput? _compileOutputValue(
@@ -202,40 +212,71 @@ CompileOutput? _compileOutputValue(
     }
     throw DartleException(
         message: "expecting a String value for '$dirKey', "
-            "but got '$dir'");
+            "but got '$dir'.");
   }
   if (jar is String) {
     return CompileOutput.jar(jar);
   }
   throw DartleException(
       message: "expecting a String value for '$jarKey', "
-          "but got '$jar'");
+          "but got '$jar'.");
 }
+
+const dependenciesSyntaxHelp = '''
+Use the following syntax to declare dependencies:
+
+  dependencies:
+    - first:dep:1.0
+    - another:dep:2.0:
+        transitive: false  # true (at runtime) by default
+        scope: runtimeOnly # or compileOnly or all
+''';
 
 Map<String, DependencySpec> _dependencies(Map<String, Object?> map, String key,
     Map<String, DependencySpec> defaultValue) {
   final value = map[key];
   if (value == null) return defaultValue;
-  if (value is Map) {
-    final deps = asJsonMap(value);
-    return deps.map((key, value) => MapEntry(
-        key, DependencySpec.fromMap(_mapValue(value, 'dependencies->value'))));
+  if (value is List) {
+    final map = <String, DependencySpec>{};
+    for (final entry in value) {
+      if (entry is String) {
+        map[entry] = DependencySpec.defaultSpec;
+      } else if (entry is Map) {
+        _addMapDependencyTo(map, entry);
+      } else {
+        throw DartleException(
+            message: 'bad dependency declaration, '
+                "expected String or Map value, got '$entry'.\n"
+                "$dependenciesSyntaxHelp");
+      }
+    }
+    return map;
   }
   throw DartleException(
-      message: "expecting a Map value for '$key', "
-          "but got '$value'");
+      message: "'$key' should be a List.\n"
+          "$dependenciesSyntaxHelp");
 }
 
-Map<String, Object?> _mapValue(dynamic value, String key) {
+void _addMapDependencyTo(Map<String, DependencySpec> map, Map entry) {
+  if (entry.length != 1) {
+    throw DartleException(
+        message: "bad dependency declaration: '$entry'.\n"
+            '$dependenciesSyntaxHelp');
+  }
+  final dep = entry.entries.first;
+  map[dep.key as String] = _dependencySpec(dep.value);
+}
+
+DependencySpec _dependencySpec(value) {
   if (value == null) {
-    return const {};
+    return DependencySpec.defaultSpec;
   }
   if (value is Map) {
-    return asJsonMap(value);
+    return DependencySpec.fromMap(asJsonMap(value));
   }
   throw DartleException(
-      message: "expecting a Map value for '$key', "
-          "but got '$value'");
+      message: "bad dependency attributes declaration: '$value'.\n"
+          "$dependenciesSyntaxHelp");
 }
 
 CompileOutput _defaultOutputValue() {

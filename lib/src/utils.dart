@@ -30,3 +30,7 @@ extension AnyExtension<T> on T? {
     return this!;
   }
 }
+
+extension FunctionExtension<T> on bool Function(T) {
+  bool Function(T) get not => (v) => !this(v);
+}

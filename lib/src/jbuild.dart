@@ -39,14 +39,14 @@ class JBuildCli {
 
   Future<JBuildConfiguration?> createConfig() async {
     if (await files.configFile.exists()) {
-      return _config(loadYaml(await files.configFile.readAsString(),
+      return configFromJson(loadYaml(await files.configFile.readAsString(),
           sourceUrl: Uri.parse(files.configFile.path)));
     }
     return null;
   }
 }
 
-JBuildConfiguration _config(dynamic json) {
+JBuildConfiguration configFromJson(dynamic json) {
   if (json is Map) {
     final map = asJsonMap(json);
     return JBuildConfiguration.fromMap(map);
