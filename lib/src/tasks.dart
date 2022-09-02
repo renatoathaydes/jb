@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'package:path/path.dart';
 
 import 'config.dart';
 import 'exec.dart';
@@ -131,10 +132,8 @@ Future<void> _run(File jbuildJar, JBuildConfiguration config) async {
   }
 
   final separator = Platform.isWindows ? ';' : ':';
-  final output =
-      config.output.when(dir: (d) => Directory(d), jar: (j) => File(j));
-
-  final classpath = '${config.runtimeLibsDir}$separator$output';
+  final output = config.output.when(dir: (d) => join(d, '*'), jar: (j) => j);
+  final classpath = '${join(config.runtimeLibsDir, '*')}$separator$output';
 
   final exitCode = await execJava(['-cp', classpath, mainClass]);
 
