@@ -33,7 +33,8 @@ void main() {
   projectGroup(withDepsProjectDir, 'with-deps project', () {
     tearDown(() async {
       await deleteAll(dirs([
-        '$withDepsProjectDir/java-libs',
+        '$withDepsProjectDir/compile-libs',
+        '$withDepsProjectDir/runtime-libs',
         '$withDepsProjectDir/.jbuild-cache'
       ], includeHidden: true));
       await deleteAll(file('$withDepsProjectDir/with-deps.jar'));
@@ -51,7 +52,7 @@ void main() {
               'java',
               [
                 '-cp',
-                classpath(['with-deps.jar', 'java-libs/*']),
+                classpath(['with-deps.jar', 'compile-libs/*']),
                 'com.foo.Foo',
               ],
               workingDirectory: withDepsProjectDir),
@@ -71,7 +72,8 @@ void projectGroup(String projectDir, String name, Function() definition) {
   final outputDirs = dirs([
     '$projectDir/.jbuild-cache',
     '$projectDir/out',
-    '$projectDir/java-libs',
+    '$projectDir/compile-libs',
+    '$projectDir/runtime-libs',
   ], includeHidden: true);
 
   setUp(() async {

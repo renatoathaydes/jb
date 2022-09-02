@@ -9,16 +9,23 @@ class JBuildDartle {
   final JBuildConfiguration config;
   final DartleCache cache;
 
-  late final Task compile, writeDeps, install, clean;
+  late final Task compile,
+      writeDeps,
+      installCompile,
+      installRuntime,
+      clean,
+      run;
 
   /// Get the tasks that are configured as part of a build.
   late final Set<Task> tasks;
 
   JBuildDartle(this.files, this.config, this.cache) {
-    compile = compileTask(files.jbuildJar, config, cache);
-    writeDeps = writeDependenciesTask(files, config, cache);
-    install = installTask(files, config, cache);
-    final allTasks = {compile, writeDeps, install};
+    compile = createCompileTask(files.jbuildJar, config, cache);
+    writeDeps = createWriteDependenciesTask(files, config, cache);
+    installCompile = createInstallCompileDepsTask(files, config, cache);
+    installRuntime = createInstallRuntimeDepsTask(files, config, cache);
+    run = createRunTask(files, config, cache);
+    final allTasks = {compile, writeDeps, installCompile, installRuntime, run};
     clean = createCleanTask(
         tasks: allTasks,
         name: 'clean',

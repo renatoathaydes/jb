@@ -1,5 +1,8 @@
 import 'dart:io';
+
 import 'package:path/path.dart' as path;
+
+import 'config.dart';
 
 final _jbuildHome = Platform.environment['JBUILD_CLI_HOME'];
 
@@ -18,4 +21,8 @@ String jbuildCliHome() {
 
 String jbuildJarPath() {
   return path.join(jbuildCliHome(), 'jbuild.jar');
+}
+
+File dependenciesFile(JBuildFiles files) {
+  return File(path.join(files.tempDir.path, 'dependencies'));
 }

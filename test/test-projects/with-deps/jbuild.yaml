@@ -3,3 +3,5 @@ repositories:
 
 dependencies:
   - com.example:lists:1.0
+
+main-class: com.foo.Foo

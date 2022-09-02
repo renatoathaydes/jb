@@ -15,7 +15,10 @@ void main() {
           dependencies: const {},
           exclusions: const {},
           repositories: const {},
-          javacArgs: const []);
+          javacArgs: const [],
+          compileLibsDir: '',
+          runtimeLibsDir: '',
+          testLibsDir: '');
 
       expect(config.sourceDirs, equals(const {'src'}));
       expect(config.output.when(dir: (d) => 'dir', jar: (j) => j), 'lib.jar');
@@ -35,6 +38,10 @@ void main() {
       output-dir: target/
       resource-dirs:
         - src/resources
+      
+      compile-libs-dir: libs
+      runtime-libs-dir: all-libs
+      test-lib-dir: test-libs
 
       main-class: my.Main
 
@@ -59,7 +66,10 @@ void main() {
               dependencies: {
                 'com.google:guava:1.2.3': DependencySpec.defaultSpec,
               },
-              exclusions: {'test.*', '.*other\\d+.*'})));
+              exclusions: {'test.*', '.*other\\d+.*'},
+              compileLibsDir: 'libs',
+              runtimeLibsDir: 'all-libs',
+              testLibsDir: 'test-libs')));
     });
 
     test('can parse string-iterable from single string', () async {
@@ -84,7 +94,10 @@ void main() {
               javacArgs: ['-X'],
               repositories: {'https://maven.org'},
               dependencies: {},
-              exclusions: {'one'})));
+              exclusions: {'one'},
+              compileLibsDir: 'compile-libs',
+              runtimeLibsDir: 'runtime-libs',
+              testLibsDir: 'test-libs')));
     });
 
     test('can parse basic string dependencies', () async {

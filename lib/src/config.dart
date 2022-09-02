@@ -34,6 +34,9 @@ class JBuildConfiguration with _$JBuildConfiguration {
     required Set<String> repositories,
     required Map<String, DependencySpec> dependencies,
     required Set<String> exclusions,
+    required String compileLibsDir,
+    required String runtimeLibsDir,
+    required String testLibsDir,
   }) = _Config;
 
   static JBuildConfiguration fromMap(Map<String, Object?> map) {
@@ -51,6 +54,9 @@ class JBuildConfiguration with _$JBuildConfiguration {
       repositories: _stringIterableValue(map, 'repositories', const {}).toSet(),
       exclusions:
           _stringIterableValue(map, 'exclusion-patterns', const {}).toSet(),
+      compileLibsDir: _stringValue(map, 'compile-libs-dir', 'compile-libs'),
+      runtimeLibsDir: _stringValue(map, 'runtime-libs-dir', 'runtime-libs'),
+      testLibsDir: _stringValue(map, 'test-libs-dir', 'test-libs'),
     );
   }
 
@@ -64,7 +70,7 @@ class JBuildConfiguration with _$JBuildConfiguration {
   List<String> compileArgs() {
     final result = <String>[];
     result.addAll(sourceDirs);
-    for (final cp in classpath) {
+    for (final cp in classpath.followedBy([compileLibsDir])) {
       result.addAll(['-cp', cp]);
     }
     output.when(
@@ -83,14 +89,28 @@ class JBuildConfiguration with _$JBuildConfiguration {
     return result;
   }
 
-  List<String> installForCompilationArgs() {
-    final result = <String>[];
+  List<String> installArgsForCompilation() {
+    final result = ['-s', 'compile', '-d', compileLibsDir];
     for (final exclude in exclusions) {
       result.add('--exclusion');
       result.add(exclude);
     }
     dependencies.forEach((dependency, spec) {
       if (spec.scope.includedInCompilation()) {
+        result.add(dependency);
+      }
+    });
+    return result;
+  }
+
+  List<String> installArgsForRuntime() {
+    final result = ['-t', '-d', runtimeLibsDir];
+    for (final exclude in exclusions) {
+      result.add('--exclusion');
+      result.add(exclude);
+    }
+    dependencies.forEach((dependency, spec) {
+      if (spec.scope.includedAtRuntime()) {
         result.add(dependency);
       }
     });
