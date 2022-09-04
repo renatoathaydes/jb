@@ -87,8 +87,7 @@ class JBuildConfiguration with _$JBuildConfiguration {
       CompileOutput.dir(compileLibsDir),
     ]);
     for (final cp in classpath) {
-      result
-          .addAll(['-cp', cp.when(dir: (d) => p.join(d, '*'), jar: (j) => j)]);
+      result.addAll(['-cp', cp.when(dir: (d) => d, jar: (j) => j)]);
     }
     output.when(
         dir: (d) => result.addAll(['-d', d]),
