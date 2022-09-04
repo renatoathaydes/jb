@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
-import 'jbuild_dartle.dart';
 import 'package:yaml/yaml.dart';
 
 import 'config.dart';
+import 'jbuild_dartle.dart';
 import 'utils.dart';
 
 class JBuildCli {
@@ -33,6 +33,8 @@ class JBuildCli {
 
     final jbuildDartle = JBuildDartle(files, config, cache);
 
+    await jbuildDartle.init;
+
     await runBasic(
         jbuildDartle.tasks, jbuildDartle.defaultTasks, options, cache);
   }
@@ -43,16 +45,5 @@ class JBuildCli {
           sourceUrl: Uri.parse(files.configFile.path)));
     }
     return null;
-  }
-}
-
-JBuildConfiguration configFromJson(dynamic json) {
-  if (json is Map) {
-    final map = asJsonMap(json);
-    return JBuildConfiguration.fromMap(map);
-  } else {
-    throw DartleException(
-        message: 'Expecting jbuild configuration to be a Map, '
-            'but it is ${json?.runtimeType}');
   }
 }

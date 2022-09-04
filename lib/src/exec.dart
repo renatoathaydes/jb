@@ -3,6 +3,15 @@ import 'dart:io';
 import 'package:dartle/dartle.dart';
 import 'config.dart' show logger;
 
+Future<int> execJBuildCli(String command, List<String> commandArgs) {
+  if (Platform.executable == 'dart') {
+    commandArgs = [Platform.script.path, ...commandArgs];
+  }
+  logger.fine(() => 'Executing ${Platform.resolvedExecutable} $commandArgs');
+  return exec(Process.start(Platform.resolvedExecutable, commandArgs,
+      runInShell: true));
+}
+
 Future<int> execJBuild(File jbuildJar, List<String> preArgs, String command,
     List<String> commandArgs) {
   return execJava([

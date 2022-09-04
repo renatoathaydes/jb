@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -33,4 +34,20 @@ extension AnyExtension<T> on T? {
 
 extension FunctionExtension<T> on bool Function(T) {
   bool Function(T) get not => (v) => !this(v);
+}
+
+extension NullIterable<T> on Iterable<T?> {
+  Iterable<T> whereNonNull() sync* {
+    for (final item in this) {
+      if (item != null) yield item;
+    }
+  }
+}
+
+extension AsyncIterable<T> on Iterable<FutureOr<T>> {
+  Stream<T> toStream() async* {
+    for (final item in this) {
+      yield await item;
+    }
+  }
 }

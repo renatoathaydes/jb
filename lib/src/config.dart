@@ -4,7 +4,7 @@ import 'package:dartle/dartle.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:jbuild_cli/src/utils.dart';
 import 'package:logging/logging.dart' as log;
-import 'package:path/path.dart' as path;
+import 'package:path/path.dart' as p;
 
 import 'utils.dart';
 
@@ -20,13 +20,23 @@ class JBuildFiles {
   JBuildFiles(this.jbuildJar, this.configFile);
 }
 
+JBuildConfiguration configFromJson(dynamic json) {
+  if (json is Map) {
+    final map = asJsonMap(json);
+    return JBuildConfiguration.fromMap(map);
+  } else {
+    throw DartleException(
+        message: 'Expecting jbuild configuration to be a Map, '
+            'but it is ${json?.runtimeType}');
+  }
+}
+
 @freezed
 class JBuildConfiguration with _$JBuildConfiguration {
   const JBuildConfiguration._();
 
   const factory JBuildConfiguration({
     required Set<String> sourceDirs,
-    required Set<String> classpath,
     required CompileOutput output,
     required Set<String> resourceDirs,
     required String mainClass,
@@ -42,7 +52,6 @@ class JBuildConfiguration with _$JBuildConfiguration {
   static JBuildConfiguration fromMap(Map<String, Object?> map) {
     return JBuildConfiguration(
       sourceDirs: _stringIterableValue(map, 'source-dirs', const {}).toSet(),
-      classpath: _stringIterableValue(map, 'classpath', const {}).toSet(),
       output: _compileOutputValue(map, 'output-dir', 'output-jar') ??
           _defaultOutputValue(),
       resourceDirs:
@@ -67,11 +76,19 @@ class JBuildConfiguration with _$JBuildConfiguration {
     return const [];
   }
 
-  List<String> compileArgs() {
+  List<String> compileArgs(List<SubProject> subProjects) {
     final result = <String>[];
     result.addAll(sourceDirs);
-    for (final cp in classpath.followedBy([compileLibsDir])) {
-      result.addAll(['-cp', cp]);
+    final classpath = subProjects
+        .map((p) => p.when(
+            project: (i1, i2, out) => out,
+            jar: (j) => CompileOutput.jar(j.path)))
+        .followedBy([
+      CompileOutput.dir(compileLibsDir),
+    ]);
+    for (final cp in classpath) {
+      result
+          .addAll(['-cp', cp.when(dir: (d) => p.join(d, '*'), jar: (j) => j)]);
     }
     output.when(
         dir: (d) => result.addAll(['-d', d]),
@@ -96,7 +113,7 @@ class JBuildConfiguration with _$JBuildConfiguration {
       result.add(exclude);
     }
     dependencies.forEach((dependency, spec) {
-      if (spec.scope.includedInCompilation()) {
+      if (spec.scope.includedInCompilation() && spec.path == null) {
         result.add(dependency);
       }
     });
@@ -110,7 +127,7 @@ class JBuildConfiguration with _$JBuildConfiguration {
       result.add(exclude);
     }
     dependencies.forEach((dependency, spec) {
-      if (spec.scope.includedAtRuntime()) {
+      if (spec.scope.includedAtRuntime() && spec.path == null) {
         result.add(dependency);
       }
     });
@@ -149,6 +166,7 @@ class DependencySpec with _$DependencySpec {
   const factory DependencySpec({
     required bool transitive,
     required DependencyScope scope,
+    String? path,
   }) = _DependencySpec;
 
   static DependencySpec fromMap(Map<String, Object?> map) {
@@ -159,8 +177,34 @@ class DependencySpec with _$DependencySpec {
     }
     return DependencySpec(
         transitive: _boolValue(map, 'transitive', true),
-        scope: _scopeValue(map, 'scope', DependencyScope.all));
+        scope: _scopeValue(map, 'scope', DependencyScope.all),
+        path: _optionalStringValue(map, 'path'));
   }
+
+  Future<PathDependency>? toPathDependency() {
+    final thisPath = path;
+    if (thisPath == null) return null;
+    return FileSystemEntity.isFile(thisPath).then((isFile) => isFile
+        ? PathDependency.jar(this, thisPath)
+        : PathDependency.jbuildProject(this, thisPath));
+  }
+}
+
+@freezed
+class PathDependency with _$PathDependency {
+  const factory PathDependency.jar(DependencySpec spec, String path) =
+      JarDependency;
+
+  const factory PathDependency.jbuildProject(DependencySpec spec, String path) =
+      ProjectDependency;
+}
+
+@freezed
+class SubProject with _$SubProject {
+  const factory SubProject.project(
+      Task compileTask, Task testTask, CompileOutput output) = SubProjectOutput;
+
+  const factory SubProject.jar(File jar) = SubProjectJar;
 }
 
 bool _boolValue(Map<String, Object?> map, String key, bool defaultValue) {
@@ -184,6 +228,16 @@ bool _boolValue(Map<String, Object?> map, String key, bool defaultValue) {
 String _stringValue(Map<String, Object?> map, String key, String defaultValue) {
   final value = map[key];
   if (value == null) return defaultValue;
+  if (value is String) {
+    return value;
+  }
+  throw DartleException(
+      message: "expecting a String value for '$key', but got '$value'.");
+}
+
+String? _optionalStringValue(Map<String, Object?> map, String key) {
+  final value = map[key];
+  if (value == null) return null;
   if (value is String) {
     return value;
   }
@@ -312,5 +366,5 @@ DependencySpec _dependencySpec(value) {
 }
 
 CompileOutput _defaultOutputValue() {
-  return CompileOutput.jar('${path.basename(Directory.current.path)}.jar');
+  return CompileOutput.jar('${p.basename(Directory.current.path)}.jar');
 }

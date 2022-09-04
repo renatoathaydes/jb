@@ -5,8 +5,10 @@ import 'package:dartle/dartle_cache.dart';
 import 'package:path/path.dart';
 
 import 'config.dart';
+import 'utils.dart';
 import 'exec.dart';
 import 'paths.dart';
+import 'sub_project.dart';
 
 const compileTaskName = 'compile';
 const runTaskName = 'runJavaMainClass';
@@ -14,23 +16,24 @@ const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const writeDepsTaskName = 'writeDependencies';
 
-Task createCompileTask(
-    File jbuildJar, JBuildConfiguration config, DartleCache cache) {
+Task createCompileTask(File jbuildJar, JBuildConfiguration config,
+    DartleCache cache, List<SubProject> subProjects) {
   final outputs = config.output.when(dir: (d) => dir(d), jar: (j) => file(j));
   final compileRunCondition = RunOnChanges(
       inputs: dirs(config.sourceDirs, fileExtensions: const {'.java'}),
       outputs: outputs,
       cache: cache);
-  return Task((_) => _compile(jbuildJar, config),
+  return Task((_) => _compile(jbuildJar, config, subProjects),
       runCondition: compileRunCondition,
       name: compileTaskName,
       dependsOn: const {installCompileDepsTaskName},
       description: 'Compile Java source code.');
 }
 
-Future<void> _compile(File jbuildJar, JBuildConfiguration config) async {
+Future<void> _compile(File jbuildJar, JBuildConfiguration config,
+    List<SubProject> subProjects) async {
   final exitCode = await execJBuild(
-      jbuildJar, config.preArgs(), 'compile', config.compileArgs());
+      jbuildJar, config.preArgs(), 'compile', config.compileArgs(subProjects));
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild compile command failed', exitCode: exitCode);
@@ -140,4 +143,16 @@ Future<void> _run(File jbuildJar, JBuildConfiguration config) async {
   if (exitCode != 0) {
     throw DartleException(message: 'java command failed', exitCode: exitCode);
   }
+}
+
+Future<List<SubProject>> createSubProjects(
+    JBuildFiles files, JBuildConfiguration config) async {
+  final pathDependencies = config.dependencies.entries
+      .map((e) => e.value.toPathDependency())
+      .whereNonNull()
+      .toStream();
+
+  final subProjectFactory = SubProjectFactory(files, config);
+
+  return await subProjectFactory.createSubProjects(pathDependencies).toList();
 }

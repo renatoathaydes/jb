@@ -8,7 +8,6 @@ void main() {
     test('can load', () {
       final config = JBuildConfiguration(
           sourceDirs: {'src'},
-          classpath: const {},
           output: CompileOutput.jar('lib.jar'),
           resourceDirs: const {},
           mainClass: '',
@@ -34,7 +33,6 @@ void main() {
       exclusion-patterns:
         - test.*
         - .*other\\d+.*
-      classpath: [foo, bar/*]
       output-dir: target/
       resource-dirs:
         - src/resources
@@ -57,7 +55,6 @@ void main() {
           config,
           equals(const JBuildConfiguration(
               sourceDirs: {'src/main/groovy', 'src/test/kotlin'},
-              classpath: {'foo', 'bar/*'},
               output: CompileOutput.dir('target/'),
               resourceDirs: {'src/resources'},
               mainClass: 'my.Main',
@@ -76,7 +73,6 @@ void main() {
       final config = configFromJson(loadYaml('''
       source-dirs: src/java
       exclusion-patterns: one  
-      classpath: the-classes
       output-dir: out
       resource-dirs: resources
       javac-args: -X
@@ -87,7 +83,6 @@ void main() {
           config,
           equals(const JBuildConfiguration(
               sourceDirs: {'src/java'},
-              classpath: {'the-classes'},
               output: CompileOutput.dir('out'),
               resourceDirs: {'resources'},
               mainClass: '',
