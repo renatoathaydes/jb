@@ -36,6 +36,9 @@ class JBuildConfiguration with _$JBuildConfiguration {
   const JBuildConfiguration._();
 
   const factory JBuildConfiguration({
+    String? group,
+    String? module,
+    required String version,
     required Set<String> sourceDirs,
     required CompileOutput output,
     required Set<String> resourceDirs,
@@ -51,6 +54,9 @@ class JBuildConfiguration with _$JBuildConfiguration {
 
   static JBuildConfiguration fromMap(Map<String, Object?> map) {
     return JBuildConfiguration(
+      group: _optionalStringValue(map, 'group'),
+      module: _optionalStringValue(map, 'module'),
+      version: _stringValue(map, 'version', '0.0.0'),
       sourceDirs: _stringIterableValue(map, 'source-dirs', const {}).toSet(),
       output: _compileOutputValue(map, 'output-dir', 'output-jar') ??
           _defaultOutputValue(),
@@ -76,19 +82,10 @@ class JBuildConfiguration with _$JBuildConfiguration {
     return const [];
   }
 
-  List<String> compileArgs(List<SubProject> subProjects) {
+  List<String> compileArgs() {
     final result = <String>[];
     result.addAll(sourceDirs);
-    final classpath = subProjects
-        .map((p) => p.when(
-            project: (i1, i2, out) => out,
-            jar: (j) => CompileOutput.jar(j.path)))
-        .followedBy([
-      CompileOutput.dir(compileLibsDir),
-    ]);
-    for (final cp in classpath) {
-      result.addAll(['-cp', cp.when(dir: (d) => d, jar: (j) => j)]);
-    }
+    result.addAll(['-cp', compileLibsDir]);
     output.when(
         dir: (d) => result.addAll(['-d', d]),
         jar: (j) => result.addAll(['-j', j]));
@@ -169,10 +166,10 @@ class DependencySpec with _$DependencySpec {
   }) = _DependencySpec;
 
   static DependencySpec fromMap(Map<String, Object?> map) {
-    if (map.keys.any(const {'transitive', 'scope'}.contains.not)) {
+    if (map.keys.any(const {'transitive', 'scope', 'path'}.contains.not)) {
       throw DartleException(
           message: 'invalid dependency definition, '
-              'only "transitive" and "scope" fields can be set: $map');
+              'only "transitive", "path" and "scope" fields can be set: $map');
     }
     return DependencySpec(
         transitive: _boolValue(map, 'transitive', true),
@@ -198,12 +195,23 @@ class PathDependency with _$PathDependency {
       ProjectDependency;
 }
 
-@freezed
-class SubProject with _$SubProject {
-  const factory SubProject.project(
-      Task compileTask, Task testTask, CompileOutput output) = SubProjectOutput;
+class SubProject {
+  final String name;
+  final Task compileTask;
+  final Task testTask;
+  final Task cleanTask;
+  final CompileOutput output;
+  final DependencySpec spec;
 
-  const factory SubProject.jar(File jar) = SubProjectJar;
+  const SubProject(this.name, this.compileTask, this.testTask, this.cleanTask,
+      this.output, this.spec);
+}
+
+class ResolvedProjectDependencies {
+  final List<SubProject> subProjects;
+  final List<JarDependency> jars;
+
+  const ResolvedProjectDependencies(this.subProjects, this.jars);
 }
 
 bool _boolValue(Map<String, Object?> map, String key, bool defaultValue) {

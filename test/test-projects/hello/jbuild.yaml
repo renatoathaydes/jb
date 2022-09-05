@@ -1,5 +1,3 @@
 source-dirs:
   - src
 output-dir: out
-classpath:
-  - lib

@@ -2,8 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 import 'jbuild_jar.g.dart';
 import 'paths.dart';
+
+final separatorPattern = RegExp(r'[/\\]');
 
 Future<File> createIfNeededAndGetJBuildJarFile() async {
   final file = File(jbuildJarPath());
@@ -12,6 +16,16 @@ Future<File> createIfNeededAndGetJBuildJarFile() async {
     await _createJBuildJar(file);
   }
   return file;
+}
+
+Future<T> withCurrentDir<T>(String path, FutureOr<T> Function() action) async {
+  final currentDir = Directory.current;
+  Directory.current = p.join(currentDir.path, path);
+  try {
+    return await action();
+  } finally {
+    Directory.current = currentDir;
+  }
 }
 
 Future<void> _createJBuildJar(File jar) async {

@@ -7,6 +7,7 @@ import 'package:test/test.dart';
 
 const helloProjectDir = 'test/test-projects/hello';
 const withDepsProjectDir = 'test/test-projects/with-deps';
+const withSubProjectDir = 'test/test-projects/with-sub-project';
 
 final jbuildExecutable = p.join(Directory.current.path, 'build', 'bin',
     Platform.isWindows ? 'jb.exe' : 'jb');
@@ -64,6 +65,35 @@ void main() {
               "${output.join('\n')}\n"
               "------------------");
       expect(output, equals(const ['[1, 2, 3]']));
+    });
+  });
+
+  projectGroup(withSubProjectDir, 'with-sub-project project', () {
+    tearDown(() async {
+      await deleteAll(dirs(
+          ['$withSubProjectDir/build', '$withSubProjectDir/.jbuild-cache'],
+          includeHidden: true));
+    });
+
+    test('can install dependencies and compile project', () async {
+      var exitCode = await exec(Process.start(jbuildExecutable, const [],
+          workingDirectory: withSubProjectDir));
+      expect(exitCode, 0);
+      expect(await File('$withSubProjectDir/build/out/app/App.class').exists(),
+          isTrue);
+    });
+
+    test('can run project', () async {
+      final stdout = <String>[];
+      final stderr = <String>[];
+      var exitCode = await exec(
+          Process.start(jbuildExecutable, const ['run'],
+              workingDirectory: withSubProjectDir),
+          onStdoutLine: stdout.add,
+          onStderrLine: stderr.add);
+      expect(exitCode, 0);
+      expect(stdout, contains('Hello Joe!'));
+      expect(stderr, isEmpty);
     });
   });
 }

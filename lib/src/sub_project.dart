@@ -7,6 +7,7 @@ import 'package:yaml/yaml.dart';
 
 import 'config.dart';
 import 'exec.dart';
+import 'utils.dart';
 
 class SubProjectFactory {
   final JBuildFiles files;
@@ -14,36 +15,34 @@ class SubProjectFactory {
 
   const SubProjectFactory(this.files, this.config);
 
-  Stream<SubProject> createSubProjects(Stream<PathDependency> deps) async* {
-    await for (final dep in deps) {
-      yield await dep.when(
-          jar: _createJarSubProject, jbuildProject: _createJBuildSubProject);
+  Stream<SubProject> createSubProjects(List<ProjectDependency> deps) async* {
+    for (final dep in deps) {
+      yield await _createJBuildSubProject(dep);
     }
-  }
-
-  FutureOr<SubProject> _createJarSubProject(DependencySpec spec, String path) {
-    if (p.extension(path) == 'jar') {
-      return SubProject.jar(File(path));
-    }
-    throw DartleException(
-        message:
-            'Cannot use path as a sub-project (not jar file or directory): $path');
   }
 
   Future<SubProject> _createJBuildSubProject(
-      DependencySpec spec, String path) async {
+      ProjectDependency dependency) async {
+    final path = dependency.path;
+    final projectName = path.replaceAll(separatorPattern, ':');
     final dir = Directory(path);
     if (await dir.exists()) {
-      final jbuildFile = File(p.join(path, 'jbuild.yaml'));
-      if (await jbuildFile.exists()) {
+      final subConfigFile = File(p.join(path, 'jbuild.yaml'));
+      if (await subConfigFile.exists()) {
         try {
-          final subConfig = configFromJson(loadYaml(
-              await jbuildFile.readAsString(),
-              sourceUrl: Uri.parse(jbuildFile.path)));
-          return SubProject.project(
-              _createJBuildTask('compile', path, command: 'compile'),
-              _createJBuildTask('test', path, command: 'test'),
-              subConfig.output);
+          final subConfig = await _resolveSubProjectConfig(dir, subConfigFile);
+          logger.fine(() => 'Sub-project $path configuration: $subConfig');
+          return SubProject(
+              projectName,
+              _createJBuildTask('compile', projectName, path,
+                  command: 'compile'),
+              _createJBuildTask('test', projectName, path, command: 'test'),
+              _createJBuildTask('clean', projectName, path,
+                  phase: TaskPhase.setup, command: 'clean'),
+              subConfig.output.when(
+                  dir: (d) => CompileOutput.dir(p.join(path, d)),
+                  jar: (j) => CompileOutput.jar(p.join(path, j))),
+              dependency.spec);
         } catch (e) {
           throw DartleException(
               message: 'Could not load sub-project at $path: $e');
@@ -55,10 +54,26 @@ class SubProjectFactory {
             'Cannot use path as a sub-project (not jar file or directory): $path');
   }
 
-  Task _createJBuildTask(String taskPrefix, String subProjectPath,
-      {required String command, List<String> args = const []}) {
-    final taskName = '$taskPrefix-$subProjectPath';
-    return Task((_) => execJBuildCli(command, [...config.preArgs(), ...args]),
-        name: taskName, description: 'Run $subProjectPath $taskPrefix task.');
+  Task _createJBuildTask(
+      String taskPrefix, String projectName, String subProjectPath,
+      {required String command,
+      TaskPhase phase = TaskPhase.build,
+      List<String> args = const []}) {
+    final taskName = '$taskPrefix-$projectName';
+    return Task(
+        (_) => execJBuildCli(command, [...config.preArgs(), ...args],
+            workingDir: subProjectPath),
+        name: taskName,
+        phase: phase,
+        description: "Run $subProjectPath sub-project's $taskPrefix task.");
+  }
+
+  Future<JBuildConfiguration> _resolveSubProjectConfig(
+      Directory directory, File subConfigFile) async {
+    final config = await subConfigFile.readAsString();
+    return withCurrentDir(
+        directory.path,
+        () async => configFromJson(
+            loadYaml(config, sourceUrl: Uri.parse(subConfigFile.path))));
   }
 }

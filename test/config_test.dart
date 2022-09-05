@@ -7,6 +7,7 @@ void main() {
   group('CompileConfiguration', () {
     test('can load', () {
       final config = JBuildConfiguration(
+          version: '0',
           sourceDirs: {'src'},
           output: CompileOutput.jar('lib.jar'),
           resourceDirs: const {},
@@ -25,6 +26,9 @@ void main() {
 
     test('can parse full config', () async {
       final config = configFromJson(loadYaml('''
+      group: my-group
+      module: mod1
+      version: '0.1'
       source-dirs:
         - src/main/groovy
         - src/test/kotlin
@@ -54,6 +58,9 @@ void main() {
       expect(
           config,
           equals(const JBuildConfiguration(
+              group: 'my-group',
+              module: 'mod1',
+              version: '0.1',
               sourceDirs: {'src/main/groovy', 'src/test/kotlin'},
               output: CompileOutput.dir('target/'),
               resourceDirs: {'src/resources'},
@@ -82,6 +89,7 @@ void main() {
       expect(
           config,
           equals(const JBuildConfiguration(
+              version: '0.0.0',
               sourceDirs: {'src/java'},
               output: CompileOutput.dir('out'),
               resourceDirs: {'resources'},

@@ -1,5 +1,6 @@
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'package:logging/logging.dart';
 
 import 'config.dart';
 import 'tasks.dart';
@@ -22,47 +23,69 @@ class JBuildDartle {
   /// Wait for all sub-projects tasks to be initialized.
   late final Future<void> init;
 
-  JBuildDartle(this.files, this.config, this.cache) {
-    final subProjects = <SubProject>[];
-    compile = createCompileTask(files.jbuildJar, config, cache, subProjects);
-    writeDeps = createWriteDependenciesTask(files, config, cache);
-    installCompile = createInstallCompileDepsTask(files, config, cache);
-    installRuntime = createInstallRuntimeDepsTask(files, config, cache);
-    run = createRunTask(files, config, cache);
-    final projectTasks = {
-      compile,
-      writeDeps,
-      installCompile,
-      installRuntime,
-      run
-    };
-    clean = createCleanTask(
-        tasks: projectTasks,
-        name: 'clean',
-        description: 'deletes the outputs of all other tasks.');
-    projectTasks.add(clean);
-
-    init = createSubProjects(files, config).then((projects) async {
-      subProjects.addAll(projects);
-      for (var project in projects) {
-        _setupSubProject(project, projectTasks);
-      }
-    });
-
-    tasks = Set.unmodifiable(projectTasks);
+  JBuildDartle(this.files, this.config, this.cache, Stopwatch stopWatch) {
+    init = resolveLocalDependencies(files, config)
+        .then((r) => _initialize(r, stopWatch));
   }
 
   Set<Task> get defaultTasks {
     return {compile};
   }
 
-  void _setupSubProject(SubProject project, Set<Task> projectTasks) {
-    project.when(
-        project: (subCompile, subTest, out) {
-          projectTasks.add(subCompile);
-          projectTasks.add(subTest);
-          compile.dependsOn({subCompile.name});
-        },
-        jar: (_) {});
+  Future<void> _initialize(
+      ResolvedProjectDependencies resolved, Stopwatch stopWatch) async {
+    final projectTasks = <Task>{};
+    final compileJars = resolved.jars
+        .where((j) => j.spec.scope.includedInCompilation())
+        .map((j) => j.path);
+    final runtimeJars = resolved.jars
+        .where((j) => j.spec.scope.includedAtRuntime())
+        .map((j) => j.path);
+
+    compile = createCompileTask(files.jbuildJar, config, cache);
+    writeDeps =
+        createWriteDependenciesTask(files, config, cache, resolved.jars);
+    installCompile =
+        createInstallCompileDepsTask(files, config, cache, compileJars);
+    installRuntime =
+        createInstallRuntimeDepsTask(files, config, cache, runtimeJars);
+    run = createRunTask(files, config, cache, resolved.subProjects);
+
+    projectTasks
+        .addAll({compile, writeDeps, installCompile, installRuntime, run});
+
+    projectTasks.addSubProjectTasks(resolved.subProjects);
+
+    clean = createCleanTask(
+        tasks: projectTasks,
+        name: 'clean',
+        description: 'deletes the outputs of all other tasks.');
+    projectTasks.add(clean);
+
+    _addSubProjectTaskDependencies(resolved.subProjects);
+
+    tasks = Set.unmodifiable(projectTasks);
+
+    logger.log(
+        const Level('PROFILE', 550),
+        () => 'Build initialization completed in '
+            '${stopWatch.elapsedMilliseconds}ms.');
+  }
+
+  void _addSubProjectTaskDependencies(List<SubProject> subProjects) {
+    for (var subProject in subProjects) {
+      compile.dependsOn({subProject.compileTask.name});
+      clean.dependsOn({subProject.cleanTask.name});
+    }
+  }
+}
+
+extension _TasksExtension on Set<Task> {
+  void addSubProjectTasks(List<SubProject> subProjects) {
+    for (var subProject in subProjects) {
+      add(subProject.compileTask);
+      add(subProject.testTask);
+      add(subProject.cleanTask);
+    }
   }
 }

@@ -1,0 +1,3 @@
+group: tests
+module: greetings
+version: '1.0'
