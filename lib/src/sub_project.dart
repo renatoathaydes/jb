@@ -73,9 +73,14 @@ class SubProjectFactory {
       TaskPhase phase = TaskPhase.build,
       RunCondition runCondition = const AlwaysRun()}) {
     final taskName = '$taskPrefix-$projectName';
-    return Task(
-        (_) =>
-            execJBuildCli([command, ...taskArgs], workingDir: subProjectPath),
+    return Task((_) async {
+      final exitCode = await execJBuildCli([command, ...taskArgs],
+          workingDir: subProjectPath);
+      if (exitCode != 0) {
+        throw DartleException(
+            message: "Sub-project '$projectName' - task '$taskPrefix' failed");
+      }
+    },
         name: taskName,
         phase: phase,
         runCondition: runCondition,
