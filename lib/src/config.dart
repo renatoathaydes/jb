@@ -203,8 +203,10 @@ class SubProject {
   final CompileOutput output;
   final DependencySpec spec;
 
-  const SubProject(this.name, this.compileTask, this.testTask, this.cleanTask,
-      this.output, this.spec);
+  const SubProject(this.name, this.output, this.spec,
+      {required this.compileTask,
+      required this.testTask,
+      required this.cleanTask});
 }
 
 class ResolvedProjectDependencies {

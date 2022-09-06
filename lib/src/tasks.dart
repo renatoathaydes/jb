@@ -2,29 +2,48 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart' as p;
 
 import 'config.dart';
 import 'exec.dart';
 import 'paths.dart';
-import 'sub_project.dart';
-import 'utils.dart';
 
+const cleanTaskName = 'clean';
 const compileTaskName = 'compile';
 const runTaskName = 'runJavaMainClass';
 const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const writeDepsTaskName = 'writeDependencies';
+const testTaskName = 'test';
+
+const allTaskNames = {
+  cleanTaskName,
+  compileTaskName,
+  runTaskName,
+  installCompileDepsTaskName,
+  installRuntimeDepsTaskName,
+  writeDepsTaskName,
+  testTaskName,
+};
+
+RunOnChanges createCompileRunCondition(
+    JBuildConfiguration config, DartleCache cache,
+    {String? rootPath}) {
+  final relativize =
+      rootPath == null ? (String s) => s : (String s) => p.join(rootPath, s);
+  final outputs = config.output
+      .when(dir: (d) => dir(relativize(d)), jar: (j) => file(relativize(j)));
+  return RunOnChanges(
+      inputs: dirs(config.sourceDirs.map(relativize),
+          fileExtensions: const {'.java'}),
+      outputs: outputs,
+      cache: cache);
+}
 
 Task createCompileTask(
     File jbuildJar, JBuildConfiguration config, DartleCache cache) {
-  final outputs = config.output.when(dir: (d) => dir(d), jar: (j) => file(j));
-  final compileRunCondition = RunOnChanges(
-      inputs: dirs(config.sourceDirs, fileExtensions: const {'.java'}),
-      outputs: outputs,
-      cache: cache);
   return Task((_) => _compile(jbuildJar, config),
-      runCondition: compileRunCondition,
+      runCondition: createCompileRunCondition(config, cache),
       name: compileTaskName,
       dependsOn: const {installCompileDepsTaskName},
       description: 'Compile Java source code.');
@@ -123,7 +142,7 @@ Future<void> _copy(Iterable<String> paths, String destinationDir) async {
   logger.fine(() => 'Copying $paths to $destinationDir');
   await Directory(destinationDir).create(recursive: true);
   for (final path in paths) {
-    await File(path).copy(join(destinationDir, basename(path)));
+    await File(path).copy(p.join(destinationDir, p.basename(path)));
   }
 }
 
@@ -146,7 +165,7 @@ Future<void> _run(File jbuildJar, JBuildConfiguration config,
 
   final classpath = [
     config.output.when(dir: (d) => d, jar: (j) => j),
-    join(config.runtimeLibsDir, '*'),
+    p.join(config.runtimeLibsDir, '*'),
     ...subProjects.map((p) => p.output.when(dir: (d) => d, jar: (j) => j))
   ].join(Platform.isWindows ? ';' : ':');
 
@@ -155,39 +174,4 @@ Future<void> _run(File jbuildJar, JBuildConfiguration config,
   if (exitCode != 0) {
     throw DartleException(message: 'java command failed', exitCode: exitCode);
   }
-}
-
-Future<ResolvedProjectDependencies> resolveLocalDependencies(
-    JBuildFiles files, JBuildConfiguration config) async {
-  final pathDependencies = config.dependencies.entries
-      .map((e) => e.value.toPathDependency())
-      .whereNonNull()
-      .toStream();
-
-  final subProjectFactory = SubProjectFactory(files, config);
-
-  final projectDeps = <ProjectDependency>[];
-  final jars = <JarDependency>[];
-
-  await for (final pathDep in pathDependencies) {
-    pathDep.map(jar: jars.add, jbuildProject: projectDeps.add);
-  }
-
-  final subProjects =
-      await subProjectFactory.createSubProjects(projectDeps).toList();
-
-  logger.fine(() => 'Resolved ${subProjects.length} sub-projects, '
-      '${jars.length} local jar dependencies.');
-
-  for (final subProject in subProjects) {
-    subProject.output.when(
-        // ignore: void_checks
-        dir: (_) {
-          throw UnsupportedError('Cannot depend on project ${subProject.name} '
-              'because its output is not a jar!');
-        },
-        jar: (j) => jars.add(JarDependency(subProject.spec, j)));
-  }
-
-  return ResolvedProjectDependencies(subProjects, jars);
 }

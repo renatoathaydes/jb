@@ -3,6 +3,7 @@ import 'package:dartle/dartle_cache.dart';
 import 'package:logging/logging.dart';
 
 import 'config.dart';
+import 'dependencies.dart';
 import 'tasks.dart';
 
 class JBuildDartle {
@@ -23,8 +24,9 @@ class JBuildDartle {
   /// Wait for all sub-projects tasks to be initialized.
   late final Future<void> init;
 
-  JBuildDartle(this.files, this.config, this.cache, Stopwatch stopWatch) {
-    init = resolveLocalDependencies(files, config)
+  JBuildDartle(this.files, this.config, this.cache, List<String> args,
+      Stopwatch stopWatch) {
+    init = resolveLocalDependencies(files, config, cache, args)
         .then((r) => _initialize(r, stopWatch));
   }
 
@@ -58,7 +60,7 @@ class JBuildDartle {
 
     clean = createCleanTask(
         tasks: projectTasks,
-        name: 'clean',
+        name: cleanTaskName,
         description: 'deletes the outputs of all other tasks.');
     projectTasks.add(clean);
 

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
+import 'package:dartle/dartle_cache.dart';
+import 'package:jbuild_cli/src/tasks.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
@@ -12,8 +14,15 @@ import 'utils.dart';
 class SubProjectFactory {
   final JBuildFiles files;
   final JBuildConfiguration config;
+  final List<String> taskArgs;
+  final DartleCache cache;
 
-  const SubProjectFactory(this.files, this.config);
+  SubProjectFactory(this.files, this.config, List<String> args, this.cache)
+      : taskArgs = _computeTaskArgs(args);
+
+  static List<String> _computeTaskArgs(List<String> args) {
+    return args.where(allTaskNames.contains.not).toList();
+  }
 
   Stream<SubProject> createSubProjects(List<ProjectDependency> deps) async* {
     for (final dep in deps) {
@@ -33,16 +42,20 @@ class SubProjectFactory {
           final subConfig = await _resolveSubProjectConfig(dir, subConfigFile);
           logger.fine(() => 'Sub-project $path configuration: $subConfig');
           return SubProject(
-              projectName,
-              _createJBuildTask('compile', projectName, path,
-                  command: 'compile'),
-              _createJBuildTask('test', projectName, path, command: 'test'),
-              _createJBuildTask('clean', projectName, path,
-                  phase: TaskPhase.setup, command: 'clean'),
-              subConfig.output.when(
-                  dir: (d) => CompileOutput.dir(p.join(path, d)),
-                  jar: (j) => CompileOutput.jar(p.join(path, j))),
-              dependency.spec);
+            projectName,
+            subConfig.output.when(
+                dir: (d) => CompileOutput.dir(p.join(path, d)),
+                jar: (j) => CompileOutput.jar(p.join(path, j))),
+            dependency.spec,
+            compileTask: _createJBuildTask('compile', projectName, path,
+                command: 'compile',
+                runCondition: createCompileRunCondition(subConfig, cache,
+                    rootPath: path)),
+            testTask:
+                _createJBuildTask('test', projectName, path, command: 'test'),
+            cleanTask: _createJBuildTask('clean', projectName, path,
+                phase: TaskPhase.setup, command: 'clean'),
+          );
         } catch (e) {
           throw DartleException(
               message: 'Could not load sub-project at $path: $e');
@@ -58,13 +71,14 @@ class SubProjectFactory {
       String taskPrefix, String projectName, String subProjectPath,
       {required String command,
       TaskPhase phase = TaskPhase.build,
-      List<String> args = const []}) {
+      RunCondition runCondition = const AlwaysRun()}) {
     final taskName = '$taskPrefix-$projectName';
     return Task(
-        (_) => execJBuildCli(command, [...config.preArgs(), ...args],
-            workingDir: subProjectPath),
+        (_) =>
+            execJBuildCli([command, ...taskArgs], workingDir: subProjectPath),
         name: taskName,
         phase: phase,
+        runCondition: runCondition,
         description: "Run $subProjectPath sub-project's $taskPrefix task.");
   }
 
@@ -73,7 +87,7 @@ class SubProjectFactory {
     final config = await subConfigFile.readAsString();
     return withCurrentDir(
         directory.path,
-        () async => configFromJson(
+        () => configFromJson(
             loadYaml(config, sourceUrl: Uri.parse(subConfigFile.path))));
   }
 }
