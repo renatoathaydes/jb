@@ -10,6 +10,8 @@ import 'utils.dart';
 
 part 'config.freezed.dart';
 
+const jbuildLogNameEnvVar = 'JBUILD_LOG_NAME';
+
 final logger = log.Logger('jbuild');
 
 class JBuildFiles {

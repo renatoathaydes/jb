@@ -1,3 +1,4 @@
+import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 
 import 'config.dart';
@@ -5,13 +6,13 @@ import 'sub_project.dart';
 import 'utils.dart';
 
 Future<ResolvedProjectDependencies> resolveLocalDependencies(JBuildFiles files,
-    JBuildConfiguration config, DartleCache cache, List<String> args) async {
+    JBuildConfiguration config, DartleCache cache, Options options) async {
   final pathDependencies = config.dependencies.entries
       .map((e) => e.value.toPathDependency())
       .whereNonNull()
       .toStream();
 
-  final subProjectFactory = SubProjectFactory(files, config, args, cache);
+  final subProjectFactory = SubProjectFactory(files, config, options, cache);
 
   final projectDeps = <ProjectDependency>[];
   final jars = <JarDependency>[];
@@ -28,7 +29,7 @@ Future<ResolvedProjectDependencies> resolveLocalDependencies(JBuildFiles files,
 
   for (final subProject in subProjects) {
     subProject.output.when(
-        // ignore: void_checks
+      // ignore: void_checks
         dir: (_) {
           throw UnsupportedError('Cannot depend on project ${subProject.name} '
               'because its output is not a jar!');

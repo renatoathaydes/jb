@@ -17,12 +17,8 @@ class SubProjectFactory {
   final List<String> taskArgs;
   final DartleCache cache;
 
-  SubProjectFactory(this.files, this.config, List<String> args, this.cache)
-      : taskArgs = _computeTaskArgs(args);
-
-  static List<String> _computeTaskArgs(List<String> args) {
-    return args.where(allTaskNames.contains.not).toList();
-  }
+  SubProjectFactory(this.files, this.config, Options options, this.cache)
+      : taskArgs = options.toArgs(includeTasks: false);
 
   Stream<SubProject> createSubProjects(List<ProjectDependency> deps) async* {
     for (final dep in deps) {
@@ -74,7 +70,7 @@ class SubProjectFactory {
       RunCondition runCondition = const AlwaysRun()}) {
     final taskName = '$taskPrefix-$projectName';
     return Task((_) async {
-      final exitCode = await execJBuildCli([command, ...taskArgs],
+      final exitCode = await execJBuildCli(projectName, [command, ...taskArgs],
           workingDir: subProjectPath);
       if (exitCode != 0) {
         throw DartleException(

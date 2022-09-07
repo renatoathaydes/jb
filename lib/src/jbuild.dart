@@ -16,7 +16,9 @@ class JBuildCli {
 
   Future<void> start(List<String> args, Stopwatch stopWatch) async {
     final options = parseOptions(args);
-    activateLogging(options.logLevel, colorfulLog: options.colorfulLog);
+    activateLogging(options.logLevel,
+        colorfulLog: options.colorfulLog,
+        logName: Platform.environment[jbuildLogNameEnvVar]);
 
     if (options.showHelp) {
       print('JBuild CLI\n');
@@ -31,7 +33,7 @@ class JBuildCli {
 
     logger.fine(() => 'Parsed JBuild configuration: $config');
 
-    final jbuildDartle = JBuildDartle(files, config, cache, args, stopWatch);
+    final jbuildDartle = JBuildDartle(files, config, cache, options, stopWatch);
 
     await jbuildDartle.init;
 

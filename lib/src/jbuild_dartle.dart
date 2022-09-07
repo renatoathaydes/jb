@@ -23,9 +23,9 @@ class JBuildDartle {
   /// Wait for all sub-projects tasks to be initialized.
   late final Future<void> init;
 
-  JBuildDartle(this.files, this.config, this.cache, List<String> args,
+  JBuildDartle(this.files, this.config, this.cache, Options options,
       Stopwatch stopWatch) {
-    init = resolveLocalDependencies(files, config, cache, args)
+    init = resolveLocalDependencies(files, config, cache, options)
         .then((r) => _initialize(r, stopWatch));
   }
 
