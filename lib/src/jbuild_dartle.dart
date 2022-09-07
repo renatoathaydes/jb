@@ -1,6 +1,5 @@
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
-import 'package:logging/logging.dart';
 
 import 'config.dart';
 import 'dependencies.dart';
@@ -69,7 +68,7 @@ class JBuildDartle {
     tasks = Set.unmodifiable(projectTasks);
 
     logger.log(
-        const Level('PROFILE', 550),
+        profile,
         () => 'Build initialization completed in '
             '${stopWatch.elapsedMilliseconds}ms.');
   }
