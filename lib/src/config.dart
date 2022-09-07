@@ -105,30 +105,37 @@ class JBuildConfiguration with _$JBuildConfiguration {
   }
 
   List<String> installArgsForCompilation() {
+    final depsToInstall = dependencies.entries
+        .where((e) =>
+            e.value.scope.includedInCompilation() && e.value.path == null)
+        .map((e) => e.key)
+        .toList(growable: false);
+
+    if (depsToInstall.isEmpty) return const [];
+
     final result = ['-s', 'compile', '-d', compileLibsDir];
     for (final exclude in exclusions) {
       result.add('--exclusion');
       result.add(exclude);
     }
-    dependencies.forEach((dependency, spec) {
-      if (spec.scope.includedInCompilation() && spec.path == null) {
-        result.add(dependency);
-      }
-    });
+    result.addAll(depsToInstall);
     return result;
   }
 
   List<String> installArgsForRuntime() {
+    final depsToInstall = dependencies.entries
+        .where((e) => e.value.scope.includedAtRuntime() && e.value.path == null)
+        .map((e) => e.key)
+        .toList(growable: false);
+
+    if (depsToInstall.isEmpty) return const [];
+
     final result = ['-t', '-d', runtimeLibsDir];
     for (final exclude in exclusions) {
       result.add('--exclusion');
       result.add(exclude);
     }
-    dependencies.forEach((dependency, spec) {
-      if (spec.scope.includedAtRuntime() && spec.path == null) {
-        result.add(dependency);
-      }
-    });
+    result.addAll(depsToInstall);
     return result;
   }
 }

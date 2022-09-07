@@ -130,6 +130,9 @@ Task _createInstallDepsTask(
 
 Future<void> _install(
     File jbuildJar, List<String> preArgs, List<String> args) async {
+  if (args.isEmpty) {
+    return logger.fine('No dependencies to install');
+  }
   final exitCode = await execJBuild(jbuildJar, preArgs, 'install', args);
   if (exitCode != 0) {
     throw DartleException(

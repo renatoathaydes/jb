@@ -29,7 +29,7 @@ Future<ResolvedProjectDependencies> resolveLocalDependencies(JBuildFiles files,
 
   for (final subProject in subProjects) {
     subProject.output.when(
-      // ignore: void_checks
+        // ignore: void_checks
         dir: (_) {
           throw UnsupportedError('Cannot depend on project ${subProject.name} '
               'because its output is not a jar!');
