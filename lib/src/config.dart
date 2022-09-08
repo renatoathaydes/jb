@@ -206,23 +206,22 @@ class PathDependency with _$PathDependency {
 
 class SubProject {
   final String name;
+  final String compileLibsDir;
+  final String runtimeLibsDir;
   final Task compileTask;
   final Task testTask;
+  final Task installRuntimeTask;
   final Task cleanTask;
   final CompileOutput output;
   final DependencySpec spec;
 
   const SubProject(this.name, this.output, this.spec,
-      {required this.compileTask,
+      {required this.compileLibsDir,
+      required this.runtimeLibsDir,
+      required this.installRuntimeTask,
+      required this.compileTask,
       required this.testTask,
       required this.cleanTask});
-}
-
-class ResolvedProjectDependencies {
-  final List<SubProject> subProjects;
-  final List<JarDependency> jars;
-
-  const ResolvedProjectDependencies(this.subProjects, this.jars);
 }
 
 bool _boolValue(Map<String, Object?> map, String key, bool defaultValue) {

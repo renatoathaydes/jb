@@ -65,3 +65,19 @@ extension AsyncIterable<T> on Iterable<FutureOr<T>> {
     }
   }
 }
+
+extension DirectoryExtension on Directory {
+  Future<void> copyContentsInto(String destinationDir) async {
+    if (!await exists()) return;
+    await for (final child in list(recursive: true)) {
+      if (child is Directory) {
+        await Directory(
+                p.join(destinationDir, p.relative(child.path, from: path)))
+            .create();
+      } else if (child is File) {
+        await child
+            .copy(p.join(destinationDir, p.relative(child.path, from: path)));
+      }
+    }
+  }
+}

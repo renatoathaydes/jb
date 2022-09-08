@@ -25,7 +25,7 @@ class JBuildDartle {
 
   JBuildDartle(this.files, this.config, this.cache, Options options,
       Stopwatch stopWatch) {
-    init = resolveLocalDependencies(files, config, cache, options)
+    init = resolveSubProjects(files, config, cache, options)
         .then((r) => _initialize(r, stopWatch));
   }
 
@@ -34,28 +34,25 @@ class JBuildDartle {
   }
 
   Future<void> _initialize(
-      ResolvedProjectDependencies resolved, Stopwatch stopWatch) async {
+      List<SubProject> subProjects, Stopwatch stopWatch) async {
     final projectTasks = <Task>{};
-    final compileJars = resolved.jars
-        .where((j) => j.spec.scope.includedInCompilation())
-        .map((j) => j.path);
-    final runtimeJars = resolved.jars
-        .where((j) => j.spec.scope.includedAtRuntime())
-        .map((j) => j.path);
+    final compileDeps =
+        subProjects.where((p) => p.spec.scope.includedInCompilation());
+    final runtimeDeps =
+        subProjects.where((p) => p.spec.scope.includedAtRuntime());
 
     compile = createCompileTask(files.jbuildJar, config, cache);
-    writeDeps =
-        createWriteDependenciesTask(files, config, cache, resolved.jars);
+    writeDeps = createWriteDependenciesTask(files, config, cache, subProjects);
     installCompile =
-        createInstallCompileDepsTask(files, config, cache, compileJars);
+        createInstallCompileDepsTask(files, config, cache, compileDeps);
     installRuntime =
-        createInstallRuntimeDepsTask(files, config, cache, runtimeJars);
-    run = createRunTask(files, config, cache, resolved.subProjects);
+        createInstallRuntimeDepsTask(files, config, cache, runtimeDeps);
+    run = createRunTask(files, config, cache, subProjects);
 
     projectTasks
         .addAll({compile, writeDeps, installCompile, installRuntime, run});
 
-    projectTasks.addSubProjectTasks(resolved.subProjects);
+    projectTasks.addSubProjectTasks(subProjects);
 
     clean = createCleanTask(
         tasks: projectTasks,
@@ -63,7 +60,7 @@ class JBuildDartle {
         description: 'deletes the outputs of all other tasks.');
     projectTasks.add(clean);
 
-    _addSubProjectTaskDependencies(resolved.subProjects);
+    _addSubProjectTaskDependencies(subProjects);
 
     tasks = Set.unmodifiable(projectTasks);
 
@@ -76,6 +73,7 @@ class JBuildDartle {
   void _addSubProjectTaskDependencies(List<SubProject> subProjects) {
     for (var subProject in subProjects) {
       compile.dependsOn({subProject.compileTask.name});
+      installRuntime.dependsOn({subProject.installRuntimeTask.name});
       clean.dependsOn({subProject.cleanTask.name});
     }
   }
@@ -87,6 +85,7 @@ extension _TasksExtension on Set<Task> {
       add(subProject.compileTask);
       add(subProject.testTask);
       add(subProject.cleanTask);
+      add(subProject.installRuntimeTask);
     }
   }
 }

@@ -43,14 +43,21 @@ class SubProjectFactory {
                 dir: (d) => CompileOutput.dir(p.join(path, d)),
                 jar: (j) => CompileOutput.jar(p.join(path, j))),
             dependency.spec,
-            compileTask: _createJBuildTask('compile', projectName, path,
-                command: 'compile',
+            compileLibsDir: subConfig.compileLibsDir,
+            runtimeLibsDir: subConfig.runtimeLibsDir,
+            compileTask: _createJBuildTask(compileTaskName, projectName, path,
+                task: compileTaskName,
+                runCondition: createCompileRunCondition(subConfig, cache,
+                    rootPath: path)),
+            installRuntimeTask: _createJBuildTask(
+                installRuntimeDepsTaskName, projectName, path,
+                task: installRuntimeDepsTaskName,
                 runCondition: createCompileRunCondition(subConfig, cache,
                     rootPath: path)),
             testTask:
-                _createJBuildTask('test', projectName, path, command: 'test'),
-            cleanTask: _createJBuildTask('clean', projectName, path,
-                phase: TaskPhase.setup, command: 'clean'),
+                _createJBuildTask('test', projectName, path, task: 'test'),
+            cleanTask: _createJBuildTask(cleanTaskName, projectName, path,
+                phase: TaskPhase.setup, task: cleanTaskName),
           );
         } catch (e) {
           throw DartleException(
@@ -65,12 +72,12 @@ class SubProjectFactory {
 
   Task _createJBuildTask(
       String taskPrefix, String projectName, String subProjectPath,
-      {required String command,
+      {required String task,
       TaskPhase phase = TaskPhase.build,
       RunCondition runCondition = const AlwaysRun()}) {
     final taskName = '$taskPrefix-$projectName';
     return Task((_) async {
-      final exitCode = await execJBuildCli(projectName, [command, ...taskArgs],
+      final exitCode = await execJBuildCli(projectName, [task, ...taskArgs],
           workingDir: subProjectPath);
       if (exitCode != 0) {
         throw DartleException(

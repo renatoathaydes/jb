@@ -5,7 +5,7 @@ import 'config.dart';
 import 'sub_project.dart';
 import 'utils.dart';
 
-Future<ResolvedProjectDependencies> resolveLocalDependencies(JBuildFiles files,
+Future<List<SubProject>> resolveSubProjects(JBuildFiles files,
     JBuildConfiguration config, DartleCache cache, Options options) async {
   final pathDependencies = config.dependencies.entries
       .map((e) => e.value.toPathDependency())
@@ -27,15 +27,5 @@ Future<ResolvedProjectDependencies> resolveLocalDependencies(JBuildFiles files,
   logger.fine(() => 'Resolved ${subProjects.length} sub-projects, '
       '${jars.length} local jar dependencies.');
 
-  for (final subProject in subProjects) {
-    subProject.output.when(
-        // ignore: void_checks
-        dir: (_) {
-          throw UnsupportedError('Cannot depend on project ${subProject.name} '
-              'because its output is not a jar!');
-        },
-        jar: (j) => jars.add(JarDependency(subProject.spec, j)));
-  }
-
-  return ResolvedProjectDependencies(subProjects, jars);
+  return subProjects;
 }
