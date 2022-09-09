@@ -11,3 +11,5 @@ test/test-projects/test-repo/
 out/
 build/
 *.freezed.dart
+
+*.jar
