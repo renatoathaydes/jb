@@ -59,11 +59,13 @@ class JBuildConfiguration with _$JBuildConfiguration {
       group: _optionalStringValue(map, 'group'),
       module: _optionalStringValue(map, 'module'),
       version: _stringValue(map, 'version', '0.0.0'),
-      sourceDirs: _stringIterableValue(map, 'source-dirs', const {}).toSet(),
+      sourceDirs:
+          _stringIterableValue(map, 'source-dirs', const {'src/main/java'})
+              .toSet(),
       output: _compileOutputValue(map, 'output-dir', 'output-jar') ??
           _defaultOutputValue(),
-      resourceDirs:
-          _stringIterableValue(map, 'resource-dirs', const {}).toSet(),
+      resourceDirs: _stringIterableValue(
+          map, 'resource-dirs', const {'src/main/resources'}).toSet(),
       mainClass: _stringValue(map, 'main-class', ''),
       javacArgs: _stringIterableValue(map, 'javac-args', const [])
           .toList(growable: false),
