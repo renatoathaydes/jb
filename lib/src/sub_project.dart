@@ -26,7 +26,6 @@ class SubProjectFactory {
   Future<SubProject> _createJBuildSubProject(
       ProjectDependency dependency) async {
     final path = dependency.path;
-    final projectName = path.replaceAll(separatorPattern, ':');
     if (await Directory(path).exists()) {
       final subConfigFile = File(p.join(path, 'jbuild.yaml'));
       if (await subConfigFile.exists()) {
@@ -38,7 +37,7 @@ class SubProjectFactory {
                   _wrapTask(task, path, subJBuildDartle.projectPath)))
               .toMap();
           return SubProject(
-            projectName,
+            subJBuildDartle.projectPath,
             subConfig.output.when(
                 dir: (d) => CompileOutput.dir(p.join(path, d)),
                 jar: (j) => CompileOutput.jar(p.join(path, j))),

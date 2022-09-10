@@ -44,10 +44,10 @@ class JBuildDartle {
   JBuildConfiguration get config => _components.config;
 
   /// Project path. The empty string for the root project.
-  late final String projectPath;
+  final String projectPath;
 
-  JBuildDartle(this._components) {
-    projectPath = _components.projectPath.join(':');
+  JBuildDartle(this._components)
+      : projectPath = _components.projectPath.join(':') {
     init = _resolveSubProjects().then(_initialize);
   }
 
@@ -119,8 +119,10 @@ class JBuildDartle {
 
     logger.log(
         profile,
-        () => 'Build initialization completed in '
-            '${_components.stopWatch.elapsedMilliseconds}ms.');
+        () =>
+            "${projectPath.isEmpty ? 'Root project' : "Project '$projectPath'"}"
+            ' initialization completed in '
+            '${_components.stopWatch.elapsedMilliseconds} ms.');
   }
 
   void _addSubProjectTaskDependencies(List<SubProject> subProjects) {

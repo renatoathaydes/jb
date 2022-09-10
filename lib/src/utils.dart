@@ -8,8 +8,6 @@ import 'package:synchronized/synchronized.dart';
 import 'jbuild_jar.g.dart';
 import 'paths.dart';
 
-final separatorPattern = RegExp(r'[/\\]');
-
 Future<File> createIfNeededAndGetJBuildJarFile() async {
   final file = File(jbuildJarPath());
   if (!await file.exists()) {
@@ -24,7 +22,7 @@ final _currentDirLock = Lock(reentrant: true);
 Future<T> withCurrentDir<T>(String path, FutureOr<T> Function() action) async {
   return _currentDirLock.synchronized(() async {
     final currentDir = Directory.current;
-    Directory.current = p.join(currentDir.path, path);
+    Directory.current = path;
     try {
       return await action();
     } finally {
