@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:synchronized/synchronized.dart';
 
 import 'jbuild_jar.g.dart';
 import 'paths.dart';
@@ -18,14 +19,18 @@ Future<File> createIfNeededAndGetJBuildJarFile() async {
   return file;
 }
 
+final _currentDirLock = Lock(reentrant: true);
+
 Future<T> withCurrentDir<T>(String path, FutureOr<T> Function() action) async {
-  final currentDir = Directory.current;
-  Directory.current = p.join(currentDir.path, path);
-  try {
-    return await action();
-  } finally {
-    Directory.current = currentDir;
-  }
+  return _currentDirLock.synchronized(() async {
+    final currentDir = Directory.current;
+    Directory.current = p.join(currentDir.path, path);
+    try {
+      return await action();
+    } finally {
+      Directory.current = currentDir;
+    }
+  });
 }
 
 Future<void> _createJBuildJar(File jar) async {
@@ -63,6 +68,12 @@ extension AsyncIterable<T> on Iterable<FutureOr<T>> {
     for (final item in this) {
       yield await item;
     }
+  }
+}
+
+extension MapEntryIterable<K, V> on Iterable<MapEntry<K, V>> {
+  Map<K, V> toMap() {
+    return {for (final entry in this) entry.key: entry.value};
   }
 }
 

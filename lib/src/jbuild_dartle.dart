@@ -2,13 +2,30 @@ import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 
 import 'config.dart';
-import 'dependencies.dart';
+import 'sub_project.dart';
 import 'tasks.dart';
+import 'utils.dart';
 
-class JBuildDartle {
+class JBuildComponents {
   final JBuildFiles files;
   final JBuildConfiguration config;
   final DartleCache cache;
+  final Options options;
+  final List<String> projectPath;
+  final Stopwatch stopWatch;
+
+  JBuildComponents(this.files, this.config, this.cache, this.options,
+      this.projectPath, this.stopWatch);
+
+  JBuildComponents child(String projectName, JBuildConfiguration config) {
+    final childPath = [...projectPath, projectName];
+    return JBuildComponents(
+        files, config, cache, options, childPath, stopWatch);
+  }
+}
+
+class JBuildDartle {
+  JBuildComponents _components;
 
   late final Task compile,
       writeDeps,
@@ -23,18 +40,55 @@ class JBuildDartle {
   /// Wait for all sub-projects tasks to be initialized.
   late final Future<void> init;
 
-  JBuildDartle(this.files, this.config, this.cache, Options options,
-      Stopwatch stopWatch) {
-    init = resolveSubProjects(files, config, cache, options)
-        .then((r) => _initialize(r, stopWatch));
+  /// Project configuration.
+  JBuildConfiguration get config => _components.config;
+
+  /// Project path. The empty string for the root project.
+  late final String projectPath;
+
+  JBuildDartle(this._components) {
+    projectPath = _components.projectPath.join(':');
+    init = _resolveSubProjects().then(_initialize);
   }
+
+  JBuildDartle.root(JBuildFiles files, JBuildConfiguration config,
+      DartleCache cache, Options options, Stopwatch stopWatch)
+      : this(JBuildComponents(
+            files, config, cache, options, const [], stopWatch));
 
   Set<Task> get defaultTasks {
     return {compile};
   }
 
-  Future<void> _initialize(
-      List<SubProject> subProjects, Stopwatch stopWatch) async {
+  Future<List<SubProject>> _resolveSubProjects() async {
+    final pathDependencies = _components.config.dependencies.entries
+        .map((e) => e.value.toPathDependency())
+        .whereNonNull()
+        .toStream();
+
+    final subProjectFactory = SubProjectFactory(_components);
+
+    final projectDeps = <ProjectDependency>[];
+    final jars = <JarDependency>[];
+
+    await for (final pathDep in pathDependencies) {
+      pathDep.map(jar: jars.add, jbuildProject: projectDeps.add);
+    }
+
+    final subProjects =
+        await subProjectFactory.createSubProjects(projectDeps).toList();
+
+    logger.fine(() => 'Resolved ${subProjects.length} sub-projects, '
+        '${jars.length} local jar dependencies.');
+
+    return subProjects;
+  }
+
+  Future<void> _initialize(List<SubProject> subProjects) async {
+    final files = _components.files;
+    final config = _components.config;
+    final cache = _components.cache;
+
     final projectTasks = <Task>{};
     final compileDeps =
         subProjects.where((p) => p.spec.scope.includedInCompilation());
@@ -52,14 +106,13 @@ class JBuildDartle {
     projectTasks
         .addAll({compile, writeDeps, installCompile, installRuntime, run});
 
-    projectTasks.addSubProjectTasks(subProjects);
-
     clean = createCleanTask(
         tasks: projectTasks,
         name: cleanTaskName,
         description: 'deletes the outputs of all other tasks.');
     projectTasks.add(clean);
 
+    projectTasks.addSubProjectTasks(subProjects);
     _addSubProjectTaskDependencies(subProjects);
 
     tasks = Set.unmodifiable(projectTasks);
@@ -67,25 +120,33 @@ class JBuildDartle {
     logger.log(
         profile,
         () => 'Build initialization completed in '
-            '${stopWatch.elapsedMilliseconds}ms.');
+            '${_components.stopWatch.elapsedMilliseconds}ms.');
   }
 
   void _addSubProjectTaskDependencies(List<SubProject> subProjects) {
     for (var subProject in subProjects) {
-      compile.dependsOn({subProject.compileTask.name});
-      installRuntime.dependsOn({subProject.installRuntimeTask.name});
-      clean.dependsOn({subProject.cleanTask.name});
+      final subCompileTask = subProject.getTaskOrError(compileTaskName);
+      final subInstallRuntimeTask =
+          subProject.getTaskOrError(installRuntimeDepsTaskName);
+      final subCleanTask = subProject.getTaskOrError(cleanTaskName);
+      compile.dependsOn({subCompileTask.name});
+      installRuntime.dependsOn({subInstallRuntimeTask.name});
+      clean.dependsOn({subCleanTask.name});
     }
   }
 }
 
 extension _TasksExtension on Set<Task> {
-  void addSubProjectTasks(List<SubProject> subProjects) {
+  void addSubProjectTasks(Iterable<SubProject> subProjects) {
     for (var subProject in subProjects) {
-      add(subProject.compileTask);
-      add(subProject.testTask);
-      add(subProject.cleanTask);
-      add(subProject.installRuntimeTask);
+      addAll(subProject.tasks.values);
     }
+  }
+}
+
+extension _SubProjectTasksExtension on SubProject {
+  Task getTaskOrError(String name) {
+    return tasks[name]
+        .orThrow("SubProject '${this.name}' is missing task '$name'");
   }
 }

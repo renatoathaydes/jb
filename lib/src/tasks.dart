@@ -143,13 +143,14 @@ Future<void> _install(
 
 Future<void> _copy(Iterable<SubProject> subProjects, String destinationDir,
     {required bool runtime}) async {
+  // always create the destination dir so Dartle caches the task output
+  await Directory(destinationDir).create(recursive: true);
   if (subProjects.isEmpty) return;
   final outputs = subProjects.expand((p) => [
         p.output,
         CompileOutput.dir(runtime ? p.runtimeLibsDir : p.compileLibsDir),
       ]);
   logger.fine(() => 'Copying $outputs to $destinationDir');
-  await Directory(destinationDir).create(recursive: true);
   for (final out in outputs) {
     await out.when(
         dir: (d) => Directory(d).copyContentsInto(destinationDir),

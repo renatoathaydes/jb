@@ -210,20 +210,14 @@ class SubProject {
   final String name;
   final String compileLibsDir;
   final String runtimeLibsDir;
-  final Task compileTask;
-  final Task testTask;
-  final Task installRuntimeTask;
-  final Task cleanTask;
+  final Map<String, Task> tasks;
   final CompileOutput output;
   final DependencySpec spec;
 
   const SubProject(this.name, this.output, this.spec,
       {required this.compileLibsDir,
       required this.runtimeLibsDir,
-      required this.installRuntimeTask,
-      required this.compileTask,
-      required this.testTask,
-      required this.cleanTask});
+      required this.tasks});
 }
 
 bool _boolValue(Map<String, Object?> map, String key, bool defaultValue) {

@@ -92,7 +92,7 @@ void main() {
           onStdoutLine: stdout.add,
           onStderrLine: stderr.add);
       expect(exitCode, 0);
-      expect(stdout, contains('Hello Joe!'));
+      expect(stdout, contains('Hello Mary!'));
       expect(stderr, isEmpty);
     });
   });

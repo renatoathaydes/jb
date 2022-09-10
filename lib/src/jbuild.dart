@@ -33,7 +33,8 @@ class JBuildCli {
 
     logger.fine(() => 'Parsed JBuild configuration: $config');
 
-    final jbuildDartle = JBuildDartle(files, config, cache, options, stopWatch);
+    final jbuildDartle =
+        JBuildDartle.root(files, config, cache, options, stopWatch);
 
     await jbuildDartle.init;
 
