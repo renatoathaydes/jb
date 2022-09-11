@@ -33,8 +33,8 @@ class SubProjectFactory {
           final subJBuildDartle = await _resolveSubProject(path);
           final subConfig = subJBuildDartle.config;
           final subTasks = subJBuildDartle.tasks
-              .map((task) => MapEntry(task.name,
-                  _wrapTask(task, path, subJBuildDartle.projectPath)))
+              .map((task) =>
+                  MapEntry(task.name, _wrapTask(task, path, subJBuildDartle)))
               .toMap();
           return SubProject(
             subJBuildDartle.projectPath,
@@ -57,7 +57,9 @@ class SubProjectFactory {
             'Cannot use path as a sub-project (not jar file or directory): $path');
   }
 
-  Task _wrapTask(Task task, String path, String projectPath) {
+  Task _wrapTask(Task task, String path, JBuildDartle subProject) {
+    final projectPath = subProject.projectPath;
+    final projectName = subProject.projectName;
     return Task((args) async {
       logger
           .fine(() => "Executing subProject '$projectPath' task '${task.name}' "
@@ -71,8 +73,8 @@ class SubProjectFactory {
       }
     },
         description: "Run subProject '$projectPath' task '${task.name}'.",
-        name: '$projectPath:${task.name}',
-        dependsOn: task.depends.map((d) => '$projectPath:$d').toSet(),
+        name: '$projectName:${task.name}',
+        dependsOn: task.depends.map((d) => '$projectName:$d').toSet(),
         runCondition: _subTaskRunCondition(path, task.name, task.runCondition),
         argsValidator: task.argsValidator,
         phase: task.phase);

@@ -11,16 +11,17 @@ class JBuildComponents {
   final JBuildConfiguration config;
   final DartleCache cache;
   final Options options;
+  final String projectName;
   final List<String> projectPath;
   final Stopwatch stopWatch;
 
   JBuildComponents(this.files, this.config, this.cache, this.options,
-      this.projectPath, this.stopWatch);
+      this.projectName, this.projectPath, this.stopWatch);
 
   JBuildComponents child(String projectName, JBuildConfiguration config) {
     final childPath = [...projectPath, projectName];
     return JBuildComponents(
-        files, config, cache, options, childPath, stopWatch);
+        files, config, cache, options, projectName, childPath, stopWatch);
   }
 }
 
@@ -46,15 +47,19 @@ class JBuildDartle {
   /// Project path. The empty string for the root project.
   final String projectPath;
 
+  /// Simple name of the project (last part of the projectPath).
+  final String projectName;
+
   JBuildDartle(this._components)
-      : projectPath = _components.projectPath.join(':') {
+      : projectPath = _components.projectPath.join(':'),
+        projectName = _components.projectName {
     init = _resolveSubProjects().then(_initialize);
   }
 
   JBuildDartle.root(JBuildFiles files, JBuildConfiguration config,
       DartleCache cache, Options options, Stopwatch stopWatch)
       : this(JBuildComponents(
-            files, config, cache, options, const [], stopWatch));
+            files, config, cache, options, '', const [], stopWatch));
 
   Set<Task> get defaultTasks {
     return {compile};
