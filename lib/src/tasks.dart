@@ -17,16 +17,6 @@ const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const writeDepsTaskName = 'writeDependencies';
 const testTaskName = 'test';
 
-const allTaskNames = {
-  cleanTaskName,
-  compileTaskName,
-  runTaskName,
-  installCompileDepsTaskName,
-  installRuntimeDepsTaskName,
-  writeDepsTaskName,
-  testTaskName,
-};
-
 RunOnChanges createCompileRunCondition(
     JBuildConfiguration config, DartleCache cache,
     {String? rootPath}) {
@@ -63,13 +53,13 @@ Task createWriteDependenciesTask(JBuildFiles files, JBuildConfiguration config,
     DartleCache cache, Iterable<SubProject> subProjects) {
   final depsFile = dependenciesFile(files);
 
-  final compileRunCondition = RunOnChanges(
+  final runCondition = RunOnChanges(
       inputs: file(files.configFile.path),
       outputs: file(depsFile.path),
       cache: cache);
 
   return Task((_) => _writeDependencies(depsFile, config, subProjects),
-      runCondition: compileRunCondition,
+      runCondition: runCondition,
       name: writeDepsTaskName,
       description: 'Write a temporary compile-time dependencies file.');
 }

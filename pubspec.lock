@@ -161,14 +161,14 @@ packages:
       path: "../dartle"
       relative: true
     source: path
-    version: "0.14.2"
+    version: "0.15.0"
   file:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: file
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "6.1.2"
+    version: "6.1.4"
   fixnum:
     dependency: transitive
     description:
