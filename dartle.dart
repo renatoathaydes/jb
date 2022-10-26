@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 
 import 'dartle-src/generate_embedded_assets.dart' as comp;
 import 'dartle-src/setup_test_mvn_repo.dart' as tests;
+import 'dartle-src/clean_tests.dart' as cleaners;
 
 final dartleDart = DartleDart(DartConfig(
     buildRunnerRunCondition: RunOnChanges(
@@ -10,14 +11,16 @@ final dartleDart = DartleDart(DartConfig(
   outputs: files({p.join('lib', 'src', 'config.freezed.dart')}),
 )));
 
-void main(List<String> args) {
+void main(List<String> args) async {
   comp.setupTaskDependencies(dartleDart);
   tests.setupTaskDependencies(dartleDart);
+  cleaners.setupTaskDependencies(dartleDart);
 
-  run(args, tasks: {
+  await run(args, tasks: {
     comp.generateEmbeddedAssetsTask,
     tests.buildMvnRepoListsProjectTask,
     tests.setupTestMvnRepoTask,
+    await cleaners.cleanTestsTask(),
     ...dartleDart.tasks,
   }, defaultTasks: {
     dartleDart.build
