@@ -94,6 +94,10 @@ class JBuildDartle {
     final config = _components.config;
     final cache = _components.cache;
 
+    // must initialize the cache explicitly as this method may be running on
+    // sub-projects where the cache was not created by the cache constructor.
+    cache.init();
+
     final projectTasks = <Task>{};
     final compileDeps =
         subProjects.where((p) => p.spec.scope.includedInCompilation());

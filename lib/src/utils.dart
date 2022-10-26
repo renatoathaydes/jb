@@ -2,14 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-// FIXME temporary implementation that assumes no parallel tasks...
-//       should stop relying on Directory.current to allow parallelization.
-// import 'package:file/chroot.dart';
-// import 'package:file/file.dart' as fs;
-// import 'package:file/local.dart';
 import 'package:jbuild_cli/jbuild_cli.dart';
 import 'package:path/path.dart' as p;
-import 'package:synchronized/synchronized.dart' as sync;
 
 import 'jbuild_jar.g.dart';
 import 'paths.dart';
@@ -22,49 +16,6 @@ Future<File> createIfNeededAndGetJBuildJarFile() async {
   }
   return file;
 }
-
-final _lock = sync.Lock(reentrant: true);
-
-FutureOr<R> withCurrentDir<R>(String dir, FutureOr<R> Function() action) {
-  return _lock.synchronized(() async {
-    final previousCurrentDir = Directory.current;
-    Directory.current = _dir(dir);
-    try {
-      return await action();
-    } finally {
-      Directory.current = previousCurrentDir;
-    }
-  });
-}
-
-Directory _dir(String path) => Directory(path);
-
-// File _file(String path) => File(path);
-//
-// String _zoneCurrentDir(String dir) {
-//   Zone? zone = Zone.current;
-//   while (zone != null) {
-//     String? cd = zone[#currentDir];
-//     if (cd != null) {
-//       return p.join(cd, dir);
-//     }
-//     zone = zone.parent;
-//   }
-//   return p.canonicalize(dir);
-// }
-//
-// FutureOr<R> withCurrentDir<R>(String dir, FutureOr<R> Function() action) {
-//   final parentZone = Zone.current;
-//   final currentDir = _zoneCurrentDir(dir);
-//   return runZoned(() {
-//     return IOOverrides.runZoned(action,
-//         createDirectory: (p) => parentZone.runUnary(_dir, p),
-//         createFile: (p) => parentZone.runUnary(_file, p),
-//         getCurrentDirectory: () => _dir(currentDir),
-//         setCurrentDirectory: (_) =>
-//         throw StateError('Not allowed to change current Directory'));
-//   }, zoneValues: {#currentDir: currentDir});
-// }
 
 Future<void> _createJBuildJar(File jar) async {
   await jar.parent.create(recursive: true);

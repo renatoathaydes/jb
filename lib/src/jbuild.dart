@@ -17,8 +17,7 @@ class JBuildCli {
   Future<void> start(List<String> args, Stopwatch stopWatch) async {
     final options = parseOptions(args);
     activateLogging(options.logLevel,
-        colorfulLog: options.colorfulLog,
-        logName: Platform.environment[jbuildLogNameEnvVar]);
+        colorfulLog: options.colorfulLog, logName: 'jbuild');
 
     if (options.showHelp) {
       print('JBuild CLI\n');

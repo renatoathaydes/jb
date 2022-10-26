@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
-import 'package:dartle/dartle_cache.dart';
+import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
@@ -39,26 +39,15 @@ class SubProjectFactory {
     if (await Directory(path).exists()) {
       final subConfigFile = File(p.join(path, 'jbuild.yaml')).absolute;
       if (await subConfigFile.exists()) {
-        DartleCache(p.join(p.dirname(subConfigFile.path), '.jbuild-cache'))
-            .init();
         try {
           final subJBuildDartle =
               await _resolveSubProject(subConfigFile, dependency.path);
-          final subConfig = subJBuildDartle.config;
           final subTasks = subJBuildDartle.tasks
               .map((task) =>
                   MapEntry(task.name, _wrapTask(task, path, subJBuildDartle)))
               .toMap();
-          return SubProject(
-            subJBuildDartle.projectPath,
-            subConfig.output.when(
-                dir: (d) => CompileOutput.dir(p.join(path, d)),
-                jar: (j) => CompileOutput.jar(p.join(path, j))),
-            dependency.spec,
-            compileLibsDir: p.join(path, subConfig.compileLibsDir),
-            runtimeLibsDir: p.join(path, subConfig.runtimeLibsDir),
-            tasks: subTasks,
-          );
+          return SubProject(subJBuildDartle,
+              tasks: subTasks, spec: dependency.spec);
         } catch (e) {
           throw DartleException(
               message: 'Could not load sub-project at $path: $e');
@@ -76,7 +65,7 @@ class SubProjectFactory {
     return Task((args) async {
       logger.fine(
           () => "Executing subProject '$projectPath' task '${task.name}'");
-      return await withCurrentDir(path, () async {
+      return await withCurrentDirectory(path, () async {
         return await task.action(args);
       });
     },
@@ -91,7 +80,7 @@ class SubProjectFactory {
   Future<JBuildDartle> _resolveSubProject(File configFile, String path) async {
     logger.fine(() => "Resolving sub-project at '${configFile.path}'");
     final dir = p.dirname(configFile.path);
-    return await withCurrentDir(dir, () async {
+    return await withCurrentDirectory(dir, () async {
       final subConfig = await _resolveSubProjectConfig(configFile);
       final subProject = JBuildDartle(components.child(path, subConfig));
       await subProject.init;
@@ -154,14 +143,14 @@ class _SubProjectRunCondition implements FilesCondition {
     // so that it looks like the task was invoked directly from the
     // sub-project dir.
     final invocation = _subInvocation(result.invocation);
-    return withCurrentDir(path, () async {
+    return withCurrentDirectory(path, () async {
       await delegate.postRun(TaskResult(invocation, result.error));
     });
   }
 
   @override
   FutureOr<bool> shouldRun(TaskInvocation invocation) {
-    return withCurrentDir(path, () async {
+    return withCurrentDirectory(path, () async {
       return await delegate.shouldRun(
           TaskInvocation(invocation.task, invocation.args, taskName));
     });

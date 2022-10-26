@@ -2,15 +2,12 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:jbuild_cli/jbuild_cli.dart';
 import 'package:jbuild_cli/src/utils.dart';
 import 'package:logging/logging.dart' as log;
 import 'package:path/path.dart' as p;
 
-import 'utils.dart';
-
 part 'config.freezed.dart';
-
-const jbuildLogNameEnvVar = 'JBUILD_LOG_NAME';
 
 final logger = log.Logger('jbuild');
 
@@ -207,17 +204,21 @@ class PathDependency with _$PathDependency {
 }
 
 class SubProject {
-  final String name;
-  final String compileLibsDir;
-  final String runtimeLibsDir;
+  final JBuildDartle _dartle;
   final Map<String, Task> tasks;
-  final CompileOutput output;
   final DependencySpec spec;
 
-  const SubProject(this.name, this.output, this.spec,
-      {required this.compileLibsDir,
-      required this.runtimeLibsDir,
-      required this.tasks});
+  const SubProject(this._dartle, {required this.tasks, required this.spec});
+
+  String get name => _dartle.projectName;
+
+  String get path => _dartle.projectPath;
+
+  String get compileLibsDir => _dartle.config.compileLibsDir;
+
+  String get runtimeLibsDir => _dartle.config.runtimeLibsDir;
+
+  CompileOutput get output => _dartle.config.output;
 }
 
 bool _boolValue(Map<String, Object?> map, String key, bool defaultValue) {
