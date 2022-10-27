@@ -20,8 +20,22 @@ class JBuildCli {
         colorfulLog: options.colorfulLog, logName: 'jbuild');
 
     if (options.showHelp) {
-      print('JBuild CLI\n');
-      return print(optionsDescription);
+      print(r'''
+                 _ ___      _ _    _ 
+              _ | | _ )_  _(_) |__| |
+             | || | _ \ || | | / _` |
+              \__/|___/\_,_|_|_\__,_|
+                Java Build System
+
+Usage:
+    jb <task [args...]...> <options...>
+    
+To see available tasks, run 'jb -s' (list of tasks) or 'jb -g' (task graph).
+
+Options:''');
+      print(optionsDescription);
+      return print('\nFor Documentation, visit '
+          'https://github.com/renatoathaydes/jbuild-cli');
     }
 
     final cache = DartleCache('.jbuild-cache');
