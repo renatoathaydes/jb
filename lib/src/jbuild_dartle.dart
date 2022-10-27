@@ -1,6 +1,6 @@
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
-
+import 'package:path/path.dart' as p;
 import 'config.dart';
 import 'sub_project.dart';
 import 'tasks.dart';
@@ -51,7 +51,7 @@ class JBuildDartle {
   final String projectName;
 
   JBuildDartle(this._components)
-      : projectPath = _components.projectPath.join(':'),
+      : projectPath = p.joinAll(_components.projectPath),
         projectName = _components.projectName {
     init = _resolveSubProjects().then(_initialize);
   }
@@ -110,7 +110,7 @@ class JBuildDartle {
         createInstallCompileDepsTask(files, config, cache, compileDeps);
     installRuntime =
         createInstallRuntimeDepsTask(files, config, cache, runtimeDeps);
-    run = createRunTask(files, config, cache, subProjects);
+    run = createRunTask(files, config, cache);
 
     projectTasks
         .addAll({compile, writeDeps, installCompile, installRuntime, run});

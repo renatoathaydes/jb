@@ -8,6 +8,7 @@ import 'package:test/test.dart';
 const helloProjectDir = 'test/test-projects/hello';
 const withDepsProjectDir = 'test/test-projects/with-deps';
 const withSubProjectDir = 'test/test-projects/with-sub-project';
+const testsProjectDir = 'test/test-projects/tests';
 
 final jbuildExecutable = p.join(Directory.current.path, 'build', 'bin',
     Platform.isWindows ? 'jb.exe' : 'jb');
@@ -94,6 +95,26 @@ void main() {
       expect(exitCode, 0);
       expect(stdout, contains('Hello Mary!'));
       expect(stderr, isEmpty);
+    });
+  });
+
+  projectGroup(testsProjectDir, 'tests project', () {
+    test('can run Java class using two levels of sub-projects', () async {
+      final output = <String>[];
+      final exitCode = await exec(
+          Process.start(jbuildExecutable, const ['run', '-l', 'error'],
+              workingDirectory: testsProjectDir),
+          onStdoutLine: output.add);
+      expect(exitCode, 0);
+      expect(
+          await File('$testsProjectDir/build/out/tests/AppTest.class').exists(),
+          isTrue);
+      expect(await File('$testsProjectDir/build/comp/greeting.jar').exists(),
+          isTrue);
+      expect(
+          await File('$testsProjectDir/build/runtime/app/App.class').exists(),
+          isTrue);
+      expect(output, equals(const ['Hello Mary!']));
     });
   });
 }

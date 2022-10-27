@@ -1,0 +1,14 @@
+group: tests
+module: greetings-test
+version: '1.0'
+
+main-class: tests.AppTest
+
+source-dirs: [src]
+compile-libs-dir: build/comp
+runtime-libs-dir: build/runtime
+output-dir: build/out
+
+dependencies:
+  - greetings:
+      path: ../with-sub-project

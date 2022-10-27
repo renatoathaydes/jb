@@ -150,16 +150,15 @@ Future<void> _copyOutput(
           .copy(p.join(destinationDir, p.basename(j))));
 }
 
-Task createRunTask(JBuildFiles files, JBuildConfiguration config,
-    DartleCache cache, List<SubProject> subProjects) {
-  return Task((_) => _run(files.jbuildJar, config, subProjects),
+Task createRunTask(
+    JBuildFiles files, JBuildConfiguration config, DartleCache cache) {
+  return Task((_) => _run(files.jbuildJar, config),
       dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
       name: runTaskName,
       description: 'Run Java Main class.');
 }
 
-Future<void> _run(File jbuildJar, JBuildConfiguration config,
-    List<SubProject> subProjects) async {
+Future<void> _run(File jbuildJar, JBuildConfiguration config) async {
   final mainClass = config.mainClass;
   if (mainClass.isEmpty) {
     throw DartleException(
@@ -167,11 +166,11 @@ Future<void> _run(File jbuildJar, JBuildConfiguration config,
             'no main-class has been configured');
   }
 
-  final classpath = [
+  final classpath = {
     config.output.when(dir: (d) => d, jar: (j) => j),
+    config.runtimeLibsDir,
     p.join(config.runtimeLibsDir, '*'),
-    ...subProjects.map((p) => p.output.when(dir: (d) => d, jar: (j) => j))
-  ].join(Platform.isWindows ? ';' : ':');
+  }.join(Platform.isWindows ? ';' : ':');
 
   final exitCode = await execJava(['-cp', classpath, mainClass]);
 
