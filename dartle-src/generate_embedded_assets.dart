@@ -21,7 +21,7 @@ Future<void> generateEmbeddedAssets(_) async {
     print('Generating Dart asset embedding jbuild jar: ${jbuildJar.path}');
     await _generateEmbeddedJar(jbuildJar);
   } else {
-    throw Exception('jbuild.jar cannot be found at $jbuildHome');
+    throw Exception('jbuild.jar cannot be found at $jbuildJarPath');
   }
 }
 
