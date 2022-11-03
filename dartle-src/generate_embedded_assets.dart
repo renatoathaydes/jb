@@ -16,18 +16,18 @@ void setupTaskDependencies(DartleDart dartleDart) {
 }
 
 Future<void> generateEmbeddedAssets(_) async {
-  final jbuildJar = File(jbuildJarPath);
+  final jbuildJar = File(jbuildJarPath());
+  final out = File(jbuildGeneratedDartFilePath);
   if (await jbuildJar.exists()) {
     print('Generating Dart asset embedding jbuild jar: ${jbuildJar.path}');
-    await _generateEmbeddedJar(jbuildJar);
+    await _generateEmbeddedJar(jbuildJar, out);
   } else {
-    throw Exception('jbuild.jar cannot be found at $jbuildJarPath');
+    throw Exception('jbuild.jar cannot be found at ${jbuildJar.path}');
   }
 }
 
-Future<void> _generateEmbeddedJar(File jar) async {
+Future<void> _generateEmbeddedJar(File jar, File out) async {
   final encoded = await _b64Encode(jar);
-  final out = File(jbuildGeneratedDartFilePath);
   final outHandle = await out.open(mode: FileMode.writeOnly);
   try {
     await outHandle.writeString("const jbuildJarB64 = '");

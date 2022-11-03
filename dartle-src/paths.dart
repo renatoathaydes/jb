@@ -11,7 +11,7 @@ String jbuildHome() {
   return result;
 }
 
-final String jbuildJarPath = path.join(jbuildHome(), 'jbuild.jar');
+String jbuildJarPath() => path.join(jbuildHome(), 'jbuild.jar');
 
 final String jbuildGeneratedDartFilePath =
     path.join('lib', 'src', 'jbuild_jar.g.dart');
