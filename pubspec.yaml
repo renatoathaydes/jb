@@ -9,8 +9,7 @@ environment:
 
 dependencies:
   path: ^1.8.2
-  dartle:
-    path: ../dartle
+  dartle: ^0.16.0
   freezed_annotation: ^2.1.0
   args: ^2.3.1
   logging: ^1.0.0
