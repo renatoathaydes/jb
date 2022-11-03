@@ -15,7 +15,6 @@ const runTaskName = 'runJavaMainClass';
 const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const writeDepsTaskName = 'writeDependencies';
-const testTaskName = 'test';
 
 RunOnChanges createCompileRunCondition(
     JBuildConfiguration config, DartleCache cache) {

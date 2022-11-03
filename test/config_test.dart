@@ -7,18 +7,18 @@ void main() {
   group('CompileConfiguration', () {
     test('can load', () {
       final config = JBuildConfiguration(
-          version: '0',
-          sourceDirs: {'src'},
-          output: CompileOutput.jar('lib.jar'),
-          resourceDirs: const {},
-          mainClass: '',
-          dependencies: const {},
-          exclusions: const {},
-          repositories: const {},
-          javacArgs: const [],
-          compileLibsDir: '',
-          runtimeLibsDir: '',
-          testLibsDir: '');
+        version: '0',
+        sourceDirs: {'src'},
+        output: CompileOutput.jar('lib.jar'),
+        resourceDirs: const {},
+        mainClass: '',
+        dependencies: const {},
+        exclusions: const {},
+        repositories: const {},
+        javacArgs: const [],
+        compileLibsDir: '',
+        runtimeLibsDir: '',
+      );
 
       expect(config.sourceDirs, equals(const {'src'}));
       expect(config.output.when(dir: (d) => 'dir', jar: (j) => j), 'lib.jar');
@@ -58,22 +58,22 @@ void main() {
       expect(
           config,
           equals(const JBuildConfiguration(
-              group: 'my-group',
-              module: 'mod1',
-              version: '0.1',
-              sourceDirs: {'src/main/groovy', 'src/test/kotlin'},
-              output: CompileOutput.dir('target/'),
-              resourceDirs: {'src/resources'},
-              mainClass: 'my.Main',
-              javacArgs: ['-Xmx2G', '--verbose'],
-              repositories: {'https://maven.org', 'ftp://foo.bar'},
-              dependencies: {
-                'com.google:guava:1.2.3': DependencySpec.defaultSpec,
-              },
-              exclusions: {'test.*', '.*other\\d+.*'},
-              compileLibsDir: 'libs',
-              runtimeLibsDir: 'all-libs',
-              testLibsDir: 'test-libs')));
+            group: 'my-group',
+            module: 'mod1',
+            version: '0.1',
+            sourceDirs: {'src/main/groovy', 'src/test/kotlin'},
+            output: CompileOutput.dir('target/'),
+            resourceDirs: {'src/resources'},
+            mainClass: 'my.Main',
+            javacArgs: ['-Xmx2G', '--verbose'],
+            repositories: {'https://maven.org', 'ftp://foo.bar'},
+            dependencies: {
+              'com.google:guava:1.2.3': DependencySpec.defaultSpec,
+            },
+            exclusions: {'test.*', '.*other\\d+.*'},
+            compileLibsDir: 'libs',
+            runtimeLibsDir: 'all-libs',
+          )));
     });
 
     test('can parse string-iterable from single string', () async {
@@ -89,18 +89,18 @@ void main() {
       expect(
           config,
           equals(const JBuildConfiguration(
-              version: '0.0.0',
-              sourceDirs: {'src/java'},
-              output: CompileOutput.dir('out'),
-              resourceDirs: {'resources'},
-              mainClass: '',
-              javacArgs: ['-X'],
-              repositories: {'https://maven.org'},
-              dependencies: {},
-              exclusions: {'one'},
-              compileLibsDir: 'compile-libs',
-              runtimeLibsDir: 'runtime-libs',
-              testLibsDir: 'test-libs')));
+            version: '0.0.0',
+            sourceDirs: {'src/java'},
+            output: CompileOutput.dir('out'),
+            resourceDirs: {'resources'},
+            mainClass: '',
+            javacArgs: ['-X'],
+            repositories: {'https://maven.org'},
+            dependencies: {},
+            exclusions: {'one'},
+            compileLibsDir: 'compile-libs',
+            runtimeLibsDir: 'runtime-libs',
+          )));
     });
 
     test('can parse basic string dependencies', () async {
