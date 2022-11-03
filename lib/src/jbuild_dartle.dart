@@ -141,7 +141,8 @@ class JBuildDartle {
           subProject.getTaskOrError(installRuntimeDepsTaskName);
       final subCleanTask = subProject.getTaskOrError(cleanTaskName);
       installCompile.dependsOn({subCompileTask.name});
-      installRuntime.dependsOn({subInstallRuntimeTask.name});
+      installRuntime
+          .dependsOn({subCompileTask.name, subInstallRuntimeTask.name});
       clean.dependsOn({subCleanTask.name});
     }
   }
