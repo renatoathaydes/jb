@@ -192,9 +192,9 @@ Task createDownloadTestRunnerTask(
           'Download a test runner. JBuild automatically detects JUnit5.');
 }
 
-Task createTestTask(
-    File jbuildJar, JBuildConfiguration config, DartleCache cache) {
-  return Task((_) => _test(jbuildJar, config, cache),
+Task createTestTask(File jbuildJar, JBuildConfiguration config,
+    DartleCache cache, bool noColor) {
+  return Task((_) => _test(jbuildJar, config, cache, noColor),
       name: testTaskName,
       dependsOn: const {compileTaskName, downloadTestRunnerTaskName},
       description: 'Run tests. JBuild automatically detects JUnit5.');
@@ -217,8 +217,8 @@ Future<void> _downloadTestRunner(
   }
 }
 
-Future<void> _test(
-    File jbuildJar, JBuildConfiguration config, DartleCache cache) async {
+Future<void> _test(File jbuildJar, JBuildConfiguration config,
+    DartleCache cache, bool noColor) async {
   final libs = Directory(config.runtimeLibsDir).list();
   final classpath = {
     config.output.when(dir: (d) => d, jar: (j) => j),
@@ -242,6 +242,7 @@ Future<void> _test(
     '--scan-classpath=${config.output.when(dir: (d) => d, jar: (j) => j)}',
     '--reports-dir=build/test-reports',
     '--fail-if-no-tests',
+    if (noColor) '--disable-ansi-colors',
   ]);
 
   if (exitCode != 0) {

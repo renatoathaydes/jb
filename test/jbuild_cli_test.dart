@@ -99,10 +99,11 @@ void main() {
   });
 
   projectGroup(testsProjectDir, 'tests project', () {
-    test('can run Java class using two levels of sub-projects', () async {
+    test('can run Java tests using two levels of sub-projects', () async {
       final output = <String>[];
       final exitCode = await exec(
-          Process.start(jbuildExecutable, const ['run', '-l', 'error'],
+          Process.start(
+              jbuildExecutable, const ['test', '-l', 'error', '--no-color'],
               workingDirectory: testsProjectDir),
           onStdoutLine: output.add);
       expect(exitCode, 0);
@@ -114,7 +115,14 @@ void main() {
       expect(
           await File('$testsProjectDir/build/runtime/app/App.class').exists(),
           isTrue);
-      expect(output, equals(const ['Hello Mary!']));
+      expect(
+          output.join('\n'),
+          contains('├─ JUnit Jupiter ✔\n'
+              '│  └─ AppTest ✔\n'
+              '│     ├─ canGetNameFromArgs() ✔\n'
+              '│     └─ canGetDefaultName() ✔\n'
+              '├─ JUnit Vintage ✔\n'
+              '└─ JUnit Platform Suite ✔\n'));
     });
   });
 }
