@@ -6,11 +6,14 @@ import 'package:path/path.dart' as p;
 
 import 'config.dart';
 import 'exec.dart';
+import 'java_tests.dart';
 import 'paths.dart';
 import 'utils.dart';
 
 const cleanTaskName = 'clean';
 const compileTaskName = 'compile';
+const testTaskName = 'test';
+const downloadTestRunnerTaskName = 'downloadTestRunner';
 const runTaskName = 'runJavaMainClass';
 const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
@@ -175,5 +178,73 @@ Future<void> _run(File jbuildJar, JBuildConfiguration config) async {
 
   if (exitCode != 0) {
     throw DartleException(message: 'java command failed', exitCode: exitCode);
+  }
+}
+
+Task createDownloadTestRunnerTask(
+    File jbuildJar, JBuildConfiguration config, DartleCache cache) {
+  return Task((_) => _downloadTestRunner(jbuildJar, config, cache),
+      runCondition: RunOnChanges(
+          inputs: file('jbuild.yaml'),
+          outputs: dir(p.join(cache.rootDir, junitRunnerLibsDir))),
+      name: downloadTestRunnerTaskName,
+      description:
+          'Download a test runner. JBuild automatically detects JUnit5.');
+}
+
+Task createTestTask(
+    File jbuildJar, JBuildConfiguration config, DartleCache cache) {
+  return Task((_) => _test(jbuildJar, config, cache),
+      name: testTaskName,
+      dependsOn: const {compileTaskName, downloadTestRunnerTaskName},
+      description: 'Run tests. JBuild automatically detects JUnit5.');
+}
+
+Future<void> _downloadTestRunner(
+    File jbuildJar, JBuildConfiguration config, DartleCache cache) async {
+  final junit = findJUnitSpec(config.dependencies);
+  if (junit == null) {
+    throw DartleException(
+        message: 'cannot run tests as no test libraries have been detected');
+  }
+  final outDir = Directory(p.join(cache.rootDir, junitRunnerLibsDir));
+  await outDir.create();
+  if (junit.runtimeIncludesJUnitConsole) {
+    await File(p.join(outDir.path, '.no-dependencies')).create();
+  } else {
+    await _install(jbuildJar, config.preArgs(),
+        ['-d', outDir.path, '-t', junitConsoleLib(junit.consoleVersion)]);
+  }
+}
+
+Future<void> _test(
+    File jbuildJar, JBuildConfiguration config, DartleCache cache) async {
+  final libs = Directory(config.runtimeLibsDir).list();
+  final classpath = {
+    config.output.when(dir: (d) => d, jar: (j) => j),
+    config.runtimeLibsDir,
+    await for (final lib in libs)
+      if (p.extension(lib.path) == '.jar') lib.path,
+  }.join(Platform.isWindows ? ';' : ':');
+
+  const mainClass = 'org.junit.platform.console.ConsoleLauncher';
+  if (mainClass.isEmpty) {
+    throw DartleException(
+        message: 'cannot run tests as no test libraries have been detected'
+            'no main-class has been configured');
+  }
+
+  final exitCode = await execJava([
+    '-cp',
+    '${cache.rootDir}/$junitRunnerLibsDir/*',
+    mainClass,
+    '--classpath=$classpath',
+    '--scan-classpath=${config.output.when(dir: (d) => d, jar: (j) => j)}',
+    '--reports-dir=build/test-reports',
+    '--fail-if-no-tests',
+  ]);
+
+  if (exitCode != 0) {
+    throw DartleException(message: 'test command failed', exitCode: exitCode);
   }
 }
