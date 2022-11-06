@@ -1,14 +1,13 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
-import 'package:jbuild_cli/jbuild_cli.dart';
+import 'package:jb/jb.dart';
 
 void main(List<String> arguments) async {
   final stopWatch = Stopwatch()..start();
   final jbuildJar = await createIfNeededAndGetJBuildJarFile();
-  final configFile = File('jbuild.yaml');
   try {
-    await JBuildCli(jbuildJar, configFile).start(arguments, stopWatch);
+    await runJBuild(arguments, stopWatch, jbuildJar);
   } on DartleException catch (e, st) {
     print(e.message);
     print(st);

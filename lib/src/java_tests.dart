@@ -1,4 +1,4 @@
-import '../jbuild_cli.dart';
+import '../jb.dart';
 
 const _junitConsolePrefix =
     'org.junit.platform:junit-platform-console-standalone:';

@@ -8,14 +8,19 @@ import 'config.dart';
 import 'jbuild_dartle.dart';
 import 'utils.dart';
 
+Future<void> runJBuild(List<String> arguments, Stopwatch stopwatch, File jbuildJar) async {
+  final options = parseOptions(arguments);
+  final cli = JBuildCli(jbuildJar);
+  return cli.start(options, stopwatch);
+}
+
 class JBuildCli {
   final JBuildFiles files;
 
-  JBuildCli(File jbuildJar, File configFile)
-      : files = JBuildFiles(jbuildJar, configFile);
+  JBuildCli(File jbuildJar)
+      : files = JBuildFiles(jbuildJar);
 
-  Future<void> start(List<String> args, Stopwatch stopWatch) async {
-    final options = parseOptions(args);
+  Future<void> start(Options options, Stopwatch stopWatch) async {
     activateLogging(options.logLevel,
         colorfulLog: options.colorfulLog, logName: 'jbuild');
 
@@ -30,6 +35,7 @@ class JBuildCli {
 Usage:
     jb <task [args...]...> <options...>
     
+To create a new project, run `jb create`.
 To see available tasks, run 'jb -s' (list of tasks) or 'jb -g' (task graph).
 
 Options:''');

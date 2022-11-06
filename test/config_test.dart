@@ -1,5 +1,5 @@
 import 'package:dartle/dartle.dart';
-import 'package:jbuild_cli/jbuild_cli.dart';
+import 'package:jb/jb.dart';
 import 'package:test/test.dart';
 import 'package:yaml/yaml.dart';
 

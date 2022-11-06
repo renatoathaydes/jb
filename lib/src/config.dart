@@ -2,10 +2,11 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:jbuild_cli/jbuild_cli.dart';
-import 'package:jbuild_cli/src/utils.dart';
 import 'package:logging/logging.dart' as log;
 import 'package:path/path.dart' as p;
+
+import 'jbuild_dartle.dart';
+import 'utils.dart';
 
 part 'config.freezed.dart';
 
@@ -13,10 +14,10 @@ final logger = log.Logger('jbuild');
 
 class JBuildFiles {
   final File jbuildJar;
-  final File configFile;
+  final File configFile = File('jbuild.yaml');
   final Directory tempDir = Directory('.jbuild-cache/tmp');
 
-  JBuildFiles(this.jbuildJar, this.configFile);
+  JBuildFiles(this.jbuildJar);
 }
 
 JBuildConfiguration configFromJson(dynamic json) {

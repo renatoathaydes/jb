@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:jbuild_cli/jbuild_cli.dart';
 import 'package:path/path.dart' as p;
 
 import 'jbuild_jar.g.dart';
@@ -20,6 +19,7 @@ Future<File> createIfNeededAndGetJBuildJarFile() async {
 Future<void> _createJBuildJar(File jar) async {
   await jar.parent.create(recursive: true);
   await jar.writeAsBytes(base64Decode(jbuildJarB64));
+  print('JBuild jar saved at ${jar.path}');
 }
 
 Map<String, Object?> asJsonMap(Map map) {
