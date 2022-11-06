@@ -76,3 +76,18 @@ extension DirectoryExtension on Directory {
     }
   }
 }
+
+extension NullableStringExtension on String? {
+  String? removeFromEnd(Set<String> suffixes) {
+    final self = this;
+    if (self == null || suffixes.isEmpty) return self;
+    var result = self;
+    for (final suffix in suffixes) {
+      if (result.endsWith(suffix)) {
+        result = result.substring(0, result.length - suffix.length);
+        return result;
+      }
+    }
+    return result;
+  }
+}

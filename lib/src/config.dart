@@ -186,7 +186,8 @@ class DependencySpec with _$DependencySpec {
     return DependencySpec(
         transitive: _boolValue(map, 'transitive', true),
         scope: _scopeValue(map, 'scope', DependencyScope.all),
-        path: _optionalStringValue(map, 'path'));
+        path:
+            _optionalStringValue(map, 'path').removeFromEnd(const {'/', '\\'}));
   }
 
   Future<PathDependency>? toPathDependency() {
