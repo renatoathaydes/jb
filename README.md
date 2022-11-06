@@ -1,6 +1,6 @@
 # `jb` - Java Builder
 
-`jb` is a modern (circa 2020's) build tool for Java.
+`jb` is a modern (as of the 2020's) build tool for Java.
 
 It aims to simplify Java project management and provide an excellent developer experience by being much simpler
 than Maven or Gradle, while still providing enough flexibility for most projects to achieve complex workflows.
@@ -13,7 +13,7 @@ To create a new Java project, run:
 jb create
 ```
 
-This creates a JBuild project with two modules, one at the working dir (or the directory given by the `-p` option),
+This creates a `jb` project with two modules, one at the working dir (or the directory given by the `-p` option),
 and one in the `test` directory (optionally).
 
 Each module has a `jbuild.yaml` file describing it. `./jbuild.yaml` looks like this:
@@ -77,9 +77,9 @@ Or using `java` directly:
 java -jar build/my-app.jar
 ```
 
-> Once you add dependencies to your project, it's still trivial to run it as `jb` puts all the runtime libraries
-> at the `build/runtime-libs` directory by default, so just use `-cp "build/runtime-libs/*"` to Java after building
-> the project with `jb compile installRuntime`.
+> Once you add dependencies to your project, it's still trivial to run it with `java` as `jb` puts all the runtime
+> libraries at the `build/runtime` directory by default, so just use `-cp "build/runtime/*"` to Java after
+> building the project with `jb compile installRuntime`.
 
 To run the tests:
 
