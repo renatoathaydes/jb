@@ -7,18 +7,18 @@ void main() {
   group('CompileConfiguration', () {
     test('can load', () {
       final config = JBuildConfiguration(
-        version: '0',
-        sourceDirs: {'src'},
-        output: CompileOutput.jar('lib.jar'),
-        resourceDirs: const {},
-        mainClass: '',
-        dependencies: const {},
-        exclusions: const {},
-        repositories: const {},
-        javacArgs: const [],
-        compileLibsDir: '',
-        runtimeLibsDir: '',
-      );
+          version: '0',
+          sourceDirs: {'src'},
+          output: CompileOutput.jar('lib.jar'),
+          resourceDirs: const {},
+          mainClass: '',
+          dependencies: const {},
+          exclusions: const {},
+          repositories: const {},
+          javacArgs: const [],
+          compileLibsDir: '',
+          runtimeLibsDir: '',
+          testReportsDir: '');
 
       expect(config.sourceDirs, equals(const {'src'}));
       expect(config.output.when(dir: (d) => 'dir', jar: (j) => j), 'lib.jar');
@@ -73,6 +73,7 @@ void main() {
             exclusions: {'test.*', '.*other\\d+.*'},
             compileLibsDir: 'libs',
             runtimeLibsDir: 'all-libs',
+            testReportsDir: 'build/test-reports',
           )));
     });
 
@@ -84,23 +85,24 @@ void main() {
       resource-dirs: resources
       javac-args: -X
       repositories: https://maven.org
+      test-reports-dir: reports
       '''));
 
       expect(
           config,
           equals(const JBuildConfiguration(
-            version: '0.0.0',
-            sourceDirs: {'src/java'},
-            output: CompileOutput.dir('out'),
-            resourceDirs: {'resources'},
-            mainClass: '',
-            javacArgs: ['-X'],
-            repositories: {'https://maven.org'},
-            dependencies: {},
-            exclusions: {'one'},
-            compileLibsDir: 'compile-libs',
-            runtimeLibsDir: 'runtime-libs',
-          )));
+              version: '0.0.0',
+              sourceDirs: {'src/java'},
+              output: CompileOutput.dir('out'),
+              resourceDirs: {'resources'},
+              mainClass: '',
+              javacArgs: ['-X'],
+              repositories: {'https://maven.org'},
+              dependencies: {},
+              exclusions: {'one'},
+              compileLibsDir: 'build/compile-libs',
+              runtimeLibsDir: 'build/runtime-libs',
+              testReportsDir: 'reports')));
     });
 
     test('can parse basic string dependencies', () async {

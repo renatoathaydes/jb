@@ -54,7 +54,7 @@ void main() {
               'java',
               [
                 '-cp',
-                classpath(['with-deps.jar', 'compile-libs/*']),
+                classpath(['with-deps.jar', 'build/compile-libs/*']),
                 'com.foo.Foo',
               ],
               workingDirectory: withDepsProjectDir),

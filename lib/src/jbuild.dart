@@ -18,6 +18,15 @@ Future<void> runJBuild(
   if (rootDir == null) {
     await _runJBuild(jbOptions, stopwatch, jbuildJar);
   } else {
+    final dir = Directory(rootDir);
+    if (!(await dir.exists())) {
+      if (jbOptions.createOptions == null) {
+        throw DartleException(message: 'directory does not exist: $rootDir');
+      } else {
+        print('Creating directory: $rootDir');
+        await dir.create(recursive: true);
+      }
+    }
     await withCurrentDirectory(
         rootDir, () async => await _runJBuild(jbOptions, stopwatch, jbuildJar));
   }

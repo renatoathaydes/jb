@@ -186,7 +186,8 @@ Task createDownloadTestRunnerTask(
   return Task((_) => _downloadTestRunner(jbuildJar, config, cache),
       runCondition: RunOnChanges(
           inputs: file('jbuild.yaml'),
-          outputs: dir(p.join(cache.rootDir, junitRunnerLibsDir))),
+          outputs: dir(p.join(cache.rootDir, junitRunnerLibsDir)),
+          cache: cache),
       name: downloadTestRunnerTaskName,
       description:
           'Download a test runner. JBuild automatically detects JUnit5.');
@@ -240,7 +241,7 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
     mainClass,
     '--classpath=$classpath',
     '--scan-classpath=${config.output.when(dir: (d) => d, jar: (j) => j)}',
-    '--reports-dir=build/test-reports',
+    '--reports-dir=${config.testReportsDir}',
     '--fail-if-no-tests',
     if (noColor) '--disable-ansi-colors',
   ]);

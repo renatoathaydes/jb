@@ -49,6 +49,7 @@ class JBuildConfiguration with _$JBuildConfiguration {
     required Set<String> exclusions,
     required String compileLibsDir,
     required String runtimeLibsDir,
+    required String testReportsDir,
   }) = _Config;
 
   static JBuildConfiguration fromMap(Map<String, Object?> map) {
@@ -70,8 +71,12 @@ class JBuildConfiguration with _$JBuildConfiguration {
       repositories: _stringIterableValue(map, 'repositories', const {}).toSet(),
       exclusions:
           _stringIterableValue(map, 'exclusion-patterns', const {}).toSet(),
-      compileLibsDir: _stringValue(map, 'compile-libs-dir', 'compile-libs'),
-      runtimeLibsDir: _stringValue(map, 'runtime-libs-dir', 'runtime-libs'),
+      compileLibsDir:
+          _stringValue(map, 'compile-libs-dir', 'build/compile-libs'),
+      runtimeLibsDir:
+          _stringValue(map, 'runtime-libs-dir', 'build/runtime-libs'),
+      testReportsDir:
+          _stringValue(map, 'test-reports-dir', 'build/test-reports'),
     );
   }
 
