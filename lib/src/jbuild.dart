@@ -2,28 +2,48 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:yaml/yaml.dart';
 
 import 'config.dart';
+import 'create.dart';
 import 'jbuild_dartle.dart';
+import 'options.dart';
 import 'utils.dart';
 
-Future<void> runJBuild(List<String> arguments, Stopwatch stopwatch, File jbuildJar) async {
-  final options = parseOptions(arguments);
+Future<void> runJBuild(
+    List<String> arguments, Stopwatch stopwatch, File jbuildJar) async {
+  final jbOptions = JBuildCliOptions.parseArgs(arguments);
+  final rootDir = jbOptions.rootDirectory;
+  if (rootDir == null) {
+    await _runJBuild(jbOptions, stopwatch, jbuildJar);
+  } else {
+    await withCurrentDirectory(
+        rootDir, () async => await _runJBuild(jbOptions, stopwatch, jbuildJar));
+  }
+}
+
+Future<void> _runJBuild(
+    JBuildCliOptions options, Stopwatch stopwatch, File jbuildJar) async {
+  final dartleOptions = parseOptions(options.dartleArgs);
+  activateLogging(dartleOptions.logLevel,
+      colorfulLog: dartleOptions.colorfulLog, logName: 'jbuild');
+  logger.log(profile,
+      () => 'Initialized CLI and parsed options in ${elapsedTime(stopwatch)}');
+  final createOptions = options.createOptions;
+  if (createOptions != null) {
+    return createNewProject(createOptions.arguments);
+  }
   final cli = JBuildCli(jbuildJar);
-  return cli.start(options, stopwatch);
+  return cli.start(dartleOptions, stopwatch);
 }
 
 class JBuildCli {
   final JBuildFiles files;
 
-  JBuildCli(File jbuildJar)
-      : files = JBuildFiles(jbuildJar);
+  JBuildCli(File jbuildJar) : files = JBuildFiles(jbuildJar);
 
   Future<void> start(Options options, Stopwatch stopWatch) async {
-    activateLogging(options.logLevel,
-        colorfulLog: options.colorfulLog, logName: 'jbuild');
-
     if (options.showHelp) {
       print(r'''
                  _ ___      _ _    _ 

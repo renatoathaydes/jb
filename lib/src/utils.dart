@@ -8,7 +8,7 @@ import 'jbuild_jar.g.dart';
 import 'paths.dart';
 
 Future<File> createIfNeededAndGetJBuildJarFile() async {
-  final file = File(jbuildJarPath());
+  final file = File(jbuildJarPath()).absolute;
   if (!await file.exists()) {
     print('Creating JBuild jar');
     await _createJBuildJar(file);
