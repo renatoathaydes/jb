@@ -197,7 +197,11 @@ Task createTestTask(File jbuildJar, JBuildConfiguration config,
     DartleCache cache, bool noColor) {
   return Task((_) => _test(jbuildJar, config, cache, noColor),
       name: testTaskName,
-      dependsOn: const {compileTaskName, downloadTestRunnerTaskName},
+      dependsOn: const {
+        compileTaskName,
+        downloadTestRunnerTaskName,
+        installRuntimeDepsTaskName,
+      },
       description: 'Run tests. JBuild automatically detects JUnit5.');
 }
 

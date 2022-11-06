@@ -43,7 +43,6 @@ String _mainTestJava(String package) => '''
 package $package;
 
 import org.junit.jupiter.api.Test;
-import $package.Main;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -73,9 +72,9 @@ Future<void> _create(File jbuildFile) async {
   final groupId = stdin.readLineSync().or('my-group');
   stdout.write('\nEnter the artifact ID of this project: ');
   final artifactId = stdin.readLineSync().or('my-app');
-  final defaultPackage = '$groupId.$artifactId';
+  final defaultPackage = '${groupId.toJavaId()}.${artifactId.toJavaId()}';
   stdout.write('\nEnter the root package [$defaultPackage]: ');
-  final package = stdin.readLineSync().or(defaultPackage);
+  final package = stdin.readLineSync().or(defaultPackage).validateJavaPackage();
   stdout.write('\nWould you like to create a test module [Y/n]? ');
   final createTestModule = stdin.readLineSync().or('yes').yesOrNo();
   const mainClass = 'Main';
@@ -123,5 +122,27 @@ extension on String? {
     return s == null ||
         s.trim().isEmpty ||
         const {'yes', 'y'}.contains(s.toLowerCase());
+  }
+}
+
+final _javaIdPattern = RegExp(r'^[a-zA-Z_$][a-zA-Z_$\d]*$');
+
+extension on String {
+  String toJavaId() {
+    return replaceAll('-', '_');
+  }
+
+  String validateJavaPackage() {
+    if (this == '.' || startsWith('.') || endsWith('.')) {
+      throw DartleException(message: 'Invalid Java package name: $this');
+    }
+    for (final part in split('.')) {
+      if (!_javaIdPattern.hasMatch(part)) {
+        throw DartleException(
+            message:
+                'Invalid Java package name: $this (invalid segment: $part)');
+      }
+    }
+    return this;
   }
 }
