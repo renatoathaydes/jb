@@ -118,3 +118,13 @@ dart pub publish
 ```
 
 TODO: website
+
+## Making Pull Requests
+
+Bug fixes are welcome at any time!
+
+Please file an issue before contributing/working on new features.
+
+The only branch used for development, currently, is `main`, so target pull requests at it.
+
+I appreciate if changes are kept small and to-the-point, and come with tests proving they work.
