@@ -18,17 +18,26 @@ void main() {
 
   projectGroup(helloProjectDir, 'hello project', () {
     test('can compile basic Java class and cache result', () async {
-      final exitCode = await exec(Process.start(jbuildExecutable, const [],
-          workingDirectory: helloProjectDir));
-      expect(exitCode, 0);
+      final stdout = <String>[];
+      final stderr = <String>[];
+      final exitCode = await exec(
+          Process.start(jbuildExecutable, const [],
+              workingDirectory: helloProjectDir),
+          onStdoutLine: stdout.add,
+          onStderrLine: stderr.add);
+      expectSuccess(exitCode, stdout, stderr);
       expect(await File('$helloProjectDir/out/Hello.class').exists(), isTrue);
 
-      final output = <String>[];
-      await exec(
+      stdout.clear();
+      stderr.clear();
+
+      final exitCode2 = await exec(
           Process.start('java', const ['-cp', 'out', 'Hello'],
               workingDirectory: helloProjectDir),
-          onStdoutLine: output.add);
-      expect(output, equals(const ['Hi Dartle!']));
+          onStdoutLine: stdout.add,
+          onStderrLine: stderr.add);
+      expectSuccess(exitCode2, stdout, stderr);
+      expect(stdout, equals(const ['Hi Dartle!']));
     });
   });
 
@@ -43,12 +52,17 @@ void main() {
     });
 
     test('can install dependencies and compile project', () async {
-      var exitCode = await exec(Process.start(jbuildExecutable, const [],
-          workingDirectory: withDepsProjectDir));
-      expect(exitCode, 0);
+      final stdout = <String>[];
+      final stderr = <String>[];
+      var exitCode = await exec(
+          Process.start(jbuildExecutable, const [],
+              workingDirectory: withDepsProjectDir),
+          onStdoutLine: stdout.add,
+          onStderrLine: stderr.add);
+      expectSuccess(exitCode, stdout, stderr);
       expect(await File('$withDepsProjectDir/with-deps.jar').exists(), isTrue);
-
-      final output = <String>[];
+      stdout.clear();
+      stderr.clear();
       exitCode = await exec(
           Process.start(
               'java',
@@ -58,14 +72,11 @@ void main() {
                 'com.foo.Foo',
               ],
               workingDirectory: withDepsProjectDir),
-          onStdoutLine: output.add);
+          onStdoutLine: stdout.add,
+          onStderrLine: stderr.add);
 
-      expect(exitCode, 0,
-          reason: "should succeed:\n"
-              "------------------\n"
-              "${output.join('\n')}\n"
-              "------------------");
-      expect(output, equals(const ['[1, 2, 3]']));
+      expectSuccess(exitCode, stdout, stderr);
+      expect(stdout, equals(const ['[1, 2, 3]']));
     });
   });
 
@@ -77,9 +88,14 @@ void main() {
     });
 
     test('can install dependencies and compile project', () async {
-      var exitCode = await exec(Process.start(jbuildExecutable, const [],
-          workingDirectory: withSubProjectDir));
-      expect(exitCode, 0);
+      final stdout = <String>[];
+      final stderr = <String>[];
+      var exitCode = await exec(
+          Process.start(jbuildExecutable, const [],
+              workingDirectory: withSubProjectDir),
+          onStdoutLine: stdout.add,
+          onStderrLine: stderr.add);
+      expectSuccess(exitCode, stdout, stderr);
       expect(await File('$withSubProjectDir/build/out/app/App.class').exists(),
           isTrue);
     });
@@ -92,7 +108,7 @@ void main() {
               workingDirectory: withSubProjectDir),
           onStdoutLine: stdout.add,
           onStderrLine: stderr.add);
-      expect(exitCode, 0);
+      expectSuccess(exitCode, stdout, stderr);
       expect(stdout, contains('Hello Mary!'));
       expect(stderr, isEmpty);
     });
@@ -100,13 +116,15 @@ void main() {
 
   projectGroup(testsProjectDir, 'tests project', () {
     test('can run Java tests using two levels of sub-projects', () async {
-      final output = <String>[];
+      final stdout = <String>[];
+      final stderr = <String>[];
       final exitCode = await exec(
           Process.start(
               jbuildExecutable, const ['test', '-l', 'error', '--no-color'],
               workingDirectory: testsProjectDir),
-          onStdoutLine: output.add);
-      expect(exitCode, 0);
+          onStdoutLine: stdout.add,
+          onStderrLine: stderr.add);
+      expectSuccess(exitCode, stdout, stderr);
       expect(
           await File('$testsProjectDir/build/out/tests/AppTest.class').exists(),
           isTrue);
@@ -116,7 +134,7 @@ void main() {
           await File('$testsProjectDir/build/runtime/app/App.class').exists(),
           isTrue);
       expect(
-          output.join('\n'),
+          stdout.join('\n'),
           contains('├─ JUnit Jupiter ✔\n'
               '│  └─ AppTest ✔\n'
               '│     ├─ canGetNameFromArgs() ✔\n'
@@ -149,4 +167,11 @@ void projectGroup(String projectDir, String name, Function() definition) {
 String classpath(Iterable<String> entries) {
   final separator = Platform.isWindows ? ';' : ':';
   return entries.join(separator);
+}
+
+void expectSuccess(int exitCode, List<String> stdout, List<String> stderr) {
+  expect(exitCode, 0,
+      reason: 'exit code was $exitCode.\n'
+          '  => stdout:\n${stdout.join('\n')}\n'
+          '  => stderr:\n${stderr.join('\n')}');
 }
