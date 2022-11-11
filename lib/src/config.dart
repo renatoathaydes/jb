@@ -116,6 +116,7 @@ class JBuildConfiguration with _$JBuildConfiguration {
 
     if (depsToInstall.isEmpty) return const [];
 
+    // FIXME should not download transitive dependencies
     final result = ['-s', 'compile', '-d', compileLibsDir];
     for (final exclude in exclusions) {
       result.add('--exclusion');
@@ -133,7 +134,7 @@ class JBuildConfiguration with _$JBuildConfiguration {
 
     if (depsToInstall.isEmpty) return const [];
 
-    final result = ['-t', '-d', runtimeLibsDir];
+    final result = ['-d', runtimeLibsDir];
     for (final exclude in exclusions) {
       result.add('--exclusion');
       result.add(exclude);
