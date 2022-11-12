@@ -18,6 +18,7 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: 11
+      - name: Install dependencies
         run: dart pub get
       - name: Build
         run: dart dartle.dart
