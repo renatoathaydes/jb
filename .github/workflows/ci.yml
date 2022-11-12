@@ -1,4 +1,4 @@
-name: JBuild CLI CI
+name: jb-CI
 
 on: [push]
 
@@ -14,7 +14,10 @@ jobs:
       - uses: dart-lang/setup-dart@v1.0
         with:
           sdk: ${{ matrix.sdk }}
-      - name: Install dependencies
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'zulu'
+          java-version: 11
         run: dart pub get
       - name: Build
         run: dart dartle.dart
