@@ -218,7 +218,7 @@ Future<void> _downloadTestRunner(
     await File(p.join(outDir.path, '.no-dependencies')).create();
   } else {
     await _install(jbuildJar, config.preArgs(),
-        ['-d', outDir.path, junitConsoleLib(junit.consoleVersion)]);
+        ['-d', outDir.path, '-m', junitConsoleLib(junit.consoleVersion)]);
   }
 }
 
