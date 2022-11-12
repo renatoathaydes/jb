@@ -9,10 +9,11 @@ final _jbuildHome = Platform.environment['JBUILD_CLI_HOME'];
 String jbuildCliHome() {
   final result = _jbuildHome;
   if (result == null) {
-    final userHome = Platform.environment['HOME'];
+    final varName = Platform.isWindows ? 'APPDATA' : 'HOME';
+    final userHome = Platform.environment[varName];
     if (userHome == null) {
       throw Exception('Cannot find JBUILD_CLI_HOME or '
-          'HOME environment variables');
+          '$varName environment variables');
     }
     return path.join(userHome, '.jbuild-cli');
   }
