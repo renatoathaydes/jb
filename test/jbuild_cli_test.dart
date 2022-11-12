@@ -133,15 +133,21 @@ void main() {
       expect(
           await File('$testsProjectDir/build/runtime/app/App.class').exists(),
           isTrue);
-      final ok = Platform.isWindows ? '[OK]' : '✔';
-      expect(
-          stdout.join('\n'),
-          contains('├─ JUnit Jupiter $ok\n'
-              '│  └─ AppTest $ok\n'
-              '│     ├─ canGetNameFromArgs() $ok\n'
-              '│     └─ canGetDefaultName() $ok\n'
-              '├─ JUnit Vintage $ok\n'
-              '└─ JUnit Platform Suite $ok\n'));
+      const asciiResults = '+-- JUnit Jupiter [OK]\n'
+          '| \'-- AppTest [OK]\n'
+          '|   +-- canGetNameFromArgs() [OK]\n'
+          '|   \'-- canGetDefaultName() [OK]\n'
+          '+-- JUnit Vintage [OK]\n'
+          '\'-- JUnit Platform Suite [OK]\n';
+      const unicodeResults = '├─ JUnit Jupiter ✔\n'
+          '│  └─ AppTest ✔\n'
+          '│     ├─ canGetNameFromArgs() ✔\n'
+          '│     └─ canGetDefaultName() ✔\n'
+          '├─ JUnit Vintage ✔\n'
+          '└─ JUnit Platform Suite ✔\n';
+
+      expect(stdout.join('\n'),
+          anyOf(contains(unicodeResults), contains(asciiResults)));
     });
   });
 }
