@@ -17,10 +17,24 @@ group: $groupId
 module: $artifactId
 version: '0.0.0'
 
+# default is src/main/java
 source-dirs: [ src ]
-compile-libs-dir: build/compile
-runtime-libs-dir: build/runtime
-output-jar: build/$artifactId.jar${mainClass == null ? '' : '\nmain-class: $mainClass'}
+
+# default is src/main/resources
+resource-dirs: [ resources ]
+
+# The following options use the default values and could be omitted
+compile-libs-dir: build/compile-libs
+runtime-libs-dir: build/runtime-libs
+test-reports-dir: build/test-reports
+
+# Specify a jar to package this project into.
+# Use `output-dir` instead to keep class files unpacked.
+# default is `<working-dir>.jar`.
+output-jar: build/$artifactId.jar${mainClass == null ? '' : '''\n
+# To be able to use the 'run' task without arguments, specify the main-class to run.
+# You can also run any class by invoking `jb run :--main-class=some.other.Class`.
+main-class: $mainClass'''}
 
 # dependencies can be Maven artifacts or other jb projects
 dependencies:
