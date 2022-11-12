@@ -144,7 +144,8 @@ class _SubProjectRunCondition implements FilesCondition {
     // sub-project dir.
     final invocation = _subInvocation(result.invocation);
     return withCurrentDirectory(path, () async {
-      await delegate.postRun(TaskResult(invocation, result.error));
+      await delegate
+          .postRun(TaskResult(invocation, result.exceptionAndStackTrace));
     });
   }
 

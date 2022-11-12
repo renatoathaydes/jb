@@ -17,7 +17,9 @@ Future<int> execJBuild(File jbuildJar, List<String> preArgs, String command,
 }
 
 Future<int> execJava(List<String> args) {
-  logger.fine(() => 'Executing java $args');
+  final workingDir = Directory.current.path;
+  logger.fine(() => '\n====> Executing command at $workingDir\n'
+      'java ${args.join(' ')}\n<=============================');
   return exec(Process.start('java', args,
-      runInShell: true, workingDirectory: Directory.current.path));
+      runInShell: true, workingDirectory: workingDir));
 }

@@ -12,11 +12,14 @@ import 'options.dart';
 import 'utils.dart';
 
 Future<void> runJBuild(
-    List<String> arguments, Stopwatch stopwatch, File jbuildJar) async {
-  final jbOptions = JBuildCliOptions.parseArgs(arguments);
+  JBuildCliOptions jbOptions,
+  Options dartleOptions,
+  Stopwatch stopwatch,
+  File jbuildJar,
+) async {
   final rootDir = jbOptions.rootDirectory;
   if (rootDir == null) {
-    await _runJBuild(jbOptions, stopwatch, jbuildJar);
+    await _runJBuild(jbOptions, dartleOptions, stopwatch, jbuildJar);
   } else {
     final dir = Directory(rootDir);
     if (!(await dir.exists())) {
@@ -28,15 +31,14 @@ Future<void> runJBuild(
       }
     }
     await withCurrentDirectory(
-        rootDir, () async => await _runJBuild(jbOptions, stopwatch, jbuildJar));
+        rootDir,
+        () async =>
+            await _runJBuild(jbOptions, dartleOptions, stopwatch, jbuildJar));
   }
 }
 
-Future<void> _runJBuild(
-    JBuildCliOptions options, Stopwatch stopwatch, File jbuildJar) async {
-  final dartleOptions = parseOptions(options.dartleArgs);
-  activateLogging(dartleOptions.logLevel,
-      colorfulLog: dartleOptions.colorfulLog, logName: 'jbuild');
+Future<void> _runJBuild(JBuildCliOptions options, Options dartleOptions,
+    Stopwatch stopwatch, File jbuildJar) async {
   logger.log(profile,
       () => 'Initialized CLI and parsed options in ${elapsedTime(stopwatch)}');
   final createOptions = options.createOptions;
