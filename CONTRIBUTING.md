@@ -90,8 +90,8 @@ out-of-the-box.
 To update that jar, you need to:
 
 * download the new `jbuild.jar` file or build it locally. 
-* delete the [jbuild_jar.g.dart](lib/src/jbuild_jar.g.dart) file.
-* compile `jb` again, but set the `JBUILD_HOME` env var to the directory where the `jbuild.jar` file is located.
+* set the contents of [jbuild_jar.g.dart](lib/src/jbuild_jar.g.dart) to `const jbuildJarB64 = '';'`.
+* compile `jb` again with the `JBUILD_HOME` env var set to the directory where the `jbuild.jar` file is located.
 
 Essentially:
 
@@ -102,8 +102,8 @@ export JBUILD_HOME=<some-dir>
 # assuming jbuild-x-y-z.jar is in the working dir
 cp jbuild-x-y-z.jar "$JBUILD_HOME/jbuild.jar"
 
-# remove the current embedded jar
-rm lib/src/jbuild_jar.g.dart
+# empty the contents of the current embedded jar
+dartle emptyGeneratedAssets
 
 # build jb
 dartle build

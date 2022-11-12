@@ -39,7 +39,7 @@ Future<void> buildMvnRepoListsProject(_) async {
 
 Future<void> _buildProject(String name) async {
   final exitCode = await exec(
-      Process.start('java', ['-jar', jbuildJarPath(), 'compile'],
+      Process.start('java', ['-jar', await jbuildJarPath(), 'compile'],
           workingDirectory: listsMavenRepoProjectSrc),
       name: 'java (compile $name project)');
 
