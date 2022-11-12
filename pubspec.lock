@@ -161,7 +161,7 @@ packages:
       name: dartle
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.16.0"
+    version: "0.17.0"
   file:
     dependency: "direct main"
     description:
@@ -203,7 +203,7 @@ packages:
       name: glob
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.1.0"
+    version: "2.1.1"
   graphs:
     dependency: transitive
     description:
@@ -322,7 +322,7 @@ packages:
       name: pub_semver
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.1.2"
+    version: "2.1.3"
   pubspec_parse:
     dependency: transitive
     description:
@@ -357,7 +357,7 @@ packages:
       name: shelf_web_socket
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.0.2"
+    version: "1.0.3"
   source_gen:
     dependency: transitive
     description:
@@ -406,7 +406,7 @@ packages:
       name: stream_transform
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.0.1"
+    version: "2.1.0"
   string_scanner:
     dependency: transitive
     description:
