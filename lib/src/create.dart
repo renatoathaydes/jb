@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dartle/dartle.dart';
 import 'package:path/path.dart' as p;
 
+const _testArtifactId = 'tests';
+
 const _testDependencies = '''\
   - org.junit.jupiter:junit-jupiter-api:5.8.2
   - org.assertj:assertj-core:3.22.0
@@ -23,6 +25,9 @@ source-dirs: [ src ]
 # default is src/main/resources
 resource-dirs: [ resources ]
 
+${artifactId == _testArtifactId ? ''
+            '# do not create a redundant jar for tests\n'
+            'output-dir: build/classes\n' : '''
 # The following options use the default values and could be omitted
 compile-libs-dir: build/compile-libs
 runtime-libs-dir: build/runtime-libs
@@ -30,12 +35,12 @@ test-reports-dir: build/test-reports
 
 # Specify a jar to package this project into.
 # Use `output-dir` instead to keep class files unpacked.
-# default is `<working-dir>.jar`.
+# default is `build/<project-dir>.jar`.
 output-jar: build/$artifactId.jar${mainClass == null ? '' : '''\n
 # To be able to use the 'run' task without arguments, specify the main-class to run.
 # You can also run any class by invoking `jb run :--main-class=some.other.Class`.
 main-class: $mainClass'''}
-
+'''}
 # dependencies can be Maven artifacts or other jb projects
 dependencies:
 $dependencies''';
@@ -68,16 +73,32 @@ final class MainTest {
 }
 ''';
 
+Future<void> _noOp() async {}
+
+class _FileCreator {
+  final File file;
+  final Future<void> Function() create;
+
+  _FileCreator(this.file, [this.create = _noOp]);
+
+  Future<void> call() => create();
+
+  Future<void> check() async {
+    if (await file.exists()) {
+      throw DartleException(
+          message: 'Cannot create jb project, at least '
+              'one existing file would be overwritten: ${file.path}');
+    }
+  }
+}
+
 Future<void> createNewProject(List<String> arguments) async {
   if (arguments.length > 1) {
     throw DartleException(
         message: 'create command does not accept any arguments');
   }
   final jbuildFile = File('jbuild.yaml');
-  if (await jbuildFile.exists()) {
-    throw DartleException(
-        message: 'Cannot create jb project, jbuildy.yaml already exists.');
-  }
+  await _FileCreator(jbuildFile).check();
   await _create(jbuildFile);
 }
 
@@ -93,30 +114,53 @@ Future<void> _create(File jbuildFile) async {
   final createTestModule = stdin.readLineSync().or('yes').yesOrNo();
   const mainClass = 'Main';
 
-  await jbuildFile.writeAsString(
-      _jbuildYaml(groupId, artifactId, '$package.$mainClass', ''));
+  final fileCreators = <_FileCreator>[];
 
-  await _createJavaFile(package, mainClass, 'src', _mainJava(package));
+  fileCreators.add(_FileCreator(
+      jbuildFile,
+      () => jbuildFile.writeAsString(
+          _jbuildYaml(groupId, artifactId, '$package.$mainClass', ''))));
+
+  fileCreators
+      .add(_createJavaFile(package, mainClass, 'src', _mainJava(package)));
 
   if (createTestModule) {
-    await _createTestModule(groupId, package);
+    fileCreators.addAll(_createTestModule(groupId, package));
   }
-  print('JBuild project created at ${Directory.current.path}');
+
+  await _createAll(fileCreators);
+
+  print('\nJBuild project created at ${Directory.current.path}');
 }
 
-Future<void> _createTestModule(String groupId, String package) async {
-  await _createJavaFile(
+Future<void> _createAll(List<_FileCreator> fileCreators) async {
+  for (final create in fileCreators) {
+    await create.check();
+  }
+  for (final create in fileCreators) {
+    await create();
+  }
+}
+
+List<_FileCreator> _createTestModule(String groupId, String package) {
+  final javaTestCreator = _createJavaFile(
       package, 'MainTest', p.join('test', 'src'), _mainTestJava(package));
-  await File(p.join('test', 'jbuild.yaml'))
-      .writeAsString(_jbuildYaml(groupId, 'tests', null, _testDependencies));
+  final buildFile = File(p.join('test', 'jbuild.yaml'));
+  final buildFileCreator = _FileCreator(
+      buildFile,
+      () => buildFile.writeAsString(
+          _jbuildYaml(groupId, _testArtifactId, null, _testDependencies)));
+  return [javaTestCreator, buildFileCreator];
 }
 
-Future<void> _createJavaFile(
-    String package, String name, String dir, String contents) async {
+_FileCreator _createJavaFile(
+    String package, String name, String dir, String contents) {
   final javaDir = p.joinAll([dir] + package.split('.'));
-  await Directory(javaDir).create(recursive: true);
   final javaFile = File(p.join(javaDir, '$name.java'));
-  await javaFile.writeAsString(contents);
+  return _FileCreator(javaFile, () async {
+    await Directory(javaDir).create(recursive: true);
+    await javaFile.writeAsString(contents);
+  });
 }
 
 extension on String? {
