@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dartle/dartle.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:logging/logging.dart' as log;
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 
 import 'jbuild_dartle.dart';
@@ -87,10 +88,23 @@ class JBuildConfiguration with _$JBuildConfiguration {
   }
 
   List<String> preArgs() {
-    if (repositories.isNotEmpty) {
-      return repositories.expand((r) => ['-r', r]).toList();
+    var result = const <String>[];
+    if (logger.isLoggable(Level.FINE)) {
+      result = const ['-V'];
     }
-    return const [];
+    if (repositories.isNotEmpty) {
+      final args = List.filled(result.length + 2 * repositories.length, '');
+      var index = 0;
+      for (final arg in result) {
+        args[index++] = arg;
+      }
+      for (final repo in repositories) {
+        args[index++] = '-r';
+        args[index++] = repo;
+      }
+      result = args;
+    }
+    return result;
   }
 
   List<String> compileArgs() {
