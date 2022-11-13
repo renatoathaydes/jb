@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
+import 'tasks.dart';
 
 import 'config.dart' show logger;
 
@@ -20,6 +21,12 @@ Future<int> execJava(String taskName, List<String> args) {
   final workingDir = Directory.current.path;
   logger.fine(() => '\n====> Task $taskName executing command at $workingDir\n'
       'java ${args.join(' ')}\n<=============================');
+
+  // the test task must print to stdout/err directly
+  if (taskName == testTaskName) {
+    return exec(Process.start('java', args,
+        runInShell: true, workingDirectory: workingDir));
+  }
   final onStdout = _TaskExecLogger('--1>', taskName);
   final onStderr = _TaskExecLogger('--2>', taskName);
   return exec(

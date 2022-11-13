@@ -105,12 +105,13 @@ void main() {
       final stdout = <String>[];
       final stderr = <String>[];
       var exitCode = await exec(
-          Process.start(jbuildExecutable, const ['run'],
+          Process.start(jbuildExecutable, const ['run', '--no-color'],
               workingDirectory: withSubProjectDir),
           onStdoutLine: stdout.add,
           onStderrLine: stderr.add);
       expectSuccess(exitCode, stdout, stderr);
-      expect(stdout, contains('Hello Mary!'));
+      expect(stdout.join('\n'),
+          contains(RegExp(r'runJavaMainClass \[java \d+\]: Hello Mary!')));
       expect(stderr, isEmpty);
     });
   });
@@ -120,8 +121,7 @@ void main() {
       final stdout = <String>[];
       final stderr = <String>[];
       final exitCode = await exec(
-          Process.start(
-              jbuildExecutable, const ['test', '-l', 'error', '--no-color'],
+          Process.start(jbuildExecutable, const ['test', '--no-color'],
               workingDirectory: testsProjectDir),
           onStdoutLine: stdout.add,
           onStderrLine: stderr.add);
