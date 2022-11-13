@@ -38,8 +38,8 @@ Task createCompileTask(
 }
 
 Future<void> _compile(File jbuildJar, JBuildConfiguration config) async {
-  final exitCode = await execJBuild(
-      jbuildJar, config.preArgs(), 'compile', config.compileArgs());
+  final exitCode = await execJBuild(compileTaskName, jbuildJar,
+      config.preArgs(), 'compile', config.compileArgs());
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild compile command failed', exitCode: exitCode);
@@ -75,8 +75,8 @@ Future<void> _writeDependencies(File dependenciesFile,
 Task createInstallCompileDepsTask(JBuildFiles files, JBuildConfiguration config,
     DartleCache cache, Iterable<SubProject> subProjects) {
   Future<void> action(_) async {
-    await _install(
-        files.jbuildJar, config.preArgs(), config.installArgsForCompilation());
+    await _install(installCompileDepsTaskName, files.jbuildJar,
+        config.preArgs(), config.installArgsForCompilation());
     await _copy(subProjects, config.compileLibsDir, runtime: false);
   }
 
@@ -87,8 +87,8 @@ Task createInstallCompileDepsTask(JBuildFiles files, JBuildConfiguration config,
 Task createInstallRuntimeDepsTask(JBuildFiles files, JBuildConfiguration config,
     DartleCache cache, Iterable<SubProject> subProjects) {
   Future<void> action(_) async {
-    await _install(
-        files.jbuildJar, config.preArgs(), config.installArgsForRuntime());
+    await _install(installRuntimeDepsTaskName, files.jbuildJar,
+        config.preArgs(), config.installArgsForRuntime());
     await _copy(subProjects, config.runtimeLibsDir, runtime: true);
   }
 
@@ -116,12 +116,13 @@ Task _createInstallDepsTask(
       description: 'Install $scopeName dependencies.');
 }
 
-Future<void> _install(
-    File jbuildJar, List<String> preArgs, List<String> args) async {
+Future<void> _install(String taskName, File jbuildJar, List<String> preArgs,
+    List<String> args) async {
   if (args.isEmpty) {
     return logger.fine('No dependencies to install');
   }
-  final exitCode = await execJBuild(jbuildJar, preArgs, 'install', args);
+  final exitCode =
+      await execJBuild(taskName, jbuildJar, preArgs, 'install', args);
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild install command failed', exitCode: exitCode);
@@ -185,7 +186,7 @@ Future<void> _run(
     p.join(config.runtimeLibsDir, '*'),
   }.join(Platform.isWindows ? ';' : ':');
 
-  final exitCode = await execJava(
+  final exitCode = await execJava(runTaskName,
       [...config.runJavaArgs, '-cp', classpath, mainClass, ...args]);
 
   if (exitCode != 0) {
@@ -229,7 +230,7 @@ Future<void> _downloadTestRunner(
   if (junit.runtimeIncludesJUnitConsole) {
     await File(p.join(outDir.path, '.no-dependencies')).create();
   } else {
-    await _install(jbuildJar, config.preArgs(),
+    await _install(downloadTestRunnerTaskName, jbuildJar, config.preArgs(),
         ['-d', outDir.path, '-m', junitConsoleLib(junit.consoleVersion)]);
   }
 }
@@ -251,7 +252,7 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
             'no main-class has been configured');
   }
 
-  final exitCode = await execJava([
+  final exitCode = await execJava(testTaskName, [
     ...config.testJavaArgs,
     '-ea',
     '-cp',
