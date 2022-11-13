@@ -253,6 +253,7 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
 
   final exitCode = await execJava([
     ...config.testJavaArgs,
+    '-ea',
     '-cp',
     '${cache.rootDir}/$junitRunnerLibsDir/*',
     mainClass,
