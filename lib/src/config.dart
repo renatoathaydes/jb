@@ -44,6 +44,8 @@ class JBuildConfiguration with _$JBuildConfiguration {
     required Set<String> resourceDirs,
     required String mainClass,
     required List<String> javacArgs,
+    required List<String> runJavaArgs,
+    required List<String> testJavaArgs,
     required Set<String> repositories,
     required Map<String, DependencySpec> dependencies,
     required Set<String> exclusions,
@@ -66,6 +68,10 @@ class JBuildConfiguration with _$JBuildConfiguration {
           map, 'resource-dirs', const {'src/main/resources'}).toSet(),
       mainClass: _stringValue(map, 'main-class', ''),
       javacArgs: _stringIterableValue(map, 'javac-args', const [])
+          .toList(growable: false),
+      runJavaArgs: _stringIterableValue(map, 'run-java-args', const [])
+          .toList(growable: false),
+      testJavaArgs: _stringIterableValue(map, 'test-java-args', const [])
           .toList(growable: false),
       dependencies: _dependencies(map, 'dependencies', const {}),
       repositories: _stringIterableValue(map, 'repositories', const {}).toSet(),

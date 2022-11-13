@@ -16,6 +16,8 @@ void main() {
           exclusions: const {},
           repositories: const {},
           javacArgs: const [],
+          runJavaArgs: const [],
+          testJavaArgs: const [],
           compileLibsDir: '',
           runtimeLibsDir: '',
           testReportsDir: '');
@@ -50,6 +52,8 @@ void main() {
       javac-args:
         - -Xmx2G
         - --verbose
+      run-java-args: [ -Xmx1G ]
+      test-java-args: [ -Xmx2G, -Xms512m ]
       repositories:
         - https://maven.org
         - ftp://foo.bar
@@ -66,6 +70,8 @@ void main() {
             resourceDirs: {'src/resources'},
             mainClass: 'my.Main',
             javacArgs: ['-Xmx2G', '--verbose'],
+            runJavaArgs: ['-Xmx1G'],
+            testJavaArgs: ['-Xmx2G', '-Xms512m'],
             repositories: {'https://maven.org', 'ftp://foo.bar'},
             dependencies: {
               'com.google:guava:1.2.3': DependencySpec.defaultSpec,
@@ -97,6 +103,8 @@ void main() {
               resourceDirs: {'resources'},
               mainClass: '',
               javacArgs: ['-X'],
+              runJavaArgs: [],
+              testJavaArgs: [],
               repositories: {'https://maven.org'},
               dependencies: {},
               exclusions: {'one'},

@@ -91,6 +91,10 @@ As the basic Java class `jb` creates has a main method, you can run it with:
 jb run
 ```
 
+> To pass arguments to the Main class, you can prepend the arguments with `:`
+> (without that, arguments are passed to `jb` itself).
+> For example, to pass `-h` to the Main class, run `jb run :-h`.
+
 Or using `java` directly:
 
 ```shell
@@ -124,7 +128,7 @@ jb -s     # or e.g. 'jb -s run' to see which tasks 'run' would require
 jb -g
 ```
 
-## Acknowledgements
+## About `jb` (implementation)
 
 This project is the [JBuild](https://github.com/renatoathaydes/jbuild) CLI front-end.
 

@@ -185,7 +185,8 @@ Future<void> _run(
     p.join(config.runtimeLibsDir, '*'),
   }.join(Platform.isWindows ? ';' : ':');
 
-  final exitCode = await execJava(['-cp', classpath, mainClass, ...args]);
+  final exitCode = await execJava(
+      [...config.runJavaArgs, '-cp', classpath, mainClass, ...args]);
 
   if (exitCode != 0) {
     throw DartleException(message: 'java command failed', exitCode: exitCode);
@@ -251,6 +252,7 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
   }
 
   final exitCode = await execJava([
+    ...config.testJavaArgs,
     '-cp',
     '${cache.rootDir}/$junitRunnerLibsDir/*',
     mainClass,
