@@ -154,13 +154,15 @@ Future<void> _copyOutput(
 
 Task createRunTask(
     JBuildFiles files, JBuildConfiguration config, DartleCache cache) {
-  return Task((_) => _run(files.jbuildJar, config),
+  return Task((List<String> args) => _run(files.jbuildJar, config, args),
       dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
+      argsValidator: const AcceptAnyArgs(),
       name: runTaskName,
       description: 'Run Java Main class.');
 }
 
-Future<void> _run(File jbuildJar, JBuildConfiguration config) async {
+Future<void> _run(
+    File jbuildJar, JBuildConfiguration config, List<String> args) async {
   final mainClass = config.mainClass;
   if (mainClass.isEmpty) {
     throw DartleException(
@@ -174,7 +176,7 @@ Future<void> _run(File jbuildJar, JBuildConfiguration config) async {
     p.join(config.runtimeLibsDir, '*'),
   }.join(Platform.isWindows ? ';' : ':');
 
-  final exitCode = await execJava(['-cp', classpath, mainClass]);
+  final exitCode = await execJava(['-cp', classpath, mainClass, ...args]);
 
   if (exitCode != 0) {
     throw DartleException(message: 'java command failed', exitCode: exitCode);
