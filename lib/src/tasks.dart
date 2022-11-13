@@ -163,11 +163,20 @@ Task createRunTask(
 
 Future<void> _run(
     File jbuildJar, JBuildConfiguration config, List<String> args) async {
-  final mainClass = config.mainClass;
+  var mainClass = config.mainClass;
+  if (mainClass.isEmpty) {
+    const mainClassArg = '--main-class=';
+    final mainClassArgIndex =
+        args.indexWhere((arg) => arg.startsWith(mainClassArg));
+    if (mainClassArgIndex > 0) {
+      mainClass =
+          args.removeAt(mainClassArgIndex).substring(mainClassArg.length);
+    }
+  }
   if (mainClass.isEmpty) {
     throw DartleException(
         message: 'cannot run Java application as '
-            'no main-class has been configured');
+            'no main-class has been configured or provided.');
   }
 
   final classpath = {
