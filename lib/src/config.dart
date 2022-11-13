@@ -385,5 +385,5 @@ DependencySpec _dependencySpec(value) {
 }
 
 CompileOutput _defaultOutputValue() {
-  return CompileOutput.jar('${p.basename(Directory.current.path)}.jar');
+  return CompileOutput.jar('build/${p.basename(Directory.current.path)}.jar');
 }
