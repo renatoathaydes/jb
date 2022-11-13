@@ -45,12 +45,13 @@ test Java projects.
 
 `jb` uses [Dartle](https://github.com/renatoathaydes/dartle) both as a build tool and as a library.
 
-As such, the build is declared in the [dartle.dart](dartle.dart) file (with more code in the `dartle-src` dir).
+As such, the build script is declared in the [dartle.dart](dartle.dart) file (with more build code in the `dartle-src` dir).
 
 To build the `jb` executable, you need:
 
 * [Dart SDK](https://dart.dev/get-dart)
 * [Dartle](https://github.com/renatoathaydes/dartle)
+* [JDK 11+](https://openjdk.org/) (only required to run `jb` itself and the tests)
 
 Once you've installed Dart, get Dartle by running:
 
