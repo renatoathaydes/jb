@@ -60,7 +60,8 @@ void main() {
           onStdoutLine: stdout.add,
           onStderrLine: stderr.add);
       expectSuccess(exitCode, stdout, stderr);
-      expect(await File('$withDepsProjectDir/with-deps.jar').exists(), isTrue);
+      expect(await File('$withDepsProjectDir/build/with-deps.jar').exists(),
+          isTrue);
       stdout.clear();
       stderr.clear();
       exitCode = await exec(
@@ -68,7 +69,7 @@ void main() {
               'java',
               [
                 '-cp',
-                classpath(['with-deps.jar', 'build/compile-libs/*']),
+                classpath(['build/with-deps.jar', 'build/compile-libs/*']),
                 'com.foo.Foo',
               ],
               workingDirectory: withDepsProjectDir),
