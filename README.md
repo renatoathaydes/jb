@@ -26,10 +26,23 @@ group: my-group
 module: my-app
 version: '0.0.0'
 
+# default is src/main/java
 source-dirs: [ src ]
-compile-libs-dir: build/compile
-runtime-libs-dir: build/runtime
+
+# default is src/main/resources
+resource-dirs: [ resources ]
+# The following options use the default values and could be omitted
+compile-libs-dir: build/compile-libs
+runtime-libs-dir: build/runtime-libs
+test-reports-dir: build/test-reports
+
+# Specify a jar to package this project into.
+# Use `output-dir` instead to keep class files unpacked.
+# default is `build/<project-dir>.jar`.
 output-jar: build/my-app.jar
+
+# To be able to use the 'run' task without arguments, specify the main-class to run.
+# You can also run any class by invoking `jb run :--main-class=some.other.Class`.
 main-class: my_group.my_app.Main
 
 # dependencies can be Maven artifacts or other jb projects
@@ -38,17 +51,21 @@ dependencies:
 
 The `test` module is just a `jb` project which depends on a supported testing library API, and contains tests.
 
-This is what `test/jbuild.yaml` looks like:
+This is what `test/jbuild.yaml` looks like, with most optional fields omitted:
 
 ```yaml
 group: my-group
 module: tests
 version: '0.0.0'
 
+# default is src/main/java
 source-dirs: [ src ]
-compile-libs-dir: build/compile
-runtime-libs-dir: build/runtime
-output-jar: build/tests.jar
+
+# default is src/main/resources
+resource-dirs: [ resources ]
+
+# do not create a redundant jar for tests
+output-dir: build/classes
 
 # dependencies can be Maven artifacts or other jb projects
 dependencies:
