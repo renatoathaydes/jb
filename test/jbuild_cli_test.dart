@@ -150,6 +150,31 @@ void main() {
       expect(stdout.join('\n'),
           anyOf(contains(unicodeResults), contains(asciiResults)));
     });
+
+    test('can run single Java test', () async {
+      final stdout = <String>[];
+      final stderr = <String>[];
+      final exitCode = await exec(
+          Process.start(jbuildExecutable,
+              const ['test', ':--include-tag', ':t1', '--no-color'],
+              workingDirectory: testsProjectDir),
+          onStdoutLine: stdout.add,
+          onStderrLine: stderr.add);
+      expectSuccess(exitCode, stdout, stderr);
+      const asciiResults = '+-- JUnit Jupiter [OK]\n'
+          '| \'-- AppTest [OK]\n'
+          '|   \'-- canGetDefaultName() [OK]\n'
+          '+-- JUnit Vintage [OK]\n'
+          '\'-- JUnit Platform Suite [OK]\n';
+      const unicodeResults = '├─ JUnit Jupiter ✔\n'
+          '│  └─ AppTest ✔\n'
+          '│     └─ canGetDefaultName() ✔\n'
+          '├─ JUnit Vintage ✔\n'
+          '└─ JUnit Platform Suite ✔\n';
+
+      expect(stdout.join('\n'),
+          anyOf(contains(unicodeResults), contains(asciiResults)));
+    });
   });
 }
 

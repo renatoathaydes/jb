@@ -208,8 +208,10 @@ Task createDownloadTestRunnerTask(
 
 Task createTestTask(File jbuildJar, JBuildConfiguration config,
     DartleCache cache, bool noColor) {
-  return Task((_) => _test(jbuildJar, config, cache, noColor),
+  return Task(
+      (List<String> args) => _test(jbuildJar, config, cache, noColor, args),
       name: testTaskName,
+      argsValidator: const AcceptAnyArgs(),
       dependsOn: const {
         compileTaskName,
         downloadTestRunnerTaskName,
@@ -236,7 +238,7 @@ Future<void> _downloadTestRunner(
 }
 
 Future<void> _test(File jbuildJar, JBuildConfiguration config,
-    DartleCache cache, bool noColor) async {
+    DartleCache cache, bool noColor, List<String> args) async {
   final libs = Directory(config.runtimeLibsDir).list();
   final classpath = {
     config.output.when(dir: (d) => d, jar: (j) => j),
@@ -263,6 +265,7 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
     '--reports-dir=${config.testReportsDir}',
     '--fail-if-no-tests',
     if (noColor) '--disable-ansi-colors',
+    ...args,
   ]);
 
   if (exitCode != 0) {
