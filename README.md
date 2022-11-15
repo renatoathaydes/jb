@@ -101,8 +101,8 @@ Or using `java` directly:
 java -jar build/my-app.jar
 ```
 
-> Once you add dependencies to your project, it's still trivial to run it with `java` as `jb` puts all the runtime
-> libraries at the `build/runtime` directory by default, so just use `-cp "build/runtime/*"` to Java after
+> Once you add dependencies to your project, it's still trivial to run it with `java`, as `jb` puts all the runtime
+> libraries at the `build/runtime` directory by default, so just pass `-cp "build/runtime/*"` to Java after
 > building the project with `jb compile installRuntime`.
 
 To run the tests:
@@ -127,6 +127,9 @@ jb -s     # or e.g. 'jb -s run' to see which tasks 'run' would require
 # show a task dependency graph
 jb -g
 ```
+
+A demo Java project (using the [Javalin Web Framework](https://javalin.io/)) is available in the
+[example/sample-java-project](example/sample-java-project) directory.
 
 ## About `jb` (implementation)
 
