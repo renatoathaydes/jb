@@ -35,7 +35,8 @@ class JBuildDartle {
       clean,
       run,
       downloadTestRunner,
-      test;
+      test,
+      deps;
 
   /// Get the tasks that are configured as part of a build.
   late final Set<Task> tasks;
@@ -117,6 +118,8 @@ class JBuildDartle {
         createDownloadTestRunnerTask(files.jbuildJar, config, cache);
     test = createTestTask(
         files.jbuildJar, config, cache, !_components.options.colorfulLog);
+    deps = createDepsTask(
+        files.jbuildJar, config, cache, !_components.options.colorfulLog);
 
     projectTasks.addAll({
       compile,
@@ -125,7 +128,8 @@ class JBuildDartle {
       installRuntime,
       run,
       downloadTestRunner,
-      test
+      test,
+      deps,
     });
 
     clean = createCleanTask(

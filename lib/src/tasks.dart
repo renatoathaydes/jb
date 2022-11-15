@@ -18,6 +18,7 @@ const runTaskName = 'runJavaMainClass';
 const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const writeDepsTaskName = 'writeDependencies';
+const depsTaskName = 'dependencies';
 
 RunOnChanges createCompileRunCondition(
     JBuildConfiguration config, DartleCache cache) {
@@ -270,5 +271,26 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
 
   if (exitCode != 0) {
     throw DartleException(message: 'test command failed', exitCode: exitCode);
+  }
+}
+
+Task createDepsTask(File jbuildJar, JBuildConfiguration config,
+    DartleCache cache, bool noColor) {
+  return Task(
+      (List<String> args) => _deps(jbuildJar, config, cache, noColor, args),
+      name: depsTaskName,
+      argsValidator: const AcceptAnyArgs(),
+      phase: TaskPhase.setup,
+      description: 'Shows information about project dependencies.');
+}
+
+Future<void> _deps(File jbuildJar, JBuildConfiguration config,
+    DartleCache cache, bool noColor, List<String> args) async {
+  final deps = config.dependencies.keys;
+  final exitCode = await execJBuild(
+      depsTaskName, jbuildJar, config.preArgs(), 'deps', deps.toList());
+  if (exitCode != 0) {
+    throw DartleException(
+        message: 'jbuild compile command failed', exitCode: exitCode);
   }
 }
