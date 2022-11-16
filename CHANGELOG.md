@@ -1,3 +1,10 @@
+## 0.2.0
+
+- Fixed detecting `--main-class` argument to `run` task when it's the first argument.
+- Added documentation for most code.
+- Detect when user selects JUnit tests explicitly to avoid passing `--scan-classpath` option.
+- Updated embedded jbuild.jar with several fixes.
+
 ## 0.1.0
 
 - Initial version.
