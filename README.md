@@ -128,6 +128,8 @@ jb -s     # or e.g. 'jb -s run' to see which tasks 'run' would require
 jb -g
 ```
 
+## Demo Project
+
 A demo Java project (using the [Javalin Web Framework](https://javalin.io/)) is available in the
 [example/sample-java-project](example/sample-java-project) directory.
 
