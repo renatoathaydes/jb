@@ -4,6 +4,7 @@ import 'package:dartle/dartle.dart';
 import 'package:path/path.dart' as p;
 
 final emptyGeneratedAssetsTask = Task(emptyGeneratedAssets,
+    phase: TaskPhase.setup,
     description: 'empties the contents of all generated assets');
 
 Future<void> emptyGeneratedAssets(List<String> args) async {
