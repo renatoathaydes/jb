@@ -6,6 +6,7 @@ import 'sub_project.dart';
 import 'tasks.dart';
 import 'utils.dart';
 
+/// Grouped components of a build.
 class JBuildComponents {
   final JBuildFiles files;
   final JBuildConfiguration config;
@@ -25,6 +26,10 @@ class JBuildComponents {
   }
 }
 
+/// jb Dartle tasks, including sub-projects.
+///
+/// Users of this class must await on the [init] Future for this class to
+/// be fully initialized before using it.
 class JBuildDartle {
   JBuildComponents _components;
 
@@ -64,6 +69,7 @@ class JBuildDartle {
       : this(JBuildComponents(
             files, config, cache, options, '', const [], stopWatch));
 
+  /// Get the default tasks (`{ compile }`).
   Set<Task> get defaultTasks {
     return {compile};
   }

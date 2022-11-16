@@ -20,6 +20,7 @@ const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const writeDepsTaskName = 'writeDependencies';
 const depsTaskName = 'dependencies';
 
+/// Create run condition for the `compile` task.
 RunOnChanges createCompileRunCondition(
     JBuildConfiguration config, DartleCache cache) {
   final outputs = config.output.when(dir: (d) => dir(d), jar: (j) => file(j));
@@ -29,6 +30,7 @@ RunOnChanges createCompileRunCondition(
       cache: cache);
 }
 
+/// Create the `compile` task.
 Task createCompileTask(
     File jbuildJar, JBuildConfiguration config, DartleCache cache) {
   return Task((_) => _compile(jbuildJar, config),
@@ -47,6 +49,7 @@ Future<void> _compile(File jbuildJar, JBuildConfiguration config) async {
   }
 }
 
+/// Create the `writeDependencies` task.
 Task createWriteDependenciesTask(JBuildFiles files, JBuildConfiguration config,
     DartleCache cache, Iterable<SubProject> subProjects) {
   final depsFile = dependenciesFile(files);
@@ -73,6 +76,7 @@ Future<void> _writeDependencies(File dependenciesFile,
       .join('\n'));
 }
 
+/// Create the `installCompileDependencies` task.
 Task createInstallCompileDepsTask(JBuildFiles files, JBuildConfiguration config,
     DartleCache cache, Iterable<SubProject> subProjects) {
   Future<void> action(_) async {
@@ -85,6 +89,7 @@ Task createInstallCompileDepsTask(JBuildFiles files, JBuildConfiguration config,
       dependenciesFile(files), config.compileLibsDir, cache);
 }
 
+/// Create the `installRuntimeDependencies` task.
 Task createInstallRuntimeDepsTask(JBuildFiles files, JBuildConfiguration config,
     DartleCache cache, Iterable<SubProject> subProjects) {
   Future<void> action(_) async {
@@ -154,6 +159,7 @@ Future<void> _copyOutput(
           .copy(p.join(destinationDir, p.basename(j))));
 }
 
+/// Create the `run` task.
 Task createRunTask(
     JBuildFiles files, JBuildConfiguration config, DartleCache cache) {
   return Task((List<String> args) => _run(files.jbuildJar, config, args),
@@ -170,7 +176,7 @@ Future<void> _run(
     const mainClassArg = '--main-class=';
     final mainClassArgIndex =
         args.indexWhere((arg) => arg.startsWith(mainClassArg));
-    if (mainClassArgIndex > 0) {
+    if (mainClassArgIndex >= 0) {
       mainClass =
           args.removeAt(mainClassArgIndex).substring(mainClassArg.length);
     }
@@ -195,6 +201,7 @@ Future<void> _run(
   }
 }
 
+/// Create the `downloadTestRunner` task.
 Task createDownloadTestRunnerTask(
     File jbuildJar, JBuildConfiguration config, DartleCache cache) {
   return Task((_) => _downloadTestRunner(jbuildJar, config, cache),
@@ -207,6 +214,7 @@ Task createDownloadTestRunnerTask(
           'Download a test runner. JBuild automatically detects JUnit5.');
 }
 
+/// Create the `test` task.
 Task createTestTask(File jbuildJar, JBuildConfiguration config,
     DartleCache cache, bool noColor) {
   return Task(
@@ -274,6 +282,7 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
   }
 }
 
+/// Create the `dependencies` task.
 Task createDepsTask(File jbuildJar, JBuildConfiguration config,
     DartleCache cache, bool noColor) {
   return Task(

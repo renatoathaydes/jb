@@ -1,7 +1,11 @@
 export 'src/config.dart';
 export 'src/create.dart';
+export 'src/exec.dart';
+export 'src/java_tests.dart';
 export 'src/jbuild.dart';
 export 'src/jbuild_dartle.dart';
 export 'src/options.dart';
 export 'src/paths.dart';
+export 'src/sub_project.dart';
+export 'src/tasks.dart';
 export 'src/utils.dart' show createIfNeededAndGetJBuildJarFile;

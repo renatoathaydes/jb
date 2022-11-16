@@ -13,6 +13,7 @@ part 'config.freezed.dart';
 
 final logger = log.Logger('jbuild');
 
+/// Files and directories used by jb.
 class JBuildFiles {
   final File jbuildJar;
   final File configFile = File('jbuild.yaml');
@@ -21,6 +22,7 @@ class JBuildFiles {
   JBuildFiles(this.jbuildJar);
 }
 
+/// Parse the YAML/JSON jbuild fle.
 JBuildConfiguration configFromJson(dynamic json) {
   if (json is Map) {
     final map = asJsonMap(json);
@@ -32,6 +34,7 @@ JBuildConfiguration configFromJson(dynamic json) {
   }
 }
 
+/// jb configuration model.
 @freezed
 class JBuildConfiguration with _$JBuildConfiguration {
   const JBuildConfiguration._();
@@ -107,6 +110,7 @@ class JBuildConfiguration with _$JBuildConfiguration {
     return result;
   }
 
+  /// Get the compile task arguments from this configuration.
   List<String> compileArgs() {
     final result = <String>[];
     result.addAll(sourceDirs);
@@ -127,6 +131,7 @@ class JBuildConfiguration with _$JBuildConfiguration {
     return result;
   }
 
+  /// Get the install arguments for the compile task from this configuration.
   List<String> installArgsForCompilation() {
     final depsToInstall = dependencies.entries
         .where((e) =>
@@ -145,6 +150,7 @@ class JBuildConfiguration with _$JBuildConfiguration {
     return result;
   }
 
+  /// Get the install arguments for the installRuntime task from this configuration.
   List<String> installArgsForRuntime() {
     final depsToInstall = dependencies.entries
         .where((e) => e.value.scope.includedAtRuntime() && e.value.path == null)
@@ -163,6 +169,7 @@ class JBuildConfiguration with _$JBuildConfiguration {
   }
 }
 
+/// Compilation output destination.
 @freezed
 class CompileOutput with _$CompileOutput {
   const factory CompileOutput.dir(String directory) = Dir;
@@ -170,6 +177,7 @@ class CompileOutput with _$CompileOutput {
   const factory CompileOutput.jar(String jar) = Jar;
 }
 
+/// Scope of a dependency.
 enum DependencyScope {
   all,
   compileOnly,
@@ -184,6 +192,7 @@ enum DependencyScope {
   }
 }
 
+/// Specification of a dependency.
 @freezed
 class DependencySpec with _$DependencySpec {
   const DependencySpec._();
@@ -219,6 +228,7 @@ class DependencySpec with _$DependencySpec {
   }
 }
 
+/// A dependency that refers to a local path.
 @freezed
 class PathDependency with _$PathDependency {
   const factory PathDependency.jar(DependencySpec spec, String path) =
@@ -228,6 +238,9 @@ class PathDependency with _$PathDependency {
       ProjectDependency;
 }
 
+/// jb sub-project model.
+///
+/// A sub-project is a path dependency to another jb project.
 class SubProject {
   final JBuildDartle _dartle;
   final Map<String, Task> tasks;

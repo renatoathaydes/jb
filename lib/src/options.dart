@@ -1,5 +1,6 @@
 import 'package:dartle/dartle.dart';
 
+/// The 'create' command options.
 class CreateOptions {
   final List<String> arguments;
 

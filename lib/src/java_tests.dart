@@ -7,6 +7,7 @@ const _junitApiPrefix = 'org.junit.jupiter:junit-jupiter-api:';
 
 const junitRunnerLibsDir = 'test-runner';
 
+/// JUnit Testing Framework information.
 class JUnit {
   final String apiVersion;
   final String consoleVersion;
@@ -19,6 +20,7 @@ class JUnit {
   });
 }
 
+/// Find JUnit information from a jb project dependencies, if available.
 JUnit? findJUnitSpec(Map<String, DependencySpec> dependencies) {
   String? junitApiVersion = dependencies.entries
       .where((e) => e.value.scope.includedInCompilation())
@@ -43,6 +45,7 @@ JUnit? findJUnitSpec(Map<String, DependencySpec> dependencies) {
   );
 }
 
+/// Dependency coordinates for the JUnit ConsoleLauncher.
 String junitConsoleLib(String version) {
   return '$_junitConsolePrefix$version:jar';
 }

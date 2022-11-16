@@ -92,6 +92,7 @@ class _FileCreator {
   }
 }
 
+/// Create a new jb project.
 Future<void> createNewProject(List<String> arguments) async {
   if (arguments.length > 1) {
     throw DartleException(

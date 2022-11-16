@@ -11,6 +11,9 @@ import 'jbuild_dartle.dart';
 import 'options.dart';
 import 'utils.dart';
 
+/// Run jb.
+///
+/// The caller must handle errors.
 Future<void> runJBuild(
   JBuildCliOptions jbOptions,
   Options dartleOptions,
@@ -45,14 +48,14 @@ Future<void> _runJBuild(JBuildCliOptions options, Options dartleOptions,
   if (createOptions != null) {
     return createNewProject(createOptions.arguments);
   }
-  final cli = JBuildCli(jbuildJar);
+  final cli = _JBuildCli(jbuildJar);
   return cli.start(dartleOptions, stopwatch);
 }
 
-class JBuildCli {
+class _JBuildCli {
   final JBuildFiles files;
 
-  JBuildCli(File jbuildJar) : files = JBuildFiles(jbuildJar);
+  _JBuildCli(File jbuildJar) : files = JBuildFiles(jbuildJar);
 
   Future<void> start(Options options, Stopwatch stopWatch) async {
     if (options.showHelp) {

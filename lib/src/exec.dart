@@ -5,6 +5,7 @@ import 'tasks.dart';
 
 import 'config.dart' show logger;
 
+/// Execute the jbuild tool.
 Future<int> execJBuild(String taskName, File jbuildJar, List<String> preArgs,
     String command, List<String> commandArgs) {
   return execJava(taskName, [
@@ -17,6 +18,7 @@ Future<int> execJBuild(String taskName, File jbuildJar, List<String> preArgs,
   ]);
 }
 
+/// Execute a java process.
 Future<int> execJava(String taskName, List<String> args) {
   final workingDir = Directory.current.path;
   logger.fine(() => '\n====> Task $taskName executing command at $workingDir\n'

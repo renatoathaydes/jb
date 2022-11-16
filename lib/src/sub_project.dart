@@ -12,6 +12,7 @@ import 'utils.dart';
 
 final Set<String> _projectRoots = {};
 
+/// Factory used to create `SubProject`s given a project's dependencies.
 class SubProjectFactory {
   final JBuildComponents components;
   final List<String> cliOptions;
@@ -27,6 +28,7 @@ class SubProjectFactory {
     }
   }
 
+  /// Create sub-projects from provided project dependencies.
   Stream<SubProject> createSubProjects(List<ProjectDependency> deps) async* {
     for (final dep in deps) {
       yield await _createJBuildSubProject(dep);
