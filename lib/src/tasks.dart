@@ -263,6 +263,9 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
             'no main-class has been configured');
   }
 
+  final hasCustomSelect = args.any((arg) =>
+      arg.startsWith('--select') || arg.startsWith('--scan-classpath'));
+
   final exitCode = await execJava(testTaskName, [
     ...config.testJavaArgs,
     '-ea',
@@ -270,7 +273,8 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
     '${cache.rootDir}/$junitRunnerLibsDir/*',
     mainClass,
     '--classpath=$classpath',
-    '--scan-classpath=${config.output.when(dir: (d) => d, jar: (j) => j)}',
+    if (!hasCustomSelect)
+      '--scan-classpath=${config.output.when(dir: (d) => d, jar: (j) => j)}',
     '--reports-dir=${config.testReportsDir}',
     '--fail-if-no-tests',
     if (noColor) '--disable-ansi-colors',
