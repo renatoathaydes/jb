@@ -28,6 +28,9 @@ void main() {
 
     test('can parse full config', () async {
       final config = configFromJson(loadYaml('''
+      properties:
+        versions:
+          guava: "1.2.3"
       group: my-group
       module: mod1
       version: '0.1'
@@ -35,7 +38,7 @@ void main() {
         - src/main/groovy
         - src/test/kotlin
       dependencies:
-        - com.google:guava:1.2.3
+        - com.google:guava:{{versions.guava}}
       exclusion-patterns:
         - test.*
         - .*other\\d+.*

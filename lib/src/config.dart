@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 
 import 'jbuild_dartle.dart';
+import 'properties.dart';
 import 'utils.dart';
 
 part 'config.freezed.dart';
@@ -25,7 +26,7 @@ class JBuildFiles {
 /// Parse the YAML/JSON jbuild fle.
 JBuildConfiguration configFromJson(dynamic json) {
   if (json is Map) {
-    final map = asJsonMap(json);
+    final map = resolveConfigMap(json);
     return JBuildConfiguration.fromMap(map);
   } else {
     throw DartleException(
@@ -379,7 +380,7 @@ Map<String, DependencySpec> _dependencies(Map<String, Object?> map, String key,
     for (final entry in value) {
       if (entry is String) {
         map[entry] = DependencySpec.defaultSpec;
-      } else if (entry is Map) {
+      } else if (entry is Map<String, Object?>) {
         _addMapDependencyTo(map, entry);
       } else {
         throw DartleException(
@@ -395,22 +396,23 @@ Map<String, DependencySpec> _dependencies(Map<String, Object?> map, String key,
           "$dependenciesSyntaxHelp");
 }
 
-void _addMapDependencyTo(Map<String, DependencySpec> map, Map entry) {
+void _addMapDependencyTo(
+    Map<String, DependencySpec> map, Map<String, Object?> entry) {
   if (entry.length != 1) {
     throw DartleException(
         message: "bad dependency declaration: '$entry'.\n"
             '$dependenciesSyntaxHelp');
   }
   final dep = entry.entries.first;
-  map[dep.key as String] = _dependencySpec(dep.value);
+  map[dep.key] = _dependencySpec(dep.value);
 }
 
-DependencySpec _dependencySpec(value) {
+DependencySpec _dependencySpec(Object? value) {
   if (value == null) {
     return DependencySpec.defaultSpec;
   }
-  if (value is Map) {
-    return DependencySpec.fromMap(asJsonMap(value));
+  if (value is Map<String, Object?>) {
+    return DependencySpec.fromMap(value);
   }
   throw DartleException(
       message: "bad dependency attributes declaration: '$value'.\n"

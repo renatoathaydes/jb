@@ -22,12 +22,6 @@ Future<void> _createJBuildJar(File jar) async {
   print('JBuild jar saved at ${jar.path}');
 }
 
-Map<String, Object?> asJsonMap(Map map) {
-  return map.map((dynamic key, dynamic value) {
-    return MapEntry(key is String ? key : '$key', value);
-  });
-}
-
 extension AnyExtension<T> on T? {
   T orThrow(error) {
     if (this == null) throw error;
