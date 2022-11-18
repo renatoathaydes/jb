@@ -16,6 +16,8 @@ void main(List<String> arguments) async {
         colorfulLog: dartleOptions.colorfulLog, logName: 'jbuild');
     loggingEnabled = true;
     await runJBuild(jbOptions, dartleOptions, stopWatch, jbuildJar);
+    logger.info(ColoredLogMessage(
+        'Build succeeded in ${_elapsedTime(stopWatch)}!', LogColor.green));
   } catch (e, st) {
     _logAndExit(loggingEnabled, dartleOptions?.logLevel, e, st);
   }
@@ -47,4 +49,14 @@ Never _logAndExit(
     }
   }
   exit(exitCode);
+}
+
+String _elapsedTime(Stopwatch stopwatch) {
+  final millis = stopwatch.elapsedMilliseconds;
+  if (millis > 1000) {
+    final secs = (millis * 1e-3).toStringAsPrecision(4);
+    return '$secs seconds';
+  } else {
+    return '$millis ms';
+  }
 }
