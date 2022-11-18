@@ -14,7 +14,8 @@ Map<String, Object?> resolveProperties(Map map, Properties properties) {
 
 Map<String, Object?> _asConfigMap(Map map, Properties properties) {
   return map.map((dynamic key, dynamic value) {
-    return MapEntry('$key', _resolveValue(value, properties));
+    return MapEntry(_resolveValue('$key', properties) as String,
+        _resolveValue(value, properties));
   });
 }
 

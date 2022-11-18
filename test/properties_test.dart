@@ -113,6 +113,7 @@ void main() {
       string: "{{a}}"
       map:
         k: "{{b}}"
+        "{{a}}": "{{c}}"
         list:
           - foo
           - "{{c}}{{d.e}}"
@@ -126,6 +127,7 @@ void main() {
             'string': 'X',
             'map': {
               'k': 'Y',
+              'X': 'Z',
               'list': ['foo', 'ZW']
             }
           }));
