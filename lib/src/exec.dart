@@ -1,25 +1,40 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
-import 'tasks.dart';
+import 'package:jb/jb.dart';
 
-import 'config.dart' show logger;
+/// Consumer of another process' output.
+mixin ProcessOutputConsumer {
+  /// The PID of the process.
+  ///
+  /// This is called immediately as the process starts.
+  set pid(int pid);
+
+  /// Receive a line of the process output.
+  void call(String line);
+}
 
 /// Execute the jbuild tool.
 Future<int> execJBuild(String taskName, File jbuildJar, List<String> preArgs,
-    String command, List<String> commandArgs) {
-  return execJava(taskName, [
-    '-jar',
-    jbuildJar.path,
-    '-q',
-    ...preArgs,
-    command,
-    ...commandArgs,
-  ]);
+    String command, List<String> commandArgs,
+    [ProcessOutputConsumer? onStdout, ProcessOutputConsumer? onStderr]) {
+  return execJava(
+      taskName,
+      [
+        '-jar',
+        jbuildJar.path,
+        '-q',
+        ...preArgs,
+        command,
+        ...commandArgs,
+      ],
+      onStdout,
+      onStderr);
 }
 
 /// Execute a java process.
-Future<int> execJava(String taskName, List<String> args) {
+Future<int> execJava(String taskName, List<String> args,
+    [ProcessOutputConsumer? onStdout, ProcessOutputConsumer? onStderr]) {
   final workingDir = Directory.current.path;
   logger.fine(() => '\n====> Task $taskName executing command at $workingDir\n'
       'java ${args.join(' ')}\n<=============================');
@@ -29,27 +44,28 @@ Future<int> execJava(String taskName, List<String> args) {
     return exec(Process.start('java', args,
         runInShell: true, workingDirectory: workingDir));
   }
-  final onStdout = _TaskExecLogger('--1>', taskName);
-  final onStderr = _TaskExecLogger('--2>', taskName);
+  final stdoutFun = onStdout ?? _TaskExecLogger('-out>', taskName);
+  final stderrFun = onStderr ?? _TaskExecLogger('-err>', taskName);
   return exec(
     Process.start('java', args, runInShell: true, workingDirectory: workingDir)
         .then((proc) {
-      onStdout.pid = proc.pid;
-      onStderr.pid = proc.pid;
+      stdoutFun.pid = proc.pid;
+      stderrFun.pid = proc.pid;
       return proc;
     }),
-    onStdoutLine: onStdout,
-    onStderrLine: onStderr,
+    onStdoutLine: stdoutFun,
+    onStderrLine: stderrFun,
   );
 }
 
-class _TaskExecLogger {
+class _TaskExecLogger implements ProcessOutputConsumer {
   final String prompt;
   final String taskName;
   int pid = 0;
 
   _TaskExecLogger(this.prompt, this.taskName);
 
+  @override
   void call(String line) {
     logger.info(ColoredLogMessage(
         '$prompt $taskName [java $pid]: $line', LogColor.gray));
