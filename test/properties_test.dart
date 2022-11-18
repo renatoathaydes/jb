@@ -109,13 +109,13 @@ void main() {
   group('YAML Tests', () {
     test('can resolve properties in YAML Map', () {
       final yaml = '''
-      properties: {'a': 'X', 'b': 'Y', 'c': 'Z', 'd': 'W'}
+      properties: {'a': 'X', 'b': 'Y', 'c': 'Z', 'd': {'e': 'W'}}
       string: "{{a}}"
       map:
         k: "{{b}}"
         list:
           - foo
-          - "{{c}}{{d}}"
+          - "{{c}}{{d.e}}"
       ''';
 
       final yamlMap = resolveConfigMap(loadYaml(yaml));
