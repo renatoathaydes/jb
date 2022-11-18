@@ -4,6 +4,9 @@
 - Added documentation for most code.
 - Detect when user selects JUnit tests explicitly to avoid passing `--scan-classpath` option.
 - Updated embedded jbuild.jar with several fixes.
+- #6 Support for properties in YAML files.
+- Print a success message at the end of a build.
+- Better output of `dependencies` task.
 
 ## 0.1.0
 

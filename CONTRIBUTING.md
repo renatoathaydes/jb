@@ -91,7 +91,7 @@ out-of-the-box.
 To update that jar, you need to:
 
 * download the new `jbuild.jar` file or build it locally. 
-* set the contents of [jbuild_jar.g.dart](lib/src/jbuild_jar.g.dart) to `const jbuildJarB64 = '';'`.
+* set the contents of [jbuild_jar.g.dart](lib/src/jbuild_jar.g.dart) to `const jbuildJarB64 = '';` (can be done by `dartle empty`).
 * compile `jb` again with the `JBUILD_HOME` env var set to the directory where the `jbuild.jar` file is located.
 
 Essentially:
