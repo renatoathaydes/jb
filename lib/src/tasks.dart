@@ -5,6 +5,7 @@ import 'package:dartle/dartle_cache.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
+import 'dependencies.dart';
 import 'exec.dart';
 import 'java_tests.dart';
 import 'paths.dart';
@@ -299,11 +300,10 @@ Task createDepsTask(File jbuildJar, JBuildConfiguration config,
 
 Future<void> _deps(File jbuildJar, JBuildConfiguration config,
     DartleCache cache, bool noColor, List<String> args) async {
-  final deps = config.dependencies.keys;
-  final exitCode = await execJBuild(
-      depsTaskName, jbuildJar, config.preArgs(), 'deps', deps.toList());
+  final exitCode =
+      await printDependencies(jbuildJar, config, cache, noColor, args);
   if (exitCode != 0) {
     throw DartleException(
-        message: 'jbuild compile command failed', exitCode: exitCode);
+        message: 'jbuild dependencies command failed', exitCode: exitCode);
   }
 }
