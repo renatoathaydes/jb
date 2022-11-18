@@ -1,7 +1,7 @@
 # `jb` - Java Builder
 
 ![jb-CI](https://github.com/renatoathaydes/jbuild-cli/workflows/jb-CI/badge.svg)
-[![pub package](https://img.shields.io/pub/v/jbuild-cli.svg)](https://pub.dev/packages/jbuild-cli)
+[![pub package](https://img.shields.io/pub/v/jb.svg)](https://pub.dev/packages/jb)
 
 `jb` is a modern (as of the 2020's) build tool for Java.
 
