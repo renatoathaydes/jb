@@ -8,9 +8,31 @@ import 'package:yaml/yaml.dart';
 
 import 'config.dart';
 import 'jbuild_dartle.dart';
+import 'path_dependency.dart';
 import 'utils.dart';
 
 final Set<String> _projectRoots = {};
+
+/// jb sub-project model.
+///
+/// A sub-project is a path dependency to another jb project.
+class SubProject {
+  final JBuildDartle _dartle;
+  final Map<String, Task> tasks;
+  final DependencySpec spec;
+
+  const SubProject(this._dartle, {required this.tasks, required this.spec});
+
+  String get name => _dartle.projectName;
+
+  String get path => _dartle.projectPath;
+
+  String get compileLibsDir => _dartle.config.compileLibsDir;
+
+  String get runtimeLibsDir => _dartle.config.runtimeLibsDir;
+
+  CompileOutput get output => _dartle.config.output;
+}
 
 /// Factory used to create `SubProject`s given a project's dependencies.
 class SubProjectFactory {

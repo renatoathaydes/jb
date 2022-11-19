@@ -10,6 +10,7 @@ import 'exec.dart';
 import 'java_tests.dart';
 import 'paths.dart';
 import 'utils.dart';
+import 'sub_project.dart';
 
 const cleanTaskName = 'clean';
 const compileTaskName = 'compile';

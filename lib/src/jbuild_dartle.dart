@@ -5,6 +5,7 @@ import 'config.dart';
 import 'sub_project.dart';
 import 'tasks.dart';
 import 'utils.dart';
+import 'path_dependency.dart';
 
 /// Grouped components of a build.
 class JBuildComponents {
@@ -86,7 +87,7 @@ class JBuildDartle {
     final jars = <JarDependency>[];
 
     await for (final pathDep in pathDependencies) {
-      pathDep.map(jar: jars.add, jbuildProject: projectDeps.add);
+      pathDep.when(jar: jars.add, jbuildProject: projectDeps.add);
     }
 
     final subProjects =

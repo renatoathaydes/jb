@@ -3,6 +3,8 @@ import 'package:jb/jb.dart';
 import 'package:test/test.dart';
 import 'package:yaml/yaml.dart';
 
+import 'config_matcher.dart';
+
 void main() {
   group('CompileConfiguration', () {
     test('can load', () {
@@ -64,7 +66,7 @@ void main() {
 
       expect(
           config,
-          equals(const JBuildConfiguration(
+          equalsConfig(const JBuildConfiguration(
             group: 'my-group',
             module: 'mod1',
             version: '0.1',
@@ -99,7 +101,7 @@ void main() {
 
       expect(
           config,
-          equals(const JBuildConfiguration(
+          equalsConfig(const JBuildConfiguration(
               version: '0.0.0',
               sourceDirs: {'src/java'},
               output: CompileOutput.dir('out'),

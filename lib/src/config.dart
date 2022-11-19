@@ -1,16 +1,13 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:logging/logging.dart' as log;
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 
-import 'jbuild_dartle.dart';
+import 'path_dependency.dart';
 import 'properties.dart';
 import 'utils.dart';
-
-part 'config.freezed.dart';
 
 final logger = log.Logger('jbuild');
 
@@ -36,28 +33,42 @@ JBuildConfiguration configFromJson(dynamic json) {
 }
 
 /// jb configuration model.
-@freezed
-class JBuildConfiguration with _$JBuildConfiguration {
-  const JBuildConfiguration._();
+class JBuildConfiguration {
+  final String? group;
+  final String? module;
+  final String version;
+  final Set<String> sourceDirs;
+  final CompileOutput output;
+  final Set<String> resourceDirs;
+  final String mainClass;
+  final List<String> javacArgs;
+  final List<String> runJavaArgs;
+  final List<String> testJavaArgs;
+  final Set<String> repositories;
+  final Map<String, DependencySpec> dependencies;
+  final Set<String> exclusions;
+  final String compileLibsDir;
+  final String runtimeLibsDir;
+  final String testReportsDir;
 
-  const factory JBuildConfiguration({
-    String? group,
-    String? module,
-    required String version,
-    required Set<String> sourceDirs,
-    required CompileOutput output,
-    required Set<String> resourceDirs,
-    required String mainClass,
-    required List<String> javacArgs,
-    required List<String> runJavaArgs,
-    required List<String> testJavaArgs,
-    required Set<String> repositories,
-    required Map<String, DependencySpec> dependencies,
-    required Set<String> exclusions,
-    required String compileLibsDir,
-    required String runtimeLibsDir,
-    required String testReportsDir,
-  }) = _Config;
+  const JBuildConfiguration({
+    this.group,
+    this.module,
+    required this.version,
+    required this.sourceDirs,
+    required this.output,
+    required this.resourceDirs,
+    required this.mainClass,
+    required this.javacArgs,
+    required this.runJavaArgs,
+    required this.testJavaArgs,
+    required this.repositories,
+    required this.dependencies,
+    required this.exclusions,
+    required this.compileLibsDir,
+    required this.runtimeLibsDir,
+    required this.testReportsDir,
+  });
 
   static JBuildConfiguration fromMap(Map<String, Object?> map) {
     return JBuildConfiguration(
@@ -170,12 +181,45 @@ class JBuildConfiguration with _$JBuildConfiguration {
   }
 }
 
-/// Compilation output destination.
-@freezed
-class CompileOutput with _$CompileOutput {
-  const factory CompileOutput.dir(String directory) = Dir;
+enum _CompileOutputTag { dir, jar }
 
-  const factory CompileOutput.jar(String jar) = Jar;
+/// Compilation output destination.
+class CompileOutput {
+  final _CompileOutputTag _tag;
+
+  final String _value;
+
+  const CompileOutput.dir(String directory)
+      : _value = directory,
+        _tag = _CompileOutputTag.dir;
+
+  const CompileOutput.jar(String jar)
+      : _value = jar,
+        _tag = _CompileOutputTag.jar;
+
+  T when<T>(
+      {required T Function(String) dir, required T Function(String) jar}) {
+    switch (_tag) {
+      case _CompileOutputTag.dir:
+        return dir(_value);
+      case _CompileOutputTag.jar:
+        return jar(_value);
+    }
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CompileOutput &&
+          runtimeType == other.runtimeType &&
+          _tag == other._tag &&
+          _value == other._value;
+
+  @override
+  int get hashCode => _tag.hashCode ^ _value.hashCode;
+
+  @override
+  String toString() => 'CompileOutput{_tag: $_tag, _value: $_value}';
 }
 
 /// Scope of a dependency.
@@ -194,18 +238,19 @@ enum DependencyScope {
 }
 
 /// Specification of a dependency.
-@freezed
-class DependencySpec with _$DependencySpec {
-  const DependencySpec._();
+class DependencySpec {
+  final bool transitive;
+  final DependencyScope scope;
+  final String? path;
 
   static const DependencySpec defaultSpec =
       DependencySpec(transitive: true, scope: DependencyScope.all);
 
-  const factory DependencySpec({
-    required bool transitive,
-    required DependencyScope scope,
-    String? path,
-  }) = _DependencySpec;
+  const DependencySpec({
+    required this.transitive,
+    required this.scope,
+    this.path,
+  });
 
   static DependencySpec fromMap(Map<String, Object?> map) {
     if (map.keys.any(const {'transitive', 'scope', 'path'}.contains.not)) {
@@ -227,37 +272,22 @@ class DependencySpec with _$DependencySpec {
         ? PathDependency.jar(this, thisPath)
         : PathDependency.jbuildProject(this, thisPath));
   }
-}
 
-/// A dependency that refers to a local path.
-@freezed
-class PathDependency with _$PathDependency {
-  const factory PathDependency.jar(DependencySpec spec, String path) =
-      JarDependency;
+  @override
+  String toString() =>
+      'DependencySpec{transitive: $transitive, scope: $scope, path: $path}';
 
-  const factory PathDependency.jbuildProject(DependencySpec spec, String path) =
-      ProjectDependency;
-}
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DependencySpec &&
+          runtimeType == other.runtimeType &&
+          transitive == other.transitive &&
+          scope == other.scope &&
+          path == other.path;
 
-/// jb sub-project model.
-///
-/// A sub-project is a path dependency to another jb project.
-class SubProject {
-  final JBuildDartle _dartle;
-  final Map<String, Task> tasks;
-  final DependencySpec spec;
-
-  const SubProject(this._dartle, {required this.tasks, required this.spec});
-
-  String get name => _dartle.projectName;
-
-  String get path => _dartle.projectPath;
-
-  String get compileLibsDir => _dartle.config.compileLibsDir;
-
-  String get runtimeLibsDir => _dartle.config.runtimeLibsDir;
-
-  CompileOutput get output => _dartle.config.output;
+  @override
+  int get hashCode => transitive.hashCode ^ scope.hashCode ^ path.hashCode;
 }
 
 bool _boolValue(Map<String, Object?> map, String key, bool defaultValue) {
