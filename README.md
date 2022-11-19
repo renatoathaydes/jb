@@ -3,7 +3,7 @@
 ![jb-CI](https://github.com/renatoathaydes/jbuild-cli/workflows/jb-CI/badge.svg)
 [![pub package](https://img.shields.io/pub/v/jb.svg)](https://pub.dev/packages/jb)
 
-`jb` is a modern (as of the 2020's) build tool for Java.
+`jb` is a modern (2020's era) build tool for Java.
 
 It aims to simplify Java project management and provide an excellent developer experience by being much simpler
 than Maven or Gradle, while still providing enough flexibility for most projects to achieve complex workflows.
@@ -137,20 +137,23 @@ A demo Java project (using the [Javalin Web Framework](https://javalin.io/)) is 
 
 This project is the [JBuild](https://github.com/renatoathaydes/jbuild) CLI front-end.
 
-JBuild is a Java tool for managing Java dependencies, extracting information from existing jars/classpath and
+**JBuild** is a Java tool for managing Java dependencies, extracting information from existing jars/classpath and
 compiling Java projects.
 
-`jb` builds on JBuild to provide a modern developer environment, similar to other languages like
+**`jb`** builds on JBuild to provide a modern developer environment, similar to other languages like
 [Rust](https://www.rust-lang.org/) and [Dart](https://dart.dev/), whose great developer UX inspired `jb`.
 
-[JUnit5](https://junit.org/junit5/) is used for Java tests.
+[JUnit5](https://junit.org/junit5/) is used for executing Java tests.
 
 > I hope to add support for other testing frameworks in the future, specially [Spock](https://spockframework.org/).
-> If you want your favourite framework to be supported, create an issue!
+> If you want your favourite framework to be supported, create an issue or upvote an existing one
+> ([Spock support issue](https://github.com/renatoathaydes/jbuild-cli/issues/4))!
 
-[Dart](https://dart.dev/) was used to implement this project because:
+[Dart](https://dart.dev/) may look like a weird choice of language to write a Java build system... so I think it's
+appropriate to explain the choice:
 
-* it supports building small, native executables that do not require a JVM to run.
-* [Dartle](https://github.com/renatoathaydes/dartle/), the task runner behind `jb`, is written in Dart.
-* the possibility of writing a Flutter UI to manage `jb` projects in the future.
-* possibly adding support for build scripting in the future using Dart.
+* it supports building small, native, fast executables that do not require a JVM to run.
+* that makes it easier to avoid a common pitfall: tying the build system to certain version of the JDK.
+* [Dartle](https://github.com/renatoathaydes/dartle/), the task runner behind `jb`, is written in Dart, by me.
+* the possibility of writing a Flutter UI to manage `jb` projects in the future, which may be of great help to beginners.
+* I find it very easy to write code in Dart, and enjoy using it.

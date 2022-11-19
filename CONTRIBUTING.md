@@ -29,8 +29,7 @@ Here's a little more detail about what `jb` does, and what `JBuild` does:
 As with most Dart projects, the main file is located at [bin/](bin/jbuild_cli.dart), and other code is at the [lib/](lib/)
 directory.
 
-The `jbuild.yaml` config file model is at [config.dart](lib/src/config.dart), which uses [Freezed](https://pub.dev/packages/freezed)
-for Dart data-class and union-type support.
+The `jbuild.yaml` config file model is at [config.dart](lib/src/config.dart).
 
 The CLI options are defined in [options.dart](lib/src/options.dart).
 
