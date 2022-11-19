@@ -14,7 +14,8 @@ Future<int> printDependencies(File jbuildJar, JBuildConfiguration config,
       .map((dep) => dep.key);
 
   return await execJBuild(depsTaskName, jbuildJar, config.preArgs(), 'deps',
-      ['-t', '-s', 'compile', ...deps], _DepsPrinter());
+      ['-t', '-s', 'compile', ...deps],
+      onStdout: _DepsPrinter());
 }
 
 class _DepsPrinter implements ProcessOutputConsumer {

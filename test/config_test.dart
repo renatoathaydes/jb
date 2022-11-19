@@ -20,6 +20,9 @@ void main() {
           javacArgs: const [],
           runJavaArgs: const [],
           testJavaArgs: const [],
+          javacEnv: const {},
+          runJavaEnv: const {},
+          testJavaEnv: const {},
           compileLibsDir: '',
           runtimeLibsDir: '',
           testReportsDir: '');
@@ -59,6 +62,13 @@ void main() {
         - --verbose
       run-java-args: [ -Xmx1G ]
       test-java-args: [ -Xmx2G, -Xms512m ]
+      javac-env:
+        JAVAC: 1
+      run-java-env:
+        JAVA: 11
+        CLASSPATH: foo
+      test-java-env:
+        TEST: true
       repositories:
         - https://maven.org
         - ftp://foo.bar
@@ -77,6 +87,9 @@ void main() {
             javacArgs: ['-Xmx2G', '--verbose'],
             runJavaArgs: ['-Xmx1G'],
             testJavaArgs: ['-Xmx2G', '-Xms512m'],
+            javacEnv: {'JAVAC': '1'},
+            runJavaEnv: {'JAVA': '11', 'CLASSPATH': 'foo'},
+            testJavaEnv: {'TEST': 'true'},
             repositories: {'https://maven.org', 'ftp://foo.bar'},
             dependencies: {
               'com.google:guava:1.2.3': DependencySpec.defaultSpec,
@@ -110,6 +123,9 @@ void main() {
               javacArgs: ['-X'],
               runJavaArgs: [],
               testJavaArgs: [],
+              javacEnv: {},
+              runJavaEnv: {},
+              testJavaEnv: {},
               repositories: {'https://maven.org'},
               dependencies: {},
               exclusions: {'one'},

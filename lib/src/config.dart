@@ -44,6 +44,9 @@ class JBuildConfiguration {
   final List<String> javacArgs;
   final List<String> runJavaArgs;
   final List<String> testJavaArgs;
+  final Map<String, String> javacEnv;
+  final Map<String, String> runJavaEnv;
+  final Map<String, String> testJavaEnv;
   final Set<String> repositories;
   final Map<String, DependencySpec> dependencies;
   final Set<String> exclusions;
@@ -62,6 +65,9 @@ class JBuildConfiguration {
     required this.javacArgs,
     required this.runJavaArgs,
     required this.testJavaArgs,
+    required this.javacEnv,
+    required this.runJavaEnv,
+    required this.testJavaEnv,
     required this.repositories,
     required this.dependencies,
     required this.exclusions,
@@ -89,6 +95,9 @@ class JBuildConfiguration {
           .toList(growable: false),
       testJavaArgs: _stringIterableValue(map, 'test-java-args', const [])
           .toList(growable: false),
+      javacEnv: _stringMapValue(map, 'javac-env', const {}),
+      runJavaEnv: _stringMapValue(map, 'run-java-env', const {}),
+      testJavaEnv: _stringMapValue(map, 'test-java-env', const {}),
       dependencies: _dependencies(map, 'dependencies', const {}),
       repositories: _stringIterableValue(map, 'repositories', const {}).toSet(),
       exclusions:
@@ -350,12 +359,11 @@ Iterable<String> _stringIterableValue(
   final value = map[key];
   if (value == null) return defaultValue;
   if (value is Iterable) {
-    // value is not even an Iterable!!!
     return value.map((e) {
       if (e == null || e is Iterable || e is Map) {
         throw DartleException(
             message: "expecting a list of String values for '$key', "
-                "but got '$e'.");
+                "but got element '$e'.");
       }
       return e.toString();
     });
@@ -365,6 +373,25 @@ Iterable<String> _stringIterableValue(
   }
   throw DartleException(
       message: "expecting a list of String values for '$key', "
+          "but got '$value'.");
+}
+
+Map<String, String> _stringMapValue(
+    Map<String, Object?> map, String key, Map<String, String> defaultValue) {
+  final value = map[key];
+  if (value == null) return defaultValue;
+  if (value is Map) {
+    return value.map((key, value) {
+      if (value == null || value is Iterable || value is Map) {
+        throw DartleException(
+            message: "expecting a Map with String values for '$key', "
+                "but got $key => '$value'.");
+      }
+      return MapEntry(key.toString(), value.toString());
+    });
+  }
+  throw DartleException(
+      message: "expecting a Map with String values for '$key', "
           "but got '$value'.");
 }
 

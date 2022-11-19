@@ -44,7 +44,8 @@ Task createCompileTask(
 
 Future<void> _compile(File jbuildJar, JBuildConfiguration config) async {
   final exitCode = await execJBuild(compileTaskName, jbuildJar,
-      config.preArgs(), 'compile', config.compileArgs());
+      config.preArgs(), 'compile', config.compileArgs(),
+      env: config.javacEnv);
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild compile command failed', exitCode: exitCode);
@@ -196,7 +197,8 @@ Future<void> _run(
   }.join(Platform.isWindows ? ';' : ':');
 
   final exitCode = await execJava(runTaskName,
-      [...config.runJavaArgs, '-cp', classpath, mainClass, ...args]);
+      [...config.runJavaArgs, '-cp', classpath, mainClass, ...args],
+      env: config.runJavaEnv);
 
   if (exitCode != 0) {
     throw DartleException(message: 'java command failed', exitCode: exitCode);
@@ -268,20 +270,23 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
   final hasCustomSelect = args.any((arg) =>
       arg.startsWith('--select') || arg.startsWith('--scan-classpath'));
 
-  final exitCode = await execJava(testTaskName, [
-    ...config.testJavaArgs,
-    '-ea',
-    '-cp',
-    '${cache.rootDir}/$junitRunnerLibsDir/*',
-    mainClass,
-    '--classpath=$classpath',
-    if (!hasCustomSelect)
-      '--scan-classpath=${config.output.when(dir: (d) => d, jar: (j) => j)}',
-    '--reports-dir=${config.testReportsDir}',
-    '--fail-if-no-tests',
-    if (noColor) '--disable-ansi-colors',
-    ...args,
-  ]);
+  final exitCode = await execJava(
+      testTaskName,
+      [
+        ...config.testJavaArgs,
+        '-ea',
+        '-cp',
+        '${cache.rootDir}/$junitRunnerLibsDir/*',
+        mainClass,
+        '--classpath=$classpath',
+        if (!hasCustomSelect)
+          '--scan-classpath=${config.output.when(dir: (d) => d, jar: (j) => j)}',
+        '--reports-dir=${config.testReportsDir}',
+        '--fail-if-no-tests',
+        if (noColor) '--disable-ansi-colors',
+        ...args,
+      ],
+      env: config.testJavaEnv);
 
   if (exitCode != 0) {
     throw DartleException(message: 'test command failed', exitCode: exitCode);

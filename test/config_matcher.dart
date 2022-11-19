@@ -72,6 +72,21 @@ class _ConfigMatcher extends Matcher {
           'testJavaArgs should be "${expected.testJavaArgs}" but is "${item.testJavaArgs}"';
       return false;
     }
+    if (!const MapEquality().equals(expected.javacEnv, item.javacEnv)) {
+      matchState[#reason] =
+          'javacEnv should be "${expected.javacEnv}" but is "${item.javacEnv}"';
+      return false;
+    }
+    if (!const MapEquality().equals(expected.runJavaEnv, item.runJavaEnv)) {
+      matchState[#reason] =
+          'runJavaEnv should be "${expected.runJavaEnv}" but is "${item.runJavaEnv}"';
+      return false;
+    }
+    if (!const MapEquality().equals(expected.testJavaEnv, item.testJavaEnv)) {
+      matchState[#reason] =
+          'testJavaEnv should be "${expected.testJavaEnv}" but is "${item.testJavaEnv}"';
+      return false;
+    }
     if (!const SetEquality().equals(expected.repositories, item.repositories)) {
       matchState[#reason] =
           'repositories should be "${expected.repositories}" but is "${item.repositories}"';

@@ -17,7 +17,9 @@ mixin ProcessOutputConsumer {
 /// Execute the jbuild tool.
 Future<int> execJBuild(String taskName, File jbuildJar, List<String> preArgs,
     String command, List<String> commandArgs,
-    [ProcessOutputConsumer? onStdout, ProcessOutputConsumer? onStderr]) {
+    {ProcessOutputConsumer? onStdout,
+    ProcessOutputConsumer? onStderr,
+    Map<String, String> env = const {}}) {
   return execJava(
       taskName,
       [
@@ -28,13 +30,16 @@ Future<int> execJBuild(String taskName, File jbuildJar, List<String> preArgs,
         command,
         ...commandArgs,
       ],
-      onStdout,
-      onStderr);
+      onStdout: onStdout,
+      onStderr: onStderr,
+      env: env);
 }
 
 /// Execute a java process.
 Future<int> execJava(String taskName, List<String> args,
-    [ProcessOutputConsumer? onStdout, ProcessOutputConsumer? onStderr]) {
+    {ProcessOutputConsumer? onStdout,
+    ProcessOutputConsumer? onStderr,
+    Map<String, String> env = const {}}) {
   final workingDir = Directory.current.path;
   logger.fine(() => '\n====> Task $taskName executing command at $workingDir\n'
       'java ${args.join(' ')}\n<=============================');
@@ -42,12 +47,13 @@ Future<int> execJava(String taskName, List<String> args,
   // the test task must print to stdout/err directly
   if (taskName == testTaskName) {
     return exec(Process.start('java', args,
-        runInShell: true, workingDirectory: workingDir));
+        environment: env, runInShell: true, workingDirectory: workingDir));
   }
   final stdoutFun = onStdout ?? _TaskExecLogger('-out>', taskName);
   final stderrFun = onStderr ?? _TaskExecLogger('-err>', taskName);
   return exec(
-    Process.start('java', args, runInShell: true, workingDirectory: workingDir)
+    Process.start('java', args,
+            runInShell: true, environment: env, workingDirectory: workingDir)
         .then((proc) {
       stdoutFun.pid = proc.pid;
       stderrFun.pid = proc.pid;
