@@ -1,4 +1,4 @@
-## Next version
+## 0.3.0
 
 - Support for YAML imports.
 - Added config `java-env`, `run-java-env` and `test-java-env` for setting environment variables.
