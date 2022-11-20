@@ -5,7 +5,9 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'jbuild_jar.g.dart';
+import 'properties.dart';
 import 'paths.dart';
+import 'config.dart';
 
 Future<File> createIfNeededAndGetJBuildJarFile() async {
   final file = File(jbuildJarPath()).absolute;
@@ -47,6 +49,35 @@ extension AsyncIterable<T> on Iterable<FutureOr<T>> {
       yield await item;
     }
   }
+}
+
+extension ListExtension on List<String> {
+  List<String> merge(List<String> other, Properties props) => followedBy(other)
+      .map((e) => resolveString(e, props))
+      .toList(growable: false);
+}
+
+extension SetExtension on Set<String> {
+  Set<String> merge(Set<String> other, Properties props) =>
+      followedBy(other).map((e) => resolveString(e, props)).toSet();
+}
+
+extension MapExtension<V> on Map<String, V> {
+  Map<String, V> union(Map<String, V> other) =>
+      Map.fromEntries(entries.followedBy(other.entries));
+}
+
+extension StringMapExtension on Map<String, String> {
+  Map<String, String> merge(Map<String, String> other, Properties props) =>
+      Map.fromEntries(entries.followedBy(other.entries).map((e) => MapEntry(
+          resolveString(e.key, props), resolveString(e.value, props))));
+}
+
+extension DependencyMapExtension on Map<String, DependencySpec> {
+  Map<String, DependencySpec> merge(
+          Map<String, DependencySpec> other, Properties props) =>
+      Map.fromEntries(entries.followedBy(other.entries).map((e) => MapEntry(
+          resolveString(e.key, props), e.value.resolveProperties(props))));
 }
 
 extension MapEntryIterable<K, V> on Iterable<MapEntry<K, V>> {

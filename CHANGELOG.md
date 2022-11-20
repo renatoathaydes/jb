@@ -1,3 +1,9 @@
+## Next version
+
+- Support for YAML imports.
+- Added config `java-env`, `run-java-env` and `test-java-env` for setting environment variables.
+- Removed build dependency on freezed. 
+
 ## 0.2.0
 
 - Fixed detecting `--main-class` argument to `run` task when it's the first argument.

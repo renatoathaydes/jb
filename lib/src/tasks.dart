@@ -174,7 +174,7 @@ Task createRunTask(
 
 Future<void> _run(
     File jbuildJar, JBuildConfiguration config, List<String> args) async {
-  var mainClass = config.mainClass;
+  var mainClass = config.mainClass ?? '';
   if (mainClass.isEmpty) {
     const mainClassArg = '--main-class=';
     final mainClassArgIndex =

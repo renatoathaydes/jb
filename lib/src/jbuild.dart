@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 import 'package:isolate_current_directory/isolate_current_directory.dart';
-import 'package:yaml/yaml.dart';
 
 import 'config.dart';
 import 'create.dart';
@@ -97,8 +96,7 @@ Options:''');
 
   Future<JBuildConfiguration?> createConfig() async {
     if (await files.configFile.exists()) {
-      return configFromJson(loadYaml(await files.configFile.readAsString(),
-          sourceUrl: Uri.parse(files.configFile.path)));
+      return await loadConfig(files.configFile);
     }
     return null;
   }

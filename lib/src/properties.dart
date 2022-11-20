@@ -1,18 +1,26 @@
 typedef Properties = Map<String, Object?>;
 
-Map<String, Object?> resolveConfigMap(Map map) {
+class MapWithProperties {
+  final Map<String, Object?> map;
+  final Properties properties;
+
+  const MapWithProperties(this.map, this.properties);
+}
+
+MapWithProperties resolvePropertiesFromMap(Map map) {
   final p = map['properties'];
-  Properties properties = p is Map ? resolveConfigMap(p) : const {};
-  Properties result = _asConfigMap(map, properties);
+  Properties properties = p is Map ? resolveProperties(p, const {}) : const {};
+  Properties result = resolveProperties(map, properties);
   result.remove('properties');
-  return result;
+  return MapWithProperties(result, properties);
 }
 
 Map<String, Object?> resolveProperties(Map map, Properties properties) {
-  return _asConfigMap(map, properties);
-}
-
-Map<String, Object?> _asConfigMap(Map map, Properties properties) {
+  if (properties.isEmpty) {
+    return map.map((dynamic key, dynamic value) {
+      return MapEntry('$key', _resolveValue(value, properties));
+    });
+  }
   return map.map((dynamic key, dynamic value) {
     return MapEntry(_resolveValue('$key', properties) as String,
         _resolveValue(value, properties));
@@ -21,14 +29,19 @@ Map<String, Object?> _asConfigMap(Map map, Properties properties) {
 
 Object? _resolveValue(Object? value, Properties properties) {
   if (value == null) return null;
-  if (value is String) return _resolveString(value, properties);
+  if (value is String) return resolveString(value, properties);
   if (value is List) return _resolveList(value, properties);
-  if (value is Map) return _asConfigMap(value, properties);
+  if (value is Map) return resolveProperties(value, properties);
   return value;
 }
 
-String _resolveString(String string, Properties properties) {
-  if (string.length < 4) return string;
+String? resolveOptionalString(String? string, Properties properties) {
+  if (string == null) return null;
+  return resolveString(string, properties);
+}
+
+String resolveString(String string, Properties properties) {
+  if (string.length < 4 || properties.isEmpty) return string;
   final startIndex = string.indexOf('{{');
   if (startIndex < 0) return string;
   final endIndex = string.indexOf('}}', startIndex + 2);
@@ -37,11 +50,11 @@ String _resolveString(String string, Properties properties) {
   final value = _lookup(key, properties);
   if (value == null) {
     return string.substring(0, endIndex) +
-        _resolveString(string.substring(endIndex), properties).toString();
+        resolveString(string.substring(endIndex), properties).toString();
   }
   return string.substring(0, startIndex) +
       value +
-      _resolveString(string.substring(endIndex + 2), properties).toString();
+      resolveString(string.substring(endIndex + 2), properties).toString();
 }
 
 List<Object?> _resolveList(List list, Properties properties) {

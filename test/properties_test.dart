@@ -119,11 +119,20 @@ void main() {
           - "{{c}}{{d.e}}"
       ''';
 
-      final yamlMap = resolveConfigMap(loadYaml(yaml));
+      final resolvedMap = resolvePropertiesFromMap(loadYaml(yaml));
 
       expect(
-          yamlMap,
-          equals({
+          resolvedMap.properties,
+          equals(const {
+            'a': 'X',
+            'b': 'Y',
+            'c': 'Z',
+            'd': {'e': 'W'},
+          }));
+
+      expect(
+          resolvedMap.map,
+          equals(const {
             'string': 'X',
             'map': {
               'k': 'Y',

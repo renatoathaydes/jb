@@ -117,6 +117,12 @@ class _ConfigMatcher extends Matcher {
           'testReportsDir should be "${expected.testReportsDir}" but is "${item.testReportsDir}"';
       return false;
     }
+    if (!const MapEquality(values: DeepCollectionEquality.unordered())
+        .equals(expected.properties, item.properties)) {
+      matchState[#reason] =
+          'properties should be "${expected.properties}" but is "${item.properties}"';
+      return false;
+    }
     return true;
   }
 

@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:dartle/dartle.dart';
 import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:path/path.dart' as p;
-import 'package:yaml/yaml.dart';
 
 import 'config.dart';
 import 'jbuild_dartle.dart';
@@ -105,19 +104,11 @@ class SubProjectFactory {
     logger.fine(() => "Resolving sub-project at '${configFile.path}'");
     final dir = p.dirname(configFile.path);
     return await withCurrentDirectory(dir, () async {
-      final subConfig = await _resolveSubProjectConfig(configFile);
+      final subConfig = await loadConfig(configFile);
       final subProject = JBuildDartle(components.child(path, subConfig));
       await subProject.init;
       return subProject;
     });
-  }
-
-  Future<JBuildConfiguration> _resolveSubProjectConfig(
-      File subConfigFile) async {
-    logger.fine(() => 'Reading config file: ${subConfigFile.path}');
-    final config = await subConfigFile.readAsString();
-    return configFromJson(
-        loadYaml(config, sourceUrl: Uri.parse(subConfigFile.path)));
   }
 
   RunCondition _subTaskRunCondition(

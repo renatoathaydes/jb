@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
-import 'package:jb/jb.dart';
+
+import 'config.dart' show logger;
+import 'tasks.dart';
 
 /// Consumer of another process' output.
 mixin ProcessOutputConsumer {

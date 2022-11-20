@@ -19,9 +19,10 @@ import 'package:jb/jb.dart';
 Future<void> main(List<String> args) async {
   final stopwatch = Stopwatch()..start();
   final jbuildJar = await createIfNeededAndGetJBuildJarFile();
-  final config = JBuildConfiguration.fromMap(const {
-    'source-dirs': ['src']
-  });
+
+  final config = await loadConfigString('''
+    source-dirs: [ src ]
+  ''');
   final options = parseOptions(args);
 
   activateLogging(options.logLevel,
