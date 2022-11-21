@@ -74,7 +74,7 @@ To see available tasks, run 'jb -s' (list of tasks) or 'jb -g' (task graph).
 Options:''');
       print(optionsDescription);
       return print('\nFor Documentation, visit '
-          'https://github.com/renatoathaydes/jbuild-cli');
+          'https://github.com/renatoathaydes/jb');
     }
 
     final cache = DartleCache('.jbuild-cache');

@@ -1,7 +1,7 @@
 name: jb
 description: JBuild front-end. A modern Java build system that leverages Dartle to make building Java projects easy.
 version: 0.3.0
-repository: https://github.com/renatoathaydes/jbuild-cli
+repository: https://github.com/renatoathaydes/jb
 
 environment:
   sdk: '>=2.17.6 <3.0.0'

@@ -1,6 +1,6 @@
 # `jb` - Java Builder
 
-![jb-CI](https://github.com/renatoathaydes/jbuild-cli/workflows/jb-CI/badge.svg)
+![jb-CI](https://github.com/renatoathaydes/jb/workflows/jb-CI/badge.svg)
 [![pub package](https://img.shields.io/pub/v/jb.svg)](https://pub.dev/packages/jb)
 
 `jb` is a modern (2020's era) build tool for Java.
@@ -147,7 +147,7 @@ compiling Java projects.
 
 > I hope to add support for other testing frameworks in the future, specially [Spock](https://spockframework.org/).
 > If you want your favourite framework to be supported, create an issue or upvote an existing one
-> ([Spock support issue](https://github.com/renatoathaydes/jbuild-cli/issues/4))!
+> ([Spock support issue](https://github.com/renatoathaydes/jb/issues/4))!
 
 [Dart](https://dart.dev/) may look like a weird choice of language to write a Java build system... so I think it's
 appropriate to explain the choice:

@@ -4,24 +4,24 @@ import 'package:path/path.dart' as path;
 
 import 'config.dart';
 
-final _jbuildHome = Platform.environment['JBUILD_CLI_HOME'];
+final _jbuildHome = Platform.environment['JB_HOME'];
 
 /// Find the `jb` home directory.
 ///
-/// On Windows, this is `%APPDATA%\\.jbuild-cli`.
-/// On other OS, `$HOME/.jbuild-cli`.
+/// On Windows, this is `%APPDATA%\\.jb`.
+/// On other OS, `$HOME/.jb`.
 ///
-/// To override that, set the `JBUILD_CLI_HOME` env var.
+/// To override that, set the `JB_HOME` env var.
 String jbuildCliHome() {
   final result = _jbuildHome;
   if (result == null) {
     final varName = Platform.isWindows ? 'APPDATA' : 'HOME';
     final userHome = Platform.environment[varName];
     if (userHome == null) {
-      throw Exception('Cannot find JBUILD_CLI_HOME or '
+      throw Exception('Cannot find JB_HOME or '
           '$varName environment variables');
     }
-    return path.join(userHome, '.jbuild-cli');
+    return path.join(userHome, '.jb');
   }
   return result;
 }
