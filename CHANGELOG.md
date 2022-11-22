@@ -1,3 +1,7 @@
+## Next
+
+- #5 Support for annotation processors.
+
 ## 0.3.0
 
 - Support for YAML imports.
