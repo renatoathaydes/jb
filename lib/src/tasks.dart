@@ -8,9 +8,8 @@ import 'config.dart';
 import 'dependencies.dart';
 import 'exec.dart';
 import 'java_tests.dart';
-import 'paths.dart';
-import 'utils.dart';
 import 'sub_project.dart';
+import 'utils.dart';
 
 const cleanTaskName = 'clean';
 const compileTaskName = 'compile';
@@ -19,6 +18,7 @@ const downloadTestRunnerTaskName = 'downloadTestRunner';
 const runTaskName = 'runJavaMainClass';
 const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
+const installProcessorDepsTaskName = 'installProcessorDependencies';
 const writeDepsTaskName = 'writeDependencies';
 const depsTaskName = 'dependencies';
 
@@ -34,17 +34,24 @@ RunOnChanges createCompileRunCondition(
 
 /// Create the `compile` task.
 Task createCompileTask(
-    File jbuildJar, JBuildConfiguration config, DartleCache cache) {
-  return Task((_) => _compile(jbuildJar, config),
+    JBuildFiles jbFiles, JBuildConfiguration config, DartleCache cache) {
+  return Task((_) => _compile(jbFiles, config),
       runCondition: createCompileRunCondition(config, cache),
       name: compileTaskName,
-      dependsOn: const {installCompileDepsTaskName},
+      dependsOn: const {
+        installCompileDepsTaskName,
+        installProcessorDepsTaskName
+      },
       description: 'Compile Java source code.');
 }
 
-Future<void> _compile(File jbuildJar, JBuildConfiguration config) async {
-  final exitCode = await execJBuild(compileTaskName, jbuildJar,
-      config.preArgs(), 'compile', config.compileArgs(),
+Future<void> _compile(JBuildFiles jbFiles, JBuildConfiguration config) async {
+  final exitCode = await execJBuild(
+      compileTaskName,
+      jbFiles.jbuildJar,
+      config.preArgs(),
+      'compile',
+      await config.compileArgs(jbFiles.processorLibsDir),
       env: config.javacEnv);
   if (exitCode != 0) {
     throw DartleException(
@@ -53,30 +60,40 @@ Future<void> _compile(File jbuildJar, JBuildConfiguration config) async {
 }
 
 /// Create the `writeDependencies` task.
-Task createWriteDependenciesTask(JBuildFiles files, JBuildConfiguration config,
-    DartleCache cache, Iterable<SubProject> subProjects) {
-  final depsFile = dependenciesFile(files);
+Task createWriteDependenciesTask(
+    JBuildFiles jbFiles,
+    JBuildConfiguration config,
+    DartleCache cache,
+    Iterable<SubProject> subProjects) {
+  final depsFile = jbFiles.dependenciesFile;
+  final procDepsFile = jbFiles.processorDependenciesFile;
 
   final runCondition = RunOnChanges(
-      inputs: file(files.configFile.path),
-      outputs: file(depsFile.path),
+      inputs: file(jbFiles.configFile.path),
+      outputs: files([depsFile.path, procDepsFile.path]),
       cache: cache);
 
-  return Task((_) => _writeDependencies(depsFile, config, subProjects),
+  return Task((_) => _writeDependencies(jbFiles, config, subProjects),
       runCondition: runCondition,
       name: writeDepsTaskName,
       description: 'Write a temporary compile-time dependencies file.');
 }
 
-Future<void> _writeDependencies(File dependenciesFile,
-    JBuildConfiguration config, Iterable<SubProject> subProjects) async {
-  await dependenciesFile.parent.create(recursive: true);
-  await dependenciesFile.writeAsString(config.dependencies.entries
+Future<void> _writeDependencies(JBuildFiles jbFiles, JBuildConfiguration config,
+    Iterable<SubProject> subProjects) async {
+  await jbFiles.dependenciesFile.parent.create(recursive: true);
+  await jbFiles.dependenciesFile.writeAsString(config.dependencies.entries
       .map((e) => e.value == DependencySpec.defaultSpec
           ? e.key
           : "${e.key}->${e.value}")
+      .followedBy(['exclusions:', ...config.exclusions])
       .followedBy(subProjects.map((e) => '${e.name}->${e.spec}'))
       .join('\n'));
+  await jbFiles.processorDependenciesFile.writeAsString(
+      config.processorDependencies.followedBy([
+    'exclusions:',
+    ...config.processorDependenciesExclusions
+  ]).join('\n'));
 }
 
 /// Create the `installCompileDependencies` task.
@@ -89,7 +106,7 @@ Task createInstallCompileDepsTask(JBuildFiles files, JBuildConfiguration config,
   }
 
   return _createInstallDepsTask(installCompileDepsTaskName, 'compile', action,
-      dependenciesFile(files), config.compileLibsDir, cache);
+      files.dependenciesFile, config.compileLibsDir, cache);
 }
 
 /// Create the `installRuntimeDependencies` task.
@@ -102,7 +119,27 @@ Task createInstallRuntimeDepsTask(JBuildFiles files, JBuildConfiguration config,
   }
 
   return _createInstallDepsTask(installRuntimeDepsTaskName, 'runtime', action,
-      dependenciesFile(files), config.runtimeLibsDir, cache);
+      files.dependenciesFile, config.runtimeLibsDir, cache);
+}
+
+/// Create the `installProcessorDependencies` task.
+Task createInstallProcessorDepsTask(
+    JBuildFiles files, JBuildConfiguration config, DartleCache cache) {
+  Future<void> action(_) async {
+    await _install(
+        installProcessorDepsTaskName,
+        files.jbuildJar,
+        config.preArgs(),
+        config.installArgsForProcessor(files.processorLibsDir));
+  }
+
+  return _createInstallDepsTask(
+      installProcessorDepsTaskName,
+      'annotation processor',
+      action,
+      files.dependenciesFile,
+      files.processorLibsDir,
+      cache);
 }
 
 Task _createInstallDepsTask(
@@ -115,7 +152,7 @@ Task _createInstallDepsTask(
   final runCondition = RunOnChanges(
       inputs: file(dependenciesFile.path),
       outputs: dir(libsDir),
-      verifyOutputsExist: false,
+      verifyOutputsExist: false, // maybe nothing to install
       cache: cache);
 
   return Task(action,

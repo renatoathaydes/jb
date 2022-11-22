@@ -38,6 +38,7 @@ class JBuildDartle {
       writeDeps,
       installCompile,
       installRuntime,
+      installProcessor,
       clean,
       run,
       downloadTestRunner,
@@ -114,12 +115,13 @@ class JBuildDartle {
     final runtimeDeps =
         subProjects.where((p) => p.spec.scope.includedAtRuntime());
 
-    compile = createCompileTask(files.jbuildJar, config, cache);
+    compile = createCompileTask(files, config, cache);
     writeDeps = createWriteDependenciesTask(files, config, cache, subProjects);
     installCompile =
         createInstallCompileDepsTask(files, config, cache, compileDeps);
     installRuntime =
         createInstallRuntimeDepsTask(files, config, cache, runtimeDeps);
+    installProcessor = createInstallProcessorDepsTask(files, config, cache);
     run = createRunTask(files, config, cache);
     downloadTestRunner =
         createDownloadTestRunnerTask(files.jbuildJar, config, cache);
@@ -133,6 +135,7 @@ class JBuildDartle {
       writeDeps,
       installCompile,
       installRuntime,
+      installProcessor,
       run,
       downloadTestRunner,
       test,

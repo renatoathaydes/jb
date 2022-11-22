@@ -77,7 +77,7 @@ Options:''');
           'https://github.com/renatoathaydes/jb');
     }
 
-    final cache = DartleCache('.jbuild-cache');
+    final cache = DartleCache(jbuildCache);
 
     final config =
         (await createConfig()).orThrow('${files.configFile.path} not found.'

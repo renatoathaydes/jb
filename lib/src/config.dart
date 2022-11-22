@@ -13,11 +13,16 @@ import 'utils.dart';
 
 final logger = log.Logger('jbuild');
 
+const jbuildCache = '.jbuild-cache';
+
 /// Files and directories used by jb.
 class JBuildFiles {
   final File jbuildJar;
-  final File configFile = File('jbuild.yaml');
-  final Directory tempDir = Directory('.jbuild-cache/tmp');
+  final configFile = File('jbuild.yaml');
+  final dependenciesFile = File(p.join(jbuildCache, 'dependencies.txt'));
+  final processorDependenciesFile =
+      File(p.join(jbuildCache, 'processor-dependencies.txt'));
+  final processorLibsDir = p.join(jbuildCache, 'processor-dependencies');
 
   JBuildFiles(this.jbuildJar);
 }
@@ -74,23 +79,16 @@ class JBuildConfiguration {
   final Set<String> resourceDirs;
   final bool _defaultResourceDirs;
   final List<String> javacArgs;
-  final bool _defaultJavacArgs;
   final List<String> runJavaArgs;
-  final bool _defaultRunJavaArgs;
   final List<String> testJavaArgs;
-  final bool _defaultTestJavaArgs;
   final Map<String, String> javacEnv;
-  final bool _defaultJavacEnv;
   final Map<String, String> runJavaEnv;
-  final bool _defaultRunJavaEnv;
   final Map<String, String> testJavaEnv;
-  final bool _defaultTestJavaEnv;
   final Set<String> repositories;
-  final bool _defaultRepositories;
   final Map<String, DependencySpec> dependencies;
-  final bool _defaultDependencies;
   final Set<String> exclusions;
-  final bool _defaultExclusions;
+  final Set<String> processorDependencies;
+  final Set<String> processorDependenciesExclusions;
   final String compileLibsDir;
   final bool _defaultCompileLibsDir;
   final String runtimeLibsDir;
@@ -107,15 +105,6 @@ class JBuildConfiguration {
     bool defaultSourceDirs = false,
     bool defaultOutput = false,
     bool defaultResourceDirs = false,
-    bool defaultJavacArgs = false,
-    bool defaultRunJavaArgs = false,
-    bool defaultTestJavaArgs = false,
-    bool defaultJavacEnv = false,
-    bool defaultRunJavaEnv = false,
-    bool defaultTestJavaEnv = false,
-    bool defaultRepositories = false,
-    bool defaultDependencies = false,
-    bool defaultExclusions = false,
     bool defaultCompileLibsDir = false,
     bool defaultRuntimeLibsDir = false,
     bool defaultTestReportsDir = false,
@@ -131,6 +120,8 @@ class JBuildConfiguration {
     required this.repositories,
     required this.dependencies,
     required this.exclusions,
+    required this.processorDependencies,
+    required this.processorDependenciesExclusions,
     required this.compileLibsDir,
     required this.runtimeLibsDir,
     required this.testReportsDir,
@@ -138,15 +129,6 @@ class JBuildConfiguration {
   })  : _defaultSourceDirs = defaultSourceDirs,
         _defaultOutput = defaultOutput,
         _defaultResourceDirs = defaultResourceDirs,
-        _defaultJavacArgs = defaultJavacArgs,
-        _defaultRunJavaArgs = defaultRunJavaArgs,
-        _defaultTestJavaArgs = defaultTestJavaArgs,
-        _defaultJavacEnv = defaultJavacEnv,
-        _defaultRunJavaEnv = defaultRunJavaEnv,
-        _defaultTestJavaEnv = defaultTestJavaEnv,
-        _defaultRepositories = defaultRepositories,
-        _defaultDependencies = defaultDependencies,
-        _defaultExclusions = defaultExclusions,
         _defaultCompileLibsDir = defaultCompileLibsDir,
         _defaultRuntimeLibsDir = defaultRuntimeLibsDir,
         _defaultTestReportsDir = defaultTestReportsDir;
@@ -176,6 +158,10 @@ class JBuildConfiguration {
     final repositories = _stringIterableValue(map, 'repositories', const {});
     final exclusions =
         _stringIterableValue(map, 'exclusion-patterns', const {});
+    final processorDependencies =
+        _stringIterableValue(map, 'processor-dependencies', const {});
+    final processorDependenciesExclusions = _stringIterableValue(
+        map, 'processor-dependencies-exclusions', const {});
     final compileLibsDir =
         _stringValue(map, 'compile-libs-dir', 'build/compile-libs');
     final runtimeLibsDir =
@@ -195,23 +181,16 @@ class JBuildConfiguration {
       resourceDirs: resourceDirs.toSet(),
       defaultResourceDirs: resourceDirs.isDefault,
       javacArgs: javacArgs.toList(),
-      defaultJavacArgs: javacArgs.isDefault,
       runJavaArgs: runJavaArgs.toList(),
-      defaultRunJavaArgs: runJavaArgs.isDefault,
       testJavaArgs: testJavaArgs.toList(),
-      defaultTestJavaArgs: testJavaArgs.isDefault,
       javacEnv: javacEnv.value,
-      defaultJavacEnv: javacEnv.isDefault,
       runJavaEnv: runJavaEnv.value,
-      defaultRunJavaEnv: runJavaEnv.isDefault,
       testJavaEnv: testJavaEnv.value,
-      defaultTestJavaEnv: testJavaEnv.isDefault,
       dependencies: dependencies.value,
-      defaultDependencies: dependencies.isDefault,
       repositories: repositories.toSet(),
-      defaultRepositories: repositories.isDefault,
       exclusions: exclusions.toSet(),
-      defaultExclusions: exclusions.isDefault,
+      processorDependencies: processorDependencies.toSet(),
+      processorDependenciesExclusions: processorDependenciesExclusions.toSet(),
       compileLibsDir: compileLibsDir.value,
       defaultCompileLibsDir: compileLibsDir.isDefault,
       runtimeLibsDir: runtimeLibsDir.value,
@@ -244,42 +223,19 @@ class JBuildConfiguration {
           ? resourceDirs.merge(const {}, props)
           : resourceDirs.merge(other.resourceDirs, props),
       defaultResourceDirs: _defaultResourceDirs && other._defaultResourceDirs,
-      javacArgs: other._defaultJavacArgs
-          ? javacArgs.merge(const [], props)
-          : javacArgs.merge(other.javacArgs, props),
-      defaultJavacArgs: _defaultJavacArgs && other._defaultJavacArgs,
-      runJavaArgs: other._defaultRunJavaArgs
-          ? runJavaArgs.merge(const [], props)
-          : runJavaArgs.merge(other.runJavaArgs, props),
-      defaultRunJavaArgs: _defaultRunJavaArgs && other._defaultRunJavaArgs,
-      testJavaArgs: other._defaultTestJavaArgs
-          ? testJavaArgs.merge(const [], props)
-          : testJavaArgs.merge(other.testJavaArgs, props),
-      defaultTestJavaArgs: _defaultTestJavaArgs && other._defaultTestJavaArgs,
-      javacEnv: other._defaultJavacEnv
-          ? javacEnv.merge(const {}, props)
-          : javacEnv.merge(other.javacEnv, props),
-      defaultJavacEnv: _defaultJavacEnv && other._defaultJavacEnv,
-      runJavaEnv: other._defaultRunJavaEnv
-          ? runJavaEnv.merge(const {}, props)
-          : runJavaEnv.merge(other.runJavaEnv, props),
-      defaultRunJavaEnv: _defaultRunJavaEnv && other._defaultRunJavaEnv,
-      testJavaEnv: other._defaultTestJavaEnv
-          ? testJavaEnv.merge(const {}, props)
-          : testJavaEnv.merge(other.testJavaEnv, props),
-      defaultTestJavaEnv: _defaultTestJavaEnv && other._defaultTestJavaEnv,
-      repositories: other._defaultRepositories
-          ? repositories.merge(const {}, props)
-          : repositories.merge(other.repositories, props),
-      defaultRepositories: _defaultRepositories && other._defaultRepositories,
-      dependencies: other._defaultDependencies
-          ? dependencies.merge(const {}, props)
-          : dependencies.merge(other.dependencies, props),
-      defaultDependencies: _defaultDependencies && other._defaultDependencies,
-      exclusions: other._defaultExclusions
-          ? exclusions.merge(const {}, props)
-          : exclusions.merge(other.exclusions, props),
-      defaultExclusions: _defaultExclusions && other._defaultExclusions,
+      javacArgs: javacArgs.merge(other.javacArgs, props),
+      runJavaArgs: runJavaArgs.merge(other.runJavaArgs, props),
+      testJavaArgs: testJavaArgs.merge(other.testJavaArgs, props),
+      javacEnv: javacEnv.merge(other.javacEnv, props),
+      runJavaEnv: runJavaEnv.merge(other.runJavaEnv, props),
+      testJavaEnv: testJavaEnv.merge(other.testJavaEnv, props),
+      repositories: repositories.merge(other.repositories, props),
+      dependencies: dependencies.merge(other.dependencies, props),
+      exclusions: exclusions.merge(other.exclusions, props),
+      processorDependencies:
+          processorDependencies.merge(other.processorDependencies, props),
+      processorDependenciesExclusions: processorDependenciesExclusions.merge(
+          other.processorDependenciesExclusions, props),
       compileLibsDir: resolveString(
           other._defaultCompileLibsDir ? compileLibsDir : other.compileLibsDir,
           props),
@@ -322,7 +278,7 @@ class JBuildConfiguration {
   }
 
   /// Get the compile task arguments from this configuration.
-  List<String> compileArgs() {
+  Future<List<String>> compileArgs(String processorLibsDir) async {
     final result = <String>[];
     result.addAll(sourceDirs);
     result.addAll(['-cp', compileLibsDir]);
@@ -336,9 +292,18 @@ class JBuildConfiguration {
     if (main != null && main.isNotEmpty) {
       result.addAll(['-m', main]);
     }
-    if (javacArgs.isNotEmpty) {
+    if (javacArgs.isNotEmpty || processorDependencies.isNotEmpty) {
       result.add('--');
       result.addAll(javacArgs);
+      if (processorDependencies.isNotEmpty) {
+        result.add('-processorpath');
+        final jars = await Directory(processorLibsDir)
+            .list()
+            .map((f) => f.path)
+            .where((p) => p.endsWith('.jar'))
+            .join(Platform.isWindows ? ';' : ':');
+        result.add(jars);
+      }
     }
     return result;
   }
@@ -377,6 +342,19 @@ class JBuildConfiguration {
       result.add(exclude);
     }
     result.addAll(depsToInstall);
+    return result;
+  }
+
+  /// Get the install arguments for the installProcessor task from this configuration.
+  List<String> installArgsForProcessor(String destinationDir) {
+    if (processorDependencies.isEmpty) return const [];
+
+    final result = ['-s', 'runtime', '-m', '-d', destinationDir];
+    for (final exclude in processorDependenciesExclusions) {
+      result.add('--exclusion');
+      result.add(exclude);
+    }
+    result.addAll(processorDependencies);
     return result;
   }
 }

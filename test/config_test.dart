@@ -15,6 +15,8 @@ void main() {
           mainClass: '',
           dependencies: const {},
           exclusions: const {},
+          processorDependencies: const {},
+          processorDependenciesExclusions: const {},
           repositories: const {},
           javacArgs: const [],
           runJavaArgs: const [],
@@ -46,6 +48,11 @@ void main() {
       exclusion-patterns:
         - test.*
         - .*other\\d+.*
+      
+      processor-dependencies:
+        - foo.bar:zort:1.0
+      processor-dependencies-exclusions:
+        - others
       output-dir: target/
       resource-dirs:
         - src/resources
@@ -93,6 +100,8 @@ void main() {
             dependencies: {
               'com.google:guava:1.2.3': DependencySpec.defaultSpec,
             },
+            processorDependencies: {'foo.bar:zort:1.0'},
+            processorDependenciesExclusions: {'others'},
             exclusions: {'test.*', '.*other\\d+.*'},
             compileLibsDir: 'libs',
             runtimeLibsDir: 'all-libs',
@@ -128,6 +137,8 @@ void main() {
               testJavaEnv: {},
               repositories: {'https://maven.org'},
               dependencies: {},
+              processorDependencies: {},
+              processorDependenciesExclusions: {},
               exclusions: {'one'},
               compileLibsDir: 'build/compile-libs',
               runtimeLibsDir: 'build/runtime-libs',
