@@ -68,35 +68,35 @@ class JBuildConfiguration {
   final String? version;
   final String? mainClass;
   final Set<String> sourceDirs;
-  final bool defaultSourceDirs;
+  final bool _defaultSourceDirs;
   final CompileOutput output;
-  final bool defaultOutput;
+  final bool _defaultOutput;
   final Set<String> resourceDirs;
-  final bool defaultResourceDirs;
+  final bool _defaultResourceDirs;
   final List<String> javacArgs;
-  final bool defaultJavacArgs;
+  final bool _defaultJavacArgs;
   final List<String> runJavaArgs;
-  final bool defaultRunJavaArgs;
+  final bool _defaultRunJavaArgs;
   final List<String> testJavaArgs;
-  final bool defaultTestJavaArgs;
+  final bool _defaultTestJavaArgs;
   final Map<String, String> javacEnv;
-  final bool defaultJavacEnv;
+  final bool _defaultJavacEnv;
   final Map<String, String> runJavaEnv;
-  final bool defaultRunJavaEnv;
+  final bool _defaultRunJavaEnv;
   final Map<String, String> testJavaEnv;
-  final bool defaultTestJavaEnv;
+  final bool _defaultTestJavaEnv;
   final Set<String> repositories;
-  final bool defaultRepositories;
+  final bool _defaultRepositories;
   final Map<String, DependencySpec> dependencies;
-  final bool defaultDependencies;
+  final bool _defaultDependencies;
   final Set<String> exclusions;
-  final bool defaultExclusions;
+  final bool _defaultExclusions;
   final String compileLibsDir;
-  final bool defaultCompileLibsDir;
+  final bool _defaultCompileLibsDir;
   final String runtimeLibsDir;
-  final bool defaultRuntimeLibsDir;
+  final bool _defaultRuntimeLibsDir;
   final String testReportsDir;
-  final bool defaultTestReportsDir;
+  final bool _defaultTestReportsDir;
   final Properties properties;
 
   const JBuildConfiguration({
@@ -104,21 +104,21 @@ class JBuildConfiguration {
     this.module,
     this.version,
     this.mainClass,
-    this.defaultSourceDirs = false,
-    this.defaultOutput = false,
-    this.defaultResourceDirs = false,
-    this.defaultJavacArgs = false,
-    this.defaultRunJavaArgs = false,
-    this.defaultTestJavaArgs = false,
-    this.defaultJavacEnv = false,
-    this.defaultRunJavaEnv = false,
-    this.defaultTestJavaEnv = false,
-    this.defaultRepositories = false,
-    this.defaultDependencies = false,
-    this.defaultExclusions = false,
-    this.defaultCompileLibsDir = false,
-    this.defaultRuntimeLibsDir = false,
-    this.defaultTestReportsDir = false,
+    bool defaultSourceDirs = false,
+    bool defaultOutput = false,
+    bool defaultResourceDirs = false,
+    bool defaultJavacArgs = false,
+    bool defaultRunJavaArgs = false,
+    bool defaultTestJavaArgs = false,
+    bool defaultJavacEnv = false,
+    bool defaultRunJavaEnv = false,
+    bool defaultTestJavaEnv = false,
+    bool defaultRepositories = false,
+    bool defaultDependencies = false,
+    bool defaultExclusions = false,
+    bool defaultCompileLibsDir = false,
+    bool defaultRuntimeLibsDir = false,
+    bool defaultTestReportsDir = false,
     required this.sourceDirs,
     required this.output,
     required this.resourceDirs,
@@ -135,7 +135,21 @@ class JBuildConfiguration {
     required this.runtimeLibsDir,
     required this.testReportsDir,
     this.properties = const {},
-  });
+  })  : _defaultSourceDirs = defaultSourceDirs,
+        _defaultOutput = defaultOutput,
+        _defaultResourceDirs = defaultResourceDirs,
+        _defaultJavacArgs = defaultJavacArgs,
+        _defaultRunJavaArgs = defaultRunJavaArgs,
+        _defaultTestJavaArgs = defaultTestJavaArgs,
+        _defaultJavacEnv = defaultJavacEnv,
+        _defaultRunJavaEnv = defaultRunJavaEnv,
+        _defaultTestJavaEnv = defaultTestJavaEnv,
+        _defaultRepositories = defaultRepositories,
+        _defaultDependencies = defaultDependencies,
+        _defaultExclusions = defaultExclusions,
+        _defaultCompileLibsDir = defaultCompileLibsDir,
+        _defaultRuntimeLibsDir = defaultRuntimeLibsDir,
+        _defaultTestReportsDir = defaultTestReportsDir;
 
   /// Create a [JBuildConfiguration] from a map.
   /// This method does not do any processing or validation of values, it simply
@@ -219,68 +233,68 @@ class JBuildConfiguration {
       module: resolveOptionalString(other.module ?? module, props),
       version: resolveOptionalString(other.version ?? version, props),
       mainClass: resolveOptionalString(other.mainClass ?? mainClass, props),
-      sourceDirs: other.defaultSourceDirs
+      sourceDirs: other._defaultSourceDirs
           ? sourceDirs.merge(const {}, props)
           : sourceDirs.merge(other.sourceDirs, props),
-      defaultSourceDirs: defaultSourceDirs && other.defaultSourceDirs,
-      output: (other.defaultOutput ? output : other.output)
+      defaultSourceDirs: _defaultSourceDirs && other._defaultSourceDirs,
+      output: (other._defaultOutput ? output : other.output)
           .resolveProperties(props),
-      defaultOutput: defaultOutput && other.defaultOutput,
-      resourceDirs: other.defaultResourceDirs
+      defaultOutput: _defaultOutput && other._defaultOutput,
+      resourceDirs: other._defaultResourceDirs
           ? resourceDirs.merge(const {}, props)
           : resourceDirs.merge(other.resourceDirs, props),
-      defaultResourceDirs: defaultResourceDirs && other.defaultResourceDirs,
-      javacArgs: other.defaultJavacArgs
+      defaultResourceDirs: _defaultResourceDirs && other._defaultResourceDirs,
+      javacArgs: other._defaultJavacArgs
           ? javacArgs.merge(const [], props)
           : javacArgs.merge(other.javacArgs, props),
-      defaultJavacArgs: defaultJavacArgs && other.defaultJavacArgs,
-      runJavaArgs: other.defaultRunJavaArgs
+      defaultJavacArgs: _defaultJavacArgs && other._defaultJavacArgs,
+      runJavaArgs: other._defaultRunJavaArgs
           ? runJavaArgs.merge(const [], props)
           : runJavaArgs.merge(other.runJavaArgs, props),
-      defaultRunJavaArgs: defaultRunJavaArgs && other.defaultRunJavaArgs,
-      testJavaArgs: other.defaultTestJavaArgs
+      defaultRunJavaArgs: _defaultRunJavaArgs && other._defaultRunJavaArgs,
+      testJavaArgs: other._defaultTestJavaArgs
           ? testJavaArgs.merge(const [], props)
           : testJavaArgs.merge(other.testJavaArgs, props),
-      defaultTestJavaArgs: defaultTestJavaArgs && other.defaultTestJavaArgs,
-      javacEnv: other.defaultJavacEnv
+      defaultTestJavaArgs: _defaultTestJavaArgs && other._defaultTestJavaArgs,
+      javacEnv: other._defaultJavacEnv
           ? javacEnv.merge(const {}, props)
           : javacEnv.merge(other.javacEnv, props),
-      defaultJavacEnv: defaultJavacEnv && other.defaultJavacEnv,
-      runJavaEnv: other.defaultRunJavaEnv
+      defaultJavacEnv: _defaultJavacEnv && other._defaultJavacEnv,
+      runJavaEnv: other._defaultRunJavaEnv
           ? runJavaEnv.merge(const {}, props)
           : runJavaEnv.merge(other.runJavaEnv, props),
-      defaultRunJavaEnv: defaultRunJavaEnv && other.defaultRunJavaEnv,
-      testJavaEnv: other.defaultTestJavaEnv
+      defaultRunJavaEnv: _defaultRunJavaEnv && other._defaultRunJavaEnv,
+      testJavaEnv: other._defaultTestJavaEnv
           ? testJavaEnv.merge(const {}, props)
           : testJavaEnv.merge(other.testJavaEnv, props),
-      defaultTestJavaEnv: defaultTestJavaEnv && other.defaultTestJavaEnv,
-      repositories: other.defaultRepositories
+      defaultTestJavaEnv: _defaultTestJavaEnv && other._defaultTestJavaEnv,
+      repositories: other._defaultRepositories
           ? repositories.merge(const {}, props)
           : repositories.merge(other.repositories, props),
-      defaultRepositories: defaultRepositories && other.defaultRepositories,
-      dependencies: other.defaultDependencies
+      defaultRepositories: _defaultRepositories && other._defaultRepositories,
+      dependencies: other._defaultDependencies
           ? dependencies.merge(const {}, props)
           : dependencies.merge(other.dependencies, props),
-      defaultDependencies: defaultDependencies && other.defaultDependencies,
-      exclusions: other.defaultExclusions
+      defaultDependencies: _defaultDependencies && other._defaultDependencies,
+      exclusions: other._defaultExclusions
           ? exclusions.merge(const {}, props)
           : exclusions.merge(other.exclusions, props),
-      defaultExclusions: defaultExclusions && other.defaultExclusions,
+      defaultExclusions: _defaultExclusions && other._defaultExclusions,
       compileLibsDir: resolveString(
-          other.defaultCompileLibsDir ? compileLibsDir : other.compileLibsDir,
+          other._defaultCompileLibsDir ? compileLibsDir : other.compileLibsDir,
           props),
       defaultCompileLibsDir:
-          defaultCompileLibsDir && other.defaultCompileLibsDir,
+          _defaultCompileLibsDir && other._defaultCompileLibsDir,
       runtimeLibsDir: resolveString(
-          other.defaultRuntimeLibsDir ? runtimeLibsDir : other.runtimeLibsDir,
+          other._defaultRuntimeLibsDir ? runtimeLibsDir : other.runtimeLibsDir,
           props),
       defaultRuntimeLibsDir:
-          defaultRuntimeLibsDir && other.defaultRuntimeLibsDir,
+          _defaultRuntimeLibsDir && other._defaultRuntimeLibsDir,
       testReportsDir: resolveString(
-          other.defaultTestReportsDir ? testReportsDir : other.testReportsDir,
+          other._defaultTestReportsDir ? testReportsDir : other.testReportsDir,
           props),
       defaultTestReportsDir:
-          defaultTestReportsDir && other.defaultTestReportsDir,
+          _defaultTestReportsDir && other._defaultTestReportsDir,
       properties: props,
     );
   }
