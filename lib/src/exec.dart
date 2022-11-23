@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
+import 'package:logging/logging.dart';
 
 import 'config.dart' show logger;
 import 'tasks.dart';
@@ -77,7 +78,26 @@ class _TaskExecLogger implements ProcessOutputConsumer {
 
   @override
   void call(String line) {
-    logger.info(ColoredLogMessage(
-        '$prompt $taskName [java $pid]: $line', LogColor.gray));
+    final level = _levelFor(line);
+    logger.log(
+        level,
+        ColoredLogMessage(
+            '$prompt $taskName [java $pid]: $line', _colorFor(level)));
+  }
+
+  Level _levelFor(String line) {
+    if (line.startsWith('ERROR:') || line.startsWith('JBuild failed ')) {
+      return Level.SEVERE;
+    }
+    if (line.startsWith('WARN:')) {
+      return Level.WARNING;
+    }
+    return Level.INFO;
+  }
+
+  LogColor _colorFor(Level level) {
+    if (level == Level.SEVERE) return LogColor.red;
+    if (level == Level.WARNING) return LogColor.yellow;
+    return LogColor.gray;
   }
 }
