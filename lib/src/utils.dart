@@ -55,6 +55,13 @@ extension ListExtension on List<String> {
   List<String> merge(List<String> other, Properties props) => followedBy(other)
       .map((e) => resolveString(e, props))
       .toList(growable: false);
+
+  bool _javaRuntimeArg(String arg) => arg.startsWith('-J-');
+
+  Iterable<String> javaRuntimeArgs() =>
+      where(_javaRuntimeArg).map((e) => e.substring(2));
+
+  Iterable<String> notJavaRuntimeArgs() => where(_javaRuntimeArg.not);
 }
 
 extension SetExtension on Set<String> {

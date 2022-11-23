@@ -4,6 +4,7 @@ import 'package:dartle/dartle.dart';
 
 import 'config.dart' show logger;
 import 'tasks.dart';
+import 'utils.dart';
 
 /// Consumer of another process' output.
 mixin ProcessOutputConsumer {
@@ -25,12 +26,13 @@ Future<int> execJBuild(String taskName, File jbuildJar, List<String> preArgs,
   return execJava(
       taskName,
       [
+        ...commandArgs.javaRuntimeArgs(),
         '-jar',
         jbuildJar.path,
         '-q',
         ...preArgs,
         command,
-        ...commandArgs,
+        ...commandArgs.notJavaRuntimeArgs(),
       ],
       onStdout: onStdout,
       onStderr: onStderr,
