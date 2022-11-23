@@ -1,0 +1,10 @@
+imports:
+  - error-prone-config.yaml
+
+group: jb.example
+module: error-prone
+version: '0.0.0'
+
+source-dirs: [ src ]
+
+main-class: jb.example.error_prone.Main
