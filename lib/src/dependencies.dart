@@ -13,6 +13,13 @@ Future<int> printDependencies(File jbuildJar, JBuildConfiguration config,
       .where((dep) => dep.value.path == null)
       .map((dep) => dep.key);
 
+  if (deps.isEmpty) {
+    print('This project does not have any dependencies!');
+    return 0;
+  }
+
+  print('This project has the following dependencies:');
+
   return await execJBuild(depsTaskName, jbuildJar, config.preArgs(), 'deps',
       ['-t', '-s', 'compile', ...deps],
       onStdout: _DepsPrinter());
@@ -23,21 +30,45 @@ class _DepsPrinter implements ProcessOutputConsumer {
 
   @override
   void call(String line) {
-    if (line.startsWith('  - scope')) {
+    if (line.startsWith('Dependencies of ')) {
+      _logDirectDependency(line);
+    } else if (line.startsWith('  - scope')) {
       _logScopeLine(line);
-    } else if (line.startsWith('    * ')) {
+    } else if (line.isDependency()) {
       _logDependency(line);
+    } else if (line.endsWith('is required with more than one version:')) {
+      _logDependencyWarning(line);
     } else {
       print(line);
     }
+  }
+
+  void _logDirectDependency(String line) {
+    logger.info(ColoredLogMessage(
+        '* ${line.substring('Dependencies of '.length)}', LogColor.magenta));
   }
 
   void _logScopeLine(String line) {
     logger.info(ColoredLogMessage(line, LogColor.blue));
   }
 
+  void _logDependencyWarning(String line) {
+    logger.info(ColoredLogMessage(line, LogColor.yellow));
+  }
+
   void _logDependency(String line) {
-    // TODO colorize
-    print(line);
+    if (line.endsWith('(-)')) {
+      logger.info(ColoredLogMessage(line, LogColor.gray));
+    } else {
+      print(line);
+    }
+  }
+}
+
+final _depPattern = RegExp(r'^\s+\*\s');
+
+extension _DepString on String {
+  bool isDependency() {
+    return _depPattern.hasMatch(this);
   }
 }
