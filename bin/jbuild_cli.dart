@@ -15,9 +15,12 @@ void main(List<String> arguments) async {
     activateLogging(dartleOptions.logLevel,
         colorfulLog: dartleOptions.colorfulLog, logName: 'jbuild');
     loggingEnabled = true;
-    await runJBuild(jbOptions, dartleOptions, stopWatch, jbuildJar);
-    logger.info(ColoredLogMessage(
-        'Build succeeded in ${_elapsedTime(stopWatch)}!', LogColor.green));
+    final printBuildSuccess =
+        await runJBuild(jbOptions, dartleOptions, stopWatch, jbuildJar);
+    if (printBuildSuccess) {
+      logger.info(ColoredLogMessage(
+          'Build succeeded in ${_elapsedTime(stopWatch)}!', LogColor.green));
+    }
   } catch (e, st) {
     _logAndExit(loggingEnabled, dartleOptions?.logLevel, e, st);
   }

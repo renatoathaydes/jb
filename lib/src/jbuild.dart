@@ -3,23 +3,31 @@ import 'dart:io';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 import 'package:isolate_current_directory/isolate_current_directory.dart';
-import 'package:logging/logging.dart';
-import 'package:io/ansi.dart' as ansi;
+
 import 'config.dart';
 import 'create.dart';
 import 'jbuild_dartle.dart';
 import 'options.dart';
 import 'utils.dart';
+import 'help.dart';
 
 /// Run jb.
 ///
 /// The caller must handle errors.
-Future<void> runJBuild(
+Future<bool> runJBuild(
   JBuildCliOptions jbOptions,
   Options dartleOptions,
   Stopwatch stopwatch,
   File jbuildJar,
 ) async {
+  if (dartleOptions.showHelp) {
+    printHelp();
+    return false;
+  }
+  if (dartleOptions.showVersion) {
+    await printVersion(jbuildJar);
+    return false;
+  }
   final rootDir = jbOptions.rootDirectory;
   if (rootDir == null) {
     await _runJBuild(jbOptions, dartleOptions, stopwatch, jbuildJar);
@@ -38,6 +46,7 @@ Future<void> runJBuild(
         () async =>
             await _runJBuild(jbOptions, dartleOptions, stopwatch, jbuildJar));
   }
+  return true;
 }
 
 Future<void> _runJBuild(JBuildCliOptions options, Options dartleOptions,
@@ -58,36 +67,6 @@ class _JBuildCli {
   _JBuildCli(File jbuildJar) : files = JBuildFiles(jbuildJar);
 
   Future<void> start(Options options, Stopwatch stopWatch) async {
-    if (options.showHelp) {
-      logger.log(
-          Level.SHOUT,
-          const AnsiMessage([
-            AnsiMessagePart.code(ansi.styleBold),
-            AnsiMessagePart.code(ansi.blue),
-            AnsiMessagePart.text(r'''
-                 _ ___      _ _    _ 
-              _ | | _ )_  _(_) |__| |
-             | || | _ \ || | | / _` |
-'''),
-            AnsiMessagePart.code(ansi.yellow),
-            AnsiMessagePart.text(r'''
-              \__/|___/\_,_|_|_\__,_|
-                Java Build System'''),
-          ]));
-      print(r'''
-
-Usage:
-    jb <task [args...]...> <options...>
-    
-To create a new project, run `jb create`.
-To see available tasks, run 'jb -s' (list of tasks) or 'jb -g' (task graph).
-
-Options:''');
-      print(optionsDescription);
-      return print('\nFor Documentation, visit '
-          'https://github.com/renatoathaydes/jb');
-    }
-
     final cache = DartleCache(jbuildCache);
 
     final config =
