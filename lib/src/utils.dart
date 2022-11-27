@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dartle/dartle.dart';
 import 'package:path/path.dart' as p;
 
 import 'jbuild_jar.g.dart';
@@ -12,7 +13,7 @@ import 'config.dart';
 Future<File> createIfNeededAndGetJBuildJarFile() async {
   final file = File(jbuildJarPath()).absolute;
   if (!await file.exists()) {
-    print('Creating JBuild jar');
+    logger.info(const PlainMessage('Creating JBuild jar'));
     await _createJBuildJar(file);
   }
   return file;
@@ -21,7 +22,7 @@ Future<File> createIfNeededAndGetJBuildJarFile() async {
 Future<void> _createJBuildJar(File jar) async {
   await jar.parent.create(recursive: true);
   await jar.writeAsBytes(base64Decode(jbuildJarB64));
-  print('JBuild jar saved at ${jar.path}');
+  logger.info(() => PlainMessage('JBuild jar saved at ${jar.path}'));
 }
 
 extension AnyExtension<T> on T? {

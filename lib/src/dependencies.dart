@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'package:io/ansi.dart' as ansi;
 
 import 'config.dart';
 import 'exec.dart';
@@ -14,11 +15,16 @@ Future<int> printDependencies(File jbuildJar, JBuildConfiguration config,
       .map((dep) => dep.key);
 
   if (deps.isEmpty) {
-    print('This project does not have any dependencies!');
+    logger.info(
+        const PlainMessage('This project does not have any dependencies!'));
     return 0;
   }
 
-  print('This project has the following dependencies:');
+  logger.info(const AnsiMessage([
+    AnsiMessagePart.code(ansi.styleItalic),
+    AnsiMessagePart.code(ansi.styleBold),
+    AnsiMessagePart.text('This project has the following dependencies:')
+  ]));
 
   return await execJBuild(depsTaskName, jbuildJar, config.preArgs(), 'deps',
       ['-t', '-s', 'compile', ...deps],
@@ -39,7 +45,7 @@ class _DepsPrinter implements ProcessOutputConsumer {
     } else if (line.endsWith('is required with more than one version:')) {
       _logDependencyWarning(line);
     } else {
-      print(line);
+      logger.info(PlainMessage(line));
     }
   }
 
@@ -60,7 +66,7 @@ class _DepsPrinter implements ProcessOutputConsumer {
     if (line.endsWith('(-)')) {
       logger.info(ColoredLogMessage(line, LogColor.gray));
     } else {
-      print(line);
+      logger.info(PlainMessage(line));
     }
   }
 }

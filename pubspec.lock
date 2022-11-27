@@ -165,10 +165,10 @@ packages:
   dartle:
     dependency: "direct main"
     description:
-      path: "../dartle"
-      relative: true
-    source: path
-    version: "0.17.0"
+      name: dartle
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.18.0"
   file:
     dependency: "direct main"
     description:
@@ -226,7 +226,7 @@ packages:
     source: hosted
     version: "4.0.2"
   io:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: io
       url: "https://pub.dartlang.org"

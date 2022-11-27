@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 import 'package:isolate_current_directory/isolate_current_directory.dart';
-
+import 'package:logging/logging.dart';
+import 'package:io/ansi.dart' as ansi;
 import 'config.dart';
 import 'create.dart';
 import 'jbuild_dartle.dart';
@@ -28,7 +29,7 @@ Future<void> runJBuild(
       if (jbOptions.createOptions == null) {
         throw DartleException(message: 'directory does not exist: $rootDir');
       } else {
-        print('Creating directory: $rootDir');
+        logger.info(() => PlainMessage('Creating directory: $rootDir'));
         await dir.create(recursive: true);
       }
     }
@@ -58,12 +59,22 @@ class _JBuildCli {
 
   Future<void> start(Options options, Stopwatch stopWatch) async {
     if (options.showHelp) {
-      print(r'''
+      logger.log(
+          Level.SHOUT,
+          const AnsiMessage([
+            AnsiMessagePart.code(ansi.styleBold),
+            AnsiMessagePart.code(ansi.blue),
+            AnsiMessagePart.text(r'''
                  _ ___      _ _    _ 
               _ | | _ )_  _(_) |__| |
              | || | _ \ || | | / _` |
+'''),
+            AnsiMessagePart.code(ansi.yellow),
+            AnsiMessagePart.text(r'''
               \__/|___/\_,_|_|_\__,_|
-                Java Build System
+                Java Build System'''),
+          ]));
+      print(r'''
 
 Usage:
     jb <task [args...]...> <options...>

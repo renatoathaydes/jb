@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dartle/dartle.dart';
 import 'package:path/path.dart' as p;
 
+import 'config.dart' show logger;
+
 const _testArtifactId = 'tests';
 
 const _testDependencies = '''\
@@ -131,7 +133,8 @@ Future<void> _create(File jbuildFile) async {
 
   await _createAll(fileCreators);
 
-  print('\nJBuild project created at ${Directory.current.path}');
+  logger.info(() =>
+      PlainMessage('\nJBuild project created at ${Directory.current.path}'));
 }
 
 Future<void> _createAll(List<_FileCreator> fileCreators) async {

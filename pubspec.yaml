@@ -8,6 +8,7 @@ environment:
 
 dependencies:
   path: ^1.8.2
+  io: ^1.0.3
   dartle: ^0.18.0
   args: ^2.3.1
   logging: ^1.0.0
