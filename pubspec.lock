@@ -165,9 +165,9 @@ packages:
   dartle:
     dependency: "direct main"
     description:
-      name: dartle
-      url: "https://pub.dartlang.org"
-    source: hosted
+      path: "../dartle"
+      relative: true
+    source: path
     version: "0.17.0"
   file:
     dependency: "direct main"
