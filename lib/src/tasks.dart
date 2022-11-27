@@ -76,7 +76,7 @@ Task createWriteDependenciesTask(
   return Task((_) => _writeDependencies(jbFiles, config, subProjects),
       runCondition: runCondition,
       name: writeDepsTaskName,
-      description: 'Write a temporary compile-time dependencies file.');
+      description: 'Write a file with dependencies information.');
 }
 
 Future<void> _writeDependencies(JBuildFiles jbFiles, JBuildConfiguration config,
@@ -137,7 +137,7 @@ Task createInstallProcessorDepsTask(
       installProcessorDepsTaskName,
       'annotation processor',
       action,
-      files.dependenciesFile,
+      files.processorDependenciesFile,
       files.processorLibsDir,
       cache);
 }
@@ -165,7 +165,7 @@ Task _createInstallDepsTask(
 Future<void> _install(String taskName, File jbuildJar, List<String> preArgs,
     List<String> args) async {
   if (args.isEmpty) {
-    return logger.fine('No dependencies to install');
+    return logger.fine("No dependencies to install for '$taskName'.");
   }
   final exitCode =
       await execJBuild(taskName, jbuildJar, preArgs, 'install', args);
