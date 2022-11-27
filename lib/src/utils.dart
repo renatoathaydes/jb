@@ -25,8 +25,8 @@ Future<void> _createJBuildJar(File jar) async {
 }
 
 extension AnyExtension<T> on T? {
-  T orThrow(error) {
-    if (this == null) throw error;
+  T orThrow(String error) {
+    if (this == null) throw DartleException(message: error);
     return this!;
   }
 }

@@ -2,6 +2,7 @@
 
 - #5 Support for annotation processors.
 - Pass options starting with `-J-` to the JVM runtime, not the Java tool being called. See error-prone example.
+- Report basic errors without stacktrace.
 
 ## 0.3.0
 
