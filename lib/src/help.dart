@@ -5,7 +5,6 @@ import 'package:io/ansi.dart' as ansi;
 import 'package:jb/jb.dart';
 import 'package:logging/logging.dart';
 
-import 'config.dart';
 import 'version.g.dart';
 
 void printHelp() {
