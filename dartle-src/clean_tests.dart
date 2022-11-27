@@ -8,7 +8,7 @@ Stream<Directory> _deletables() async* {
   await for (final entity in Directory(testProjectsDir).list(recursive: true)) {
     if (entity is Directory) {
       final name = p.basename(entity.path);
-      if (const {'build', '.jbuild-cache'}.contains(name)) {
+      if (const {'build', '.jbuild-cache', '.dartle_tool'}.contains(name)) {
         yield entity;
       }
     }

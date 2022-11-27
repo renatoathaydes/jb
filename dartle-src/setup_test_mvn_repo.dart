@@ -5,7 +5,7 @@ import 'package:path/path.dart' as path;
 
 import 'paths.dart';
 
-final _listsJar = path.join(listsMavenRepoProjectSrc, 'lists.jar');
+final _listsJar = path.join(listsMavenRepoProjectSrc, 'build', 'lists.jar');
 final _listsPom = path.join(listsMavenRepoProjectSrc, 'pom.xml');
 final _listsRepoDir =
     path.join(testMavenRepo, 'com', 'example', 'lists', '1.0');
@@ -39,7 +39,8 @@ Future<void> buildMvnRepoListsProject(_) async {
 
 Future<void> _buildProject(String name) async {
   final exitCode = await exec(
-      Process.start('java', ['-jar', await jbuildJarPath(), 'compile'],
+      Process.start('java',
+          ['-jar', await jbuildJarPath(), 'compile', '-j', 'build/lists.jar'],
           workingDirectory: listsMavenRepoProjectSrc),
       name: 'java (compile $name project)');
 
