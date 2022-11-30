@@ -60,8 +60,25 @@ void main() {
           onStdoutLine: stdout.add,
           onStderrLine: stderr.add);
       expectSuccess(exitCode, stdout, stderr);
-      expect(await File('$withDepsProjectDir/build/with-deps.jar').exists(),
-          isTrue);
+      final buildContents = await Directory(p.join(withDepsProjectDir, 'build'))
+          .list(recursive: true)
+          .map((f) => f.path)
+          .toList();
+
+      expect(
+          buildContents,
+          allOf(
+            containsAll([
+              p.join(withDepsProjectDir, 'build', 'with-deps.jar'),
+              p.join(withDepsProjectDir, 'build', 'compile-libs'),
+              p.join(
+                  withDepsProjectDir, 'build', 'compile-libs', 'lists-1.0.jar'),
+              p.join(withDepsProjectDir, 'build', 'compile-libs',
+                  'minimal-java-project.jar'),
+            ]),
+            hasLength(4),
+          ));
+
       stdout.clear();
       stderr.clear();
       exitCode = await exec(
