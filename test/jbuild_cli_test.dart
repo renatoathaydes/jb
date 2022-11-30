@@ -77,7 +77,7 @@ void main() {
           onStderrLine: stderr.add);
 
       expectSuccess(exitCode, stdout, stderr);
-      expect(stdout, equals(const ['[1, 2, 3]']));
+      expect(stdout, equals(const ['Minimal jb project[1, 2, 3]']));
     });
   });
 
