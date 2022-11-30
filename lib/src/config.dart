@@ -9,6 +9,7 @@ import 'package:yaml/yaml.dart';
 import 'config_import.dart';
 import 'path_dependency.dart';
 import 'properties.dart';
+import 'sub_project.dart';
 import 'utils.dart';
 
 final logger = log.Logger('jbuild');
@@ -357,6 +358,15 @@ class JBuildConfiguration {
     result.addAll(processorDependencies);
     return result;
   }
+}
+
+/// Grouping of all local dependencies, which can be local
+/// [JarDependency] or [SubProject]s.
+class LocalDependencies {
+  final List<JarDependency> jars;
+  final List<SubProject> subProjects;
+
+  const LocalDependencies(this.jars, this.subProjects);
 }
 
 enum _CompileOutputTag { dir, jar }

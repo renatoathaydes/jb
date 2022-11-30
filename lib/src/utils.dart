@@ -5,10 +5,10 @@ import 'dart:io';
 import 'package:dartle/dartle.dart';
 import 'package:path/path.dart' as p;
 
-import 'jbuild_jar.g.dart';
-import 'properties.dart';
-import 'paths.dart';
 import 'config.dart';
+import 'jbuild_jar.g.dart';
+import 'paths.dart';
+import 'properties.dart';
 
 Future<File> createIfNeededAndGetJBuildJarFile() async {
   final file = File(jbuildJarPath()).absolute;
@@ -40,6 +40,14 @@ extension NullIterable<T> on Iterable<T?> {
   Iterable<T> whereNonNull() sync* {
     for (final item in this) {
       if (item != null) yield item;
+    }
+  }
+}
+
+extension PathIterable on Iterable<String> {
+  Stream<File> collectFilePaths() async* {
+    for (final path in this) {
+      if (await FileSystemEntity.isFile(path)) yield File(path);
     }
   }
 }

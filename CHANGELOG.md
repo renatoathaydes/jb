@@ -1,5 +1,7 @@
 ## Next
 
+- include jar dependencies in project's libraries directories.
+
 ## 0.4.0
 
 - #5 Support for annotation processors.

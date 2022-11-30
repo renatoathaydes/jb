@@ -63,7 +63,7 @@ class JBuildDartle {
   JBuildDartle(this._components)
       : projectPath = p.joinAll(_components.projectPath),
         projectName = _components.projectName {
-    init = _resolveSubProjects().then(_initialize);
+    init = _resolveLocalDependencies().then(_initialize);
   }
 
   JBuildDartle.root(JBuildFiles files, JBuildConfiguration config,
@@ -76,7 +76,7 @@ class JBuildDartle {
     return {compile};
   }
 
-  Future<List<SubProject>> _resolveSubProjects() async {
+  Future<LocalDependencies> _resolveLocalDependencies() async {
     final pathDependencies = _components.config.dependencies.entries
         .map((e) => e.value.toPathDependency())
         .whereNonNull()
@@ -97,30 +97,28 @@ class JBuildDartle {
     logger.fine(() => 'Resolved ${subProjects.length} sub-projects, '
         '${jars.length} local jar dependencies.');
 
-    return subProjects;
+    return LocalDependencies(jars, subProjects);
   }
 
-  Future<void> _initialize(List<SubProject> subProjects) async {
+  Future<void> _initialize(LocalDependencies localDependencies) async {
     final files = _components.files;
     final config = _components.config;
     final cache = _components.cache;
+    final subProjects = localDependencies.subProjects;
 
     // must initialize the cache explicitly as this method may be running on
     // sub-projects where the cache was not created by the cache constructor.
     cache.init();
 
     final projectTasks = <Task>{};
-    final compileDeps =
-        subProjects.where((p) => p.spec.scope.includedInCompilation());
-    final runtimeDeps =
-        subProjects.where((p) => p.spec.scope.includedAtRuntime());
 
     compile = createCompileTask(files, config, cache);
-    writeDeps = createWriteDependenciesTask(files, config, cache, subProjects);
+    writeDeps =
+        createWriteDependenciesTask(files, config, cache, localDependencies);
     installCompile =
-        createInstallCompileDepsTask(files, config, cache, compileDeps);
+        createInstallCompileDepsTask(files, config, cache, localDependencies);
     installRuntime =
-        createInstallRuntimeDepsTask(files, config, cache, runtimeDeps);
+        createInstallRuntimeDepsTask(files, config, cache, localDependencies);
     installProcessor = createInstallProcessorDepsTask(files, config, cache);
     run = createRunTask(files, config, cache);
     downloadTestRunner =

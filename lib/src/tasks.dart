@@ -8,6 +8,7 @@ import 'config.dart';
 import 'dependencies.dart';
 import 'exec.dart';
 import 'java_tests.dart';
+import 'path_dependency.dart';
 import 'sub_project.dart';
 import 'utils.dart';
 
@@ -64,7 +65,7 @@ Task createWriteDependenciesTask(
     JBuildFiles jbFiles,
     JBuildConfiguration config,
     DartleCache cache,
-    Iterable<SubProject> subProjects) {
+    LocalDependencies localDependencies) {
   final depsFile = jbFiles.dependenciesFile;
   final procDepsFile = jbFiles.processorDependenciesFile;
 
@@ -73,21 +74,23 @@ Task createWriteDependenciesTask(
       outputs: files([depsFile.path, procDepsFile.path]),
       cache: cache);
 
-  return Task((_) => _writeDependencies(jbFiles, config, subProjects),
+  return Task((_) => _writeDependencies(jbFiles, config, localDependencies),
       runCondition: runCondition,
       name: writeDepsTaskName,
       description: 'Write a file with dependencies information.');
 }
 
 Future<void> _writeDependencies(JBuildFiles jbFiles, JBuildConfiguration config,
-    Iterable<SubProject> subProjects) async {
+    LocalDependencies localDependencies) async {
   await jbFiles.dependenciesFile.parent.create(recursive: true);
   await jbFiles.dependenciesFile.writeAsString(config.dependencies.entries
       .map((e) => e.value == DependencySpec.defaultSpec
           ? e.key
           : "${e.key}->${e.value}")
       .followedBy(['exclusions:', ...config.exclusions])
-      .followedBy(subProjects.map((e) => '${e.name}->${e.spec}'))
+      .followedBy(
+          localDependencies.subProjects.map((e) => '${e.name}->${e.spec}'))
+      .followedBy(localDependencies.jars.map((e) => '${e.path}->${e.spec}'))
       .join('\n'));
   await jbFiles.processorDependenciesFile.writeAsString(
       config.processorDependencies.followedBy([
@@ -98,11 +101,19 @@ Future<void> _writeDependencies(JBuildFiles jbFiles, JBuildConfiguration config,
 
 /// Create the `installCompileDependencies` task.
 Task createInstallCompileDepsTask(JBuildFiles files, JBuildConfiguration config,
-    DartleCache cache, Iterable<SubProject> subProjects) {
+    DartleCache cache, LocalDependencies localDependencies) {
   Future<void> action(_) async {
     await _install(installCompileDepsTaskName, files.jbuildJar,
         config.preArgs(), config.installArgsForCompilation());
-    await _copy(subProjects, config.compileLibsDir, runtime: false);
+    await _copy(
+        localDependencies.subProjects
+            .where((s) => s.spec.scope.includedInCompilation()),
+        config.compileLibsDir,
+        runtime: false);
+    await _copyFiles(
+        localDependencies.jars
+            .where((j) => j.spec.scope.includedInCompilation()),
+        config.compileLibsDir);
   }
 
   return _createInstallDepsTask(installCompileDepsTaskName, 'compile', action,
@@ -111,11 +122,18 @@ Task createInstallCompileDepsTask(JBuildFiles files, JBuildConfiguration config,
 
 /// Create the `installRuntimeDependencies` task.
 Task createInstallRuntimeDepsTask(JBuildFiles files, JBuildConfiguration config,
-    DartleCache cache, Iterable<SubProject> subProjects) {
+    DartleCache cache, LocalDependencies localDependencies) {
   Future<void> action(_) async {
     await _install(installRuntimeDepsTaskName, files.jbuildJar,
         config.preArgs(), config.installArgsForRuntime());
-    await _copy(subProjects, config.runtimeLibsDir, runtime: true);
+    await _copy(
+        localDependencies.subProjects
+            .where((s) => s.spec.scope.includedAtRuntime()),
+        config.runtimeLibsDir,
+        runtime: true);
+    await _copyFiles(
+        localDependencies.jars.where((j) => j.spec.scope.includedAtRuntime()),
+        config.runtimeLibsDir);
   }
 
   return _createInstallDepsTask(installRuntimeDepsTaskName, 'runtime', action,
@@ -186,6 +204,16 @@ Future<void> _copy(Iterable<SubProject> subProjects, String destinationDir,
         CompileOutput.dir(runtime ? sub.runtimeLibsDir : sub.compileLibsDir),
         sub.path,
         destinationDir);
+  }
+}
+
+Future<void> _copyFiles(
+    Iterable<JarDependency> jars, String destinationDir) async {
+  // always create the destination dir so Dartle caches the task output
+  await Directory(destinationDir).create(recursive: true);
+  for (final jar in jars) {
+    logger.fine(() => 'Copying ${jar.path} to $destinationDir');
+    await File(jar.path).copy(p.join(destinationDir, p.basename(jar.path)));
   }
 }
 

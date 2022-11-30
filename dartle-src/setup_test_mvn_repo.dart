@@ -5,7 +5,8 @@ import 'package:path/path.dart' as path;
 
 import 'paths.dart';
 
-final setupTestsPhase= TaskPhase.custom(TaskPhase.setup.index + 1, 'setupTests');
+final setupTestsPhase =
+    TaskPhase.custom(TaskPhase.setup.index + 1, 'setupTests');
 
 const buildMvnRepoListsProjectTaskName = 'buildMvnRepoListsProject';
 const setupTestMvnRepoTaskName = 'setupTestMvnRepo';
