@@ -55,14 +55,11 @@ void main() {
       final stdout = <String>[];
       final stderr = <String>[];
       var exitCode = await exec(
-          Process.start(jbuildExecutable, const [],
+          Process.start(jbuildExecutable, const ['-l', 'debug'],
               workingDirectory: withDepsProjectDir),
           onStdoutLine: stdout.add,
           onStderrLine: stderr.add);
       expectSuccess(exitCode, stdout, stderr);
-
-      // try to make test reliable as sometimes the jar is missing
-      await Future.delayed(const Duration(milliseconds: 100));
 
       final buildContents = await Directory(p.join(withDepsProjectDir, 'build'))
           .list(recursive: true)
@@ -81,7 +78,8 @@ void main() {
                   'minimal-java-project.jar'),
             ]),
             hasLength(4),
-          ));
+          ), reason: 'Did not create all artifacts.\n\n'
+          'Stdout:\n${stdout.join('\n')}\n\nStderr:\n${stderr.join('\n')}');
 
       stdout.clear();
       stderr.clear();
