@@ -360,19 +360,25 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
 
 /// Create the `dependencies` task.
 Task createDepsTask(File jbuildJar, JBuildConfiguration config,
-    DartleCache cache, bool noColor) {
+    DartleCache cache, LocalDependencies localDependencies, bool noColor) {
   return Task(
-      (List<String> args) => _deps(jbuildJar, config, cache, noColor, args),
+      (List<String> args) =>
+          _deps(jbuildJar, config, cache, localDependencies, noColor, args),
       name: depsTaskName,
       argsValidator: const AcceptAnyArgs(),
       phase: TaskPhase.setup,
       description: 'Shows information about project dependencies.');
 }
 
-Future<void> _deps(File jbuildJar, JBuildConfiguration config,
-    DartleCache cache, bool noColor, List<String> args) async {
-  final exitCode =
-      await printDependencies(jbuildJar, config, cache, noColor, args);
+Future<void> _deps(
+    File jbuildJar,
+    JBuildConfiguration config,
+    DartleCache cache,
+    LocalDependencies localDependencies,
+    bool noColor,
+    List<String> args) async {
+  final exitCode = await printDependencies(
+      jbuildJar, config, cache, localDependencies, noColor, args);
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild dependencies command failed', exitCode: exitCode);

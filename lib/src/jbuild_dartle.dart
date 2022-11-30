@@ -125,8 +125,8 @@ class JBuildDartle {
         createDownloadTestRunnerTask(files.jbuildJar, config, cache);
     test = createTestTask(
         files.jbuildJar, config, cache, !_components.options.colorfulLog);
-    deps = createDepsTask(
-        files.jbuildJar, config, cache, !_components.options.colorfulLog);
+    deps = createDepsTask(files.jbuildJar, config, cache, localDependencies,
+        !_components.options.colorfulLog);
 
     projectTasks.addAll({
       compile,

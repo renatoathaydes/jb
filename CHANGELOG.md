@@ -1,6 +1,7 @@
 ## Next
 
 - include jar dependencies in project's libraries directories.
+- list also jar and sub-project dependencies in `dependencies` task.
 
 ## 0.4.0
 

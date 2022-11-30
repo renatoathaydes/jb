@@ -367,6 +367,8 @@ class LocalDependencies {
   final List<SubProject> subProjects;
 
   const LocalDependencies(this.jars, this.subProjects);
+
+  bool get isEmpty => jars.isEmpty && subProjects.isEmpty;
 }
 
 enum _CompileOutputTag { dir, jar }

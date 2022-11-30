@@ -8,13 +8,18 @@ import 'config.dart';
 import 'exec.dart';
 import 'tasks.dart' show depsTaskName;
 
-Future<int> printDependencies(File jbuildJar, JBuildConfiguration config,
-    DartleCache cache, bool noColor, List<String> args) async {
+Future<int> printDependencies(
+    File jbuildJar,
+    JBuildConfiguration config,
+    DartleCache cache,
+    LocalDependencies localDependencies,
+    bool noColor,
+    List<String> args) async {
   final deps = config.dependencies.entries
       .where((dep) => dep.value.path == null)
       .map((dep) => dep.key);
 
-  if (deps.isEmpty) {
+  if (deps.isEmpty && localDependencies.isEmpty) {
     logger.info(
         const PlainMessage('This project does not have any dependencies!'));
     return 0;
@@ -26,12 +31,26 @@ Future<int> printDependencies(File jbuildJar, JBuildConfiguration config,
     AnsiMessagePart.text('This project has the following dependencies:')
   ]));
 
-  return await execJBuild(depsTaskName, jbuildJar, config.preArgs(), 'deps',
-      ['-t', '-s', 'compile', ...deps],
-      onStdout: _DepsPrinter());
+  _printLocalDependencies(localDependencies);
+
+  if (deps.isNotEmpty) {
+    return await execJBuild(depsTaskName, jbuildJar, config.preArgs(), 'deps',
+        ['-t', '-s', 'compile', ...deps],
+        onStdout: _JBuildDepsPrinter());
+  }
+  return 0;
 }
 
-class _DepsPrinter implements ProcessOutputConsumer {
+void _printLocalDependencies(LocalDependencies localDependencies) {
+  for (var dep in localDependencies.jars
+      .map((j) => '* ${j.path} [${j.spec.scope.name}] (local jar)')
+      .followedBy(localDependencies.subProjects
+          .map((s) => '* ${s.path} [${s.spec.scope.name}] (sub-project)'))) {
+    logger.info(ColoredLogMessage(dep, LogColor.magenta));
+  }
+}
+
+class _JBuildDepsPrinter implements ProcessOutputConsumer {
   int pid = -1;
 
   @override
