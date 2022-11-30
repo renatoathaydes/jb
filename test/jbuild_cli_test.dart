@@ -60,6 +60,10 @@ void main() {
           onStdoutLine: stdout.add,
           onStderrLine: stderr.add);
       expectSuccess(exitCode, stdout, stderr);
+
+      // try to make test reliable as sometimes the jar is missing
+      await Future.delayed(const Duration(milliseconds: 100));
+
       final buildContents = await Directory(p.join(withDepsProjectDir, 'build'))
           .list(recursive: true)
           .map((f) => f.path)
