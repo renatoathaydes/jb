@@ -222,7 +222,7 @@ String classpath(Iterable<String> entries) {
 }
 
 void expectSuccess(int exitCode, List<String> stdout, List<String> stderr) {
-  expect(exitCode, 0,
+  expect(exitCode, equals(0),
       reason: 'exit code was $exitCode.\n'
           '  => stdout:\n${stdout.join('\n')}\n'
           '  => stderr:\n${stderr.join('\n')}');
