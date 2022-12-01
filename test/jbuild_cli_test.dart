@@ -78,8 +78,9 @@ void main() {
                   'minimal-java-project.jar'),
             ]),
             hasLength(4),
-          ), reason: 'Did not create all artifacts.\n\n'
-          'Stdout:\n${stdout.join('\n')}\n\nStderr:\n${stderr.join('\n')}');
+          ),
+          reason: 'Did not create all artifacts.\n\n'
+              'Stdout:\n${stdout.join('\n')}\n\nStderr:\n${stderr.join('\n')}');
 
       stdout.clear();
       stderr.clear();

@@ -1,11 +1,15 @@
+import 'dart:convert';
+
+import 'package:archive/archive_io.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 import 'package:path/path.dart' as p;
+
 import 'config.dart';
+import 'path_dependency.dart';
 import 'sub_project.dart';
 import 'tasks.dart';
 import 'utils.dart';
-import 'path_dependency.dart';
 
 /// Grouped components of a build.
 class JBuildComponents {
@@ -60,9 +64,12 @@ class JBuildDartle {
   /// Simple name of the project (last part of the projectPath).
   final String projectName;
 
+  final SubProjectFactory _subProjectFactory;
+
   JBuildDartle(this._components)
       : projectPath = p.joinAll(_components.projectPath),
-        projectName = _components.projectName {
+        projectName = _components.projectName,
+        _subProjectFactory = SubProjectFactory(_components) {
     init = _resolveLocalDependencies().then(_initialize);
   }
 
@@ -82,8 +89,6 @@ class JBuildDartle {
         .whereNonNull()
         .toStream();
 
-    final subProjectFactory = SubProjectFactory(_components);
-
     final projectDeps = <ProjectDependency>[];
     final jars = <JarDependency>[];
 
@@ -92,7 +97,7 @@ class JBuildDartle {
     }
 
     final subProjects =
-        await subProjectFactory.createSubProjects(projectDeps).toList();
+        await _subProjectFactory.createSubProjects(projectDeps).toList();
 
     logger.fine(() => 'Resolved ${subProjects.length} sub-projects, '
         '${jars.length} local jar dependencies.');
@@ -128,6 +133,8 @@ class JBuildDartle {
     deps = createDepsTask(files.jbuildJar, config, cache, localDependencies,
         !_components.options.colorfulLog);
 
+    final customTasks = await _loadExtensionProject(files, cache).toList();
+
     projectTasks.addAll({
       compile,
       writeDeps,
@@ -138,6 +145,7 @@ class JBuildDartle {
       downloadTestRunner,
       test,
       deps,
+      ...customTasks,
     });
 
     clean = createCleanTask(
@@ -170,6 +178,48 @@ class JBuildDartle {
           .dependsOn({subCompileTask.name, subInstallRuntimeTask.name});
       clean.dependsOn({subCleanTask.name});
     }
+  }
+
+  Stream<Task> _loadExtensionProject(
+      JBuildFiles files, DartleCache cache) async* {
+    if (await files.jbExtensionProjectDir.exists()) {
+      logger.fine('Loading jb extension project');
+      final path = files.jbExtensionProjectDir.path;
+      final jbExtensionProject =
+          await _subProjectFactory.createJBuildSubProject(ProjectDependency(
+              DependencySpec(
+                  transitive: false, scope: DependencyScope.all, path: path),
+              path));
+
+      logger.fine('Running jb extension project build');
+
+      await runBasic(jbExtensionProject.tasks.values.toSet(), const {},
+          Options(tasksInvocation: ['$path:$compileTaskName']), cache);
+
+      final jar = jbExtensionProject.output.when(
+          dir: (d) => throw DartleException(
+              message: 'jb extension project must configure an '
+                  "'output-jar', not 'output-dir'."),
+          jar: (j) => j);
+
+      yield* _loadExtensionTasks(p.join(files.jbExtensionProjectDir.path, jar));
+    }
+  }
+
+  Stream<Task> _loadExtensionTasks(String jar) async* {
+    const extService = 'META-INF/jb/jb-extension.yaml';
+    logger.fine('Reading jb extension project manifest file');
+    final archive = ZipDecoder().decodeBuffer(InputFileStream(jar));
+    final extFile = archive.findFile(extService);
+    if (extFile == null) {
+      throw DartleException(
+          message:
+              'jb extension project jar is missing manifest file: $extService');
+    }
+    final model = loadJbExtensionModel(
+        utf8.decode(extFile.content), Uri.parse('jar:file:$jar!$extService'));
+
+    // TODO create tasks from the model
   }
 }
 

@@ -19,9 +19,10 @@ const jbuildCache = '.jbuild-cache';
 /// Files and directories used by jb.
 class JBuildFiles {
   final File jbuildJar;
-  final configFile = File('jbuild.yaml');
-  final dependenciesFile = File(p.join(jbuildCache, 'dependencies.txt'));
-  final processorDependenciesFile =
+  File get configFile => File('jbuild.yaml');
+  File get dependenciesFile => File(p.join(jbuildCache, 'dependencies.txt'));
+  Directory get jbExtensionProjectDir => Directory('jb-src');
+  File get processorDependenciesFile =>
       File(p.join(jbuildCache, 'processor-dependencies.txt'));
   final processorLibsDir = p.join(jbuildCache, 'processor-dependencies');
 
@@ -36,7 +37,7 @@ Future<JBuildConfiguration> loadConfig(File configFile) async {
   return await loadConfigString(await configFile.readAsString());
 }
 
-/// Parse the YAML/JSON jbuild configuration.
+/// Parse the YAML/JSON jb configuration.
 ///
 /// Applies defaults and resolves properties and imports.
 Future<JBuildConfiguration> loadConfigString(String config) async {
@@ -49,7 +50,24 @@ Future<JBuildConfiguration> loadConfigString(String config) async {
         .applyImports(imports);
   } else {
     throw DartleException(
-        message: 'Expecting jbuild configuration to be a Map, '
+        message: 'Expecting jb configuration to be a Map, '
+            'but it is ${json?.runtimeType}');
+  }
+}
+
+/// Parse the YAML/JSON jb extension model.
+///
+/// Applies defaults and resolves properties and imports.
+Future<JBuildExtensionModel> loadJbExtensionModel(
+    String config, Uri yamlUri) async {
+  final json = loadYaml(config, sourceUrl: yamlUri);
+  if (json is Map) {
+    final resolvedMap = resolvePropertiesFromMap(json);
+    return JBuildExtensionModel.fromMap(
+        resolvedMap.map, resolvedMap.properties);
+  } else {
+    throw DartleException(
+        message: '$yamlUri: Expecting jb extension to be a Map, '
             'but it is ${json?.runtimeType}');
   }
 }
@@ -65,6 +83,37 @@ extension on _Value<Iterable<String>> {
   Set<String> toSet() => value.toSet();
 
   List<String> toList() => value.toList(growable: false);
+}
+
+/// Definition of a jb extension task.
+class ExtensionTask {
+  final String name;
+  final String description;
+  final String phase;
+  final Set<String> inputs;
+  final Set<String> outputs;
+  final String className;
+
+  ExtensionTask(
+      {required this.name,
+      required this.description,
+      required this.phase,
+      required this.inputs,
+      required this.outputs,
+      required this.className});
+}
+
+/// jb extension model.
+class JBuildExtensionModel {
+  final List<ExtensionTask> extensionTasks;
+
+  const JBuildExtensionModel(this.extensionTasks);
+
+  static JBuildExtensionModel fromMap(Map<String, Object?> map,
+      [Properties properties = const {}]) {
+    final extensionTasks = _extensionTasks(map);
+    return JBuildExtensionModel(extensionTasks);
+  }
 }
 
 /// jb configuration model.
@@ -700,4 +749,49 @@ DependencySpec _dependencySpec(Object? value) {
 CompileOutput _defaultOutputValue() {
   return CompileOutput.jar(
       p.join('build', '${p.basename(Directory.current.path)}.jar'));
+}
+
+List<ExtensionTask> _extensionTasks(Map<String, Object?> map) {
+  final tasks = map['tasks'];
+  if (tasks is Map<String, Object?>) {
+    return tasks.entries.map(_extensionTask).toList(growable: false);
+  } else {
+    throw DartleException(
+        message: "expecting a List of tasks for value 'tasks', "
+            "but got '$tasks'.");
+  }
+}
+
+const taskSyntaxHelp = '''
+Tasks should be declared as follows:
+
+tasks:
+  my-task:
+    class-name: my.java.ClassName           (mandatory)
+    description: description of the task    (optional)
+    phase: build                            (optional)
+    inputs: [file1.txt, *.java]             (optional)
+    outputs [output-dir/*.class, other.txt] (optional)
+  other-task:
+    class-name: my.java.OtherClass
+''';
+
+ExtensionTask _extensionTask(MapEntry<String, Object?> task) {
+  final spec = task.value;
+  if (spec is Map<String, Object?>) {
+    return ExtensionTask(
+        name: task.key,
+        description: _stringValue(spec, 'description', '').value,
+        phase: _stringValue(spec, 'phase', 'build').value,
+        inputs: _stringIterableValue(spec, 'inputs', const {}).value.toSet(),
+        outputs: _stringIterableValue(spec, 'outputs', const {}).value.toSet(),
+        className: _optionalStringValue(spec, 'class-name')
+            .orThrow("declaration of task '${task.key}' is missing mandatory "
+                "'class-name'.\n$taskSyntaxHelp"));
+  } else {
+    throw DartleException(
+        message: 'bad task declaration, '
+            "expected String or Map value, got '$task'.\n"
+            "$taskSyntaxHelp");
+  }
 }

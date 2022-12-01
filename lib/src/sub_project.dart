@@ -52,11 +52,11 @@ class SubProjectFactory {
   /// Create sub-projects from provided project dependencies.
   Stream<SubProject> createSubProjects(List<ProjectDependency> deps) async* {
     for (final dep in deps) {
-      yield await _createJBuildSubProject(dep);
+      yield await createJBuildSubProject(dep);
     }
   }
 
-  Future<SubProject> _createJBuildSubProject(
+  Future<SubProject> createJBuildSubProject(
       ProjectDependency dependency) async {
     final path = dependency.path;
     if (await Directory(path).exists()) {
@@ -75,6 +75,9 @@ class SubProjectFactory {
           throw DartleException(
               message: 'Could not load sub-project at $path: $e');
         }
+      } else {
+        throw DartleException(
+            message: 'Sub-project directory missing jbuild.yaml file: $path');
       }
     }
     throw DartleException(
@@ -101,8 +104,8 @@ class SubProjectFactory {
   }
 
   Future<JBuildDartle> _resolveSubProject(File configFile, String path) async {
-    logger.fine(() => "Resolving sub-project at '${configFile.path}'");
     final dir = p.dirname(configFile.path);
+    logger.fine(() => "Resolving sub-project at '$dir'");
     return await withCurrentDirectory(dir, () async {
       final subConfig = await loadConfig(configFile);
       final subProject = JBuildDartle(components.child(path, subConfig));
