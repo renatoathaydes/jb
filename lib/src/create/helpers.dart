@@ -1,10 +1,21 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
+import 'package:path/path.dart' as p;
 
 final _javaIdPattern = RegExp(r'^[a-zA-Z_$][a-zA-Z_$\d]*$');
 
 Future<void> _noOp() async {}
+
+FileCreator createJavaFile(
+    String package, String name, String dir, String contents) {
+  final javaDir = p.joinAll([dir] + package.split('.'));
+  final javaFile = File(p.join(javaDir, '$name.java'));
+  return FileCreator(javaFile, () async {
+    await Directory(javaDir).create(recursive: true);
+    await javaFile.writeAsString(contents);
+  });
+}
 
 class FileCreator {
   final File file;

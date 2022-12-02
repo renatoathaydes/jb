@@ -1,5 +1,5 @@
 export 'src/config.dart';
-export 'src/create/basic.dart';
+export 'src/create/create.dart';
 export 'src/exec.dart';
 export 'src/java_tests.dart';
 export 'src/jbuild.dart';
