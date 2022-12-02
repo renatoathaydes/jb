@@ -34,11 +34,6 @@ public final class ExampleTask implements JbTask {
     }
     
     @Override
-    public String getPhase() {
-      return "build";
-    }
-    
-    @Override
     public Set<String> getInputs() {
       return Set.of("*.txt");
     }
