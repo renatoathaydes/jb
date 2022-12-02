@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:path/path.dart' as p;
+import 'helpers.dart';
 
 import '../config.dart' show logger;
 
@@ -75,25 +76,6 @@ final class MainTest {
 }
 ''';
 
-Future<void> _noOp() async {}
-
-class _FileCreator {
-  final File file;
-  final Future<void> Function() create;
-
-  _FileCreator(this.file, [this.create = _noOp]);
-
-  Future<void> call() => create();
-
-  Future<void> check() async {
-    if (await file.exists()) {
-      throw DartleException(
-          message: 'Cannot create jb project, at least '
-              'one existing file would be overwritten: ${file.path}');
-    }
-  }
-}
-
 /// Create a new jb project.
 Future<void> createNewProject(List<String> arguments) async {
   if (arguments.length > 1) {
@@ -101,7 +83,7 @@ Future<void> createNewProject(List<String> arguments) async {
         message: 'create command does not accept any arguments');
   }
   final jbuildFile = File('jbuild.yaml');
-  await _FileCreator(jbuildFile).check();
+  await FileCreator(jbuildFile).check();
   await _create(jbuildFile);
 }
 
@@ -117,9 +99,9 @@ Future<void> _create(File jbuildFile) async {
   final createTestModule = stdin.readLineSync().or('yes').yesOrNo();
   const mainClass = 'Main';
 
-  final fileCreators = <_FileCreator>[];
+  final fileCreators = <FileCreator>[];
 
-  fileCreators.add(_FileCreator(
+  fileCreators.add(FileCreator(
       jbuildFile,
       () => jbuildFile.writeAsString(
           _jbuildYaml(groupId, artifactId, '$package.$mainClass', ''))));
@@ -137,7 +119,7 @@ Future<void> _create(File jbuildFile) async {
       PlainMessage('\nJBuild project created at ${Directory.current.path}'));
 }
 
-Future<void> _createAll(List<_FileCreator> fileCreators) async {
+Future<void> _createAll(List<FileCreator> fileCreators) async {
   for (final create in fileCreators) {
     await create.check();
   }
@@ -146,65 +128,23 @@ Future<void> _createAll(List<_FileCreator> fileCreators) async {
   }
 }
 
-List<_FileCreator> _createTestModule(String groupId, String package) {
+List<FileCreator> _createTestModule(String groupId, String package) {
   final javaTestCreator = _createJavaFile(
       package, 'MainTest', p.join('test', 'src'), _mainTestJava(package));
   final buildFile = File(p.join('test', 'jbuild.yaml'));
-  final buildFileCreator = _FileCreator(
+  final buildFileCreator = FileCreator(
       buildFile,
       () => buildFile.writeAsString(
           _jbuildYaml(groupId, _testArtifactId, null, _testDependencies)));
   return [javaTestCreator, buildFileCreator];
 }
 
-_FileCreator _createJavaFile(
+FileCreator _createJavaFile(
     String package, String name, String dir, String contents) {
   final javaDir = p.joinAll([dir] + package.split('.'));
   final javaFile = File(p.join(javaDir, '$name.java'));
-  return _FileCreator(javaFile, () async {
+  return FileCreator(javaFile, () async {
     await Directory(javaDir).create(recursive: true);
     await javaFile.writeAsString(contents);
   });
-}
-
-extension on String? {
-  String or(String defaultValue) {
-    final String? self = this;
-    if (self == null) {
-      throw DartleException(message: 'No input available');
-    }
-    if (self.trim().isEmpty) {
-      return defaultValue;
-    }
-    return self;
-  }
-
-  bool yesOrNo() {
-    final String? s = this;
-    return s == null ||
-        s.trim().isEmpty ||
-        const {'yes', 'y'}.contains(s.toLowerCase());
-  }
-}
-
-final _javaIdPattern = RegExp(r'^[a-zA-Z_$][a-zA-Z_$\d]*$');
-
-extension on String {
-  String toJavaId() {
-    return replaceAll('-', '_');
-  }
-
-  String validateJavaPackage() {
-    if (this == '.' || startsWith('.') || endsWith('.')) {
-      throw DartleException(message: 'Invalid Java package name: $this');
-    }
-    for (final part in split('.')) {
-      if (!_javaIdPattern.hasMatch(part)) {
-        throw DartleException(
-            message:
-                'Invalid Java package name: $this (invalid segment: $part)');
-      }
-    }
-    return this;
-  }
 }
