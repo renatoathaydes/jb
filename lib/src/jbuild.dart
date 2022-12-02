@@ -5,7 +5,7 @@ import 'package:dartle/dartle_cache.dart';
 import 'package:isolate_current_directory/isolate_current_directory.dart';
 
 import 'config.dart';
-import 'create.dart';
+import 'create/basic.dart';
 import 'jbuild_dartle.dart';
 import 'options.dart';
 import 'utils.dart';

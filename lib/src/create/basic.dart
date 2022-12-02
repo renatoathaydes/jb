@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:dartle/dartle.dart';
 import 'package:path/path.dart' as p;
 
-import 'config.dart' show logger;
+import '../config.dart' show logger;
 
 const _testArtifactId = 'tests';
 
