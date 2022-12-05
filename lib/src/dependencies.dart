@@ -6,6 +6,7 @@ import 'package:io/ansi.dart' as ansi;
 
 import 'config.dart';
 import 'exec.dart';
+import 'output_consumer.dart';
 import 'tasks.dart' show depsTaskName;
 
 Future<int> printDependencies(

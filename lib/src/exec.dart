@@ -4,19 +4,9 @@ import 'package:dartle/dartle.dart';
 import 'package:logging/logging.dart';
 
 import 'config.dart' show logger;
+import 'output_consumer.dart';
 import 'tasks.dart';
 import 'utils.dart';
-
-/// Consumer of another process' output.
-mixin ProcessOutputConsumer {
-  /// The PID of the process.
-  ///
-  /// This is called immediately as the process starts.
-  set pid(int pid);
-
-  /// Receive a line of the process output.
-  void call(String line);
-}
 
 /// Execute the jbuild tool.
 Future<int> execJBuild(String taskName, File jbuildJar, List<String> preArgs,
@@ -69,35 +59,21 @@ Future<int> execJava(String taskName, List<String> args,
   );
 }
 
-class _TaskExecLogger implements ProcessOutputConsumer {
+class _TaskExecLogger extends JbOutputConsumer {
   final String prompt;
   final String taskName;
-  int pid = 0;
 
   _TaskExecLogger(this.prompt, this.taskName);
-
-  @override
-  void call(String line) {
-    final level = _levelFor(line);
-    logger.log(
-        level,
-        ColoredLogMessage(
-            '$prompt $taskName [java $pid]: $line', _colorFor(level)));
-  }
-
-  Level _levelFor(String line) {
-    if (line.startsWith('ERROR:') || line.startsWith('JBuild failed ')) {
-      return Level.SEVERE;
-    }
-    if (line.startsWith('WARN:')) {
-      return Level.WARNING;
-    }
-    return Level.INFO;
-  }
 
   LogColor _colorFor(Level level) {
     if (level == Level.SEVERE) return LogColor.red;
     if (level == Level.WARNING) return LogColor.yellow;
     return LogColor.gray;
+  }
+
+  @override
+  Object createMessage(Level level, String line) {
+    return ColoredLogMessage(
+        '$prompt $taskName [java $pid]: $line', _colorFor(level));
   }
 }
