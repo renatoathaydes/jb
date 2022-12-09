@@ -3,78 +3,95 @@ import 'package:dartle/dartle.dart';
 FileCollection patternFileCollection(Iterable<String> patterns) {
   final simpleFiles = <String>[];
   final dirEntries = <DirectoryEntry>[];
-  for (var path in patterns) {
-    path = path.sanitize();
-    var isDir = path.endsWith('/');
-    final parts = path.split('/')..removeWhere((f) => f.isEmpty);
-    if (parts.isEmpty) {
-      return FileCollection.empty;
-    }
-    var last = parts.last;
-    List<String> pre;
-    bool recurse;
-    if (parts.where((f) => f == '**' || f == '*').length > 1) {
-      throw DartleException(
-          message: "invalid pattern: '$path'. "
-              "Wildcard pattern must be last part of path or second last, "
-              "with a pattern as the last part");
-    }
-    if (parts.length > 1) {
-      recurse = parts[parts.length - 2] == '**';
-      pre = parts.sublist(0, parts.length - (recurse ? 2 : 1));
-      if (pre.isEmpty) {
-        pre = const ['.'];
-      }
-      if (!recurse && last == '**') {
-        isDir = true;
-        recurse = true;
-      }
-    } else {
-      pre = const [];
-      recurse = false;
-    }
-    if (last == '*') {
-      dirEntries.add(DirectoryEntry(
-          path: pre.isEmpty ? '.' : pre.join('/'), recurse: false));
-    } else if (last == '**') {
-      dirEntries.add(DirectoryEntry(
-          path: pre.isEmpty ? '.' : pre.join('/'), recurse: true));
-    } else if ((recurse && !last.startsWith('*.')) ||
-        pre.contains('*') ||
-        pre.contains('**')) {
-      throw DartleException(
-          message: "invalid pattern: '$path'. "
-              "Wildcard pattern must be last part of path or second last, "
-              "with a pattern as the last part");
-    } else if (last.startsWith('*.') && !isDir) {
-      final ext = last.substring(1);
-      dirEntries.add(DirectoryEntry(
-          path: pre.isEmpty ? '.' : pre.join('/'),
-          fileExtensions: {ext},
-          recurse: recurse));
-    } else if (isDir) {
-      dirEntries.add(DirectoryEntry(
-          path:
-              [...pre, if (last.isNotEmpty) last.removeTrailing('/')].join('/'),
-          recurse: recurse));
-    } else {
-      simpleFiles.add([...pre, last].join('/'));
+  for (var pattern in patterns) {
+    final entry = _parsePattern(pattern);
+    if (entry is String) {
+      simpleFiles.add(entry);
+    } else if (entry is DirectoryEntry) {
+      dirEntries.add(entry);
     }
   }
   return entities(simpleFiles, dirEntries);
 }
 
-extension on String {
-  String sanitize() {
-    if (this == '/') return '.';
-    if (startsWith('/')) {
-      return substring(1);
-    }
-    return this;
+Object _parsePattern(String pattern) {
+  final parts = pattern.split('/')..removeWhere((f) => f.isEmpty);
+  final partsCount = parts.length;
+  final recursionCount = parts.where((f) => f == '**').length;
+  final recursionIndex = recursionCount > 0 ? parts.indexOf('**') : -1;
+  if (recursionCount > 1 ||
+      (recursionIndex >= 0 && recursionIndex < partsCount - 2)) {
+    throw DartleException(
+        message: "invalid pattern: '$pattern'. "
+            "The '**' (recursion) pattern must be the last or second last part"
+            " of a pattern, and may only appear once.");
   }
+  final anyCount = parts.where((f) => f == '*').length;
+  final anyIndex = anyCount > 0 ? parts.lastIndexOf('*') : -1;
+  if (anyCount > 1 ||
+      (anyIndex >= 0 && anyIndex != partsCount - 1) ||
+      (anyCount != 0 && recursionCount != 0)) {
+    throw DartleException(
+        message: "invalid pattern: '$pattern'. "
+            "The '*' (any) pattern must be the last part"
+            " of a pattern, may not appear together with '**',"
+            " and may only appear once.");
+  }
+  final extCount = parts.where((f) => f.isExtensionPattern).length;
+  final extIndex =
+      extCount > 0 ? parts.indexWhere((f) => f.isExtensionPattern) : -1;
+  if (extCount > 1 ||
+      (extIndex >= 0 && extIndex != partsCount - 1) ||
+      (extCount > 0 && anyCount > 0)) {
+    throw DartleException(
+        message: "invalid pattern: '$pattern'. "
+            "The '*.<ext>' pattern must be the last part"
+            " of a pattern, may not appear together with '*',"
+            " and may only appear once.");
+  }
+  final endsWithSlash = pattern.endsWith('/');
+  if (extCount > 0 && endsWithSlash) {
+    throw DartleException(
+        message: "invalid pattern: '$pattern'. "
+            "The '*.<ext>' pattern cannot be used to match a directory.");
+  }
+  if (recursionCount > 0 && recursionIndex == partsCount - 2) {
+    if (extCount == 0) {
+      throw DartleException(
+          message: "invalid pattern: '$pattern'. "
+              "The '**' (recursion) pattern must be the last part or be followed"
+              " by an extension pattern '*.<ext>'.");
+    }
+    return DirectoryEntry(
+        path: parts.pathTo(recursionIndex),
+        recurse: true,
+        fileExtensions: {parts.last.substring(1)});
+  }
+  if (recursionCount > 0 && recursionIndex == partsCount - 1) {
+    return DirectoryEntry(path: parts.pathTo(recursionIndex), recurse: true);
+  }
+  if (anyIndex >= 0) {
+    return DirectoryEntry(path: parts.pathTo(anyIndex), recurse: false);
+  }
+  if (extIndex >= 0) {
+    return DirectoryEntry(
+        path: parts.pathTo(extIndex),
+        recurse: false,
+        fileExtensions: {parts.last.substring(1)});
+  }
+  if (endsWithSlash) {
+    return DirectoryEntry(path: parts.join('/'), recurse: false);
+  }
+  return parts.join('/');
+}
 
-  String removeTrailing(String end) {
-    if (endsWith(end)) return substring(0, length - end.length);
-    return this;
+extension on String {
+  bool get isExtensionPattern => startsWith('*.');
+}
+
+extension on List<String> {
+  String pathTo(int index) {
+    if (index < 1) return '.';
+    return sublist(0, index).join('/');
   }
 }

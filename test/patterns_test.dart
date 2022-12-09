@@ -76,6 +76,9 @@ void main() {
 
       expect(patternFileCollection(const ['/*']),
           hasContents(dirs: [DirectoryEntry(path: '.', recurse: false)]));
+
+      expect(patternFileCollection(const ['ab/cd/*']),
+          hasContents(dirs: [DirectoryEntry(path: 'ab/cd', recurse: false)]));
     });
 
     test('match anything recursive', () {
@@ -90,11 +93,23 @@ void main() {
     });
 
     test('bad pattern', () {
+      expect(() => patternFileCollection(const ['*/foo']),
+          throwsA(isA<DartleException>()));
+      expect(() => patternFileCollection(const ['foo/*/*']),
+          throwsA(isA<DartleException>()));
       expect(() => patternFileCollection(const ['**/foo']),
+          throwsA(isA<DartleException>()));
+      expect(() => patternFileCollection(const ['*/**']),
+          throwsA(isA<DartleException>()));
+      expect(() => patternFileCollection(const ['**/*']),
           throwsA(isA<DartleException>()));
       expect(() => patternFileCollection(const ['/a/**/foo/*.txt']),
           throwsA(isA<DartleException>()));
       expect(() => patternFileCollection(const ['/**/**/*.txt']),
+          throwsA(isA<DartleException>()));
+      expect(() => patternFileCollection(const ['/*.pdf/*.txt']),
+          throwsA(isA<DartleException>()));
+      expect(() => patternFileCollection(const ['/*.pdf/**']),
           throwsA(isA<DartleException>()));
     });
   });
