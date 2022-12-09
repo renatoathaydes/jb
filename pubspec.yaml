@@ -16,6 +16,7 @@ dependencies:
   file: ^6.1.4
   isolate_current_directory: ^1.1.0
   archive: ^3.3.4
+  xml: ^6.2.2
 
 dev_dependencies:
   build_runner: ^2.2.0

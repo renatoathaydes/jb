@@ -10,6 +10,8 @@ import 'jbuild_jar.g.dart';
 import 'paths.dart';
 import 'properties.dart';
 
+typedef Closable = FutureOr<void> Function();
+
 Future<File> createIfNeededAndGetJBuildJarFile() async {
   final file = File(jbuildJarPath()).absolute;
   if (!await file.exists()) {
@@ -28,6 +30,11 @@ Future<void> _createJBuildJar(File jar) async {
 extension AnyExtension<T> on T? {
   T orThrow(String error) {
     if (this == null) throw DartleException(message: error);
+    return this!;
+  }
+
+  T orThrowA(String Function() error) {
+    if (this == null) throw DartleException(message: error());
     return this!;
   }
 }
@@ -103,6 +110,11 @@ extension MapEntryIterable<K, V> on Iterable<MapEntry<K, V>> {
 }
 
 extension DirectoryExtension on Directory {
+  Future<String> toClasspath() => list()
+      .where((f) =>
+          FileSystemEntity.isFileSync(f.path) && p.extension(f.path) == '.jar')
+      .join(Platform.isWindows ? ';' : ':');
+
   Future<void> copyContentsInto(String destinationDir) async {
     if (!await exists()) return;
     await for (final child in list(recursive: true)) {

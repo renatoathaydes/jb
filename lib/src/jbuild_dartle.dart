@@ -1,8 +1,6 @@
-import 'dart:convert';
-
-import 'package:archive/archive_io.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'package:jb/src/jb_extension.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
@@ -53,7 +51,10 @@ class JBuildDartle {
   late final Set<Task> tasks;
 
   /// Wait for all sub-projects tasks to be initialized.
-  late final Future<void> init;
+  ///
+  /// Returns a [Closable] that must be called after this object is no longer
+  /// required.
+  late final Future<Closable> init;
 
   /// Project configuration.
   JBuildConfiguration get config => _components.config;
@@ -105,7 +106,7 @@ class JBuildDartle {
     return LocalDependencies(jars, subProjects);
   }
 
-  Future<void> _initialize(LocalDependencies localDependencies) async {
+  Future<Closable> _initialize(LocalDependencies localDependencies) async {
     final files = _components.files;
     final config = _components.config;
     final cache = _components.cache;
@@ -133,7 +134,10 @@ class JBuildDartle {
     deps = createDepsTask(files.jbuildJar, config, cache, localDependencies,
         !_components.options.colorfulLog);
 
-    final customTasks = await _loadExtensionProject(files, cache).toList();
+    final extensionProject =
+        await loadExtensionProject(files, _subProjectFactory, cache);
+
+    final extensionTasks = extensionProject?.tasks;
 
     projectTasks.addAll({
       compile,
@@ -145,7 +149,7 @@ class JBuildDartle {
       downloadTestRunner,
       test,
       deps,
-      ...customTasks,
+      if (extensionTasks != null) ...extensionTasks,
     });
 
     clean = createCleanTask(
@@ -165,6 +169,8 @@ class JBuildDartle {
             "${projectPath.isEmpty ? 'Root project' : "Project '$projectPath'"}"
             ' initialization completed in '
             '${_components.stopWatch.elapsedMilliseconds} ms.');
+
+    return extensionProject?.close ?? () {};
   }
 
   void _addSubProjectTaskDependencies(List<SubProject> subProjects) {
@@ -178,48 +184,6 @@ class JBuildDartle {
           .dependsOn({subCompileTask.name, subInstallRuntimeTask.name});
       clean.dependsOn({subCleanTask.name});
     }
-  }
-
-  Stream<Task> _loadExtensionProject(
-      JBuildFiles files, DartleCache cache) async* {
-    if (await files.jbExtensionProjectDir.exists()) {
-      logger.fine('Loading jb extension project');
-      final path = files.jbExtensionProjectDir.path;
-      final jbExtensionProject =
-          await _subProjectFactory.createJBuildSubProject(ProjectDependency(
-              DependencySpec(
-                  transitive: false, scope: DependencyScope.all, path: path),
-              path));
-
-      logger.fine('Running jb extension project build');
-
-      await runBasic(jbExtensionProject.tasks.values.toSet(), const {},
-          Options(tasksInvocation: ['$path:$compileTaskName']), cache);
-
-      final jar = jbExtensionProject.output.when(
-          dir: (d) => throw DartleException(
-              message: 'jb extension project must configure an '
-                  "'output-jar', not 'output-dir'."),
-          jar: (j) => j);
-
-      yield* _loadExtensionTasks(p.join(files.jbExtensionProjectDir.path, jar));
-    }
-  }
-
-  Stream<Task> _loadExtensionTasks(String jar) async* {
-    const extService = 'META-INF/jb/jb-extension.yaml';
-    logger.fine('Reading jb extension project manifest file');
-    final archive = ZipDecoder().decodeBuffer(InputFileStream(jar));
-    final extFile = archive.findFile(extService);
-    if (extFile == null) {
-      throw DartleException(
-          message:
-              'jb extension project jar is missing manifest file: $extService');
-    }
-    final model = loadJbExtensionModel(
-        utf8.decode(extFile.content), Uri.parse('jar:file:$jar!$extService'));
-
-    // TODO create tasks from the model
   }
 }
 

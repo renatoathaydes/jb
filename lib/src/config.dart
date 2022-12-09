@@ -19,9 +19,13 @@ const jbuildCache = '.jbuild-cache';
 /// Files and directories used by jb.
 class JBuildFiles {
   final File jbuildJar;
+
   File get configFile => File('jbuild.yaml');
+
   File get dependenciesFile => File(p.join(jbuildCache, 'dependencies.txt'));
+
   Directory get jbExtensionProjectDir => Directory('jb-src');
+
   File get processorDependenciesFile =>
       File(p.join(jbuildCache, 'processor-dependencies.txt'));
   final processorLibsDir = p.join(jbuildCache, 'processor-dependencies');
@@ -89,18 +93,23 @@ extension on _Value<Iterable<String>> {
 class ExtensionTask {
   final String name;
   final String description;
-  final String phase;
+  final TaskPhase phase;
   final Set<String> inputs;
   final Set<String> outputs;
+  final Set<String> dependsOn;
   final String className;
+  final String methodName;
 
-  ExtensionTask(
-      {required this.name,
-      required this.description,
-      required this.phase,
-      required this.inputs,
-      required this.outputs,
-      required this.className});
+  ExtensionTask({
+    required this.name,
+    required this.description,
+    required this.phase,
+    required this.inputs,
+    required this.outputs,
+    required this.dependsOn,
+    required this.className,
+    required this.methodName,
+  });
 }
 
 /// jb extension model.
@@ -347,12 +356,7 @@ class JBuildConfiguration {
       result.addAll(javacArgs);
       if (processorDependencies.isNotEmpty) {
         result.add('-processorpath');
-        final jars = await Directory(processorLibsDir)
-            .list()
-            .map((f) => f.path)
-            .where((p) => p.endsWith('.jar'))
-            .join(Platform.isWindows ? ';' : ':');
-        result.add(jars);
+        result.add(await Directory(processorLibsDir).toClasspath());
       }
     }
     return result;
@@ -780,18 +784,58 @@ ExtensionTask _extensionTask(MapEntry<String, Object?> task) {
   final spec = task.value;
   if (spec is Map<String, Object?>) {
     return ExtensionTask(
-        name: task.key,
-        description: _stringValue(spec, 'description', '').value,
-        phase: _stringValue(spec, 'phase', 'build').value,
-        inputs: _stringIterableValue(spec, 'inputs', const {}).value.toSet(),
-        outputs: _stringIterableValue(spec, 'outputs', const {}).value.toSet(),
-        className: _optionalStringValue(spec, 'class-name')
-            .orThrow("declaration of task '${task.key}' is missing mandatory "
-                "'class-name'.\n$taskSyntaxHelp"));
+      name: task.key,
+      description: _stringValue(spec, 'description', '').value,
+      phase: _taskPhase(spec['phase']),
+      inputs: _stringIterableValue(spec, 'inputs', const {}).value.toSet(),
+      outputs: _stringIterableValue(spec, 'outputs', const {}).value.toSet(),
+      dependsOn:
+          _stringIterableValue(spec, 'depends-on', const {}).value.toSet(),
+      className: _optionalStringValue(spec, 'class-name')
+          .orThrow("declaration of task '${task.key}' is missing mandatory "
+              "'class-name'.\n$taskSyntaxHelp"),
+      methodName: _stringValue(spec, 'method-name', 'run').value,
+    );
   } else {
     throw DartleException(
         message: 'bad task declaration, '
             "expected String or Map value, got '$task'.\n"
             "$taskSyntaxHelp");
   }
+}
+
+final _defaultPhaseIndex = TaskPhase.build.index + 10;
+
+const _phaseHelpMessage = '''
+To declare an existing phase or a custom phase that runs after the 'build' phase:
+  phase: phase-name
+Use the following syntax to declare custom phases:
+  phase:
+    # phase name:  phase index
+    my-phase-name: 700
+''';
+
+TaskPhase _taskPhase(Object? phase) {
+  if (phase == null) return TaskPhase.build;
+  if (phase is String) {
+    final builtIn = TaskPhase.builtInPhases.where((p) => p.name == phase);
+    if (builtIn.isNotEmpty) return builtIn.first;
+    return TaskPhase.custom(_defaultPhaseIndex, phase);
+  }
+  if (phase is Map) {
+    if (phase.length != 1) {
+      throw DartleException(
+          message: 'invalid custom phase declaration.\n$_phaseHelpMessage');
+    }
+
+    final name = phase.keys.first.toString();
+    final index = phase.values.first;
+    if (index is int) {
+      return TaskPhase.custom(index, name);
+    }
+    throw DartleException(
+        message: "phase '$name' has an invalid index.\n$_phaseHelpMessage");
+  }
+  throw DartleException(
+      message: 'invalid custom phase declaration.\n$_phaseHelpMessage');
 }

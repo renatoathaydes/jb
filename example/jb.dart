@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 import 'package:jb/jb.dart';
@@ -32,7 +30,7 @@ Future<void> main(List<String> args) async {
       DartleCache('.jbuild-cache'), options, stopwatch);
 
   // Must always wait for jb to initialize as it will load sub-projects async.
-  await jb.init;
+  final closable = await jb.init;
 
   // Run the Dartle build
   try {
@@ -42,6 +40,7 @@ Future<void> main(List<String> args) async {
         'jb completed successfully in ${stopwatch.elapsed})!', LogColor.green));
   } catch (e) {
     logger.severe('ERROR: $e');
-    exit(1);
+  } finally {
+    await closable();
   }
 }
