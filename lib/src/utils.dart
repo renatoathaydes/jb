@@ -37,6 +37,11 @@ extension AnyExtension<T> on T? {
     if (this == null) throw DartleException(message: error());
     return this!;
   }
+
+  V? map<V>(V Function(T) mapper) {
+    final self = this;
+    return self == null ? null : mapper(self);
+  }
 }
 
 extension FunctionExtension<T> on bool Function(T) {

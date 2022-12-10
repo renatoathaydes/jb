@@ -8,6 +8,7 @@ import 'package:test/test.dart';
 const helloProjectDir = 'test/test-projects/hello';
 const withDepsProjectDir = 'test/test-projects/with-deps';
 const withSubProjectDir = 'test/test-projects/with-sub-project';
+const withExtensionDir = 'test/test-projects/with-extension';
 const testsProjectDir = 'test/test-projects/tests';
 
 final jbuildExecutable = p.join(Directory.current.path, 'build', 'bin',
@@ -194,6 +195,41 @@ void main() {
 
       expect(stdout.join('\n'),
           anyOf(contains(unicodeResults), contains(asciiResults)));
+    });
+  });
+
+  projectGroup(withExtensionDir, 'with-extension project', () {
+    tearDown(() async {
+      await deleteAll(dirs(
+          ['$withExtensionDir/build', '$withExtensionDir/.jbuild-cache'],
+          includeHidden: true));
+    });
+
+    test('can install dependencies and compile extension project', () async {
+      final stdout = <String>[];
+      final stderr = <String>[];
+      var exitCode = await exec(
+          Process.start(jbuildExecutable, const [],
+              workingDirectory: withExtensionDir),
+          onStdoutLine: stdout.add,
+          onStderrLine: stderr.add);
+      expectSuccess(exitCode, stdout, stderr);
+      expect(await File('$withExtensionDir/build/with-extension.jar').exists(),
+          isTrue);
+    });
+
+    test('can run custom task defined by extension project', () async {
+      final stdout = <String>[];
+      final stderr = <String>[];
+      var exitCode = await exec(
+          Process.start(jbuildExecutable, const ['sample-task', '--no-color'],
+              workingDirectory: withExtensionDir),
+          onStdoutLine: stdout.add,
+          onStderrLine: stderr.add);
+      expectSuccess(exitCode, stdout, stderr);
+      expect(
+          stdout.join('\n'), contains('Extension task running: TestExtension'));
+      expect(stderr, isEmpty);
     });
   });
 }

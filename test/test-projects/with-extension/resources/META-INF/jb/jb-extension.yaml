@@ -1,0 +1,5 @@
+tasks:
+  sample-task:
+    description: my simple demo task
+    class-name: TestExtension
+    method-name: run

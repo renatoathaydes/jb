@@ -199,9 +199,10 @@ Future<void> _copy(Iterable<SubProject> subProjects, String destinationDir,
   await Directory(destinationDir).create(recursive: true);
   if (subProjects.isEmpty) return;
   for (final sub in subProjects) {
-    await _copyOutput(sub.output, sub.path, destinationDir);
+    await _copyOutput(sub.config.output, sub.path, destinationDir);
     await _copyOutput(
-        CompileOutput.dir(runtime ? sub.runtimeLibsDir : sub.compileLibsDir),
+        CompileOutput.dir(
+            runtime ? sub.config.runtimeLibsDir : sub.config.compileLibsDir),
         sub.path,
         destinationDir);
   }

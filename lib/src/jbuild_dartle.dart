@@ -134,8 +134,8 @@ class JBuildDartle {
     deps = createDepsTask(files.jbuildJar, config, cache, localDependencies,
         !_components.options.colorfulLog);
 
-    final extensionProject =
-        await loadExtensionProject(files, _subProjectFactory, cache);
+    final extensionProject = await loadExtensionProject(
+        files, config.extensionProject, _subProjectFactory, cache);
 
     final extensionTasks = extensionProject?.tasks;
 

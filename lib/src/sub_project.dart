@@ -26,11 +26,9 @@ class SubProject {
 
   String get path => _dartle.projectPath;
 
-  String get compileLibsDir => _dartle.config.compileLibsDir;
+  String get compilerLibsDir => _dartle.config.compileLibsDir;
 
-  String get runtimeLibsDir => _dartle.config.runtimeLibsDir;
-
-  CompileOutput get output => _dartle.config.output;
+  JBuildConfiguration get config => _dartle.config;
 }
 
 /// Factory used to create `SubProject`s given a project's dependencies.

@@ -27,16 +27,25 @@ class ExtensionProject {
   }
 }
 
-Future<ExtensionProject?> loadExtensionProject(JBuildFiles files,
-    SubProjectFactory subProjectFactory, DartleCache cache) async {
-  if (await files.jbExtensionProjectDir.exists()) {
+/// Load an extension project from the given projectPath, if given, or from the default location otherwise.
+Future<ExtensionProject?> loadExtensionProject(
+    JBuildFiles files,
+    String? projectPath,
+    SubProjectFactory subProjectFactory,
+    DartleCache cache) async {
+  final projectDir = projectPath?.map((path) => Directory(path)) ??
+      files.jbExtensionProjectDir;
+  if (await projectDir.exists()) {
     logger.fine('Loading jb extension project');
-    final path = files.jbExtensionProjectDir.path;
+    final path = projectDir.path;
     final jbExtensionProject = await subProjectFactory.createJBuildSubProject(
         ProjectDependency(
             DependencySpec(
                 transitive: false, scope: DependencyScope.all, path: path),
             path));
+
+    logger.fine(() => 'Verifying jb extension project');
+    _verify(jbExtensionProject);
 
     logger.fine('Running jb extension project build');
 
@@ -50,20 +59,34 @@ Future<ExtensionProject?> loadExtensionProject(JBuildFiles files,
         cache);
 
     return await _load(path, jbExtensionProject);
+  } else if (projectPath != null) {
+    throw DartleException(
+        message: 'Extension project does not exist: $projectPath');
   }
 
   return null;
 }
 
+void _verify(SubProject project) {
+  const jbApi = 'com.athaydes.jb:jb-api';
+  final hasJbApiDep =
+      project.config.dependencies.keys.any((dep) => dep.startsWith('$jbApi:'));
+  if (!hasJbApiDep) {
+    throw DartleException(
+        message: 'Extension project is missing dependency on jb-api.\n'
+            "To fix that, add a dependency on '$jbApi:<version>'");
+  }
+}
+
 Future<ExtensionProject> _load(
     String projectPath, SubProject subProject) async {
-  final jar = subProject.output.when(
+  final jar = subProject.config.output.when(
       dir: (d) => throw DartleException(
           message: 'jb extension project must configure an '
               "'output-jar', not 'output-dir'."),
       jar: (j) => p.join(projectPath, j));
 
-  final runtimeLibsDir = p.join(projectPath, subProject.runtimeLibsDir);
+  final runtimeLibsDir = p.join(projectPath, subProject.config.runtimeLibsDir);
 
   const extService = 'META-INF/jb/jb-extension.yaml';
   logger.fine('Reading jb extension project manifest file');

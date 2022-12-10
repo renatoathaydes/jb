@@ -131,6 +131,7 @@ class JBuildConfiguration {
   final String? module;
   final String? version;
   final String? mainClass;
+  final String? extensionProject;
   final Set<String> sourceDirs;
   final bool _defaultSourceDirs;
   final CompileOutput output;
@@ -161,6 +162,7 @@ class JBuildConfiguration {
     this.module,
     this.version,
     this.mainClass,
+    this.extensionProject,
     bool defaultSourceDirs = false,
     bool defaultOutput = false,
     bool defaultResourceDirs = false,
@@ -233,6 +235,7 @@ class JBuildConfiguration {
       module: _optionalStringValue(map, 'module'),
       version: _optionalStringValue(map, 'version'),
       mainClass: _optionalStringValue(map, 'main-class'),
+      extensionProject: _optionalStringValue(map, 'extension-project'),
       sourceDirs: sourceDirs.toSet(),
       defaultSourceDirs: sourceDirs.isDefault,
       output: output ?? _defaultOutputValue(),
@@ -271,6 +274,8 @@ class JBuildConfiguration {
       module: resolveOptionalString(other.module ?? module, props),
       version: resolveOptionalString(other.version ?? version, props),
       mainClass: resolveOptionalString(other.mainClass ?? mainClass, props),
+      extensionProject: resolveOptionalString(
+          other.extensionProject ?? extensionProject, props),
       sourceDirs: other._defaultSourceDirs
           ? sourceDirs.merge(const {}, props)
           : sourceDirs.merge(other.sourceDirs, props),
