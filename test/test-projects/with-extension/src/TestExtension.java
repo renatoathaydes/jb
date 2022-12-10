@@ -25,7 +25,7 @@ public final class TestExtension implements JbTask {
     }
     
     @Override
-    public void run(String[] args, TaskContext context) {
+    public void run(String[] args) {
         System.out.println("Extension task running: " + getClass().getName());
     }
 }

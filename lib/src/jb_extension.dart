@@ -58,7 +58,7 @@ Future<ExtensionProject?> loadExtensionProject(
         ]),
         cache);
 
-    return await _load(path, jbExtensionProject);
+    return await _load(path, files.jbuildJar, jbExtensionProject);
   } else if (projectPath != null) {
     throw DartleException(
         message: 'Extension project does not exist: $projectPath');
@@ -79,7 +79,7 @@ void _verify(SubProject project) {
 }
 
 Future<ExtensionProject> _load(
-    String projectPath, SubProject subProject) async {
+    String projectPath, File jbuildJar, SubProject subProject) async {
   final jar = subProject.config.output.when(
       dir: (d) => throw DartleException(
           message: 'jb extension project must configure an '
@@ -100,7 +100,8 @@ Future<ExtensionProject> _load(
   final model = await loadJbExtensionModel(
       utf8.decode(extFile.content), Uri.parse('jar:file:$jar!$extService'));
 
-  final classpath = await Directory(runtimeLibsDir).toClasspath();
+  final classpath =
+      await Directory(runtimeLibsDir).toClasspath({File(jar), jbuildJar});
   final jvmExec = JvmExecutor(classpath);
   return ExtensionProject([
     for (final extTask in model.extensionTasks)
@@ -110,15 +111,16 @@ Future<ExtensionProject> _load(
 
 Task _createTask(
     JvmExecutor executor, ExtensionTask extensionTask, String path) {
+  final runCondition = _runCondition(extensionTask, path);
   return Task(
       (args) async => await withCurrentDirectory(
           path,
-          () async => await executor.run(
-              extensionTask.className, extensionTask.methodName, args)),
+          () async => await executor.run(extensionTask.className,
+              extensionTask.methodName, [args])),
       name: extensionTask.name,
       argsValidator: const AcceptAnyArgs(),
       description: extensionTask.description,
-      runCondition: _runCondition(extensionTask, path),
+      runCondition: runCondition,
       dependsOn: extensionTask.dependsOn,
       phase: extensionTask.phase);
 }

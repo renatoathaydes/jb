@@ -59,8 +59,7 @@ public interface JbTask {
      * stack-trace being printed.
      *
      * @param args    command-line arguments provided by the user
-     * @param context the task context
      * @throws IOException if an IO errors occur
      */
-    void run( String[] args, TaskContext context ) throws IOException;
+    void run( String[] args ) throws IOException;
 }

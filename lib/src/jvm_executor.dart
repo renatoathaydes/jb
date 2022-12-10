@@ -28,7 +28,9 @@ class JvmExecutor {
 
   Future<_Proc>? _process;
 
-  JvmExecutor(this._classpath);
+  JvmExecutor(this._classpath) {
+    logger.info('classpath: $_classpath');
+  }
 
   Future<int> runJBuild(List<String> args,
       {Map<String, String> env = const {}}) async {
@@ -85,11 +87,13 @@ class JvmExecutor {
   List<int> _createRpcMessage(
       String? className, String methodName, List<dynamic> args) {
     final method = className == null ? methodName : '$className.$methodName';
-    final rpcMessage = utf8.encode('<?xml version="1.0"?>'
+    final message = '<?xml version="1.0"?>'
         '<methodCall>'
         '<methodName>$method</methodName>'
         '<params>${_rpcParams(args)}</params>'
-        '</methodCall>');
+        '</methodCall>';
+    logger.fine(() => 'Sending RPC message: $message');
+    final rpcMessage = utf8.encode(message);
     final len = ByteData(4)..setInt32(0, rpcMessage.length);
     return [...len.buffer.asUint8List(), ...rpcMessage];
   }
@@ -126,9 +130,11 @@ class JvmExecutor {
   Future<dynamic> _parseRpcResponse(Stream<List<int>> data) async {
     final messages =
         data.transform(const ChunkDecoder()).transform(utf8.decoder);
+    final message = await messages.first;
+    logger.fine(() => 'Received RPC response: $message');
     final XmlDocument doc;
     try {
-      doc = XmlDocument.parse(await messages.first);
+      doc = XmlDocument.parse(message);
       // await data.transform(ChunkDecoder()).transform(utf8.decoder).first);
     } on XmlException catch (e) {
       throw DartleException(message: 'RPC response could not be parsed: $e');

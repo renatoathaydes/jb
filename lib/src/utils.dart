@@ -56,6 +56,17 @@ extension NullIterable<T> on Iterable<T?> {
   }
 }
 
+extension on Stream<String> {
+  Stream<String> followedBy(Iterable<String> rest) async* {
+    await for (final s in this) {
+      yield s;
+    }
+    for (final s in rest) {
+      yield s;
+    }
+  }
+}
+
 extension PathIterable on Iterable<String> {
   Stream<File> collectFilePaths() async* {
     for (final path in this) {
@@ -115,9 +126,11 @@ extension MapEntryIterable<K, V> on Iterable<MapEntry<K, V>> {
 }
 
 extension DirectoryExtension on Directory {
-  Future<String> toClasspath() => list()
+  Future<String> toClasspath([Set<File> extraEntries = const {}]) => list()
       .where((f) =>
           FileSystemEntity.isFileSync(f.path) && p.extension(f.path) == '.jar')
+      .map((f) => f.path)
+      .followedBy(extraEntries.map((f) => f.path))
       .join(Platform.isWindows ? ';' : ':');
 
   Future<void> copyContentsInto(String destinationDir) async {

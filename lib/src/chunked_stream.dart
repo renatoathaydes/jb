@@ -52,7 +52,11 @@ class _ChunkedSink implements Sink<List<int>> {
   @override
   void close() {
     _closed = true;
-    _target.close();
+    try {
+      _target.close();
+    } catch (e) {
+      // silently ignore close errors
+    }
   }
 }
 
