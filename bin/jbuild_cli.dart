@@ -28,8 +28,10 @@ void main(List<String> arguments) async {
 
 Never _logAndExit(
     bool loggingEnabled, Level? logLevel, Object exception, StackTrace? st) {
+  int code;
   if (loggingEnabled) {
     if (exception is DartleException) {
+      code = exception.exitCode;
       logger.severe(exception.message);
       if (logLevel == Level.FINE) {
         if (exception is MultipleExceptions) {
@@ -41,17 +43,20 @@ Never _logAndExit(
         }
       }
     } else {
+      code = 1;
       logger.severe('unexpected error', exception, st);
     }
   } else {
     if (exception is DartleException) {
+      code = exception.exitCode;
       print(exception.message);
     } else {
+      code = 1;
       print('unexpected error: $exception');
       print(st);
     }
   }
-  exit(exitCode);
+  exit(code);
 }
 
 String _elapsedTime(Stopwatch stopwatch) {
