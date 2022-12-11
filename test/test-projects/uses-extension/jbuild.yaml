@@ -1,2 +1,2 @@
-extension-project: ../with-extension
+extension-project: ../example-extension
 source-dirs: [ src ]

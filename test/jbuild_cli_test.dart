@@ -8,7 +8,8 @@ import 'package:test/test.dart';
 const helloProjectDir = 'test/test-projects/hello';
 const withDepsProjectDir = 'test/test-projects/with-deps';
 const withSubProjectDir = 'test/test-projects/with-sub-project';
-const withExtensionDir = 'test/test-projects/with-extension';
+const exampleExtensionDir = 'test/test-projects/example-extension';
+const usesExtensionDir = 'test/test-projects/uses-extension';
 const testsProjectDir = 'test/test-projects/tests';
 
 final jbuildExecutable = p.join(Directory.current.path, 'build', 'bin',
@@ -198,32 +199,37 @@ void main() {
     });
   });
 
-  projectGroup(withExtensionDir, 'with-extension project', () {
+  projectGroup(exampleExtensionDir, 'extension project', () {
     tearDown(() async {
       await deleteAll(dirs(
-          ['$withExtensionDir/build', '$withExtensionDir/.jbuild-cache'],
+          ['$exampleExtensionDir/build', '$exampleExtensionDir/.jbuild-cache'],
           includeHidden: true));
     });
 
-    test('can install dependencies and compile extension project', () async {
+    test('can compile extension project', () async {
       final stdout = <String>[];
       final stderr = <String>[];
       var exitCode = await exec(
           Process.start(jbuildExecutable, const [],
-              workingDirectory: withExtensionDir),
+              workingDirectory: exampleExtensionDir),
           onStdoutLine: stdout.add,
           onStderrLine: stderr.add);
       expectSuccess(exitCode, stdout, stderr);
-      expect(await File('$withExtensionDir/build/with-extension.jar').exists(),
+      // TODO verify that the extension manifest gets generated
+      expect(
+          await File('$exampleExtensionDir/build/example-extension.jar')
+              .exists(),
           isTrue);
     });
+  });
 
+  projectGroup(usesExtensionDir, 'uses extension project', () {
     test('can run custom task defined by extension project', () async {
       final stdout = <String>[];
       final stderr = <String>[];
       var exitCode = await exec(
           Process.start(jbuildExecutable, const ['sample-task', '--no-color'],
-              workingDirectory: withExtensionDir),
+              workingDirectory: usesExtensionDir),
           onStdoutLine: stdout.add,
           onStderrLine: stderr.add);
       expectSuccess(exitCode, stdout, stderr);
