@@ -4,23 +4,26 @@ import 'dart:typed_data';
 
 import 'package:dartle/dartle.dart';
 import 'package:jb/jb.dart';
-import 'package:jb/src/chunked_stream.dart';
 import 'package:jb/src/utils.dart';
 import 'package:logging/logging.dart';
 import 'package:xml/xml.dart';
 
 import 'output_consumer.dart';
 
-final _closeMessage = Uint8List.fromList(const [0, 0, 0, 0]);
-
 class _Proc {
-  final Process process;
-  final IOSink stdin;
-  final Stream<List<int>> stdout;
+  final Process _process;
+  final int port;
+  final Future<int> exit;
 
-  _Proc(this.process)
-      : stdin = process.stdin,
-        stdout = process.stdout.asBroadcastStream();
+  _Proc(this._process, this.port)
+      : exit = _process.exitCode.then((value) {
+          logger.fine(() => 'JvmExecutor process ended with $value');
+          return value;
+        });
+
+  bool destroy() {
+    return _process.kill();
+  }
 }
 
 class JvmExecutor {
@@ -29,7 +32,7 @@ class JvmExecutor {
   Future<_Proc>? _process;
 
   JvmExecutor(this._classpath) {
-    logger.info('classpath: $_classpath');
+    logger.fine(() => 'JvmExecutor classpath: $_classpath');
   }
 
   Future<int> runJBuild(List<String> args,
@@ -46,14 +49,17 @@ class JvmExecutor {
   Future<dynamic> run(String? className, String methodName, List args,
       {Map<String, String> env = const {}}) async {
     final process = await _startOrGetProcess(env);
-
-    final stderrConsumer = _RpcExecLogger('err>', methodName);
-    process.process.stderr
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen(stderrConsumer);
-    process.stdin.add(_createRpcMessage(className, methodName, args));
-    return _parseRpcResponse(process.stdout);
+    final client = HttpClient();
+    final req = await client.post('localhost', process.port, '/jbuild-rpc');
+    req.headers.add('Content-Type', 'text/xml; charset=utf-8');
+    req.add(_createRpcMessage(className, methodName, args));
+    final resp = await req.close();
+    if (resp.statusCode == 200) {
+      return _parseRpcResponse(resp);
+    }
+    throw DartleException(
+        message:
+            'RPC request failed (code=${resp.statusCode}): ${await resp.text()}');
   }
 
   Future<_Proc> _startOrGetProcess(Map<String, String> env) {
@@ -63,23 +69,37 @@ class JvmExecutor {
               runInShell: true,
               workingDirectory: Directory.current.path,
               environment: env)
-          .then((p) => _Proc(p));
+          .then((p) async {
+        final pout = p.stdout.lines().asBroadcastStream();
+        final perr = p.stderr.lines();
+        pout.listen(_RpcExecLogger('out>', 'remoteRunner'));
+        perr.listen(_RpcExecLogger('err>', 'remoteRunner'));
+        final line = await pout.first;
+        final port = int.tryParse(line);
+        if (port == null) {
+          throw DartleException(
+              message: 'Could not obtain port from RpcMain Java Process. '
+                  'Expected the port number to be printed, but got: "$line"');
+        }
+        return _Proc(p, port);
+      });
+
       _process = proc;
     }
     return proc;
   }
 
   Future<int> close() async {
+    logger.fine('JvmExecutor being closed');
     final procFuture = _process;
     if (procFuture != null) {
       final proc = await procFuture;
-      proc.stdin.add(_closeMessage);
       try {
-        await _parseRpcResponse(proc.stdout);
+        proc.destroy();
       } catch (e) {
         logger.fine('Problem closing RPC executor: $e');
       }
-      return await proc.process.exitCode;
+      return await proc.exit;
     }
     return 0;
   }
@@ -127,10 +147,8 @@ class JvmExecutor {
     throw ArgumentError('type is not supported in RPC: ${arg.runtimeType}');
   }
 
-  Future<dynamic> _parseRpcResponse(Stream<List<int>> data) async {
-    final messages =
-        data.transform(const ChunkDecoder()).transform(utf8.decoder);
-    final message = await messages.first;
+  Future<dynamic> _parseRpcResponse(Stream<List<int>> rpcResponse) async {
+    final message = await rpcResponse.text();
     logger.fine(() => 'Received RPC response: $message');
     final XmlDocument doc;
     try {
@@ -246,4 +264,11 @@ class _RpcExecLogger extends JbOutputConsumer {
     return ColoredLogMessage(
         '$prompt $taskName [jvm-rpc $pid]: $line', _colorFor(level));
   }
+}
+
+extension on Stream<List<int>> {
+  Future<String> text() => transform(utf8.decoder).join();
+
+  Stream<String> lines() =>
+      transform(utf8.decoder).transform(const LineSplitter());
 }

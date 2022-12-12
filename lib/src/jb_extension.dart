@@ -115,8 +115,8 @@ Task _createTask(
   return Task(
       (args) async => await withCurrentDirectory(
           path,
-          () async => await executor.run(extensionTask.className,
-              extensionTask.methodName, [args])),
+          () async => await executor
+              .run(extensionTask.className, extensionTask.methodName, [args])),
       name: extensionTask.name,
       argsValidator: const AcceptAnyArgs(),
       description: extensionTask.description,
