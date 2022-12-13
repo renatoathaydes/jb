@@ -19,7 +19,7 @@ class _Proc {
   _Proc(this._process, this.port);
 
   bool destroy() {
-    return _process.kill();
+    return _process.kill(ProcessSignal.sigkill);
   }
 }
 
