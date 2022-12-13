@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -13,13 +14,9 @@ import 'output_consumer.dart';
 class _Proc {
   final Process _process;
   final int port;
-  final Future<int> exit;
+  Future<int> get exit => _process.exitCode;
 
-  _Proc(this._process, this.port)
-      : exit = _process.exitCode.then((value) {
-          logger.fine(() => 'JvmExecutor process ended with $value');
-          return value;
-        });
+  _Proc(this._process, this.port);
 
   bool destroy() {
     return _process.kill();
@@ -53,13 +50,17 @@ class JvmExecutor {
     final req = await client.post('localhost', process.port, '/jbuild-rpc');
     req.headers.add('Content-Type', 'text/xml; charset=utf-8');
     req.add(_createRpcMessage(className, methodName, args));
-    final resp = await req.close();
-    if (resp.statusCode == 200) {
-      return _parseRpcResponse(resp);
+    try {
+      final resp = await req.close();
+      if (resp.statusCode == 200) {
+        return _parseRpcResponse(resp);
+      }
+      throw DartleException(
+          message:
+              'RPC request failed (code=${resp.statusCode}): ${await resp.text()}');
+    } catch (e) {
+      throw DartleException(message: 'RPC request failed: $e');
     }
-    throw DartleException(
-        message:
-            'RPC request failed (code=${resp.statusCode}): ${await resp.text()}');
   }
 
   Future<_Proc> _startOrGetProcess(Map<String, String> env) {
@@ -70,10 +71,19 @@ class JvmExecutor {
               workingDirectory: Directory.current.path,
               environment: env)
           .then((p) async {
-        final pout = p.stdout.lines().asBroadcastStream();
         final perr = p.stderr.lines();
-        pout.listen(_RpcExecLogger('out>', 'remoteRunner'));
-        perr.listen(_RpcExecLogger('err>', 'remoteRunner'));
+        // allow Futures to continue after the structured_async scope ends
+        final pout = Zone.root.runUnary((Process proc) {
+          final pout = proc.stdout.lines().asBroadcastStream();
+          // first line is the port, skip that
+          pout.skip(1).listen(_RpcExecLogger('out>', 'remoteRunner'));
+          return pout;
+        }, p);
+
+        Zone.root.runUnary(
+            (Stream<String> s) =>
+                s.listen(_RpcExecLogger('err>', 'remoteRunner')),
+            perr);
         final line = await pout.first;
         final port = int.tryParse(line);
         if (port == null) {
@@ -113,9 +123,7 @@ class JvmExecutor {
         '<params>${_rpcParams(args)}</params>'
         '</methodCall>';
     logger.fine(() => 'Sending RPC message: $message');
-    final rpcMessage = utf8.encode(message);
-    final len = ByteData(4)..setInt32(0, rpcMessage.length);
-    return [...len.buffer.asUint8List(), ...rpcMessage];
+    return utf8.encode(message);
   }
 
   String _rpcParams(List<dynamic> args) {

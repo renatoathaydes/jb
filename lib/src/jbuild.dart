@@ -78,10 +78,14 @@ class _JBuildCli {
     final jbuildDartle =
         JBuildDartle.root(files, config, cache, options, stopWatch);
 
-    await jbuildDartle.init;
+    final closable = await jbuildDartle.init;
 
-    await runBasic(
-        jbuildDartle.tasks, jbuildDartle.defaultTasks, options, cache);
+    try {
+      await runBasic(
+          jbuildDartle.tasks, jbuildDartle.defaultTasks, options, cache);
+    } finally {
+      await closable();
+    }
   }
 
   Future<JBuildConfiguration?> createConfig() async {
