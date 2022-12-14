@@ -46,7 +46,7 @@ class JvmExecutor {
       {Map<String, String> env = const {}}) async {
     final process = await _startOrGetProcess(env);
     final client = HttpClient();
-    final req = await client.post('localhost', process.port, '/jbuild-rpc');
+    final req = await client.post('localhost', process.port, '/jbuild');
     req.headers.add('Content-Type', 'text/xml; charset=utf-8');
     req.add(_createRpcMessage(className, methodName, args));
     try {
@@ -103,6 +103,8 @@ class JvmExecutor {
     final procFuture = _process;
     if (procFuture != null) {
       final proc = await procFuture;
+      // send a stop message to ensure the process dies quickly
+      await _sendStopMessage(proc.port);
       try {
         proc.destroy();
       } catch (e) {
@@ -251,6 +253,18 @@ class JvmExecutor {
         .text);
 
     throw DartleException(message: faultString, exitCode: faultCode);
+  }
+}
+
+Future<void> _sendStopMessage(int port) async {
+  final client = HttpClient();
+  try {
+    final req = await client.delete('localhost', port, '/jbuild');
+    final resp = await req.close();
+    logger.fine(() =>
+        'RPC Server responded with ${resp.statusCode} to request to stop');
+  } catch (e) {
+    logger.fine(() => 'A problem occurred trying to stop the RPC Server: $e');
   }
 }
 

@@ -234,8 +234,9 @@ void main() {
               onStdoutLine: stdout.add,
               onStderrLine: stderr.add)
           .timeout(Duration(seconds: 10), onTimeout: () {
-        print('STDOUT: ${stdout.join('\n')}\nSTDERROR: ${stderr.join('\n')}');
-        throw 'FAILED';
+        print('STDOUT: ${stdout.join('\n')}\n=====\n'
+            'STDERROR: ${stderr.join('\n')}\n=====');
+        throw 'Timeout waiting for process to finish';
       });
       expectSuccess(exitCode, stdout, stderr);
       expect(
