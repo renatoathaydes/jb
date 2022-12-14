@@ -228,10 +228,15 @@ void main() {
       final stdout = <String>[];
       final stderr = <String>[];
       var exitCode = await exec(
-          Process.start(jbuildExecutable, const ['sample-task', '--no-color'],
-              workingDirectory: usesExtensionDir),
-          onStdoutLine: stdout.add,
-          onStderrLine: stderr.add);
+              Process.start(
+                  jbuildExecutable, const ['sample-task', '--no-color'],
+                  workingDirectory: usesExtensionDir),
+              onStdoutLine: stdout.add,
+              onStderrLine: stderr.add)
+          .timeout(Duration(seconds: 10), onTimeout: () {
+        print('STDOUT: ${stdout.join('\n')}\nSTDERROR: ${stderr.join('\n')}');
+        throw 'FAILED';
+      });
       expectSuccess(exitCode, stdout, stderr);
       expect(
           stdout.join('\n'), contains('Extension task running: TestExtension'));
