@@ -21,6 +21,8 @@ void main(List<String> arguments) async {
       logger.info(ColoredLogMessage(
           'Build succeeded in ${_elapsedTime(stopWatch)}!', LogColor.green));
     }
+    // explicitly exit to avoid rogue futures keeping the process alive
+    exit(0);
   } catch (e, st) {
     _logAndExit(loggingEnabled, dartleOptions?.logLevel, e, st);
   }

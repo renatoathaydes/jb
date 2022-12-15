@@ -13,6 +13,8 @@ import 'help.dart';
 
 /// Run jb.
 ///
+/// Returns `true` if the build executed tasks, false if it only printed info.
+///
 /// The caller must handle errors.
 Future<bool> runJBuild(
   JBuildCliOptions jbOptions,
