@@ -108,7 +108,7 @@ class JvmExecutor {
       try {
         proc.destroy();
       } catch (e) {
-        logger.fine('Problem closing RPC executor: $e');
+        logger.finest('Problem closing RPC executor: $e');
       }
       return await proc.exit;
     }
