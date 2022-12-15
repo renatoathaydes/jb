@@ -13,9 +13,12 @@ import 'output_consumer.dart';
 class _Proc {
   final Process _process;
   final int port;
+  final String authorizationHeader;
+
   Future<int> get exit => _process.exitCode;
 
-  _Proc(this._process, this.port);
+  _Proc(this._process, this.port, String token)
+      : authorizationHeader = 'Bearer $token';
 
   bool destroy() {
     return _process.kill(ProcessSignal.sigkill);
@@ -48,6 +51,7 @@ class JvmExecutor {
     final client = HttpClient();
     final req = await client.post('localhost', process.port, '/jbuild');
     req.headers.add('Content-Type', 'text/xml; charset=utf-8');
+    req.headers.add('Authorization', process.authorizationHeader);
     req.add(_createRpcMessage(className, methodName, args));
     try {
       final resp = await req.close();
@@ -75,7 +79,7 @@ class JvmExecutor {
         final pout = Zone.root.runUnary((Process proc) {
           final pout = proc.stdout.lines().asBroadcastStream();
           // first line is the port, skip that
-          pout.skip(1).listen(_RpcExecLogger('out>', 'remoteRunner'));
+          pout.skip(2).listen(_RpcExecLogger('out>', 'remoteRunner'));
           return pout;
         }, p);
 
@@ -83,14 +87,15 @@ class JvmExecutor {
             (Stream<String> s) =>
                 s.listen(_RpcExecLogger('err>', 'remoteRunner')),
             perr);
-        final line = await pout.first;
-        final port = int.tryParse(line);
+        final lines = await pout.take(2).toList();
+        final port = int.tryParse(lines[0]);
         if (port == null) {
           throw DartleException(
               message: 'Could not obtain port from RpcMain Java Process. '
-                  'Expected the port number to be printed, but got: "$line"');
+                  'Expected the port number to be printed, but got: "${lines[0]}"');
         }
-        return _Proc(p, port);
+        final token = lines[1];
+        return _Proc(p, port, token);
       });
 
       _process = proc;
@@ -104,7 +109,7 @@ class JvmExecutor {
     if (procFuture != null) {
       final proc = await procFuture;
       // send a stop message to ensure the process dies quickly
-      await _sendStopMessage(proc.port);
+      await _sendStopMessage(proc.port, proc.authorizationHeader);
       try {
         proc.destroy();
       } catch (e) {
@@ -256,10 +261,11 @@ class JvmExecutor {
   }
 }
 
-Future<void> _sendStopMessage(int port) async {
+Future<void> _sendStopMessage(int port, String authorizationHeader) async {
   final client = HttpClient();
   try {
     final req = await client.delete('localhost', port, '/jbuild');
+    req.headers.add('Authorization', authorizationHeader);
     final resp = await req.close();
     logger.fine(() =>
         'RPC Server responded with ${resp.statusCode} to request to stop');

@@ -229,7 +229,7 @@ void main() {
       final stderr = <String>[];
       var exitCode = await exec(
               Process.start(
-                  jbuildExecutable, const ['sample-task', '--no-color', '-l', 'debug'],
+                  jbuildExecutable, const ['sample-task', '--no-color'],
                   workingDirectory: usesExtensionDir),
               onStdoutLine: stdout.add,
               onStderrLine: stderr.add)
