@@ -29,10 +29,7 @@ class ExtensionProject {
 
 /// Load an extension project from the given projectPath, if given, or from the default location otherwise.
 Future<ExtensionProject?> loadExtensionProject(
-    JBuildFiles files,
-    String? projectPath,
-    SubProjectFactory subProjectFactory,
-    DartleCache cache) async {
+    JBuildFiles files, String? projectPath, DartleCache cache) async {
   final projectDir = projectPath?.map((path) => Directory(path)) ??
       files.jbExtensionProjectDir;
   if (await projectDir.exists()) {
