@@ -49,14 +49,16 @@ Future<ExtensionProject?> loadExtensionProject(
 
     logger.fine('Running jb extension project build');
 
-    await runBasic(
-        jbExtensionProject.tasks.values.toSet(),
-        const {},
-        Options(tasksInvocation: [
-          '$path:$compileTaskName',
-          '$path:$installRuntimeDepsTaskName',
-        ]),
-        cache);
+    await withCurrentDirectory(
+        projectDir.path,
+        () async => await runBasic(
+            jbExtensionProject.tasks.values.toSet(),
+            const {},
+            Options(tasksInvocation: [
+              '$path:$compileTaskName',
+              '$path:$installRuntimeDepsTaskName',
+            ]),
+            cache));
 
     return await _load(path, files.jbuildJar, jbExtensionProject);
   } else if (projectPath != null) {
