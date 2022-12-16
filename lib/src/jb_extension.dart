@@ -36,31 +36,50 @@ Future<ExtensionProject?> loadExtensionProject(
   final projectDir = projectPath?.map((path) => Directory(path)) ??
       files.jbExtensionProjectDir;
   if (await projectDir.exists()) {
-    logger.fine('Loading jb extension project');
+    logger.info('========= Loading jb extension project =========');
+    final stopWatch = Stopwatch()..start();
     final path = projectDir.path;
-    final jbExtensionProject = await subProjectFactory.createJBuildSubProject(
-        ProjectDependency(
-            DependencySpec(
-                transitive: false, scope: DependencyScope.all, path: path),
-            path));
 
-    logger.fine(() => 'Verifying jb extension project');
-    _verify(jbExtensionProject);
+    try {
+      final config = await withCurrentDirectory(path, () async {
+        final configFile = files.configFile;
+        if (!(await configFile.exists())) {
+          throw DartleException(
+              message:
+                  'Extension project at ${path} is missing file ${configFile.path}');
+        }
+        final options = Options(tasksInvocation: [
+          compileTaskName,
+          installRuntimeDepsTaskName,
+        ]);
 
-    logger.fine('Running jb extension project build');
+        final config = await loadConfig(configFile);
+        _verify(config);
 
-    await withCurrentDirectory(
-        projectDir.path,
-        () async => await runBasic(
-            jbExtensionProject.tasks.values.toSet(),
-            const {},
-            Options(tasksInvocation: [
-              '$path:$compileTaskName',
-              '$path:$installRuntimeDepsTaskName',
-            ]),
-            cache));
+        final extensionDartle =
+            JBuildDartle.root(files, config, cache, options, stopWatch);
 
-    return await _load(path, files.jbuildJar, jbExtensionProject);
+        final closable = await extensionDartle.init;
+
+        try {
+          await runBasic(extensionDartle.tasks, extensionDartle.defaultTasks,
+              options, cache);
+        } finally {
+          await closable();
+        }
+
+        return config;
+      });
+
+      final extensionProject = await _load(path, files.jbuildJar, config);
+      logger.log(
+          profile,
+          () =>
+              'Loaded jb extension project in ${stopWatch.elapsedMilliseconds} ms');
+      return extensionProject;
+    } finally {
+      logger.info('========= jb extension project end =========');
+    }
   } else if (projectPath != null) {
     throw DartleException(
         message: 'Extension project does not exist: $projectPath');
@@ -69,10 +88,10 @@ Future<ExtensionProject?> loadExtensionProject(
   return null;
 }
 
-void _verify(SubProject project) {
+void _verify(JBuildConfiguration config) {
   const jbApi = 'com.athaydes.jb:jb-api';
   final hasJbApiDep =
-      project.config.dependencies.keys.any((dep) => dep.startsWith('$jbApi:'));
+      config.dependencies.keys.any((dep) => dep.startsWith('$jbApi:'));
   if (!hasJbApiDep) {
     throw DartleException(
         message: 'Extension project is missing dependency on jb-api.\n'
@@ -81,14 +100,14 @@ void _verify(SubProject project) {
 }
 
 Future<ExtensionProject> _load(
-    String projectPath, File jbuildJar, SubProject subProject) async {
-  final jar = subProject.config.output.when(
+    String projectPath, File jbuildJar, JBuildConfiguration config) async {
+  final jar = config.output.when(
       dir: (d) => throw DartleException(
           message: 'jb extension project must configure an '
               "'output-jar', not 'output-dir'."),
       jar: (j) => p.join(projectPath, j));
 
-  final runtimeLibsDir = p.join(projectPath, subProject.config.runtimeLibsDir);
+  final runtimeLibsDir = p.join(projectPath, config.runtimeLibsDir);
 
   const extService = 'META-INF/jb/jb-extension.yaml';
   logger.fine('Reading jb extension project manifest file');
