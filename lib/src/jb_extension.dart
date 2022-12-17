@@ -74,7 +74,7 @@ Future<ExtensionProject?> loadExtensionProject(
               'Loaded jb extension project in ${stopWatch.elapsedMilliseconds} ms');
       return extensionProject;
     } finally {
-      logger.info('========= jb extension project end =========');
+      logger.info('========= Loaded jb extension project =========');
     }
   } else if (projectPath != null) {
     throw DartleException(
@@ -85,12 +85,11 @@ Future<ExtensionProject?> loadExtensionProject(
 }
 
 void _verify(JBuildConfiguration config) {
-  const jbApi = 'com.athaydes.jb:jb-api';
   final hasJbApiDep =
       config.dependencies.keys.any((dep) => dep.startsWith('$jbApi:'));
   if (!hasJbApiDep) {
     throw DartleException(
-        message: 'Extension project is missing dependency on jb-api.\n'
+        message: 'Extension project is missing dependency on jbuild-api.\n'
             "To fix that, add a dependency on '$jbApi:<version>'");
   }
 }

@@ -16,6 +16,8 @@ final logger = log.Logger('jbuild');
 
 const jbuildCache = '.jbuild-cache';
 
+const jbApi = 'com.athaydes.jbuild:jbuild-api';
+
 /// Files and directories used by jb.
 class JBuildFiles {
   final File jbuildJar;
@@ -97,6 +99,7 @@ class ExtensionTask {
   final Set<String> inputs;
   final Set<String> outputs;
   final Set<String> dependsOn;
+  final Set<String> dependents;
   final String className;
   final String methodName;
 
@@ -109,6 +112,7 @@ class ExtensionTask {
     required this.dependsOn,
     required this.className,
     required this.methodName,
+    required this.dependents,
   });
 }
 
@@ -363,6 +367,9 @@ class JBuildConfiguration {
         result.add('-processorpath');
         result.add(await Directory(processorLibsDir).toClasspath());
       }
+    }
+    if (dependencies.keys.any((d) => d.startsWith(jbApi))) {
+      result.add('--jb-extension');
     }
     return result;
   }
@@ -796,6 +803,8 @@ ExtensionTask _extensionTask(MapEntry<String, Object?> task) {
       outputs: _stringIterableValue(spec, 'outputs', const {}).value.toSet(),
       dependsOn:
           _stringIterableValue(spec, 'depends-on', const {}).value.toSet(),
+      dependents:
+          _stringIterableValue(spec, 'dependents', const {}).value.toSet(),
       className: _optionalStringValue(spec, 'class-name')
           .orThrow("declaration of task '${task.key}' is missing mandatory "
               "'class-name'.\n$taskSyntaxHelp"),
