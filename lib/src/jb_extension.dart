@@ -10,7 +10,6 @@ import 'package:jb/src/jvm_executor.dart';
 import 'package:jb/src/patterns.dart';
 import 'package:path/path.dart' as p;
 
-import 'path_dependency.dart';
 import 'utils.dart';
 
 class ExtensionProject {
@@ -43,7 +42,7 @@ Future<ExtensionProject?> loadExtensionProject(
         if (!(await configFile.exists())) {
           throw DartleException(
               message:
-                  'Extension project at ${path} is missing file ${configFile.path}');
+                  'Extension project at $path is missing file ${configFile.path}');
         }
         final options = Options(tasksInvocation: [
           compileTaskName,
