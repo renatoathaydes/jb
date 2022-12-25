@@ -25,7 +25,7 @@ class ProjectDependency with PathDependency {
   @override
   final String path;
 
-  ProjectDependency(this.spec, this.path);
+  const ProjectDependency(this.spec, this.path);
 
   @override
   T when<T>(
@@ -40,7 +40,7 @@ class JarDependency with PathDependency {
   @override
   final String path;
 
-  JarDependency(this.spec, this.path);
+  const JarDependency(this.spec, this.path);
 
   @override
   T when<T>(

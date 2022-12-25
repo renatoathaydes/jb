@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'package:jb/src/eclipse.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
@@ -22,6 +23,7 @@ const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const installProcessorDepsTaskName = 'installProcessorDependencies';
 const writeDepsTaskName = 'writeDependencies';
 const depsTaskName = 'dependencies';
+const createEclipseTaskName = 'createEclipseFiles';
 
 /// Create run condition for the `compile` task.
 RunOnChanges createCompileRunCondition(
@@ -226,6 +228,15 @@ Future<void> _copyOutput(
           Directory(p.join(subProjectDir, d)).copyContentsInto(destinationDir),
       jar: (j) => File(p.join(subProjectDir, j))
           .copy(p.join(destinationDir, p.basename(j))));
+}
+
+Task createEclipseTask(JBuildConfiguration config) {
+  return Task(
+      (_) async => await generateEclipseFiles(config.sourceDirs,
+          config.resourceDirs, config.module, config.compileLibsDir),
+      name: createEclipseTaskName,
+      description: 'Generate Eclipse IDE files for the project.',
+      dependsOn: const {installCompileDepsTaskName});
 }
 
 /// Create the `run` task.

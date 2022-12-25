@@ -26,7 +26,7 @@ class SubProject {
 
   String get path => _dartle.projectPath;
 
-  String get compilerLibsDir => _dartle.config.compileLibsDir;
+  String get compileLibsDir => _dartle.config.compileLibsDir;
 
   JBuildConfiguration get config => _dartle.config;
 }
