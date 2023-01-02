@@ -21,7 +21,7 @@ class ExtensionProject {
   Future<void> close() async {
     final code = await _executor.close();
     if (code != 0) {
-      logger.fine('JvmExecutor closed with code: $code');
+      logger.fine(() => 'JvmExecutor closed with code: $code');
     }
   }
 }
@@ -67,7 +67,8 @@ Future<ExtensionProject?> loadExtensionProject(
         return config;
       });
 
-      final extensionProject = await _load(path, files.jbuildJar, config);
+      final extensionProject =
+          await _load(path, files.jbuildJar, config, cache);
       logger.log(
           profile,
           () =>
@@ -94,8 +95,8 @@ void _verify(JBuildConfiguration config) {
   }
 }
 
-Future<ExtensionProject> _load(
-    String projectPath, File jbuildJar, JBuildConfiguration config) async {
+Future<ExtensionProject> _load(String projectPath, File jbuildJar,
+    JBuildConfiguration config, DartleCache cache) async {
   final jar = config.output.when(
       dir: (d) => throw DartleException(
           message: 'jb extension project must configure an '
@@ -121,13 +122,13 @@ Future<ExtensionProject> _load(
   final jvmExec = JvmExecutor(classpath);
   return ExtensionProject([
     for (final extTask in model.extensionTasks)
-      _createTask(jvmExec, extTask, projectPath)
+      _createTask(jvmExec, extTask, projectPath, cache)
   ], jvmExec);
 }
 
-Task _createTask(
-    JvmExecutor executor, ExtensionTask extensionTask, String path) {
-  final runCondition = _runCondition(extensionTask, path);
+Task _createTask(JvmExecutor executor, ExtensionTask extensionTask, String path,
+    DartleCache cache) {
+  final runCondition = _runCondition(extensionTask, path, cache);
   return Task(
       (args) async => await withCurrentDirectory(
           path,
@@ -141,11 +142,13 @@ Task _createTask(
       phase: extensionTask.phase);
 }
 
-RunCondition _runCondition(ExtensionTask extensionTask, String path) {
+RunCondition _runCondition(
+    ExtensionTask extensionTask, String path, DartleCache cache) {
   if (extensionTask.inputs.isEmpty && extensionTask.outputs.isEmpty) {
     return const AlwaysRun();
   }
   return RunOnChanges(
+      cache: cache,
       inputs: patternFileCollection(
           extensionTask.inputs.map((f) => p.join(path, f))),
       outputs: patternFileCollection(

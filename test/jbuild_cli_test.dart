@@ -239,8 +239,7 @@ void main() {
         throw 'Timeout waiting for process to finish';
       });
       expectSuccess(exitCode, stdout, stderr);
-      expect(
-          stdout.join('\n'), contains('Extension task running: TestExtension'));
+      expect(stdout.join('\n'), contains('Extension task running: SampleTask'));
       expect(stderr, isEmpty);
     });
   });

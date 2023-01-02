@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'package:jb/jb.dart';
-import 'package:xml/xml.dart' as xml;
+
 import 'package:path/path.dart' as p;
+import 'package:xml/xml.dart' as xml;
 
 /// Generate Eclipse IDE files for the project.
 ///

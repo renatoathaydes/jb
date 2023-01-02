@@ -165,7 +165,7 @@ void main() {
       dependencies:
         - foo:bar:1.0:
             transitive: false
-            scope: runtimeOnly
+            scope: runtime-only
         - second:dep:0.1
         - var:
       ''');
