@@ -38,9 +38,10 @@ RunOnChanges createCompileRunCondition(
 /// Create the `compile` task.
 Task createCompileTask(
     JBuildFiles jbFiles, JBuildConfiguration config, DartleCache cache) {
-  return Task((_) => _compile(jbFiles, config),
+  return Task((args) => _compile(jbFiles, config, args),
       runCondition: createCompileRunCondition(config, cache),
       name: compileTaskName,
+      argsValidator: const AcceptAnyArgs(),
       dependsOn: const {
         installCompileDepsTaskName,
         installProcessorDepsTaskName
@@ -48,13 +49,14 @@ Task createCompileTask(
       description: 'Compile Java source code.');
 }
 
-Future<void> _compile(JBuildFiles jbFiles, JBuildConfiguration config) async {
+Future<void> _compile(
+    JBuildFiles jbFiles, JBuildConfiguration config, List<String> args) async {
   final exitCode = await execJBuild(
       compileTaskName,
       jbFiles.jbuildJar,
       config.preArgs(),
       'compile',
-      await config.compileArgs(jbFiles.processorLibsDir),
+      [...await config.compileArgs(jbFiles.processorLibsDir), ...args],
       env: config.javacEnv);
   if (exitCode != 0) {
     throw DartleException(
