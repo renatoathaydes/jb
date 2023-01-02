@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
+import 'package:jb/jb.dart';
 import 'package:logging/logging.dart' as log;
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
@@ -488,6 +489,22 @@ enum DependencyScope {
   compileOnly,
   runtimeOnly;
 
+  /// Convert a String to a [DependencyScope].
+  static DependencyScope fromName(String name) {
+    switch (name) {
+      case 'runtime-only':
+        return runtimeOnly;
+      case 'compile-only':
+        return compileOnly;
+      case 'all':
+        return all;
+      default:
+        throw DartleException(
+            message: "Invalid scope: '$name'. "
+                "Valid names are: runtime-only, compile-only, all");
+    }
+  }
+
   bool includedInCompilation() {
     return this != DependencyScope.runtimeOnly;
   }
@@ -611,12 +628,7 @@ DependencyScope _scopeValue(
   final value = map[key];
   if (value == null) return defaultValue;
   if (value is String) {
-    return DependencyScope.values
-        .firstWhere((enumValue) => enumValue.name == value, orElse: () {
-      throw DartleException(
-          message: "expecting one of ${DependencyScope.values} for '$key', "
-              "but got '$value'.");
-    });
+    return DependencyScope.fromName(value);
   }
   throw DartleException(
       message: "expecting a String value for '$key', "
