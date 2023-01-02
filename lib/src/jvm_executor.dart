@@ -104,7 +104,7 @@ class JvmExecutor {
   }
 
   Future<int> close() async {
-    logger.fine('JvmExecutor being closed');
+    logger.fine('Closing JvmExecutor');
     final procFuture = _process;
     if (procFuture != null) {
       final proc = await procFuture;
@@ -280,16 +280,20 @@ class _RpcExecLogger extends JbOutputConsumer {
 
   _RpcExecLogger(this.prompt, this.taskName);
 
-  LogColor _colorFor(Level level) {
+  LogColor? _colorFor(Level level) {
     if (level == Level.SEVERE) return LogColor.red;
     if (level == Level.WARNING) return LogColor.yellow;
-    return LogColor.gray;
+    return null;
   }
 
   @override
   Object createMessage(Level level, String line) {
-    return ColoredLogMessage(
-        '$prompt $taskName [jvm-rpc $pid]: $line', _colorFor(level));
+    final message = '$prompt $taskName [jvm-rpc $pid]: $line';
+    final color = _colorFor(level);
+    if (color != null) {
+      return ColoredLogMessage(message, color);
+    }
+    return PlainMessage(message);
   }
 }
 

@@ -65,15 +65,19 @@ class _TaskExecLogger extends JbOutputConsumer {
 
   _TaskExecLogger(this.prompt, this.taskName);
 
-  LogColor _colorFor(Level level) {
+  LogColor? _colorFor(Level level) {
     if (level == Level.SEVERE) return LogColor.red;
     if (level == Level.WARNING) return LogColor.yellow;
-    return LogColor.gray;
+    return null;
   }
 
   @override
   Object createMessage(Level level, String line) {
-    return ColoredLogMessage(
-        '$prompt $taskName [java $pid]: $line', _colorFor(level));
+    final color = _colorFor(level);
+    final message = '$prompt $taskName [java $pid]: $line';
+    if (color != null) {
+      return ColoredLogMessage(message, color);
+    }
+    return PlainMessage(message);
   }
 }
