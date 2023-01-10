@@ -42,6 +42,7 @@ class JBuildDartle {
       installRuntime,
       installProcessor,
       generateEclipse,
+      requirements,
       clean,
       run,
       downloadTestRunner,
@@ -134,6 +135,8 @@ class JBuildDartle {
         files.jbuildJar, config, cache, !_components.options.colorfulLog);
     deps = createDepsTask(files.jbuildJar, config, cache, localDependencies,
         !_components.options.colorfulLog);
+    requirements = createRequirementsTask(files.jbuildJar, config, cache,
+        localDependencies, !_components.options.colorfulLog);
     generateEclipse = createEclipseTask(config);
 
     final extensionProject =
@@ -151,6 +154,7 @@ class JBuildDartle {
       downloadTestRunner,
       test,
       deps,
+      requirements,
       generateEclipse,
       if (extensionTasks != null) ...extensionTasks,
     });

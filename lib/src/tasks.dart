@@ -10,6 +10,7 @@ import 'dependencies.dart';
 import 'exec.dart';
 import 'java_tests.dart';
 import 'path_dependency.dart';
+import 'requirements.dart';
 import 'sub_project.dart';
 import 'utils.dart';
 
@@ -23,6 +24,7 @@ const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const installProcessorDepsTaskName = 'installProcessorDependencies';
 const writeDepsTaskName = 'writeDependencies';
 const depsTaskName = 'dependencies';
+const requirementsTaskName = 'requirements';
 const createEclipseTaskName = 'createEclipseFiles';
 
 /// Create run condition for the `compile` task.
@@ -396,5 +398,32 @@ Future<void> _deps(
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild dependencies command failed', exitCode: exitCode);
+  }
+}
+
+/// Create the `requirements` task.
+Task createRequirementsTask(File jbuildJar, JBuildConfiguration config,
+    DartleCache cache, LocalDependencies localDependencies, bool noColor) {
+  return Task(
+      (List<String> args) => _requirements(
+          jbuildJar, config, cache, localDependencies, noColor, args),
+      name: requirementsTaskName,
+      argsValidator: const AcceptAnyArgs(),
+      dependsOn: const {compileTaskName},
+      description: 'Shows information about project requirements.');
+}
+
+Future<void> _requirements(
+    File jbuildJar,
+    JBuildConfiguration config,
+    DartleCache cache,
+    LocalDependencies localDependencies,
+    bool noColor,
+    List<String> args) async {
+  final out = config.output.when(dir: (dir) => dir, jar: (jar) => jar);
+  final exitCode = await logRequirements(jbuildJar, config, [out, ...args]);
+  if (exitCode != 0) {
+    throw DartleException(
+        message: 'jbuild requirements command failed', exitCode: exitCode);
   }
 }
