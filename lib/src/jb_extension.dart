@@ -8,6 +8,7 @@ import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:jb/jb.dart';
 import 'package:jb/src/jvm_executor.dart';
 import 'package:jb/src/patterns.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 
 import 'utils.dart';
@@ -129,11 +130,14 @@ Future<ExtensionProject> _load(String projectPath, File jbuildJar,
 Task _createTask(JvmExecutor executor, ExtensionTask extensionTask, String path,
     DartleCache cache) {
   final runCondition = _runCondition(extensionTask, path, cache);
-  return Task(
-      (args) async => await withCurrentDirectory(
-          path,
-          () async => await executor
-              .run(extensionTask.className, extensionTask.methodName, [args])),
+  return Task((_) async {
+    final List<String> args =
+        logger.isLoggable(Level.FINE) ? const ['-V'] : const [];
+    return await withCurrentDirectory(
+        path,
+        () async => await executor
+            .run(extensionTask.className, extensionTask.methodName, [args]));
+  },
       name: extensionTask.name,
       argsValidator: const AcceptAnyArgs(),
       description: extensionTask.description,
