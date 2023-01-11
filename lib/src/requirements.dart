@@ -20,6 +20,8 @@ class _RequirementsPrinter implements ProcessOutputConsumer {
   void call(String line) {
     if (line.startsWith('Required')) {
       _logHeader(line);
+    } else if (line.startsWith("ERROR:")) {
+      _logError(line);
     } else if (line.startsWith('  -')) {
       _logType(line);
     } else {
@@ -29,6 +31,10 @@ class _RequirementsPrinter implements ProcessOutputConsumer {
 
   void _logHeader(String line) {
     logger.info(ColoredLogMessage(line, LogColor.magenta));
+  }
+
+  void _logError(String line) {
+    logger.info(ColoredLogMessage(line, LogColor.red));
   }
 
   void _logType(String line) {
