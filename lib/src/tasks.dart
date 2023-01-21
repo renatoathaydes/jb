@@ -268,7 +268,8 @@ Future<void> _run(
   if (mainClass.isEmpty) {
     throw DartleException(
         message: 'cannot run Java application as '
-            'no main-class has been configured or provided.');
+            'no main-class has been configured or provided.\n'
+            'To configure one, add "main-class: your.Main" to your jbuild.yaml file.');
   }
 
   final classpath = {
