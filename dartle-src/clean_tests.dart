@@ -5,12 +5,22 @@ import 'package:path/path.dart' as p;
 import 'paths.dart';
 
 Stream<Directory> _deletables() async* {
-  await for (final entity in Directory(testProjectsDir).list(recursive: true)) {
+  await for (final entity in Directory(testProjectsDir).list()) {
     if (entity is Directory) {
-      final name = p.basename(entity.path);
-      if (const {'build', '.jbuild-cache', '.dartle_tool', 'test-repo'}
-          .contains(name)) {
-        yield entity;
+      yield* _deletablesIn(entity);
+    }
+  }
+}
+
+Stream<Directory> _deletablesIn(Directory entity) async* {
+  await for (final projectDir in entity.list()) {
+    final name = p.basename(entity.path);
+    if (projectDir is Directory &&
+        const {'build', '.jbuild-cache', '.dartle_tool', 'test-repo'}
+            .contains(name)) {
+      yield projectDir;
+      if (name == 'with-sub-project') {
+        yield* _deletablesIn(projectDir);
       }
     }
   }
