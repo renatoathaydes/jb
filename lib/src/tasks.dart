@@ -320,7 +320,9 @@ Future<void> _downloadTestRunner(
   final junit = findJUnitSpec(config.dependencies);
   if (junit == null) {
     throw DartleException(
-        message: 'cannot run tests as no test libraries have been detected');
+        message: 'cannot run tests as no test libraries have been detected.\n'
+            'To use JUnit, for example, add the JUnit API as a dependency:\n'
+            '    - "org.junit.jupiter:junit-jupiter-api"');
   }
   final outDir = Directory(p.join(cache.rootDir, junitRunnerLibsDir));
   await outDir.create();
