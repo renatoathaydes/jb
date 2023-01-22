@@ -12,6 +12,7 @@ final String jbuildGeneratedDartFilePath =
     path.join('lib', 'src', 'jbuild_jar.g.dart');
 
 final testProjectsDir = path.join('test', 'test-projects');
+final exampleProjectsDir = 'example';
 
 final String testMavenRepo = path.join('test', 'test-projects', 'test-repo');
 
