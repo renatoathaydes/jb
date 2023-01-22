@@ -19,6 +19,14 @@ void main() {
   activateLogging(Level.FINE);
 
   projectGroup(helloProjectDir, 'hello project', () {
+    tearDown(() async {
+      await deleteAll(dirs([
+        '$helloProjectDir/build',
+        '$helloProjectDir/.jbuild-cache',
+        '$helloProjectDir/out',
+      ], includeHidden: true));
+    });
+
     test('can compile basic Java class and cache result', () async {
       final stdout = <String>[];
       final stderr = <String>[];
@@ -105,9 +113,12 @@ void main() {
 
   projectGroup(withSubProjectDir, 'with-sub-project project', () {
     tearDown(() async {
-      await deleteAll(dirs(
-          ['$withSubProjectDir/build', '$withSubProjectDir/.jbuild-cache'],
-          includeHidden: true));
+      await deleteAll(dirs([
+        '$withSubProjectDir/build',
+        '$withSubProjectDir/.jbuild-cache',
+        '$withSubProjectDir/greeting/build',
+        '$withSubProjectDir/greeting/.jbuild-cache',
+      ], includeHidden: true));
     });
 
     test('can install dependencies and compile project', () async {
@@ -139,6 +150,18 @@ void main() {
   });
 
   projectGroup(testsProjectDir, 'tests project', () {
+    tearDown(() async {
+      await deleteAll(dirs([
+        '$testsProjectDir/build',
+        '$testsProjectDir/.jbuild-cache',
+        // this project depends on the with-sub-project project
+        '$withSubProjectDir/build',
+        '$withSubProjectDir/.jbuild-cache',
+        '$withSubProjectDir/greeting/build',
+        '$withSubProjectDir/greeting/.jbuild-cache',
+      ], includeHidden: true));
+    });
+
     test('can run Java tests using two levels of sub-projects', () async {
       final stdout = <String>[];
       final stderr = <String>[];
@@ -201,9 +224,10 @@ void main() {
 
   projectGroup(exampleExtensionDir, 'extension project', () {
     tearDown(() async {
-      await deleteAll(dirs(
-          ['$exampleExtensionDir/build', '$exampleExtensionDir/.jbuild-cache'],
-          includeHidden: true));
+      await deleteAll(dirs([
+        '$exampleExtensionDir/build',
+        '$exampleExtensionDir/.jbuild-cache',
+      ], includeHidden: true));
     });
 
     test('can compile extension project', () async {
@@ -224,6 +248,16 @@ void main() {
   });
 
   projectGroup(usesExtensionDir, 'uses extension project', () {
+    tearDown(() async {
+      await deleteAll(dirs([
+        '$usesExtensionDir/build',
+        '$usesExtensionDir/.jbuild-cache',
+        // uses the example extension project
+        '$exampleExtensionDir/build',
+        '$exampleExtensionDir/.jbuild-cache',
+      ], includeHidden: true));
+    });
+
     test('can run custom task defined by extension project', () async {
       final stdout = <String>[];
       final stderr = <String>[];
