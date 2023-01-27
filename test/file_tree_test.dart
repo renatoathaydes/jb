@@ -19,28 +19,27 @@ void main() {
         r'  - jbuild.errors.JBuildException$ErrorCause (JBuildException.java):',
         r'  - jbuild.errors.Error (Error.java):',
         r'    * jbuild.artifact.Version',
-        r'    * jbuild.artifact.Maven',
+        r'    * jbuild.maven.Maven',
         r'  - jbuild.artifact.Version (Version.java):',
         r'    * jbuild.artifact.VersionRange',
         r'  - jbuild.artifact.VersionRange (VersionRange.java):',
-        r'  - jbuild.artifact.Maven (Maven.java):',
+        r'  - jbuild.maven.Maven (Maven.java):',
       ]));
 
-      print(tree);
+      expect(tree.transitiveDeps('jbuild/api/CustomTaskPhase.java'),
+          equals(const []));
 
-      expect(tree.transitiveDeps('CustomTaskPhase.java'), equals(const []));
-
-      expect(tree.transitiveDeps('Version.java'),
-          equals(const ['VersionRange.java']));
+      expect(tree.transitiveDeps('jbuild/artifact/Version.java'),
+          equals(const ['jbuild/artifact/VersionRange.java']));
 
       expect(
-          tree.transitiveDeps('Artifact.java'),
+          tree.transitiveDeps('jbuild/artifact/Artifact.java'),
           equals(const [
-            'Version.java',
-            'JBuildException.java',
-            'VersionRange.java',
-            'Error.java',
-            'Maven.java',
+            'jbuild/artifact/Version.java',
+            'jbuild/errors/JBuildException.java',
+            'jbuild/artifact/VersionRange.java',
+            'jbuild/errors/Error.java',
+            'jbuild/maven/Maven.java',
           ]));
     });
   });

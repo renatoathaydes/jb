@@ -41,17 +41,27 @@ class _TypeEntry {
   final String file;
 
   const _TypeEntry(this.type, this.file);
+
+  String get path {
+    if (type.contains('.')) {
+      final lastDot = type.lastIndexOf('.');
+      final pkg = type.substring(0, lastDot).replaceAll('.', '/');
+      return '$pkg/$file';
+    } else {
+      return file;
+    }
+  }
 }
 
 Future<FileTree> loadFileTree(Stream<String> classRequirements) async {
-  Map<String, String> fileByType = {};
+  Map<String, String> pathByType = {};
   Map<String, List<String>> typeDeps = {};
   List<String>? currentTypeDeps;
 
   await for (final line in classRequirements) {
     if (line.startsWith('  - ')) {
       final typeEntry = _parseTypeLine(line);
-      fileByType[typeEntry.type] = typeEntry.file;
+      pathByType[typeEntry.type] = typeEntry.path;
       currentTypeDeps = <String>[];
       typeDeps[typeEntry.type] = currentTypeDeps;
     } else if (line.startsWith('    * ')) {
@@ -63,11 +73,11 @@ Future<FileTree> loadFileTree(Stream<String> classRequirements) async {
   // convert type deps to file deps
   final result = <String, FileDeps>{};
   typeDeps.forEach((type, deps) {
-    final file = fileByType[type]!;
+    final path = pathByType[type]!;
     final fileDeps =
-        result.update(file, (deps) => deps, ifAbsent: () => FileDeps(file, {}));
+        result.update(path, (deps) => deps, ifAbsent: () => FileDeps(path, {}));
     for (final dep in deps) {
-      fileDeps.deps.add(fileByType[dep]!);
+      fileDeps.deps.add(pathByType[dep]!);
     }
   });
   return FileTree(result);
