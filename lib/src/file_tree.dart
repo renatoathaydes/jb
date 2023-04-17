@@ -1,4 +1,5 @@
 import 'package:dartle/dartle.dart';
+import 'package:dartle/dartle_cache.dart';
 
 class FileDeps {
   final String path;
@@ -10,26 +11,51 @@ class FileDeps {
   String toString() => 'File $path depends on $deps';
 }
 
+/// A tree of files describing files' dependencies.
 class FileTree {
   final Map<String, FileDeps> depsByFile;
 
   const FileTree(this.depsByFile);
 
-  Set<String>? transitiveDeps(String file, [Set<String>? visited]) {
+  /// Compute the transitive dependencies of a particular file in the tree.
+  ///
+  /// The given file is included in the result unless `null` is returned, which
+  /// implies the file is not part of the [FileTree].
+  ///
+  /// If `result` is provided, the results are collected into it and it is
+  /// returned, otherwise a new `Set` is created and returned.
+  Set<String>? transitiveDeps(String file, [Set<String>? result]) {
     final fileDeps = depsByFile[file];
     if (fileDeps == null) return null;
-    final result = <String>{};
-    visited ??= <String>{};
-    visited.add(fileDeps.path);
-
-    result.addAll(fileDeps.deps);
+    result ??= <String>{};
+    result.add(file);
     for (final next in fileDeps.deps) {
-      if (visited.add(next)) {
-        final nextDeps = transitiveDeps(next, visited);
+      if (result.add(next)) {
+        final nextDeps = transitiveDeps(next, result);
         if (nextDeps != null) result.addAll(nextDeps);
       }
     }
     return result;
+  }
+
+  /// Compute the transitive changes given an initial change Set.
+  ///
+  /// The transitive dependencies of every modified file are included.
+  /// Deleted files are not included and their transitive dependencies
+  /// are assumed to have also been deleted.
+  Set<String> computeTransitiveChanges(List<FileChange> changeSet) {
+    final modified = changeSet
+        .where(
+            (c) => c.kind == ChangeKind.modified || c.kind == ChangeKind.added)
+        .expand((c) => transitiveDeps(c.entity.path) ?? <String>{})
+        .toSet();
+
+    for (final del in changeSet
+        .where((c) => c.kind == ChangeKind.deleted)
+        .expand((c) => transitiveDeps(c.entity.path) ?? <String>{})) {
+      modified.remove(del);
+    }
+    return modified;
   }
 
   @override
