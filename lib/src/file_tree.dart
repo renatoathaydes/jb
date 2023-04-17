@@ -1,6 +1,8 @@
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 
+import 'utils.dart';
+
 class FileDeps {
   final String path;
   final Set<String> deps;
@@ -9,6 +11,18 @@ class FileDeps {
 
   @override
   String toString() => 'File $path depends on $deps';
+}
+
+class TransitiveChanges {
+  final Set<String> modified;
+  final Set<String> deletions;
+
+  TransitiveChanges({required this.modified, required this.deletions});
+
+  @override
+  String toString() {
+    return 'TransitiveChanges{modified: $modified, deletions: $deletions}';
+  }
 }
 
 /// A tree of files describing files' dependencies.
@@ -24,15 +38,36 @@ class FileTree {
   ///
   /// If `result` is provided, the results are collected into it and it is
   /// returned, otherwise a new `Set` is created and returned.
-  Set<String>? transitiveDeps(String file, [Set<String>? result]) {
+  Set<String>? transitiveDeps(String file, {Set<String>? result}) {
     final fileDeps = depsByFile[file];
     if (fileDeps == null) return null;
     result ??= <String>{};
     result.add(file);
     for (final next in fileDeps.deps) {
       if (result.add(next)) {
-        final nextDeps = transitiveDeps(next, result);
+        final nextDeps = transitiveDeps(next, result: result);
         if (nextDeps != null) result.addAll(nextDeps);
+      }
+    }
+    return result;
+  }
+
+  /// Compute the transitive dependents of a particular file in the tree.
+  ///
+  /// The given file is not included in the result. If the file is not present
+  /// in the file tree, `null` is returned.
+  ///
+  /// If `result` is provided, the results are collected into it and it is
+  /// returned, otherwise a new `Set` is created and returned.
+  Set<String>? dependentsOf(String file, {Set<String>? result}) {
+    if (!depsByFile.containsKey(file)) return null;
+    result ??= <String>{};
+    for (final entry in depsByFile.entries) {
+      if (entry.value.deps.contains(file)) {
+        final dependent = entry.key;
+        print('File $file has dependent $dependent');
+        result.add(dependent);
+        dependentsOf(dependent, result: result);
       }
     }
     return result;
@@ -41,21 +76,28 @@ class FileTree {
   /// Compute the transitive changes given an initial change Set.
   ///
   /// The transitive dependencies of every modified file are included.
-  /// Deleted files are not included and their transitive dependencies
-  /// are assumed to have also been deleted.
-  Set<String> computeTransitiveChanges(List<FileChange> changeSet) {
-    final modified = changeSet
-        .where(
-            (c) => c.kind == ChangeKind.modified || c.kind == ChangeKind.added)
-        .expand((c) => transitiveDeps(c.entity.path) ?? <String>{})
+  ///
+  /// Deleted files are also returned. To make it easier to invalidate
+  /// a compilation unit, dependents of deleted files are also reported
+  /// as modified, even if they actually weren't.
+  TransitiveChanges computeTransitiveChanges(List<FileChange> changeSet) {
+    final deletions = changeSet
+        .where((c) => c.kind == ChangeKind.deleted)
+        .map((c) => c.entity.path)
         .toSet();
 
-    for (final del in changeSet
-        .where((c) => c.kind == ChangeKind.deleted)
-        .expand((c) => transitiveDeps(c.entity.path) ?? <String>{})) {
-      modified.remove(del);
+    final modified = changeSet
+        .where((c) =>
+            (c.kind == ChangeKind.modified || c.kind == ChangeKind.added))
+        .expand((c) => transitiveDeps(c.entity.path) ?? <String>{})
+        .where(deletions.contains.not)
+        .toSet();
+
+    for (final deletion in deletions) {
+      dependentsOf(deletion, result: modified);
     }
-    return modified;
+
+    return TransitiveChanges(modified: modified, deletions: deletions);
   }
 
   @override
@@ -103,7 +145,8 @@ Future<FileTree> loadFileTree(Stream<String> classRequirements) async {
     final fileDeps =
         result.update(path, (deps) => deps, ifAbsent: () => FileDeps(path, {}));
     for (final dep in deps) {
-      fileDeps.deps.add(pathByType[dep]!);
+      final path = pathByType[dep]!;
+      if (fileDeps.path != path) fileDeps.deps.add(path);
     }
   });
   return FileTree(result);

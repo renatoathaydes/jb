@@ -32,7 +32,7 @@ void main() {
       ]));
     });
 
-    test('can load simple file tree', () async {
+    test('can compute transitive dependencies of a file', () async {
       expect(tree.transitiveDeps('jbuild/api/CustomTaskPhase.java'),
           equals(const {'jbuild/api/CustomTaskPhase.java'}));
 
@@ -55,7 +55,16 @@ void main() {
           }));
     });
 
-    test('can compute all transitive changes from ChangeSet', () async {
+    test('can compute transitive dependents of a file', () async {
+      expect(
+          tree.dependentsOf('jbuild/errors/Error.java'),
+          equals(const {
+            'jbuild/errors/JBuildException.java',
+            'jbuild/artifact/Artifact.java',
+          }));
+    });
+
+    test('can compute transitive changes from file changes', () async {
       final changes = tree.computeTransitiveChanges([
         FileChange(File('jbuild/artifact/Version.java'), ChangeKind.modified),
         FileChange(
@@ -63,7 +72,7 @@ void main() {
       ]);
 
       expect(
-          changes,
+          changes.modified,
           equals(const {
             'jbuild/artifact/Version.java',
             'jbuild/artifact/VersionRange.java',
@@ -71,7 +80,8 @@ void main() {
           }));
     });
 
-    test('removes deletions from transitive changes from ChangeSet', () async {
+    test('can compute transitive changes from file changes and deletions',
+        () async {
       final changes = tree.computeTransitiveChanges([
         FileChange(File('jbuild/artifact/Artifact.java'), ChangeKind.modified),
         FileChange(
@@ -79,9 +89,18 @@ void main() {
       ]);
 
       expect(
-          changes,
+          changes.modified,
           equals(const {
             'jbuild/artifact/Artifact.java',
+            'jbuild/artifact/Version.java',
+            'jbuild/artifact/VersionRange.java',
+            'jbuild/errors/Error.java',
+            'jbuild/maven/Maven.java',
+          }));
+      expect(
+          changes.deletions,
+          equals(const {
+            'jbuild/errors/JBuildException.java',
           }));
     });
   });
