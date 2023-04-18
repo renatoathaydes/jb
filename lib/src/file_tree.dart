@@ -54,18 +54,19 @@ class FileTree {
 
   /// Compute the transitive dependents of a particular file in the tree.
   ///
-  /// The given file is not included in the result. If the file is not present
-  /// in the file tree, `null` is returned.
+  /// If the file is not present in the file tree, `null` is returned, otherwise
+  /// the file is included in the result when [includeArg] is true.
   ///
   /// If `result` is provided, the results are collected into it and it is
   /// returned, otherwise a new `Set` is created and returned.
-  Set<String>? dependentsOf(String file, {Set<String>? result}) {
+  Set<String>? dependentsOf(String file,
+      {Set<String>? result, bool includeArg = true}) {
     if (!depsByFile.containsKey(file)) return null;
     result ??= <String>{};
+    if (includeArg) result.add(file);
     for (final entry in depsByFile.entries) {
       if (entry.value.deps.contains(file)) {
         final dependent = entry.key;
-        print('File $file has dependent $dependent');
         result.add(dependent);
         dependentsOf(dependent, result: result);
       }
@@ -75,7 +76,7 @@ class FileTree {
 
   /// Compute the transitive changes given an initial change Set.
   ///
-  /// The transitive dependencies of every modified file are included.
+  /// The transitive dependents of every modified file are included.
   ///
   /// Deleted files are also returned. To make it easier to invalidate
   /// a compilation unit, dependents of deleted files are also reported
@@ -89,12 +90,12 @@ class FileTree {
     final modified = changeSet
         .where((c) =>
             (c.kind == ChangeKind.modified || c.kind == ChangeKind.added))
-        .expand((c) => transitiveDeps(c.entity.path) ?? <String>{})
+        .expand((c) => dependentsOf(c.entity.path) ?? const <String>{})
         .where(deletions.contains.not)
         .toSet();
 
     for (final deletion in deletions) {
-      dependentsOf(deletion, result: modified);
+      dependentsOf(deletion, result: modified, includeArg: false);
     }
 
     return TransitiveChanges(modified: modified, deletions: deletions);

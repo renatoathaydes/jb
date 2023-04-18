@@ -21,7 +21,6 @@ void main() {
         r'  - jbuild.errors.JBuildException (JBuildException.java):',
         r'    * jbuild.errors.JBuildException$ErrorCause',
         r'    * jbuild.errors.Error',
-        r'  - jbuild.errors.JBuildException$ErrorCause (JBuildException.java):',
         r'  - jbuild.errors.Error (Error.java):',
         r'    * jbuild.artifact.Version',
         r'    * jbuild.maven.Maven',
@@ -56,16 +55,31 @@ void main() {
     });
 
     test('can compute transitive dependents of a file', () async {
+      expect(tree.dependentsOf('jbuild/artifact/Artifact.java'),
+          equals(const {'jbuild/artifact/Artifact.java'}));
+
       expect(
           tree.dependentsOf('jbuild/errors/Error.java'),
           equals(const {
+            'jbuild/errors/Error.java',
             'jbuild/errors/JBuildException.java',
             'jbuild/artifact/Artifact.java',
           }));
     });
 
     test('can compute transitive changes from file changes', () async {
-      final changes = tree.computeTransitiveChanges([
+      var changes = tree.computeTransitiveChanges([
+        FileChange(File('jbuild/artifact/Artifact.java'), ChangeKind.modified),
+      ]);
+
+      expect(
+          changes.modified,
+          equals(const {
+            'jbuild/artifact/Artifact.java',
+          }));
+      expect(changes.deletions, isEmpty);
+
+      changes = tree.computeTransitiveChanges([
         FileChange(File('jbuild/artifact/Version.java'), ChangeKind.modified),
         FileChange(
             File('jbuild/api/CustomTaskPhase.java'), ChangeKind.modified),
@@ -75,17 +89,20 @@ void main() {
           changes.modified,
           equals(const {
             'jbuild/artifact/Version.java',
-            'jbuild/artifact/VersionRange.java',
+            'jbuild/errors/Error.java',
+            'jbuild/errors/JBuildException.java',
+            'jbuild/artifact/Artifact.java',
             'jbuild/api/CustomTaskPhase.java',
           }));
+      expect(changes.deletions, isEmpty);
     });
 
     test('can compute transitive changes from file changes and deletions',
         () async {
-      final changes = tree.computeTransitiveChanges([
+          var changes = tree.computeTransitiveChanges([
         FileChange(File('jbuild/artifact/Artifact.java'), ChangeKind.modified),
         FileChange(
-            File('jbuild/errors/JBuildException.java'), ChangeKind.deleted),
+            File('jbuild/artifact/VersionRange.java'), ChangeKind.deleted),
       ]);
 
       expect(
@@ -93,15 +110,22 @@ void main() {
           equals(const {
             'jbuild/artifact/Artifact.java',
             'jbuild/artifact/Version.java',
-            'jbuild/artifact/VersionRange.java',
+            'jbuild/errors/JBuildException.java',
             'jbuild/errors/Error.java',
-            'jbuild/maven/Maven.java',
           }));
       expect(
           changes.deletions,
           equals(const {
-            'jbuild/errors/JBuildException.java',
+            'jbuild/artifact/VersionRange.java',
           }));
+
+      changes = tree.computeTransitiveChanges([
+        FileChange(File('jbuild/artifact/Artifact.java'), ChangeKind.deleted),
+      ]);
+
+      expect(changes.modified, isEmpty);
+      expect(
+          changes.deletions, equals(const {'jbuild/artifact/Artifact.java'}));
     });
   });
 }
