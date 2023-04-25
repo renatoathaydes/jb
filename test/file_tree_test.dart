@@ -1,34 +1,38 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dartle/dartle_cache.dart';
 import 'package:jb/src/file_tree.dart';
 import 'package:test/test.dart';
 
+const exampleFileTree = [
+  r'Required type(s) for build/jbuild.jar:',
+  r'  - jbuild.api.CustomTaskPhase (CustomTaskPhase.java):',
+  r'  - jbuild.artifact.Artifact (Artifact.java):',
+  r'    * jbuild.artifact.Version',
+  r'    * jbuild.errors.JBuildException',
+  r'  - jbuild.errors.JBuildException$ErrorCause (JBuildException.java):',
+  r'    * jbuild.errors.JBuildException$ErrorCause',
+  r'    * jbuild.errors.JBuildException',
+  r'  - jbuild.errors.JBuildException (JBuildException.java):',
+  r'    * jbuild.errors.JBuildException$ErrorCause',
+  r'    * jbuild.errors.Error',
+  r'  - jbuild.errors.Error (Error.java):',
+  r'    * jbuild.artifact.Version',
+  r'    * jbuild.maven.Maven',
+  r'  - jbuild.artifact.Version (Version.java):',
+  r'    * jbuild.artifact.VersionRange',
+  r'  - jbuild.artifact.VersionRange (VersionRange.java):',
+  r'  - jbuild.maven.Maven (Maven.java):',
+];
+
 void main() {
   group('FileTree', () {
     late FileTree tree;
 
     setUpAll(() async {
-      tree = await loadFileTree(Stream.fromIterable([
-        r'Required type(s) for build/jbuild.jar:',
-        r'  - jbuild.api.CustomTaskPhase (CustomTaskPhase.java):',
-        r'  - jbuild.artifact.Artifact (Artifact.java):',
-        r'    * jbuild.artifact.Version',
-        r'    * jbuild.errors.JBuildException',
-        r'  - jbuild.errors.JBuildException$ErrorCause (JBuildException.java):',
-        r'    * jbuild.errors.JBuildException$ErrorCause',
-        r'    * jbuild.errors.JBuildException',
-        r'  - jbuild.errors.JBuildException (JBuildException.java):',
-        r'    * jbuild.errors.JBuildException$ErrorCause',
-        r'    * jbuild.errors.Error',
-        r'  - jbuild.errors.Error (Error.java):',
-        r'    * jbuild.artifact.Version',
-        r'    * jbuild.maven.Maven',
-        r'  - jbuild.artifact.Version (Version.java):',
-        r'    * jbuild.artifact.VersionRange',
-        r'  - jbuild.artifact.VersionRange (VersionRange.java):',
-        r'  - jbuild.maven.Maven (Maven.java):',
-      ]));
+      tree = await loadFileTree(Stream.fromIterable(exampleFileTree));
     });
 
     test('can compute transitive dependencies of a file', () async {
@@ -98,25 +102,25 @@ void main() {
     });
 
     test('can compute transitive changes from file changes and deletions',
-        () async {
+            () async {
           var changes = tree.computeTransitiveChanges([
         FileChange(File('jbuild/artifact/Artifact.java'), ChangeKind.modified),
         FileChange(
             File('jbuild/artifact/VersionRange.java'), ChangeKind.deleted),
       ]);
 
-      expect(
-          changes.modified,
-          equals(const {
-            'jbuild/artifact/Artifact.java',
-            'jbuild/artifact/Version.java',
-            'jbuild/errors/JBuildException.java',
-            'jbuild/errors/Error.java',
-          }));
-      expect(
-          changes.deletions,
-          equals(const {
-            'jbuild/artifact/VersionRange.java',
+          expect(
+              changes.modified,
+              equals(const {
+                'jbuild/artifact/Artifact.java',
+                'jbuild/artifact/Version.java',
+                'jbuild/errors/JBuildException.java',
+                'jbuild/errors/Error.java',
+              }));
+          expect(
+              changes.deletions,
+              equals(const {
+                'jbuild/artifact/VersionRange.java',
           }));
 
       changes = tree.computeTransitiveChanges([
@@ -126,6 +130,16 @@ void main() {
       expect(changes.modified, isEmpty);
       expect(
           changes.deletions, equals(const {'jbuild/artifact/Artifact.java'}));
+    });
+
+    test('can be serialized', () async {
+      final sc = StreamController<List<int>>();
+      tree.serialize(sc.sink);
+      final serializedLines = await sc.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .toList();
+      expect(serializedLines, equals(exampleFileTree.sublist(1)));
     });
   });
 }

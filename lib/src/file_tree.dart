@@ -1,7 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'package:path/path.dart' as p;
 
 import 'utils.dart';
+
+final _newLine = utf8.encode(Platform.isWindows ? "\r\n" : '\n');
 
 class FileDeps {
   final String path;
@@ -10,7 +16,7 @@ class FileDeps {
   const FileDeps(this.path, this.deps);
 
   @override
-  String toString() => 'File $path depends on $deps';
+  String toString() => 'File $path depends on ${deps.join(', ')}';
 }
 
 class TransitiveChanges {
@@ -28,8 +34,24 @@ class TransitiveChanges {
 /// A tree of files describing files' dependencies.
 class FileTree {
   final Map<String, FileDeps> depsByFile;
+  final Map<String, List<String>> _typeDeps;
+  final Map<String, String> _pathByType;
 
-  const FileTree(this.depsByFile);
+  FileTree(this._typeDeps, this._pathByType)
+      : depsByFile = _computeDepsByFile(_typeDeps, _pathByType);
+
+  void serialize(Sink<List<int>> sink) {
+    _typeDeps.forEach((type, deps) {
+      final path = _pathByType[type]!;
+      sink.add(utf8.encode('  - $type (${p.basename(path)}):'));
+      sink.add(_newLine);
+      for (final dep in deps) {
+        sink.add(utf8.encode('    * $dep'));
+        sink.add(_newLine);
+      }
+    });
+    sink.close();
+  }
 
   /// Compute the transitive dependencies of a particular file in the tree.
   ///
@@ -89,7 +111,7 @@ class FileTree {
 
     final modified = changeSet
         .where((c) =>
-            (c.kind == ChangeKind.modified || c.kind == ChangeKind.added))
+    (c.kind == ChangeKind.modified || c.kind == ChangeKind.added))
         .expand((c) => dependentsOf(c.entity.path) ?? const <String>{})
         .where(deletions.contains.not)
         .toSet();
@@ -101,6 +123,21 @@ class FileTree {
     return TransitiveChanges(modified: modified, deletions: deletions);
   }
 
+  /// Merge this [FileTree] with another, excluding everything in the files
+  /// given by `deletions`..
+  FileTree merge(FileTree additions, Set<String> deletions) {
+    final typeDeps = <String, List<String>>{};
+    final pathByType = <String, String>{};
+    _typeDeps.forEach((type, deps) {
+      final path = _pathByType[type]!;
+      if (!deletions.contains(path)) {
+        typeDeps[type] = deps;
+        pathByType[type] = path;
+      }
+    });
+    return FileTree(typeDeps, pathByType);
+  }
+
   @override
   String toString() => depsByFile.values.map((fd) => '$fd').join(', ');
 }
@@ -109,7 +146,7 @@ class _TypeEntry {
   final String type;
   final String file;
 
-  const _TypeEntry(this.type, this.file);
+  const _TypeEntry({required this.type, required this.file});
 
   String get path {
     if (type.contains('.')) {
@@ -139,8 +176,13 @@ Future<FileTree> loadFileTree(Stream<String> classRequirements) async {
     }
   }
 
-  // convert type deps to file deps
+  return FileTree(typeDeps, pathByType);
+}
+
+Map<String, FileDeps> _computeDepsByFile(
+    Map<String, List<String>> typeDeps, Map<String, String> pathByType) {
   final result = <String, FileDeps>{};
+
   typeDeps.forEach((type, deps) {
     final path = pathByType[type]!;
     final fileDeps =
@@ -150,7 +192,8 @@ Future<FileTree> loadFileTree(Stream<String> classRequirements) async {
       if (fileDeps.path != path) fileDeps.deps.add(path);
     }
   });
-  return FileTree(result);
+
+  return result;
 }
 
 _TypeEntry _parseTypeLine(String line) {
@@ -159,7 +202,8 @@ _TypeEntry _parseTypeLine(String line) {
   line = line.substring(4, line.length - 2);
   final parensStart = line.indexOf('(');
   return _TypeEntry(
-      line.substring(0, parensStart - 1), line.substring(parensStart + 1));
+      type: line.substring(0, parensStart - 1),
+      file: line.substring(parensStart + 1));
 }
 
 String _parseDepLine(String line) {
