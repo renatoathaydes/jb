@@ -135,6 +135,11 @@ class FileTree {
         pathByType[type] = path;
       }
     });
+    additions._typeDeps.forEach((type, deps) {
+      final path = additions._pathByType[type]!;
+      typeDeps[type] = deps;
+      pathByType[type] = path;
+    });
     return FileTree(typeDeps, pathByType);
   }
 
@@ -188,8 +193,8 @@ Map<String, FileDeps> _computeDepsByFile(
     final fileDeps =
         result.update(path, (deps) => deps, ifAbsent: () => FileDeps(path, {}));
     for (final dep in deps) {
-      final path = pathByType[dep]!;
-      if (fileDeps.path != path) fileDeps.deps.add(path);
+      final path = pathByType[dep];
+      if (path != null && fileDeps.path != path) fileDeps.deps.add(path);
     }
   });
 
