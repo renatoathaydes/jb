@@ -35,37 +35,13 @@ void main() {
       tree = await loadFileTree(Stream.fromIterable(exampleFileTree));
     });
 
-    test('can compute transitive dependencies of a file', () async {
-      expect(tree.transitiveDeps('jbuild/api/CustomTaskPhase.java'),
-          equals(const {'jbuild/api/CustomTaskPhase.java'}));
-
-      expect(
-          tree.transitiveDeps('jbuild/artifact/Version.java'),
-          equals(const {
-            'jbuild/artifact/Version.java',
-            'jbuild/artifact/VersionRange.java'
-          }));
-
-      expect(
-          tree.transitiveDeps('jbuild/artifact/Artifact.java'),
-          equals(const {
-            'jbuild/artifact/Artifact.java',
-            'jbuild/artifact/Version.java',
-            'jbuild/errors/JBuildException.java',
-            'jbuild/artifact/VersionRange.java',
-            'jbuild/errors/Error.java',
-            'jbuild/maven/Maven.java',
-          }));
-    });
-
     test('can compute transitive dependents of a file', () async {
       expect(tree.dependentsOf('jbuild/artifact/Artifact.java'),
-          equals(const {'jbuild/artifact/Artifact.java'}));
+          equals(const <String>{}));
 
       expect(
           tree.dependentsOf('jbuild/errors/Error.java'),
           equals(const {
-            'jbuild/errors/Error.java',
             'jbuild/errors/JBuildException.java',
             'jbuild/artifact/Artifact.java',
           }));

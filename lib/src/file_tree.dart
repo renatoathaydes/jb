@@ -20,10 +20,20 @@ class FileDeps {
 }
 
 class TransitiveChanges {
-  final Set<String> modified;
-  final Set<String> deletions;
+  final FileTree fileTree;
+  final List<FileChange> fileChanges;
 
-  TransitiveChanges({required this.modified, required this.deletions});
+  Set<String> get modified => fileChanges
+      .where((e) => e.kind != ChangeKind.deleted)
+      .map((e) => e.entity.path)
+      .toSet();
+
+  Set<String> get deletions => fileChanges
+      .where((e) => e.kind == ChangeKind.deleted)
+      .map((e) => e.entity.path)
+      .toSet();
+
+  TransitiveChanges(this.fileTree, this.fileChanges);
 
   @override
   String toString() {
@@ -33,12 +43,16 @@ class TransitiveChanges {
 
 /// A tree of files describing files' dependencies.
 class FileTree {
-  final Map<String, FileDeps> depsByFile;
+  late final Map<String, FileDeps> depsByFile;
   final Map<String, List<String>> _typeDeps;
   final Map<String, String> _pathByType;
+  final Map<String, List<String>> _typesByPath;
 
-  FileTree(this._typeDeps, this._pathByType)
-      : depsByFile = _computeDepsByFile(_typeDeps, _pathByType);
+  FileTree._(this._typeDeps, List<_TypeEntry> typeEntries)
+      : _pathByType = typeEntries.byType(),
+        _typesByPath = typeEntries.byPath() {
+    depsByFile = _computeDepsByFile(_typeDeps, _pathByType);
+  }
 
   void serialize(Sink<List<int>> sink) {
     _typeDeps.forEach((type, deps) {
@@ -53,39 +67,15 @@ class FileTree {
     sink.close();
   }
 
-  /// Compute the transitive dependencies of a particular file in the tree.
-  ///
-  /// The given file is included in the result unless `null` is returned, which
-  /// implies the file is not part of the [FileTree].
-  ///
-  /// If `result` is provided, the results are collected into it and it is
-  /// returned, otherwise a new `Set` is created and returned.
-  Set<String>? transitiveDeps(String file, {Set<String>? result}) {
-    final fileDeps = depsByFile[file];
-    if (fileDeps == null) return null;
-    result ??= <String>{};
-    result.add(file);
-    for (final next in fileDeps.deps) {
-      if (result.add(next)) {
-        final nextDeps = transitiveDeps(next, result: result);
-        if (nextDeps != null) result.addAll(nextDeps);
-      }
-    }
-    return result;
-  }
-
   /// Compute the transitive dependents of a particular file in the tree.
   ///
-  /// If the file is not present in the file tree, `null` is returned, otherwise
-  /// the file is included in the result when [includeArg] is true.
+  /// If the file is not present in the file tree, `null` is returned.
   ///
   /// If `result` is provided, the results are collected into it and it is
   /// returned, otherwise a new `Set` is created and returned.
-  Set<String>? dependentsOf(String file,
-      {Set<String>? result, bool includeArg = true}) {
+  Set<String>? dependentsOf(String file, {Set<String>? result}) {
     if (!depsByFile.containsKey(file)) return null;
     result ??= <String>{};
-    if (includeArg) result.add(file);
     for (final entry in depsByFile.entries) {
       if (entry.value.deps.contains(file)) {
         final dependent = entry.key;
@@ -99,48 +89,52 @@ class FileTree {
   /// Compute the transitive changes given an initial change Set.
   ///
   /// The transitive dependents of every modified file are included.
+  /// This allows incremental compilation to re-compile not just the files
+  /// that were directly changed, but also the files that use definitions from
+  /// the changed files.
   ///
-  /// Deleted files are also returned. To make it easier to invalidate
-  /// a compilation unit, dependents of deleted files are also reported
-  /// as modified, even if they actually weren't.
+  /// Deleted files are also returned. Dependents of deleted files are reported
+  /// as having been modified, even if they actually weren't, so that they are
+  /// re-compiled.
   TransitiveChanges computeTransitiveChanges(List<FileChange> changeSet) {
-    final deletions = changeSet
-        .where((c) => c.kind == ChangeKind.deleted)
-        .map((c) => c.entity.path)
-        .toSet();
-
-    final modified = changeSet
-        .where((c) =>
-    (c.kind == ChangeKind.modified || c.kind == ChangeKind.added))
-        .expand((c) => dependentsOf(c.entity.path) ?? const <String>{})
-        .where(deletions.contains.not)
-        .toSet();
-
-    for (final deletion in deletions) {
-      dependentsOf(deletion, result: modified, includeArg: false);
+    final transitiveChanges = <String>{};
+    for (final change in changeSet) {
+      dependentsOf(change.entity.path, result: transitiveChanges);
     }
 
-    return TransitiveChanges(modified: modified, deletions: deletions);
+    final changeSetPaths = changeSet.map((c) => c.entity.path).toSet();
+
+    final totalChanges = changeSet
+        .followedBy(transitiveChanges
+            .where(changeSetPaths.contains.not)
+            .map((e) => FileChange(File(e), ChangeKind.modified)))
+        .toList();
+
+    return TransitiveChanges(this, totalChanges);
   }
 
   /// Merge this [FileTree] with another, excluding everything in the files
   /// given by `deletions`..
   FileTree merge(FileTree additions, Set<String> deletions) {
     final typeDeps = <String, List<String>>{};
-    final pathByType = <String, String>{};
+    final typeEntries = <_TypeEntry>[];
     _typeDeps.forEach((type, deps) {
       final path = _pathByType[type]!;
       if (!deletions.contains(path)) {
         typeDeps[type] = deps;
-        pathByType[type] = path;
+        typeEntries.add(_TypeEntry(type: type, file: path));
       }
     });
     additions._typeDeps.forEach((type, deps) {
       final path = additions._pathByType[type]!;
       typeDeps[type] = deps;
-      pathByType[type] = path;
+      typeEntries.add(_TypeEntry(type: type, file: path));
     });
-    return FileTree(typeDeps, pathByType);
+    return FileTree._(typeDeps, typeEntries);
+  }
+
+  Iterable<String> classFilesOf(String path) {
+    return (_typesByPath[path] ?? const []).map(_toClassFile);
   }
 
   @override
@@ -150,29 +144,42 @@ class FileTree {
 class _TypeEntry {
   final String type;
   final String file;
+  String? _path;
 
-  const _TypeEntry({required this.type, required this.file});
+  _TypeEntry({required this.type, required this.file});
 
   String get path {
-    if (type.contains('.')) {
-      final lastDot = type.lastIndexOf('.');
-      final pkg = type.substring(0, lastDot).replaceAll('.', '/');
-      return '$pkg/$file';
-    } else {
-      return file;
+    var result = _path;
+    if (result == null) {
+      if (type.contains('.')) {
+        final lastDot = type.lastIndexOf('.');
+        final pkg = type.substring(0, lastDot).replaceAll('.', '/');
+        result = '$pkg/$file';
+      } else {
+        result = file;
+      }
+      _path = result;
     }
+    return result;
   }
 }
 
-Future<FileTree> loadFileTree(Stream<String> classRequirements) async {
-  Map<String, String> pathByType = {};
-  Map<String, List<String>> typeDeps = {};
+Future<FileTree> loadFileTreeFrom(File file) async {
+  return await loadFileTree(file
+      .openRead()
+      .transform(const Utf8Decoder())
+      .transform(const LineSplitter()));
+}
+
+Future<FileTree> loadFileTree(Stream<String> requirements) async {
+  final typeEntries = <_TypeEntry>[];
+  final typeDeps = <String, List<String>>{};
   List<String>? currentTypeDeps;
 
-  await for (final line in classRequirements) {
+  await for (final line in requirements) {
     if (line.startsWith('  - ')) {
       final typeEntry = _parseTypeLine(line);
-      pathByType[typeEntry.type] = typeEntry.path;
+      typeEntries.add(typeEntry);
       currentTypeDeps = <String>[];
       typeDeps[typeEntry.type] = currentTypeDeps;
     } else if (line.startsWith('    * ')) {
@@ -181,7 +188,7 @@ Future<FileTree> loadFileTree(Stream<String> classRequirements) async {
     }
   }
 
-  return FileTree(typeDeps, pathByType);
+  return FileTree._(typeDeps, typeEntries);
 }
 
 Map<String, FileDeps> _computeDepsByFile(
@@ -191,7 +198,7 @@ Map<String, FileDeps> _computeDepsByFile(
   typeDeps.forEach((type, deps) {
     final path = pathByType[type]!;
     final fileDeps =
-        result.update(path, (deps) => deps, ifAbsent: () => FileDeps(path, {}));
+        result.update(path, (d) => d, ifAbsent: () => FileDeps(path, {}));
     for (final dep in deps) {
       final path = pathByType[dep];
       if (path != null && fileDeps.path != path) fileDeps.deps.add(path);
@@ -199,6 +206,10 @@ Map<String, FileDeps> _computeDepsByFile(
   });
 
   return result;
+}
+
+String _toClassFile(String type) {
+  return '${type.replaceAll('.', '/')}.class';
 }
 
 _TypeEntry _parseTypeLine(String line) {
@@ -220,4 +231,25 @@ class FileDiff {
   final ChangeSet changes;
 
   const FileDiff(this.changes);
+}
+
+extension on List<_TypeEntry> {
+  Map<String, String> byType() {
+    final result = <String, String>{};
+    for (final entry in this) {
+      result[entry.type] = entry.path;
+    }
+    return result;
+  }
+
+  Map<String, List<String>> byPath() {
+    final result = <String, List<String>>{};
+    for (final entry in this) {
+      result.update(entry.path, (types) {
+        types.add(entry.type);
+        return types;
+      }, ifAbsent: () => [entry.type]);
+    }
+    return result;
+  }
 }
