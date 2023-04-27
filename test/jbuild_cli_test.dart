@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
-import 'package:logging/logging.dart';
+import 'package:logging/logging.dart' show Level;
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -239,7 +239,6 @@ void main() {
           onStdoutLine: stdout.add,
           onStderrLine: stderr.add);
       expectSuccess(exitCode, stdout, stderr);
-      // TODO verify that the extension manifest gets generated
       expect(
           await File('$exampleExtensionDir/build/example-extension.jar')
               .exists(),
@@ -267,16 +266,25 @@ void main() {
                   workingDirectory: usesExtensionDir),
               onStdoutLine: stdout.add,
               onStderrLine: stderr.add)
-          .timeout(Duration(seconds: 10), onTimeout: () {
-        print('STDOUT: ${stdout.join('\n')}\n=====\n'
-            'STDERROR: ${stderr.join('\n')}\n=====');
-        throw 'Timeout waiting for process to finish';
-      });
-      expectSuccess(exitCode, stdout, stderr);
-      expect(stdout.join('\n'), contains('Extension task running: SampleTask'));
-      expect(stderr, isEmpty);
+          .timeout(Duration(seconds: 10),
+              onTimeout: () => _timeoutError(stdout, stderr));
+      _expectSuccessWithOutput(
+          'Extension task running: SampleTask', exitCode, stdout, stderr);
     });
   });
+}
+
+void _expectSuccessWithOutput(
+    String out, int exitCode, List<String> stdout, List<String> stderr) {
+  expectSuccess(exitCode, stdout, stderr);
+  expect(stdout.join('\n'), contains(out));
+  expect(stderr, isEmpty);
+}
+
+Never _timeoutError(List<String> stdout, List<String> stderr) {
+  print('STDOUT: ${stdout.join('\n')}\n=====\n'
+      'STDERROR: ${stderr.join('\n')}\n=====');
+  throw 'Timeout waiting for process to finish';
 }
 
 void projectGroup(String projectDir, String name, Function() definition) {
