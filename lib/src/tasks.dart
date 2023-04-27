@@ -2,12 +2,13 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
-import 'package:jb/src/eclipse.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
 import 'dependencies.dart';
+import 'eclipse.dart';
 import 'exec.dart';
+import 'file_tree.dart';
 import 'java_tests.dart';
 import 'path_dependency.dart';
 import 'requirements.dart';
@@ -40,7 +41,9 @@ RunOnChanges createCompileRunCondition(
 /// Create the `compile` task.
 Task createCompileTask(
     JBuildFiles jbFiles, JBuildConfiguration config, DartleCache cache) {
-  return Task((args) => _compile(jbFiles, config, args),
+  return Task(
+      (List<String> args, [ChangeSet? changes]) =>
+          _compile(jbFiles, config, changes, args, cache),
       runCondition: createCompileRunCondition(config, cache),
       name: compileTaskName,
       argsValidator: const AcceptAnyArgs(),
@@ -51,19 +54,25 @@ Task createCompileTask(
       description: 'Compile Java source code.');
 }
 
-Future<void> _compile(
-    JBuildFiles jbFiles, JBuildConfiguration config, List<String> args) async {
+Future<void> _compile(JBuildFiles jbFiles, JBuildConfiguration config,
+    ChangeSet? changeSet, List<String> args, DartleCache cache) async {
+  final changes =
+      await computeAllChanges(changeSet, jbFiles.javaSrcFileTreeFile);
   final exitCode = await execJBuild(
       compileTaskName,
       jbFiles.jbuildJar,
       config.preArgs(),
       'compile',
-      [...await config.compileArgs(jbFiles.processorLibsDir), ...args],
+      [...await config.compileArgs(jbFiles.processorLibsDir, changes), ...args],
       env: config.javacEnv);
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild compile command failed', exitCode: exitCode);
   }
+  logger.fine('Computing Java source tree for incremental builds');
+  final output = config.output.when(dir: (d) => d, jar: (j) => j);
+  await storeNewFileTree(compileTaskName, jbFiles.jbuildJar, config, output,
+      jbFiles.javaSrcFileTreeFile);
 }
 
 /// Create the `writeDependencies` task.

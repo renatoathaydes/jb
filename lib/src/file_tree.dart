@@ -1,10 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
+import 'package:dartle/dartle.dart' show ChangeSet, DartleException;
 import 'package:dartle/dartle_cache.dart';
 import 'package:path/path.dart' as p;
 
+import 'config.dart';
+import 'exec.dart';
+import 'output_consumer.dart';
 import 'utils.dart';
 
 final _newLine = utf8.encode(Platform.isWindows ? "\r\n" : '\n');
@@ -106,8 +111,8 @@ class FileTree {
 
     final totalChanges = changeSet
         .followedBy(transitiveChanges
-            .where(changeSetPaths.contains.not)
-            .map((e) => FileChange(File(e), ChangeKind.modified)))
+        .where(changeSetPaths.contains.not)
+        .map((e) => FileChange(File(e), ChangeKind.modified)))
         .toList();
 
     return TransitiveChanges(this, totalChanges);
@@ -191,14 +196,13 @@ Future<FileTree> loadFileTree(Stream<String> requirements) async {
   return FileTree._(typeDeps, typeEntries);
 }
 
-Map<String, FileDeps> _computeDepsByFile(
-    Map<String, List<String>> typeDeps, Map<String, String> pathByType) {
+Map<String, FileDeps> _computeDepsByFile(Map<String, List<String>> typeDeps, Map<String, String> pathByType) {
   final result = <String, FileDeps>{};
 
   typeDeps.forEach((type, deps) {
     final path = pathByType[type]!;
     final fileDeps =
-        result.update(path, (d) => d, ifAbsent: () => FileDeps(path, {}));
+    result.update(path, (d) => d, ifAbsent: () => FileDeps(path, {}));
     for (final dep in deps) {
       final path = pathByType[dep];
       if (path != null && fileDeps.path != path) fileDeps.deps.add(path);
@@ -251,5 +255,52 @@ extension on List<_TypeEntry> {
       }, ifAbsent: () => [entry.type]);
     }
     return result;
+  }
+}
+
+Future<TransitiveChanges?> computeAllChanges(
+    ChangeSet? changeSet, File srcFileTree) async {
+  if (changeSet != null && changeSet.outputChanges.isEmpty) {
+    if (await srcFileTree.exists()) {
+      final currentTree = await loadFileTreeFrom(srcFileTree);
+      return currentTree.computeTransitiveChanges(changeSet.inputChanges);
+    }
+  }
+  return null;
+}
+
+Future<void> storeNewFileTree(String taskName, File jbuildJar,
+    JBuildConfiguration config, String buildOutput, File fileTreeFile) async {
+  final jbuildOutput = _FileOutput(fileTreeFile);
+
+  try {
+    final exitCode = await execJBuild(
+        taskName, jbuildJar, config.preArgs(), 'requirements', [buildOutput],
+        onStdout: jbuildOutput);
+
+    if (exitCode != 0) {
+      throw DartleException(
+          message: 'jbuild requirements command failed', exitCode: exitCode);
+    }
+  } finally {
+    await jbuildOutput.close();
+  }
+}
+
+class _FileOutput with ProcessOutputConsumer {
+  int pid = -1;
+
+  final IOSink _sink;
+
+  _FileOutput(File file) : _sink = file.openWrite();
+
+  @override
+  void call(String line) {
+    _sink.add(utf8.encode(line));
+  }
+
+  Future<void> close() async {
+    await _sink.flush();
+    await _sink.close();
   }
 }

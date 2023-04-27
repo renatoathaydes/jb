@@ -1,13 +1,14 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
-import 'package:jb/jb.dart';
+import 'package:dartle/dartle_cache.dart' show ChangeKind;
 import 'package:logging/logging.dart' as log;
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 import 'config_import.dart';
+import 'file_tree.dart';
 import 'path_dependency.dart';
 import 'properties.dart';
 import 'sub_project.dart';
@@ -26,6 +27,9 @@ class JBuildFiles {
   File get configFile => File('jbuild.yaml');
 
   File get dependenciesFile => File(p.join(jbuildCache, 'dependencies.txt'));
+
+  File get javaSrcFileTreeFile =>
+      File(p.join(jbuildCache, 'java-src-file-tree.txt'));
 
   Directory get jbExtensionProjectDir => Directory('jb-src');
 
@@ -327,6 +331,7 @@ class JBuildConfiguration {
   /// Get the list of JBuild global arguments (pre-args)
   /// from this configuration.
   List<String> preArgs() {
+    // TODO memoize method
     var result = const <String>[];
     if (logger.isLoggable(Level.FINE)) {
       result = const ['-V'];
@@ -347,9 +352,9 @@ class JBuildConfiguration {
   }
 
   /// Get the compile task arguments from this configuration.
-  Future<List<String>> compileArgs(String processorLibsDir) async {
+  Future<List<String>> compileArgs(
+      String processorLibsDir, TransitiveChanges? changes) async {
     final result = <String>[];
-    result.addAll(sourceDirs);
     result.addAll(['-cp', compileLibsDir]);
     output.when(
         dir: (d) => result.addAll(['-d', d]),
@@ -361,6 +366,12 @@ class JBuildConfiguration {
     if (main != null && main.isNotEmpty) {
       result.addAll(['-m', main]);
     }
+    if (dependencies.keys.any((d) => d.startsWith(jbApi))) {
+      result.add('--jb-extension');
+    }
+    if (changes == null || !result.addIncrementalCompileArgs(changes)) {
+      result.addAll(sourceDirs);
+    }
     if (javacArgs.isNotEmpty || processorDependencies.isNotEmpty) {
       result.add('--');
       result.addAll(javacArgs);
@@ -368,9 +379,6 @@ class JBuildConfiguration {
         result.add('-processorpath');
         result.add(await Directory(processorLibsDir).toClasspath());
       }
-    }
-    if (dependencies.keys.any((d) => d.startsWith(jbApi))) {
-      result.add('--jb-extension');
     }
     return result;
   }
@@ -864,4 +872,28 @@ TaskPhase _taskPhase(Object? phase) {
   }
   throw DartleException(
       message: 'invalid custom phase declaration.\n$_phaseHelpMessage');
+}
+
+extension on List<String> {
+  /// Add the incremental compilation args if applicable.
+  ///
+  /// Return true if added, false otherwise.
+  bool addIncrementalCompileArgs(TransitiveChanges changes) {
+    var incremental = false;
+    for (final change in changes.fileChanges) {
+      if (change.entity is! File) continue;
+      incremental = true;
+      if (change.kind == ChangeKind.deleted) {
+        for (final classFile
+            in changes.fileTree.classFilesOf(change.entity.path)) {
+          add('--deleted');
+          add(classFile);
+        }
+      } else {
+        add('--added');
+        add(change.entity.path);
+      }
+    }
+    return incremental;
+  }
 }
