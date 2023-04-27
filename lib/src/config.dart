@@ -369,7 +369,7 @@ class JBuildConfiguration {
     if (dependencies.keys.any((d) => d.startsWith(jbApi))) {
       result.add('--jb-extension');
     }
-    if (changes == null || !result.addIncrementalCompileArgs(changes)) {
+    if (changes == null || !_addIncrementalCompileArgs(result, changes)) {
       result.addAll(sourceDirs);
     }
     if (javacArgs.isNotEmpty || processorDependencies.isNotEmpty) {
@@ -381,6 +381,32 @@ class JBuildConfiguration {
       }
     }
     return result;
+  }
+
+  /// Add the incremental compilation args if applicable.
+  ///
+  /// Return true if added, false otherwise.
+  bool _addIncrementalCompileArgs(
+      List<String> args, TransitiveChanges changes) {
+    var incremental = false;
+    for (final change in changes.fileChanges) {
+      if (change.entity is! File) continue;
+      incremental = true;
+      if (change.kind == ChangeKind.deleted) {
+        for (final classFile
+            in changes.fileTree.classFilesOf(change.entity.path)) {
+          args.add('--deleted');
+          args.add(classFile);
+        }
+      } else {
+        args.add('--added');
+        args.add(change.entity.path);
+      }
+      // previous compilation output must be part of the classpath
+      args.add('-cp');
+      args.add(output.when(dir: (d) => d, jar: (j) => j));
+    }
+    return incremental;
   }
 
   /// Get the install arguments for the compile task from this configuration.
@@ -872,28 +898,4 @@ TaskPhase _taskPhase(Object? phase) {
   }
   throw DartleException(
       message: 'invalid custom phase declaration.\n$_phaseHelpMessage');
-}
-
-extension on List<String> {
-  /// Add the incremental compilation args if applicable.
-  ///
-  /// Return true if added, false otherwise.
-  bool addIncrementalCompileArgs(TransitiveChanges changes) {
-    var incremental = false;
-    for (final change in changes.fileChanges) {
-      if (change.entity is! File) continue;
-      incremental = true;
-      if (change.kind == ChangeKind.deleted) {
-        for (final classFile
-            in changes.fileTree.classFilesOf(change.entity.path)) {
-          add('--deleted');
-          add(classFile);
-        }
-      } else {
-        add('--added');
-        add(change.entity.path);
-      }
-    }
-    return incremental;
-  }
 }

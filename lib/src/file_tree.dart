@@ -111,8 +111,8 @@ class FileTree {
 
     final totalChanges = changeSet
         .followedBy(transitiveChanges
-        .where(changeSetPaths.contains.not)
-        .map((e) => FileChange(File(e), ChangeKind.modified)))
+            .where(changeSetPaths.contains.not)
+            .map((e) => FileChange(File(e), ChangeKind.modified)))
         .toList();
 
     return TransitiveChanges(this, totalChanges);
@@ -196,13 +196,14 @@ Future<FileTree> loadFileTree(Stream<String> requirements) async {
   return FileTree._(typeDeps, typeEntries);
 }
 
-Map<String, FileDeps> _computeDepsByFile(Map<String, List<String>> typeDeps, Map<String, String> pathByType) {
+Map<String, FileDeps> _computeDepsByFile(
+    Map<String, List<String>> typeDeps, Map<String, String> pathByType) {
   final result = <String, FileDeps>{};
 
   typeDeps.forEach((type, deps) {
     final path = pathByType[type]!;
     final fileDeps =
-    result.update(path, (d) => d, ifAbsent: () => FileDeps(path, {}));
+        result.update(path, (d) => d, ifAbsent: () => FileDeps(path, {}));
     for (final dep in deps) {
       final path = pathByType[dep];
       if (path != null && fileDeps.path != path) fileDeps.deps.add(path);
@@ -272,10 +273,9 @@ Future<TransitiveChanges?> computeAllChanges(
 Future<void> storeNewFileTree(String taskName, File jbuildJar,
     JBuildConfiguration config, String buildOutput, File fileTreeFile) async {
   final jbuildOutput = _FileOutput(fileTreeFile);
-
   try {
-    final exitCode = await execJBuild(
-        taskName, jbuildJar, config.preArgs(), 'requirements', [buildOutput],
+    final exitCode = await execJBuild(taskName, jbuildJar, config.preArgs(),
+        'requirements', ['-c', buildOutput],
         onStdout: jbuildOutput);
 
     if (exitCode != 0) {
@@ -297,6 +297,7 @@ class _FileOutput with ProcessOutputConsumer {
   @override
   void call(String line) {
     _sink.add(utf8.encode(line));
+    _sink.add(_newLine);
   }
 
   Future<void> close() async {

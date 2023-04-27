@@ -56,8 +56,14 @@ Task createCompileTask(
 
 Future<void> _compile(JBuildFiles jbFiles, JBuildConfiguration config,
     ChangeSet? changeSet, List<String> args, DartleCache cache) async {
+  final stopwatch = Stopwatch()..start();
   final changes =
       await computeAllChanges(changeSet, jbFiles.javaSrcFileTreeFile);
+  if (changes != null) {
+    logger.log(profile,
+        () => 'Computed transitive changes in ${elapsedTime(stopwatch)}');
+  }
+  stopwatch.reset();
   final exitCode = await execJBuild(
       compileTaskName,
       jbFiles.jbuildJar,
@@ -65,14 +71,19 @@ Future<void> _compile(JBuildFiles jbFiles, JBuildConfiguration config,
       'compile',
       [...await config.compileArgs(jbFiles.processorLibsDir, changes), ...args],
       env: config.javacEnv);
+  logger.log(
+      profile, () => 'Java compilation completed in ${elapsedTime(stopwatch)}');
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild compile command failed', exitCode: exitCode);
   }
+  stopwatch.reset();
   logger.fine('Computing Java source tree for incremental builds');
   final output = config.output.when(dir: (d) => d, jar: (j) => j);
   await storeNewFileTree(compileTaskName, jbFiles.jbuildJar, config, output,
       jbFiles.javaSrcFileTreeFile);
+  logger.log(
+      profile, () => 'Computed Java source tree in ${elapsedTime(stopwatch)}');
 }
 
 /// Create the `writeDependencies` task.
