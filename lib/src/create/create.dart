@@ -77,6 +77,7 @@ extension on Stdin {
       final answer = readLineSync()?.trim();
       switch (answer) {
         case '1':
+        case '':
           return _ProjectType.basic;
         case '2':
           return _ProjectType.jbExtension;
