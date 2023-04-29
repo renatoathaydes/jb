@@ -33,7 +33,7 @@ RunOnChanges createCompileRunCondition(
     JBuildConfiguration config, DartleCache cache) {
   final outputs = config.output.when(dir: (d) => dir(d), jar: (j) => file(j));
   return RunOnChanges(
-      inputs: dirs(config.sourceDirs, fileExtensions: const {'.java'}),
+      inputs: dirs(config.sourceDirs.followedBy(config.resourceDirs)),
       outputs: outputs,
       cache: cache);
 }

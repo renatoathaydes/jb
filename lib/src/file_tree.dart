@@ -138,8 +138,19 @@ class FileTree {
     return FileTree._(typeDeps, typeEntries);
   }
 
-  Iterable<String> classFilesOf(String path) {
-    return (_typesByPath[path] ?? const []).map(_toClassFile);
+  Iterable<String> classFilesOf(Set<String> sourceDirs, String path) {
+    String? srcDir;
+    for (final src in sourceDirs) {
+      if (p.isWithin(src, path)) {
+        srcDir = src;
+        break;
+      }
+    }
+    if (srcDir != null) {
+      return (_typesByPath[p.relative(path, from: srcDir)] ?? const [])
+          .map(_toClassFile);
+    }
+    return const [];
   }
 
   @override

@@ -351,6 +351,8 @@ class JBuildConfiguration {
     return result;
   }
 
+  // TODO do not do incremental compilation if config changed from last run
+  //      e.g. previous output was not the current output, so classpath will be wrong
   /// Get the compile task arguments from this configuration.
   Future<List<String>> compileArgs(
       String processorLibsDir, TransitiveChanges? changes) async {
@@ -393,19 +395,27 @@ class JBuildConfiguration {
       if (change.entity is! File) continue;
       incremental = true;
       if (change.kind == ChangeKind.deleted) {
-        for (final classFile
-            in changes.fileTree.classFilesOf(change.entity.path)) {
+        final path = change.entity.path;
+        if (path.endsWith('.java')) {
+          for (final classFile in changes.fileTree
+              .classFilesOf(sourceDirs, change.entity.path)) {
+            args.add('--deleted');
+            args.add(classFile);
+          }
+        } else {
           args.add('--deleted');
-          args.add(classFile);
+          args.add(change.entity.path);
         }
       } else {
         args.add('--added');
         args.add(change.entity.path);
       }
-      // previous compilation output must be part of the classpath
-      args.add('-cp');
-      args.add(output.when(dir: (d) => d, jar: (j) => j));
     }
+
+    // previous compilation output must be part of the classpath
+    args.add('-cp');
+    args.add(output.when(dir: (d) => d, jar: (j) => j));
+
     return incremental;
   }
 
