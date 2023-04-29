@@ -162,6 +162,7 @@ class JBuildDartle {
     clean = createCleanTask(
         tasks: projectTasks,
         name: cleanTaskName,
+        cache: cache,
         description: 'deletes the outputs of all other tasks.');
     projectTasks.add(clean);
 

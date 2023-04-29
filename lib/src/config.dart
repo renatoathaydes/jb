@@ -44,7 +44,12 @@ class JBuildFiles {
 ///
 /// Applies defaults and resolves properties and imports.
 Future<JBuildConfiguration> loadConfig(File configFile) async {
-  logger.fine(() => 'Reading config file: ${configFile.path}');
+  logger.fine(() {
+    final path = p.isAbsolute(configFile.path)
+        ? configFile.path
+        : p.join(Directory.current.path, configFile.path);
+    return 'Reading config file: $path';
+  });
   return await loadConfigString(await configFile.readAsString());
 }
 

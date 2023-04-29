@@ -33,9 +33,10 @@ Future<ExtensionProject?> loadExtensionProject(
   final projectDir = projectPath?.map((path) => Directory(path)) ??
       files.jbExtensionProjectDir;
   if (await projectDir.exists()) {
-    logger.info('========= Loading jb extension project =========');
-    final stopWatch = Stopwatch()..start();
     final path = projectDir.path;
+    logger
+        .info(() => '========= Loading jb extension project: $path =========');
+    final stopWatch = Stopwatch()..start();
 
     try {
       final config = await withCurrentDirectory(path, () async {

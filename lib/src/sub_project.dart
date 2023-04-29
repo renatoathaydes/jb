@@ -61,8 +61,7 @@ class SubProjectFactory {
       final subConfigFile = File(p.join(path, 'jbuild.yaml')).absolute;
       if (await subConfigFile.exists()) {
         try {
-          final subJBuildDartle =
-              await _resolveSubProject(subConfigFile, dependency.path);
+          final subJBuildDartle = await _resolveSubProject(subConfigFile, path);
           final subTasks = subJBuildDartle.tasks
               .map((task) =>
                   MapEntry(task.name, _wrapTask(task, path, subJBuildDartle)))
@@ -102,9 +101,8 @@ class SubProjectFactory {
   }
 
   Future<JBuildDartle> _resolveSubProject(File configFile, String path) async {
-    final dir = p.dirname(configFile.path);
-    logger.fine(() => "Resolving sub-project at '$dir'");
-    return await withCurrentDirectory(dir, () async {
+    logger.fine(() => "Resolving sub-project at '$path'");
+    return await withCurrentDirectory(path, () async {
       final subConfig = await loadConfig(configFile);
       final subProject = JBuildDartle(components.child(path, subConfig));
       await subProject.init;
@@ -160,6 +158,8 @@ class _SubProjectRunCondition implements FilesCondition {
     // sub-project dir.
     final invocation = _subInvocation(result.invocation);
     return withCurrentDirectory(path, () async {
+      logger.finest(() =>
+          'PostRunCondition for sub-project at: ${Directory.current.path}');
       await delegate
           .postRun(TaskResult(invocation, result.exceptionAndStackTrace));
     });
@@ -168,6 +168,8 @@ class _SubProjectRunCondition implements FilesCondition {
   @override
   FutureOr<bool> shouldRun(TaskInvocation invocation) {
     return withCurrentDirectory(path, () async {
+      logger.finest(
+          () => 'RunCondition for sub-project at: ${Directory.current.path}');
       return await delegate.shouldRun(
           TaskInvocation(invocation.task, invocation.args, taskName));
     });
