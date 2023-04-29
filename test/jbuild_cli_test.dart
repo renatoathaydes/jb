@@ -5,6 +5,8 @@ import 'package:logging/logging.dart' show Level;
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
+import 'test_helper.dart';
+
 const helloProjectDir = 'test/test-projects/hello';
 const withDepsProjectDir = 'test/test-projects/with-deps';
 const withSubProjectDir = 'test/test-projects/with-sub-project';
@@ -12,102 +14,66 @@ const exampleExtensionDir = 'test/test-projects/example-extension';
 const usesExtensionDir = 'test/test-projects/uses-extension';
 const testsProjectDir = 'test/test-projects/tests';
 
-final jbuildExecutable = p.join(Directory.current.path, 'build', 'bin',
-    Platform.isWindows ? 'jb.exe' : 'jb');
-
 void main() {
   activateLogging(Level.FINE);
 
   projectGroup(helloProjectDir, 'hello project', () {
     tearDown(() async {
       await deleteAll(dirs([
-        '$helloProjectDir/build',
-        '$helloProjectDir/.jbuild-cache',
-        '$helloProjectDir/out',
+        p.join(helloProjectDir, 'build'),
+        p.join(helloProjectDir, '.jbuild-cache'),
+        p.join(helloProjectDir, 'out'),
       ], includeHidden: true));
     });
 
     test('can compile basic Java class and cache result', () async {
-      final stdout = <String>[];
-      final stderr = <String>[];
-      final exitCode = await exec(
-          Process.start(jbuildExecutable, const [],
-              workingDirectory: helloProjectDir),
-          onStdoutLine: stdout.add,
-          onStderrLine: stderr.add);
-      expectSuccess(exitCode, stdout, stderr);
-      expect(await File('$helloProjectDir/out/Hello.class').exists(), isTrue);
+      final jbResult = await runJb(Directory(helloProjectDir));
+      expectSuccess(jbResult);
+      expect(await File(p.join(helloProjectDir, 'out', 'Hello.class')).exists(),
+          isTrue);
 
-      stdout.clear();
-      stderr.clear();
-
-      final exitCode2 = await exec(
-          Process.start('java', const ['-cp', 'out', 'Hello'],
-              workingDirectory: helloProjectDir),
-          onStdoutLine: stdout.add,
-          onStderrLine: stderr.add);
-      expectSuccess(exitCode2, stdout, stderr);
-      expect(stdout, equals(const ['Hi Dartle!']));
+      final javaResult = await runJava(
+          Directory(helloProjectDir), const ['-cp', 'out', 'Hello']);
+      expectSuccess(javaResult);
+      expect(javaResult.stdout, equals(const ['Hi Dartle!']));
     });
   });
 
   projectGroup(withDepsProjectDir, 'with-deps project', () {
     tearDown(() async {
       await deleteAll(dirs([
-        '$withDepsProjectDir/compile-libs',
-        '$withDepsProjectDir/runtime-libs',
-        '$withDepsProjectDir/.jbuild-cache'
+        p.join(withDepsProjectDir, 'compile-libs'),
+        p.join(withDepsProjectDir, 'runtime-libs'),
+        p.join(withDepsProjectDir, '.jbuild-cache'),
       ], includeHidden: true));
-      await deleteAll(file('$withDepsProjectDir/with-deps.jar'));
+      await deleteAll(file(p.join(withDepsProjectDir, 'with-deps.jar')));
     });
 
     test('can install dependencies and compile project', () async {
-      final stdout = <String>[];
-      final stderr = <String>[];
-      var exitCode = await exec(
-          Process.start(jbuildExecutable, const ['-l', 'debug'],
-              workingDirectory: withDepsProjectDir),
-          onStdoutLine: stdout.add,
-          onStderrLine: stderr.add);
-      expectSuccess(exitCode, stdout, stderr);
+      final jbResult =
+          await runJb(Directory(withDepsProjectDir), const ['-l', 'debug']);
+      expectSuccess(jbResult);
 
-      final buildContents = await Directory(p.join(withDepsProjectDir, 'build'))
-          .list(recursive: true)
-          .map((f) => f.path)
-          .toList();
-
-      expect(
-          buildContents,
-          allOf(
-            containsAll([
-              p.join(withDepsProjectDir, 'build', 'with-deps.jar'),
-              p.join(withDepsProjectDir, 'build', 'compile-libs'),
-              p.join(
-                  withDepsProjectDir, 'build', 'compile-libs', 'lists-1.0.jar'),
-              p.join(withDepsProjectDir, 'build', 'compile-libs',
-                  'minimal-java-project.jar'),
-            ]),
-            hasLength(4),
-          ),
+      await assertDirectoryContents(
+          Directory(p.join(withDepsProjectDir, 'build')),
+          [
+            'with-deps.jar',
+            'compile-libs',
+            p.join('compile-libs', 'lists-1.0.jar'),
+            p.join('compile-libs', 'minimal-java-project.jar'),
+          ],
           reason: 'Did not create all artifacts.\n\n'
-              'Stdout:\n${stdout.join('\n')}\n\nStderr:\n${stderr.join('\n')}');
+              'Stdout:\n${jbResult.stdout.join('\n')}\n\n'
+              'Stderr:\n${jbResult.stderr.join('\n')}');
 
-      stdout.clear();
-      stderr.clear();
-      exitCode = await exec(
-          Process.start(
-              'java',
-              [
-                '-cp',
-                classpath(['build/with-deps.jar', 'build/compile-libs/*']),
-                'com.foo.Foo',
-              ],
-              workingDirectory: withDepsProjectDir),
-          onStdoutLine: stdout.add,
-          onStderrLine: stderr.add);
+      final javaResult = await runJava(Directory(withDepsProjectDir), [
+        '-cp',
+        classpath(['build/with-deps.jar', 'build/compile-libs/*']),
+        'com.foo.Foo',
+      ]);
 
-      expectSuccess(exitCode, stdout, stderr);
-      expect(stdout, equals(const ['Minimal jb project[1, 2, 3]']));
+      expectSuccess(javaResult);
+      expect(javaResult.stdout, equals(const ['Minimal jb project[1, 2, 3]']));
     });
   });
 
@@ -122,63 +88,54 @@ void main() {
     });
 
     test('can install dependencies and compile project', () async {
-      final stdout = <String>[];
-      final stderr = <String>[];
-      var exitCode = await exec(
-          Process.start(jbuildExecutable, const [],
-              workingDirectory: withSubProjectDir),
-          onStdoutLine: stdout.add,
-          onStderrLine: stderr.add);
-      expectSuccess(exitCode, stdout, stderr);
-      expect(await File('$withSubProjectDir/build/out/app/App.class').exists(),
-          isTrue);
+      var jbResult = await runJb(Directory(withSubProjectDir));
+      expectSuccess(jbResult);
+      await assertDirectoryContents(
+          Directory(p.join(withSubProjectDir, 'build')), [
+        p.join('out'),
+        p.join('out', 'app'),
+        p.join('out', 'app', 'App.class'),
+        p.join('comp'),
+        p.join('comp', 'greeting.jar'),
+      ]);
     });
 
     test('can run project', () async {
-      final stdout = <String>[];
-      final stderr = <String>[];
-      var exitCode = await exec(
-          Process.start(jbuildExecutable, const ['run', '--no-color'],
-              workingDirectory: withSubProjectDir),
-          onStdoutLine: stdout.add,
-          onStderrLine: stderr.add);
-      expectSuccess(exitCode, stdout, stderr);
-      expect(stdout.join('\n'),
+      var jbResult = await runJb(
+          Directory(withSubProjectDir), const ['run', '--no-color']);
+      expectSuccess(jbResult);
+      expect(jbResult.stdout.join('\n'),
           contains(RegExp(r'runJavaMainClass \[java \d+\]: Hello Mary!')));
-      expect(stderr, isEmpty);
+      expect(jbResult.stderr, isEmpty);
     });
   });
 
   projectGroup(testsProjectDir, 'tests project', () {
     tearDown(() async {
       await deleteAll(dirs([
-        '$testsProjectDir/build',
-        '$testsProjectDir/.jbuild-cache',
+        p.join(testsProjectDir, 'build'),
+        p.join(testsProjectDir, '.jbuild-cache'),
         // this project depends on the with-sub-project project
-        '$withSubProjectDir/build',
-        '$withSubProjectDir/.jbuild-cache',
-        '$withSubProjectDir/greeting/build',
-        '$withSubProjectDir/greeting/.jbuild-cache',
+        p.join(withSubProjectDir, 'build'),
+        p.join(withSubProjectDir, '.jbuild-cache'),
+        p.join(withSubProjectDir, 'greeting/build'),
+        p.join(withSubProjectDir, 'greeting/.jbuild-cache'),
       ], includeHidden: true));
     });
 
     test('can run Java tests using two levels of sub-projects', () async {
-      final stdout = <String>[];
-      final stderr = <String>[];
-      final exitCode = await exec(
-          Process.start(jbuildExecutable, const ['test', '--no-color'],
-              workingDirectory: testsProjectDir),
-          onStdoutLine: stdout.add,
-          onStderrLine: stderr.add);
-      expectSuccess(exitCode, stdout, stderr);
-      expect(
-          await File('$testsProjectDir/build/out/tests/AppTest.class').exists(),
-          isTrue);
-      expect(await File('$testsProjectDir/build/comp/greeting.jar').exists(),
-          isTrue);
-      expect(
-          await File('$testsProjectDir/build/runtime/app/App.class').exists(),
-          isTrue);
+      final jbResult =
+          await runJb(Directory(testsProjectDir), const ['test', '--no-color']);
+      expectSuccess(jbResult);
+      await assertDirectoryContents(
+          Directory(p.join(testsProjectDir, 'build')),
+          [
+            p.join('out', 'tests', 'AppTest.class'),
+            p.join('comp', 'greeting.jar'),
+            p.join('runtime', 'app', 'App.class'),
+          ],
+          checkLength: false); // build/runtime will contain test lib jars
+
       const asciiResults = '+-- JUnit Jupiter [OK]\n'
           '| \'-- AppTest [OK]\n'
           '|   +-- canGetNameFromArgs() [OK]\n'
@@ -192,20 +149,14 @@ void main() {
           '├─ JUnit Vintage ✔\n'
           '└─ JUnit Platform Suite ✔\n';
 
-      expect(stdout.join('\n'),
+      expect(jbResult.stdout.join('\n'),
           anyOf(contains(unicodeResults), contains(asciiResults)));
     });
 
     test('can run single Java test', () async {
-      final stdout = <String>[];
-      final stderr = <String>[];
-      final exitCode = await exec(
-          Process.start(jbuildExecutable,
-              const ['test', ':--include-tag', ':t1', '--no-color'],
-              workingDirectory: testsProjectDir),
-          onStdoutLine: stdout.add,
-          onStderrLine: stderr.add);
-      expectSuccess(exitCode, stdout, stderr);
+      final jbResult = await runJb(Directory(testsProjectDir),
+          const ['test', ':--include-tag', ':t1', '--no-color']);
+      expectSuccess(jbResult);
       const asciiResults = '+-- JUnit Jupiter [OK]\n'
           '| \'-- AppTest [OK]\n'
           '|   \'-- canGetDefaultName() [OK]\n'
@@ -217,7 +168,7 @@ void main() {
           '├─ JUnit Vintage ✔\n'
           '└─ JUnit Platform Suite ✔\n';
 
-      expect(stdout.join('\n'),
+      expect(jbResult.stdout.join('\n'),
           anyOf(contains(unicodeResults), contains(asciiResults)));
     });
   });
@@ -225,74 +176,51 @@ void main() {
   projectGroup(exampleExtensionDir, 'extension project', () {
     tearDown(() async {
       await deleteAll(dirs([
-        '$exampleExtensionDir/build',
-        '$exampleExtensionDir/.jbuild-cache',
+        p.join(exampleExtensionDir, 'build'),
+        p.join(exampleExtensionDir, '.jbuild-cache'),
       ], includeHidden: true));
     });
 
     test('can compile extension project', () async {
-      final stdout = <String>[];
-      final stderr = <String>[];
-      var exitCode = await exec(
-          Process.start(jbuildExecutable, const [],
-              workingDirectory: exampleExtensionDir),
-          onStdoutLine: stdout.add,
-          onStderrLine: stderr.add);
-      expectSuccess(exitCode, stdout, stderr);
-      expect(
-          await File('$exampleExtensionDir/build/example-extension.jar')
-              .exists(),
-          isTrue);
+      var jbResult = await runJb(Directory(exampleExtensionDir));
+      expectSuccess(jbResult);
+      await assertDirectoryContents(
+          Directory(p.join(exampleExtensionDir, 'build')), [
+        'example-extension.jar',
+        'compile-libs',
+        p.join('compile-libs', 'jb-api.jar'),
+      ]);
     });
   });
 
   projectGroup(usesExtensionDir, 'uses extension project', () {
     tearDown(() async {
       await deleteAll(dirs([
-        '$usesExtensionDir/build',
-        '$usesExtensionDir/.jbuild-cache',
+        p.join(usesExtensionDir, 'build'),
+        p.join(usesExtensionDir, '.jbuild-cache'),
         // uses the example extension project
-        '$exampleExtensionDir/build',
-        '$exampleExtensionDir/.jbuild-cache',
+        p.join(exampleExtensionDir, 'build'),
+        p.join(exampleExtensionDir, '.jbuild-cache'),
       ], includeHidden: true));
     });
 
     test('can run custom task defined by extension project', () async {
-      final stdout = <String>[];
-      final stderr = <String>[];
-      var exitCode = await exec(
-              Process.start(
-                  jbuildExecutable, const ['sample-task', '--no-color'],
-                  workingDirectory: usesExtensionDir),
-              onStdoutLine: stdout.add,
-              onStderrLine: stderr.add)
-          .timeout(Duration(seconds: 10),
-              onTimeout: () => _timeoutError(stdout, stderr));
-      _expectSuccessWithOutput(
-          'Extension task running: SampleTask', exitCode, stdout, stderr);
+      var jbResult = await runJb(
+              Directory(usesExtensionDir), const ['sample-task', '--no-color'])
+          .timeout(Duration(seconds: 10));
+      expectSuccess(jbResult);
+      expect(jbResult.stdout.join('\n'),
+          contains('Extension task running: SampleTask'));
     });
   });
 }
 
-void _expectSuccessWithOutput(
-    String out, int exitCode, List<String> stdout, List<String> stderr) {
-  expectSuccess(exitCode, stdout, stderr);
-  expect(stdout.join('\n'), contains(out));
-  expect(stderr, isEmpty);
-}
-
-Never _timeoutError(List<String> stdout, List<String> stderr) {
-  print('STDOUT: ${stdout.join('\n')}\n=====\n'
-      'STDERROR: ${stderr.join('\n')}\n=====');
-  throw 'Timeout waiting for process to finish';
-}
-
 void projectGroup(String projectDir, String name, Function() definition) {
   final outputDirs = dirs([
-    '$projectDir/.jbuild-cache',
-    '$projectDir/out',
-    '$projectDir/compile-libs',
-    '$projectDir/runtime-libs',
+    p.join(projectDir, '.jbuild-cache'),
+    p.join(projectDir, 'out'),
+    p.join(projectDir, 'compile-libs'),
+    p.join(projectDir, 'runtime-libs'),
   ], includeHidden: true);
 
   setUp(() async {
@@ -304,16 +232,4 @@ void projectGroup(String projectDir, String name, Function() definition) {
   });
 
   group(name, definition);
-}
-
-String classpath(Iterable<String> entries) {
-  final separator = Platform.isWindows ? ';' : ':';
-  return entries.join(separator);
-}
-
-void expectSuccess(int exitCode, List<String> stdout, List<String> stderr) {
-  expect(exitCode, equals(0),
-      reason: 'exit code was $exitCode.\n'
-          '  => stdout:\n${stdout.join('\n')}\n'
-          '  => stderr:\n${stderr.join('\n')}');
 }
