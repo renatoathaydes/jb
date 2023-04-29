@@ -3,3 +3,4 @@ module: jb-api
 version: 0.1.0
 
 source-dirs: [ src ]
+resource-dirs: [ resources ]

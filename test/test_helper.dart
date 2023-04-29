@@ -49,7 +49,7 @@ String classpath(Iterable<String> entries) {
 
 void expectSuccess(ProcessResult result) {
   expect(result.exitCode, equals(0),
-      reason: 'exit code was $exitCode.\n'
+      reason: 'exit code was ${result.exitCode}.\n'
           '  => stdout:\n${result.stdout.join('\n')}\n'
           '  => stderr:\n${result.stderr.join('\n')}');
 }
