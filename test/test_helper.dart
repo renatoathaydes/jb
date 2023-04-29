@@ -13,10 +13,14 @@ Future<Directory> createTempFiles(Map<String, String> files) async {
   final rootDir = Directory(
       p.join(Directory.systemTemp.path, random.nextDouble().toString()));
   await rootDir.create();
+  await createFiles(rootDir, files);
+  return rootDir;
+}
+
+Future<void> createFiles(Directory rootDir, Map<String, String> files) async {
   for (final entry in files.entries) {
     await _createFile(rootDir, entry.key, entry.value);
   }
-  return rootDir;
 }
 
 Future<void> _createFile(Directory rootDir, String path, String text) async {
