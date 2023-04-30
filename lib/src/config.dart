@@ -336,7 +336,6 @@ class JBuildConfiguration {
   /// Get the list of JBuild global arguments (pre-args)
   /// from this configuration.
   List<String> preArgs() {
-    // TODO memoize method
     var result = const <String>[];
     if (logger.isLoggable(Level.FINE)) {
       result = const ['-V'];
@@ -472,6 +471,22 @@ class JBuildConfiguration {
     }
     result.addAll(processorDependencies);
     return result;
+  }
+
+  @override
+  String toString() {
+    return 'JBuildConfiguration{group: $group, '
+        'module: $module, version: $version, mainClass: $mainClass, '
+        'extensionProject: $extensionProject, sourceDirs: $sourceDirs, '
+        'output: $output, resourceDirs: $resourceDirs, javacArgs: $javacArgs, '
+        'runJavaArgs: $runJavaArgs, testJavaArgs: $testJavaArgs, '
+        'javacEnv: $javacEnv, runJavaEnv: $runJavaEnv, '
+        'testJavaEnv: $testJavaEnv, repositories: $repositories, '
+        'dependencies: $dependencies, exclusions: $exclusions, '
+        'processorDependencies: $processorDependencies, '
+        'processorDependenciesExclusions: $processorDependenciesExclusions, '
+        'compileLibsDir: $compileLibsDir, runtimeLibsDir: $runtimeLibsDir, '
+        'testReportsDir: $testReportsDir, properties: $properties}';
   }
 }
 
