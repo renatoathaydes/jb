@@ -161,7 +161,7 @@ class JBuildConfiguration {
   final Set<String> repositories;
   final Map<String, DependencySpec> dependencies;
   final Set<String> exclusions;
-  final Set<String> processorDependencies;
+  final Map<String, DependencySpec> processorDependencies;
   final Set<String> processorDependenciesExclusions;
   final String compileLibsDir;
   final bool _defaultCompileLibsDir;
@@ -234,7 +234,7 @@ class JBuildConfiguration {
     final exclusions =
         _stringIterableValue(map, 'exclusion-patterns', const {});
     final processorDependencies =
-        _stringIterableValue(map, 'processor-dependencies', const {});
+        _dependencies(map, 'processor-dependencies', const {});
     final processorDependenciesExclusions = _stringIterableValue(
         map, 'processor-dependencies-exclusions', const {});
     final compileLibsDir =
@@ -265,7 +265,7 @@ class JBuildConfiguration {
       dependencies: dependencies.value,
       repositories: repositories.toSet(),
       exclusions: exclusions.toSet(),
-      processorDependencies: processorDependencies.toSet(),
+      processorDependencies: processorDependencies.value,
       processorDependenciesExclusions: processorDependenciesExclusions.toSet(),
       compileLibsDir: compileLibsDir.value,
       defaultCompileLibsDir: compileLibsDir.isDefault,
@@ -355,8 +355,6 @@ class JBuildConfiguration {
     return result;
   }
 
-  // TODO do not do incremental compilation if config changed from last run
-  //      e.g. previous output was not the current output, so classpath will be wrong
   /// Get the compile task arguments from this configuration.
   Future<List<String>> compileArgs(
       String processorLibsDir, TransitiveChanges? changes) async {
@@ -444,32 +442,32 @@ class JBuildConfiguration {
 
   /// Get the install arguments for the installRuntime task from this configuration.
   List<String> installArgsForRuntime() {
-    final depsToInstall = dependencies.entries
+    return _installArgs(dependencies, exclusions, runtimeLibsDir);
+  }
+
+  /// Get the install arguments for the installProcessor task from this configuration.
+  List<String> installArgsForProcessor(String destinationDir) {
+    return _installArgs(
+        processorDependencies, processorDependenciesExclusions, destinationDir);
+  }
+
+  static List<String> _installArgs(Map<String, DependencySpec> deps,
+      Set<String> exclusions, String destinationDir) {
+    if (deps.isEmpty) return const [];
+
+    final depsToInstall = deps.entries
         .where((e) => e.value.scope.includedAtRuntime() && e.value.path == null)
         .map((e) => e.key)
         .toList(growable: false);
 
     if (depsToInstall.isEmpty) return const [];
 
-    final result = ['-s', 'runtime', '-m', '-d', runtimeLibsDir];
+    final result = ['-s', 'runtime', '-m', '-d', destinationDir];
     for (final exclude in exclusions) {
       result.add('--exclusion');
       result.add(exclude);
     }
     result.addAll(depsToInstall);
-    return result;
-  }
-
-  /// Get the install arguments for the installProcessor task from this configuration.
-  List<String> installArgsForProcessor(String destinationDir) {
-    if (processorDependencies.isEmpty) return const [];
-
-    final result = ['-s', 'runtime', '-m', '-d', destinationDir];
-    for (final exclude in processorDependenciesExclusions) {
-      result.add('--exclusion');
-      result.add(exclude);
-    }
-    result.addAll(processorDependencies);
     return result;
   }
 

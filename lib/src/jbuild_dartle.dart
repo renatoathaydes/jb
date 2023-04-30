@@ -73,7 +73,11 @@ class JBuildDartle {
       : projectPath = p.joinAll(_components.projectPath),
         projectName = _components.projectName,
         _subProjectFactory = SubProjectFactory(_components) {
-    init = _resolveLocalDependencies().then(_initialize);
+    final localDeps = Future.wait([
+      _resolveLocalDependencies(_components.config.dependencies),
+      _resolveLocalDependencies(_components.config.processorDependencies)
+    ]);
+    init = localDeps.then((d) => _initialize(d[0], d[1]));
   }
 
   JBuildDartle.root(JBuildFiles files, JBuildConfiguration config,
@@ -86,8 +90,9 @@ class JBuildDartle {
     return {compile};
   }
 
-  Future<LocalDependencies> _resolveLocalDependencies() async {
-    final pathDependencies = _components.config.dependencies.entries
+  Future<LocalDependencies> _resolveLocalDependencies(
+      Map<String, DependencySpec> dependencies) async {
+    final pathDependencies = dependencies.entries
         .map((e) => e.value.toPathDependency())
         .whereNonNull()
         .toStream();
@@ -108,7 +113,8 @@ class JBuildDartle {
     return LocalDependencies(jars, subProjects);
   }
 
-  Future<Closable> _initialize(LocalDependencies localDependencies) async {
+  Future<Closable> _initialize(LocalDependencies localDependencies,
+      LocalDependencies localProcessorDependencies) async {
     final files = _components.files;
     final config = _components.config;
     final cache = _components.cache;
@@ -127,7 +133,8 @@ class JBuildDartle {
         createInstallCompileDepsTask(files, config, cache, localDependencies);
     installRuntime =
         createInstallRuntimeDepsTask(files, config, cache, localDependencies);
-    installProcessor = createInstallProcessorDepsTask(files, config, cache);
+    installProcessor = createInstallProcessorDepsTask(
+        files, config, cache, localProcessorDependencies);
     run = createRunTask(files, config, cache);
     downloadTestRunner =
         createDownloadTestRunnerTask(files.jbuildJar, config, cache);

@@ -100,7 +100,9 @@ void main() {
             dependencies: {
               'com.google:guava:1.2.3': DependencySpec.defaultSpec,
             },
-            processorDependencies: {'foo.bar:zort:1.0'},
+            processorDependencies: {
+              'foo.bar:zort:1.0': DependencySpec.defaultSpec,
+            },
             processorDependenciesExclusions: {'others'},
             exclusions: {'test.*', '.*other\\d+.*'},
             compileLibsDir: 'libs',

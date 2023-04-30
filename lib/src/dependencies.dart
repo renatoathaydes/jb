@@ -8,6 +8,86 @@ import 'config.dart';
 import 'exec.dart';
 import 'output_consumer.dart';
 import 'tasks.dart' show depsTaskName;
+import 'utils.dart';
+
+Future<void> writeDependencies(
+    {required File depsFile,
+    required LocalDependencies localDeps,
+    required Map<String, DependencySpec> deps,
+    required Set<String> exclusions,
+    required File processorDepsFile,
+    required Map<String, DependencySpec> processorDeps,
+    required Set<String> processorsExclusions}) async {
+  await _withFile(depsFile, (handle) async {
+    handle.write('dependencies:\n');
+    await _writeDeps(handle, deps, exclusions, localDeps);
+  });
+  await _withFile(processorDepsFile, (handle) async {
+    handle.write('processor-dependencies:\n');
+    await _writeDeps(handle, processorDeps, processorsExclusions);
+  });
+}
+
+Future<void> _withFile(File file, Future<void> Function(IOSink) action) async {
+  final handle = file.openWrite();
+  try {
+    await action(handle);
+  } finally {
+    await handle.flush();
+    await handle.close();
+  }
+}
+
+Future<void> _writeDeps(
+    IOSink sink, Map<String, DependencySpec> deps, Set<String> exclusions,
+    [LocalDependencies? localDeps]) async {
+  final nonLocalDeps = deps.entries
+      .where((e) => e.value.path == null)
+      .toList(growable: false)
+    ..sort((a, b) => a.key.compareTo(b.key));
+  for (final entry in nonLocalDeps) {
+    _writeDep(sink, entry.key, entry.value);
+  }
+  if (localDeps != null) {
+    for (final jarDep in [...localDeps.jars]
+      ..sort((a, b) => a.path.compareTo(b.path))) {
+      _writeDep(sink, "${jarDep.path} (jar)", jarDep.spec);
+    }
+    for (final subProject in [...localDeps.subProjects]
+      ..sort((a, b) => a.path.compareTo(b.path))) {
+      _writeDep(sink, "${subProject.path} (sub-project)", subProject.spec);
+    }
+  }
+  if (exclusions.isNotEmpty) {
+    sink.write('exclusions:\n');
+    for (final exclusion in [...exclusions]..sort()) {
+      sink
+        ..write('  - ')
+        ..write(exclusion)
+        ..write('\n');
+    }
+  }
+}
+
+void _writeDep(IOSink sink, String name, DependencySpec spec) {
+  sink
+    ..write('  - ')
+    ..write(name)
+    ..write(':\n');
+  if (spec != DependencySpec.defaultSpec) {
+    spec.path.map((path) => sink
+      ..write('    path: ')
+      ..write(path)
+      ..write('\n'));
+    sink
+      ..write('    scope: ')
+      ..write(spec.scope.name)
+      ..write('\n')
+      ..write('    transitive: ')
+      ..write(spec.transitive)
+      ..write('\n');
+  }
+}
 
 Future<int> printDependencies(
     File jbuildJar,

@@ -100,81 +100,96 @@ Task createWriteDependenciesTask(
       outputs: files([depsFile.path, procDepsFile.path]),
       cache: cache);
 
-  return Task((_) => _writeDependencies(jbFiles, config, localDependencies),
+  return Task(
+      (_) async => await writeDependencies(
+            depsFile: jbFiles.dependenciesFile,
+            localDeps: localDependencies,
+            deps: config.dependencies,
+            exclusions: config.exclusions,
+            processorDepsFile: jbFiles.processorDependenciesFile,
+            processorDeps: config.processorDependencies,
+            processorsExclusions: config.processorDependenciesExclusions,
+          ),
       runCondition: runCondition,
       name: writeDepsTaskName,
-      description: 'Write a file with dependencies information.');
-}
-
-Future<void> _writeDependencies(JBuildFiles jbFiles, JBuildConfiguration config,
-    LocalDependencies localDependencies) async {
-  await jbFiles.dependenciesFile.parent.create(recursive: true);
-  await jbFiles.dependenciesFile.writeAsString(config.dependencies.entries
-      .map((e) => e.value == DependencySpec.defaultSpec
-          ? e.key
-          : "${e.key}->${e.value}")
-      .followedBy(['exclusions:', ...config.exclusions])
-      .followedBy(
-          localDependencies.subProjects.map((e) => '${e.name}->${e.spec}'))
-      .followedBy(localDependencies.jars.map((e) => '${e.path}->${e.spec}'))
-      .join('\n'));
-  await jbFiles.processorDependenciesFile.writeAsString(
-      config.processorDependencies.followedBy([
-    'exclusions:',
-    ...config.processorDependenciesExclusions
-  ]).join('\n'));
+      description: 'Write files with dependencies information.');
 }
 
 /// Create the `installCompileDependencies` task.
 Task createInstallCompileDepsTask(JBuildFiles files, JBuildConfiguration config,
     DartleCache cache, LocalDependencies localDependencies) {
+  final projectDeps = localDependencies.subProjects
+      .where((s) => s.spec.scope.includedInCompilation())
+      .toList(growable: false);
+  final jarDeps = localDependencies.jars
+      .where((j) => j.spec.scope.includedInCompilation())
+      .toList(growable: false);
+
   Future<void> action(_) async {
     await _install(installCompileDepsTaskName, files.jbuildJar,
         config.preArgs(), config.installArgsForCompilation());
-    await _copy(
-        localDependencies.subProjects
-            .where((s) => s.spec.scope.includedInCompilation()),
-        config.compileLibsDir,
-        runtime: false);
-    await _copyFiles(
-        localDependencies.jars
-            .where((j) => j.spec.scope.includedInCompilation()),
-        config.compileLibsDir);
+    await _copy(projectDeps, config.compileLibsDir, runtime: false);
+    await _copyFiles(jarDeps, config.compileLibsDir);
   }
 
-  return _createInstallDepsTask(installCompileDepsTaskName, 'compile', action,
-      files.dependenciesFile, config.compileLibsDir, cache);
+  return _createInstallDepsTask(
+      installCompileDepsTaskName,
+      'compile',
+      action,
+      files.dependenciesFile,
+      projectDeps,
+      jarDeps,
+      config.compileLibsDir,
+      cache);
 }
 
 /// Create the `installRuntimeDependencies` task.
 Task createInstallRuntimeDepsTask(JBuildFiles files, JBuildConfiguration config,
     DartleCache cache, LocalDependencies localDependencies) {
+  final projectDeps = localDependencies.subProjects
+      .where((s) => s.spec.scope.includedAtRuntime())
+      .toList(growable: false);
+  final jarDeps = localDependencies.jars
+      .where((j) => j.spec.scope.includedAtRuntime())
+      .toList(growable: false);
   Future<void> action(_) async {
     await _install(installRuntimeDepsTaskName, files.jbuildJar,
         config.preArgs(), config.installArgsForRuntime());
-    await _copy(
-        localDependencies.subProjects
-            .where((s) => s.spec.scope.includedAtRuntime()),
-        config.runtimeLibsDir,
-        runtime: true);
-    await _copyFiles(
-        localDependencies.jars.where((j) => j.spec.scope.includedAtRuntime()),
-        config.runtimeLibsDir);
+    await _copy(projectDeps, config.runtimeLibsDir, runtime: true);
+    await _copyFiles(jarDeps, config.runtimeLibsDir);
   }
 
-  return _createInstallDepsTask(installRuntimeDepsTaskName, 'runtime', action,
-      files.dependenciesFile, config.runtimeLibsDir, cache);
+  return _createInstallDepsTask(
+      installRuntimeDepsTaskName,
+      'runtime',
+      action,
+      files.dependenciesFile,
+      projectDeps,
+      jarDeps,
+      config.runtimeLibsDir,
+      cache);
 }
 
 /// Create the `installProcessorDependencies` task.
 Task createInstallProcessorDepsTask(
-    JBuildFiles files, JBuildConfiguration config, DartleCache cache) {
+    JBuildFiles files,
+    JBuildConfiguration config,
+    DartleCache cache,
+    LocalDependencies localDependencies) {
+  final projectDeps = localDependencies.subProjects
+      .where((s) => s.spec.scope.includedAtRuntime())
+      .toList(growable: false);
+  final jarDeps = localDependencies.jars
+      .where((j) => j.spec.scope.includedAtRuntime())
+      .toList(growable: false);
   Future<void> action(_) async {
     await _install(
         installProcessorDepsTaskName,
         files.jbuildJar,
         config.preArgs(),
         config.installArgsForProcessor(files.processorLibsDir));
+    await _copy(projectDeps, files.processorLibsDir, runtime: true);
+    await _copyFiles(jarDeps, files.processorLibsDir);
   }
 
   return _createInstallDepsTask(
@@ -182,6 +197,8 @@ Task createInstallProcessorDepsTask(
       'annotation processor',
       action,
       files.processorDependenciesFile,
+      projectDeps,
+      jarDeps,
       files.processorLibsDir,
       cache);
 }
@@ -190,11 +207,24 @@ Task _createInstallDepsTask(
     String taskName,
     String scopeName,
     Future<void> Function(List<String>) action,
-    File dependenciesFile,
+    File inputFile,
+    List<SubProject> subProjects,
+    List<JarDependency> jarDeps,
     String libsDir,
     DartleCache cache) {
+  final inputFiles = [inputFile.path];
+  final inputDirs = <DirectoryEntry>[];
+  for (final subProject in subProjects) {
+    subProject.config.output.when(
+        dir: (d) =>
+            inputDirs.add(DirectoryEntry(path: p.join(subProject.path, d))),
+        jar: (j) => inputFiles.add(p.join(subProject.path, j)));
+  }
+  for (final jar in jarDeps) {
+    inputFiles.add(jar.path);
+  }
   final runCondition = RunOnChanges(
-      inputs: file(dependenciesFile.path),
+      inputs: entities(inputFiles, inputDirs),
       outputs: dir(libsDir),
       verifyOutputsExist: false, // maybe nothing to install
       cache: cache);
