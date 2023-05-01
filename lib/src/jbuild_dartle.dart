@@ -146,8 +146,8 @@ class JBuildDartle {
         localDependencies, !_components.options.colorfulLog);
     generateEclipse = createEclipseTask(config);
 
-    final extensionProject =
-        await loadExtensionProject(files, config.extensionProject, cache);
+    final extensionProject = await loadExtensionProject(
+        files, config.extensionProject, _subProjectFactory, cache);
 
     final extensionTasks = extensionProject?.tasks;
 

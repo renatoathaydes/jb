@@ -251,9 +251,8 @@ Future<void> _install(String taskName, File jbuildJar, List<String> preArgs,
 
 Future<void> _copy(Iterable<SubProject> subProjects, String destinationDir,
     {required bool runtime}) async {
-  // always create the destination dir so Dartle caches the task output
-  await Directory(destinationDir).create(recursive: true);
   if (subProjects.isEmpty) return;
+  await Directory(destinationDir).create(recursive: true);
   for (final sub in subProjects) {
     await _copyOutput(sub.config.output, sub.path, destinationDir);
     await _copyOutput(
@@ -266,7 +265,7 @@ Future<void> _copy(Iterable<SubProject> subProjects, String destinationDir,
 
 Future<void> _copyFiles(
     Iterable<JarDependency> jars, String destinationDir) async {
-  // always create the destination dir so Dartle caches the task output
+  if (jars.isEmpty) return;
   await Directory(destinationDir).create(recursive: true);
   for (final jar in jars) {
     logger.fine(() => 'Copying ${jar.path} to $destinationDir');
@@ -326,7 +325,7 @@ Future<void> _run(
     config.output.when(dir: (d) => d, jar: (j) => j),
     config.runtimeLibsDir,
     p.join(config.runtimeLibsDir, '*'),
-  }.join(Platform.isWindows ? ';' : ':');
+  }.join(classpathSeparator);
 
   final exitCode = await execJava(runTaskName,
       [...config.runJavaArgs, '-cp', classpath, mainClass, ...args],
@@ -392,7 +391,7 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
     config.runtimeLibsDir,
     await for (final lib in libs)
       if (p.extension(lib.path) == '.jar') lib.path,
-  }.join(Platform.isWindows ? ';' : ':');
+  }.join(classpathSeparator);
 
   const mainClass = 'org.junit.platform.console.ConsoleLauncher';
   if (mainClass.isEmpty) {

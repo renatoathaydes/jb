@@ -31,7 +31,7 @@ class JBuildFiles {
   File get javaSrcFileTreeFile =>
       File(p.join(jbuildCache, 'java-src-file-tree.txt'));
 
-  Directory get jbExtensionProjectDir => Directory('jb-src');
+  Directory get jbExtensionProjectDir => Directory('jb-extension');
 
   File get processorDependenciesFile =>
       File(p.join(jbuildCache, 'processor-dependencies.txt'));
@@ -381,7 +381,7 @@ class JBuildConfiguration {
       result.addAll(javacArgs);
       if (processorDependencies.isNotEmpty) {
         result.add('-processorpath');
-        result.add(await Directory(processorLibsDir).toClasspath());
+        (await Directory(processorLibsDir).toClasspath()).map(result.add);
       }
     }
     return result;

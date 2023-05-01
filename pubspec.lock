@@ -189,10 +189,10 @@ packages:
     dependency: "direct main"
     description:
       name: dartle
-      sha256: "4cc0c165087ac90862b3a757028463d8c049912658be50e107ac4b456f64f0b2"
+      sha256: "95867fe5131490181fee8eb6eef8e4a002ca33815f8f46a7d84c7ef5f15a0581"
       url: "https://pub.dev"
     source: hosted
-    version: "0.19.0"
+    version: "0.20.0"
   file:
     dependency: "direct main"
     description:

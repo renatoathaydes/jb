@@ -7,6 +7,7 @@ import 'package:dartle/dartle_cache.dart';
 import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:jb/jb.dart';
 import 'package:jb/src/jvm_executor.dart';
+import 'package:jb/src/path_dependency.dart';
 import 'package:jb/src/patterns.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
@@ -29,56 +30,42 @@ class ExtensionProject {
 
 /// Load an extension project from the given projectPath, if given, or from the default location otherwise.
 Future<ExtensionProject?> loadExtensionProject(
-    JBuildFiles files, String? projectPath, DartleCache cache) async {
+    JBuildFiles files,
+    String? projectPath,
+    SubProjectFactory subProjectFactory,
+    DartleCache cache) async {
   final projectDir = projectPath?.map((path) => Directory(path)) ??
       files.jbExtensionProjectDir;
   if (await projectDir.exists()) {
     final path = projectDir.path;
+
+    final config = await withCurrentDirectory(path, () async {
+      return await loadConfig(files.configFile);
+    });
+
+    _verify(config);
+
     logger
         .info(() => '========= Loading jb extension project: $path =========');
     final stopWatch = Stopwatch()..start();
 
+    final subProject = await subProjectFactory.createJBuildSubProject(
+        ProjectDependency(DependencySpec.defaultSpec, path));
+    final compileTask = subProject.tasks[compileTaskName]!;
+
     try {
-      final config = await withCurrentDirectory(path, () async {
-        final configFile = files.configFile;
-        if (!(await configFile.exists())) {
-          throw DartleException(
-              message:
-                  'Extension project at $path is missing file ${configFile.path}');
-        }
-        final options = Options(tasksInvocation: [
-          compileTaskName,
-          installRuntimeDepsTaskName,
-        ]);
-
-        final config = await loadConfig(configFile);
-        _verify(config);
-
-        final extensionDartle =
-            JBuildDartle.root(files, config, cache, options, stopWatch);
-
-        final closable = await extensionDartle.init;
-
-        try {
-          await runBasic(extensionDartle.tasks, extensionDartle.defaultTasks,
-              options, cache);
-        } finally {
-          await closable();
-        }
-
-        return config;
-      });
-
-      final extensionProject =
-          await _load(path, files.jbuildJar, config, cache);
-      logger.log(
-          profile,
-          () =>
-              'Loaded jb extension project in ${stopWatch.elapsedMilliseconds} ms');
-      return extensionProject;
-    } finally {
-      logger.info('========= Loaded jb extension project =========');
+      await runBasic(subProject.tasks.values.toSet(), {compileTask},
+          const Options(), cache);
+    } catch (e) {
+      throw DartleException(
+          message: 'Failed to compile jb extension project ($path) due to: $e');
     }
+
+    final extensionProject = await _load(path, files.jbuildJar, config, cache);
+    logger.log(profile,
+        () => 'Loaded jb extension project in ${elapsedTime(stopWatch)}');
+    logger.info('========= jb extension loaded =========');
+    return extensionProject;
   } else if (projectPath != null) {
     throw DartleException(
         message: 'Extension project does not exist: $projectPath');
@@ -121,7 +108,11 @@ Future<ExtensionProject> _load(String projectPath, File jbuildJar,
 
   final classpath =
       await Directory(runtimeLibsDir).toClasspath({File(jar), jbuildJar});
-  final jvmExec = JvmExecutor(classpath);
+  final jvmExec = JvmExecutor([
+    jbuildJar.path,
+    if (classpath != null) classpath,
+    jar
+  ].join(classpathSeparator));
   return ExtensionProject([
     for (final extTask in model.extensionTasks)
       _createTask(jvmExec, extTask, projectPath, cache)

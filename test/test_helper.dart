@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:dartle/dartle.dart';
+import 'package:jb/src/utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/expect.dart';
 
@@ -43,8 +44,7 @@ Future<void> assertDirectoryContents(Directory rootDir, List<String> paths,
 }
 
 String classpath(Iterable<String> entries) {
-  final separator = Platform.isWindows ? ';' : ':';
-  return entries.join(separator);
+  return entries.join(classpathSeparator);
 }
 
 void expectSuccess(ProcessResult result) {

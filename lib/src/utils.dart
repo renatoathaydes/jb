@@ -12,6 +12,8 @@ import 'properties.dart';
 
 typedef Closable = FutureOr<void> Function();
 
+final classpathSeparator = Platform.isWindows ? ';' : ':';
+
 Future<File> createIfNeededAndGetJBuildJarFile() async {
   final file = File(jbuildJarPath()).absolute;
   if (!await file.exists()) {
@@ -126,12 +128,16 @@ extension MapEntryIterable<K, V> on Iterable<MapEntry<K, V>> {
 }
 
 extension DirectoryExtension on Directory {
-  Future<String> toClasspath([Set<File> extraEntries = const {}]) => list()
-      .where((f) =>
-          FileSystemEntity.isFileSync(f.path) && p.extension(f.path) == '.jar')
-      .map((f) => f.path)
-      .followedBy(extraEntries.map((f) => f.path))
-      .join(Platform.isWindows ? ';' : ':');
+  Future<String?> toClasspath([Set<File> extraEntries = const {}]) async =>
+      await exists()
+          ? list()
+              .where((f) =>
+                  FileSystemEntity.isFileSync(f.path) &&
+                  p.extension(f.path) == '.jar')
+              .map((f) => f.path)
+              .followedBy(extraEntries.map((f) => f.path))
+              .join(classpathSeparator)
+          : null;
 
   Future<void> copyContentsInto(String destinationDir) async {
     if (!await exists()) return;
