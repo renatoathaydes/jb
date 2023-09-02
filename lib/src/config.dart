@@ -497,6 +497,19 @@ class LocalDependencies {
   const LocalDependencies(this.jars, this.subProjects);
 
   bool get isEmpty => jars.isEmpty && subProjects.isEmpty;
+
+  LocalDependenciesConfig toConfig() => LocalDependenciesConfig(jars,
+      subProjects.map((e) => e.toSubProjectConfig()).toList(growable: false));
+}
+
+/// Sendable subset of [LocalDependencies].
+class LocalDependenciesConfig {
+  final List<JarDependency> jars;
+  final List<SubProjectConfig> subProjects;
+
+  const LocalDependenciesConfig(this.jars, this.subProjects);
+
+  bool get isEmpty => jars.isEmpty && subProjects.isEmpty;
 }
 
 enum _CompileOutputTag { dir, jar }

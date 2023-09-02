@@ -29,39 +29,46 @@ class ExtensionProject {
 }
 
 /// Load an extension project from the given projectPath, if given, or from the default location otherwise.
-Future<ExtensionProject?> loadExtensionProject(
-    JBuildFiles files,
-    String? projectPath,
-    SubProjectFactory subProjectFactory,
-    DartleCache cache) async {
+Future<ExtensionProject?> loadExtensionProject(JBuildComponents components,
+    SubProjectFactory subProjectFactory) async {
+  final stopWatch = Stopwatch()
+    ..start();
+  final projectPath = components.config.extensionProject;
   final projectDir = projectPath?.map((path) => Directory(path)) ??
-      files.jbExtensionProjectDir;
+      components.files.jbExtensionProjectDir;
   if (await projectDir.exists()) {
     final path = projectDir.path;
 
     final config = await withCurrentDirectory(path, () async {
-      return await loadConfig(files.configFile);
+      return await loadConfig(components.files.configFile);
     });
 
     _verify(config);
 
     logger
         .info(() => '========= Loading jb extension project: $path =========');
-    final stopWatch = Stopwatch()..start();
 
     final subProject = await subProjectFactory.createJBuildSubProject(
         ProjectDependency(DependencySpec.defaultSpec, path));
     final compileTask = subProject.tasks[compileTaskName]!;
 
     try {
-      await runBasic(subProject.tasks.values.toSet(), {compileTask},
-          const Options(), cache);
+      await runBasic(
+          subProject.tasks.values.toSet(),
+          {compileTask},
+          Options(
+              colorfulLog: components.options.colorfulLog,
+              logLevel: components.options.logLevel),
+          components.cache);
+    } on DartleException {
+      rethrow;
     } catch (e) {
       throw DartleException(
           message: 'Failed to compile jb extension project ($path) due to: $e');
     }
 
-    final extensionProject = await _load(path, files.jbuildJar, config, cache);
+    final extensionProject =
+        await _load(path, components.files.jbuildJar, config, components.cache);
     logger.log(profile,
         () => 'Loaded jb extension project in ${elapsedTime(stopWatch)}');
     logger.info('========= jb extension loaded =========');

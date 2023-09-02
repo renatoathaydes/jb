@@ -29,6 +29,21 @@ class SubProject {
   String get compileLibsDir => _dartle.config.compileLibsDir;
 
   JBuildConfiguration get config => _dartle.config;
+
+  SubProjectConfig toSubProjectConfig() => SubProjectConfig(
+      path, spec, config.output, compileLibsDir, config.runtimeLibsDir);
+}
+
+/// Sendable, partial configuration of a [SubProject].
+final class SubProjectConfig {
+  final String path;
+  final DependencySpec spec;
+  final CompileOutput output;
+  final String compileLibsDir;
+  final String runtimeLibsDir;
+
+  SubProjectConfig(this.path, this.spec, this.output, this.compileLibsDir,
+      this.runtimeLibsDir);
 }
 
 /// Factory used to create `SubProject`s given a project's dependencies.

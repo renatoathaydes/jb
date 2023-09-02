@@ -10,7 +10,6 @@ import 'eclipse.dart';
 import 'exec.dart';
 import 'file_tree.dart';
 import 'java_tests.dart';
-import 'path_dependency.dart';
 import 'requirements.dart';
 import 'sub_project.dart';
 import 'utils.dart';
@@ -91,7 +90,7 @@ Task createWriteDependenciesTask(
     JBuildFiles jbFiles,
     JBuildConfiguration config,
     DartleCache cache,
-    LocalDependencies localDependencies) {
+    LocalDependenciesConfig localDependencies) {
   final depsFile = jbFiles.dependenciesFile;
   final procDepsFile = jbFiles.processorDependenciesFile;
 
@@ -100,15 +99,21 @@ Task createWriteDependenciesTask(
       outputs: files([depsFile.path, procDepsFile.path]),
       cache: cache);
 
+  // don't send the full config to the Task!
+  final deps = config.dependencies;
+  final exclusions = config.exclusions;
+  final procDeps = config.processorDependencies;
+  final procExc = config.processorDependenciesExclusions;
+
   return Task(
       (_) async => await writeDependencies(
-            depsFile: jbFiles.dependenciesFile,
+            depsFile: depsFile,
             localDeps: localDependencies,
-            deps: config.dependencies,
-            exclusions: config.exclusions,
-            processorDepsFile: jbFiles.processorDependenciesFile,
-            processorDeps: config.processorDependencies,
-            processorsExclusions: config.processorDependenciesExclusions,
+            deps: deps,
+            exclusions: exclusions,
+            processorDepsFile: procDepsFile,
+            processorDeps: procDeps,
+            processorsExclusions: procExc,
           ),
       runCondition: runCondition,
       name: writeDepsTaskName,
@@ -117,19 +122,23 @@ Task createWriteDependenciesTask(
 
 /// Create the `installCompileDependencies` task.
 Task createInstallCompileDepsTask(JBuildFiles files, JBuildConfiguration config,
-    DartleCache cache, LocalDependencies localDependencies) {
+    DartleCache cache, LocalDependenciesConfig localDependencies) {
   final projectDeps = localDependencies.subProjects
       .where((s) => s.spec.scope.includedInCompilation())
       .toList(growable: false);
   final jarDeps = localDependencies.jars
       .where((j) => j.spec.scope.includedInCompilation())
+      .map((j) => j.path)
       .toList(growable: false);
-
+  final jbuildJar = files.jbuildJar;
+  final preArgs = config.preArgs();
+  final args = config.installArgsForCompilation();
+  final libsDir = config.compileLibsDir;
+  // can only use Sendable objects inside action
   Future<void> action(_) async {
-    await _install(installCompileDepsTaskName, files.jbuildJar,
-        config.preArgs(), config.installArgsForCompilation());
-    await _copy(projectDeps, config.compileLibsDir, runtime: false);
-    await _copyFiles(jarDeps, config.compileLibsDir);
+    await _install(installCompileDepsTaskName, jbuildJar, preArgs, args);
+    await _copy(projectDeps, libsDir, runtime: false);
+    await _copyFiles(jarDeps, libsDir);
   }
 
   return _createInstallDepsTask(
@@ -145,12 +154,13 @@ Task createInstallCompileDepsTask(JBuildFiles files, JBuildConfiguration config,
 
 /// Create the `installRuntimeDependencies` task.
 Task createInstallRuntimeDepsTask(JBuildFiles files, JBuildConfiguration config,
-    DartleCache cache, LocalDependencies localDependencies) {
+    DartleCache cache, LocalDependenciesConfig localDependencies) {
   final projectDeps = localDependencies.subProjects
       .where((s) => s.spec.scope.includedAtRuntime())
       .toList(growable: false);
   final jarDeps = localDependencies.jars
       .where((j) => j.spec.scope.includedAtRuntime())
+      .map((j) => j.path)
       .toList(growable: false);
   Future<void> action(_) async {
     await _install(installRuntimeDepsTaskName, files.jbuildJar,
@@ -178,9 +188,11 @@ Task createInstallProcessorDepsTask(
     LocalDependencies localDependencies) {
   final projectDeps = localDependencies.subProjects
       .where((s) => s.spec.scope.includedAtRuntime())
+      .map((s) => s.toSubProjectConfig())
       .toList(growable: false);
   final jarDeps = localDependencies.jars
       .where((j) => j.spec.scope.includedAtRuntime())
+      .map((j) => j.path)
       .toList(growable: false);
   Future<void> action(_) async {
     await _install(
@@ -208,21 +220,19 @@ Task _createInstallDepsTask(
     String scopeName,
     Future<void> Function(List<String>) action,
     File inputFile,
-    List<SubProject> subProjects,
-    List<JarDependency> jarDeps,
+    List<SubProjectConfig> subProjects,
+    List<String> jarDeps,
     String libsDir,
     DartleCache cache) {
   final inputFiles = [inputFile.path];
   final inputDirs = <DirectoryEntry>[];
   for (final subProject in subProjects) {
-    subProject.config.output.when(
+    subProject.output.when(
         dir: (d) =>
             inputDirs.add(DirectoryEntry(path: p.join(subProject.path, d))),
         jar: (j) => inputFiles.add(p.join(subProject.path, j)));
   }
-  for (final jar in jarDeps) {
-    inputFiles.add(jar.path);
-  }
+  inputFiles.addAll(jarDeps);
   final runCondition = RunOnChanges(
       inputs: entities(inputFiles, inputDirs),
       outputs: dir(libsDir),
@@ -249,27 +259,26 @@ Future<void> _install(String taskName, File jbuildJar, List<String> preArgs,
   }
 }
 
-Future<void> _copy(Iterable<SubProject> subProjects, String destinationDir,
+Future<void> _copy(
+    Iterable<SubProjectConfig> subProjects, String destinationDir,
     {required bool runtime}) async {
   if (subProjects.isEmpty) return;
   await Directory(destinationDir).create(recursive: true);
   for (final sub in subProjects) {
-    await _copyOutput(sub.config.output, sub.path, destinationDir);
+    await _copyOutput(sub.output, sub.path, destinationDir);
     await _copyOutput(
-        CompileOutput.dir(
-            runtime ? sub.config.runtimeLibsDir : sub.config.compileLibsDir),
+        CompileOutput.dir(runtime ? sub.runtimeLibsDir : sub.compileLibsDir),
         sub.path,
         destinationDir);
   }
 }
 
-Future<void> _copyFiles(
-    Iterable<JarDependency> jars, String destinationDir) async {
+Future<void> _copyFiles(Iterable<String> jars, String destinationDir) async {
   if (jars.isEmpty) return;
   await Directory(destinationDir).create(recursive: true);
   for (final jar in jars) {
-    logger.fine(() => 'Copying ${jar.path} to $destinationDir');
-    await File(jar.path).copy(p.join(destinationDir, p.basename(jar.path)));
+    logger.fine(() => 'Copying $jar to $destinationDir');
+    await File(jar).copy(p.join(destinationDir, p.basename(jar)));
   }
 }
 
@@ -427,8 +436,12 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
 }
 
 /// Create the `dependencies` task.
-Task createDepsTask(File jbuildJar, JBuildConfiguration config,
-    DartleCache cache, LocalDependencies localDependencies, bool noColor) {
+Task createDepsTask(
+    File jbuildJar,
+    JBuildConfiguration config,
+    DartleCache cache,
+    LocalDependenciesConfig localDependencies,
+    bool noColor) {
   return Task(
       (List<String> args) =>
           _deps(jbuildJar, config, cache, localDependencies, noColor, args),
@@ -442,7 +455,7 @@ Future<void> _deps(
     File jbuildJar,
     JBuildConfiguration config,
     DartleCache cache,
-    LocalDependencies localDependencies,
+    LocalDependenciesConfig localDependencies,
     bool noColor,
     List<String> args) async {
   final exitCode = await printDependencies(
@@ -454,8 +467,12 @@ Future<void> _deps(
 }
 
 /// Create the `requirements` task.
-Task createRequirementsTask(File jbuildJar, JBuildConfiguration config,
-    DartleCache cache, LocalDependencies localDependencies, bool noColor) {
+Task createRequirementsTask(
+    File jbuildJar,
+    JBuildConfiguration config,
+    DartleCache cache,
+    LocalDependenciesConfig localDependencies,
+    bool noColor) {
   return Task(
       (List<String> args) => _requirements(
           jbuildJar, config, cache, localDependencies, noColor, args),
@@ -469,7 +486,7 @@ Future<void> _requirements(
     File jbuildJar,
     JBuildConfiguration config,
     DartleCache cache,
-    LocalDependencies localDependencies,
+    LocalDependenciesConfig localDependencies,
     bool noColor,
     List<String> args) async {
   final out = config.output.when(dir: (dir) => dir, jar: (jar) => jar);
