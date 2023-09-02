@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:dartle/dartle.dart';
 import 'package:jb/jb.dart';
@@ -14,6 +15,9 @@ class _Proc {
   final Process _process;
   final int port;
   final String authorizationHeader;
+  bool _closed = false;
+
+  bool get isClosed => _closed;
 
   Future<int> get exit => _process.exitCode;
 
@@ -21,14 +25,18 @@ class _Proc {
       : authorizationHeader = 'Bearer $token';
 
   bool destroy() {
+    if (_closed) return false;
+    _closed = true;
     return _process.kill(ProcessSignal.sigkill);
   }
 }
 
+// Maintain a global process per Isolate so that it can be reused
+// by any JvmExecutor created in the same Isolate.
+Future<_Proc>? _process;
+
 class JvmExecutor {
   final String _classpath;
-
-  Future<_Proc>? _process;
 
   JvmExecutor(this._classpath) {
     logger.fine(() => 'JvmExecutor classpath: $_classpath');
@@ -70,6 +78,8 @@ class JvmExecutor {
   Future<_Proc> _startOrGetProcess(Map<String, String> env) {
     var proc = _process;
     if (proc == null) {
+      logger.fine(
+          'Starting a Java executor on Isolate ${Isolate.current.debugName}');
       proc = Process.start('java', ['-cp', _classpath, 'jbuild.cli.RpcMain'],
               runInShell: true,
               workingDirectory: Directory.current.path,
@@ -109,6 +119,7 @@ class JvmExecutor {
     final procFuture = _process;
     if (procFuture != null) {
       final proc = await procFuture;
+      if (proc.isClosed) return proc.exit;
       // send a stop message to ensure the process dies quickly
       await _sendStopMessage(proc.port, proc.authorizationHeader);
       try {
