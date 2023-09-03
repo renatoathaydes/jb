@@ -560,8 +560,13 @@ class CompileOutput {
 
 /// Scope of a dependency.
 enum DependencyScope {
+  /// dependency is required both at compile-time and runtime.
   all,
+
+  /// dependency is required at compile-time, but not runtime.
   compileOnly,
+
+  /// dependency is required at runtime, but not compile-time.
   runtimeOnly;
 
   /// Convert a String to a [DependencyScope].
