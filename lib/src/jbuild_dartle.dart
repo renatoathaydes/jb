@@ -1,11 +1,9 @@
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
-import 'package:jb/src/jb_extension.dart';
-import 'package:path/path.dart' as p;
+import 'package:jb/src/project_dependency.dart';
 
 import 'config.dart';
 import 'path_dependency.dart';
-import 'sub_project.dart';
 import 'tasks.dart';
 import 'utils.dart';
 
@@ -15,18 +13,10 @@ class JBuildComponents {
   final JBuildConfiguration config;
   final DartleCache cache;
   final Options options;
-  final String projectName;
-  final List<String> projectPath;
   final Stopwatch stopWatch;
 
-  JBuildComponents(this.files, this.config, this.cache, this.options,
-      this.projectName, this.projectPath, this.stopWatch);
-
-  JBuildComponents child(String projectName, JBuildConfiguration config) {
-    final childPath = [...projectPath, projectName];
-    return JBuildComponents(
-        files, config, cache, options, projectName, childPath, stopWatch);
-  }
+  JBuildComponents(
+      this.files, this.config, this.cache, this.options, this.stopWatch);
 }
 
 /// jb Dartle tasks, including sub-projects.
@@ -58,41 +48,27 @@ class JBuildDartle {
   /// required.
   late final Future<Closable> init;
 
-  /// Project configuration.
-  JBuildConfiguration get config => _components.config;
-
-  /// Project path. The empty string for the root project.
-  final String projectPath;
-
-  /// Simple name of the project (last part of the projectPath).
-  final String projectName;
-
-  JBuildDartle(this._components)
-      : projectPath = p.joinAll(_components.projectPath),
-        projectName = _components.projectName {
-    final subProjectFactory = SubProjectFactory(_components);
+  JBuildDartle(this._components) {
     final localDeps = Future.wait([
-      _resolveLocalDependencies(
-          subProjectFactory, _components.config.dependencies),
-      _resolveLocalDependencies(
-          subProjectFactory, _components.config.processorDependencies)
+      _resolveLocalDependencies(_components.config.dependencies, name: 'main'),
+      _resolveLocalDependencies(_components.config.processorDependencies,
+          name: 'annotation processor')
     ]);
-    init = localDeps.then((d) => _initialize(subProjectFactory, d[0], d[1]));
+    init = localDeps.then((d) => _initialize(d[0], d[1]));
   }
 
   JBuildDartle.root(JBuildFiles files, JBuildConfiguration config,
       DartleCache cache, Options options, Stopwatch stopWatch)
-      : this(JBuildComponents(
-            files, config, cache, options, '', const [], stopWatch));
+      : this(JBuildComponents(files, config, cache, options, stopWatch));
 
   /// Get the default tasks (`{ compile }`).
   Set<Task> get defaultTasks {
     return {compile};
   }
 
-  Future<LocalDependencies> _resolveLocalDependencies(
-      SubProjectFactory subProjectFactory,
-      Map<String, DependencySpec> dependencies) async {
+  Future<ResolvedLocalDependencies> _resolveLocalDependencies(
+      Map<String, DependencySpec> dependencies,
+      {required String name}) async {
     final pathDependencies = dependencies.entries
         .map((e) => e.value.toPathDependency())
         .whereNonNull()
@@ -106,23 +82,21 @@ class JBuildDartle {
     }
 
     final subProjects =
-        await subProjectFactory.createSubProjects(projectDeps).toList();
+        await projectDeps.toStream().asyncMap((e) => e.resolve()).toList();
 
-    logger.fine(() => 'Resolved ${subProjects.length} sub-projects, '
+    logger.fine(() => 'Resolved $name configuration: '
+        '${subProjects.length} project dependencies, '
         '${jars.length} local jar dependencies.');
 
-    return LocalDependencies(jars, subProjects);
+    return ResolvedLocalDependencies(jars, subProjects);
   }
 
-  Future<Closable> _initialize(
-      SubProjectFactory subProjectFactory,
-      LocalDependencies localDependencies,
-      LocalDependencies localProcessorDependencies) async {
+  Future<Closable> _initialize(ResolvedLocalDependencies localDependencies,
+      ResolvedLocalDependencies localProcessorDependencies) async {
     final files = _components.files;
     final config = _components.config;
     final cache = _components.cache;
-    final subProjects = localDependencies.subProjects;
-    final localDepsConfig = localDependencies.toConfig();
+    final unresolvedLocalDeps = localDependencies.unresolved;
 
     // must initialize the cache explicitly as this method may be running on
     // sub-projects where the cache was not created by the cache constructor.
@@ -132,28 +106,28 @@ class JBuildDartle {
 
     compile = createCompileTask(files, config, cache);
     writeDeps =
-        createWriteDependenciesTask(files, config, cache, localDepsConfig);
+        createWriteDependenciesTask(files, config, cache, unresolvedLocalDeps);
     installCompile =
-        createInstallCompileDepsTask(files, config, cache, localDepsConfig);
+        createInstallCompileDepsTask(files, config, cache, localDependencies);
     installRuntime =
-        createInstallRuntimeDepsTask(files, config, cache, localDepsConfig);
-    installProcessor = createInstallProcessorDepsTask(
-        files, config, cache, localProcessorDependencies);
+        createInstallRuntimeDepsTask(files, config, cache, localDependencies);
+    installProcessor =
+        createInstallProcessorDepsTask(files, config, cache, localDependencies);
     run = createRunTask(files, config, cache);
     downloadTestRunner =
         createDownloadTestRunnerTask(files.jbuildJar, config, cache);
     test = createTestTask(
         files.jbuildJar, config, cache, !_components.options.colorfulLog);
-    deps = createDepsTask(files.jbuildJar, config, cache, localDepsConfig,
+    deps = createDepsTask(files.jbuildJar, config, cache, unresolvedLocalDeps,
         !_components.options.colorfulLog);
     requirements = createRequirementsTask(files.jbuildJar, config, cache,
-        localDepsConfig, !_components.options.colorfulLog);
+        unresolvedLocalDeps, !_components.options.colorfulLog);
     generateEclipse = createEclipseTask(config);
 
-    final extensionProject =
-        await loadExtensionProject(_components, subProjectFactory);
+    // FIXME re-add support for extension projects
+    // final extensionProject = await loadExtensionProject(_components);
 
-    final extensionTasks = extensionProject?.tasks;
+    // final extensionTasks = extensionProject?.tasks;
 
     projectTasks.addAll({
       compile,
@@ -167,7 +141,7 @@ class JBuildDartle {
       deps,
       requirements,
       generateEclipse,
-      if (extensionTasks != null) ...extensionTasks,
+      // if (extensionTasks != null) ...extensionTasks,
     });
 
     clean = createCleanTask(
@@ -176,46 +150,32 @@ class JBuildDartle {
         description: 'deletes the outputs of all other tasks.');
     projectTasks.add(clean);
 
-    projectTasks.addSubProjectTasks(subProjects);
-    _addSubProjectTaskDependencies(subProjects);
+    _addProjectDependenciesTasks(
+        projectTasks, localDependencies.projectDependencies);
 
     tasks = Set.unmodifiable(projectTasks);
 
     logger.log(
         profile,
-        () =>
-            "${projectPath.isEmpty ? 'Root project' : "Project '$projectPath'"}"
-            ' initialization completed in '
+        () => 'Project initialization completed in '
             '${_components.stopWatch.elapsedMilliseconds} ms.');
 
-    return extensionProject?.close ?? () {};
+    // return extensionProject?.close ?? () {};
+    return () {};
   }
 
-  void _addSubProjectTaskDependencies(List<SubProject> subProjects) {
-    for (var subProject in subProjects) {
-      final subCompileTask = subProject.getTaskOrError(compileTaskName);
-      final subInstallRuntimeTask =
-          subProject.getTaskOrError(installRuntimeDepsTaskName);
-      final subCleanTask = subProject.getTaskOrError(cleanTaskName);
-      installCompile.dependsOn({subCompileTask.name});
-      installRuntime
-          .dependsOn({subCompileTask.name, subInstallRuntimeTask.name});
-      clean.dependsOn({subCleanTask.name});
+  void _addProjectDependenciesTasks(
+      Set<Task> tasks, List<ResolvedProjectDependency> projectDeps) {
+    for (var dep in projectDeps) {
+      tasks.add(_createAndSetupDepTask(dep, compile));
+      tasks.add(_createAndSetupDepTask(dep, test));
     }
   }
-}
 
-extension _TasksExtension on Set<Task> {
-  void addSubProjectTasks(Iterable<SubProject> subProjects) {
-    for (var subProject in subProjects) {
-      addAll(subProject.tasks.values);
-    }
-  }
-}
-
-extension _SubProjectTasksExtension on SubProject {
-  Task getTaskOrError(String name) {
-    return tasks[name]
-        .orThrow("SubProject '${this.name}' is missing task '$name'");
+  Task _createAndSetupDepTask(ResolvedProjectDependency dep, Task mainTask) {
+    final depTask = createProjectDependencyTask(dep, _components.options,
+        mainTaskName: mainTask.name);
+    mainTask.dependsOn({depTask.name});
+    return depTask;
   }
 }

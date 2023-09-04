@@ -12,7 +12,7 @@ import 'utils.dart';
 
 Future<void> writeDependencies(
     {required File depsFile,
-    required LocalDependenciesConfig localDeps,
+    required LocalDependencies localDeps,
     required Map<String, DependencySpec> deps,
     required Set<String> exclusions,
     required File processorDepsFile,
@@ -40,7 +40,7 @@ Future<void> _withFile(File file, Future<void> Function(IOSink) action) async {
 
 Future<void> _writeDeps(
     IOSink sink, Map<String, DependencySpec> deps, Set<String> exclusions,
-    [LocalDependenciesConfig? localDeps]) async {
+    [LocalDependencies? localDeps]) async {
   final nonLocalDeps = deps.entries
       .where((e) => e.value.path == null)
       .toList(growable: false)
@@ -53,7 +53,7 @@ Future<void> _writeDeps(
       ..sort((a, b) => a.path.compareTo(b.path))) {
       _writeDep(sink, "${jarDep.path} (jar)", jarDep.spec);
     }
-    for (final subProject in [...localDeps.subProjects]
+    for (final subProject in [...localDeps.projectDependencies]
       ..sort((a, b) => a.path.compareTo(b.path))) {
       _writeDep(sink, "${subProject.path} (sub-project)", subProject.spec);
     }
@@ -93,7 +93,7 @@ Future<int> printDependencies(
     File jbuildJar,
     JBuildConfiguration config,
     DartleCache cache,
-    LocalDependenciesConfig localDependencies,
+    LocalDependencies localDependencies,
     bool noColor,
     List<String> args) async {
   final deps = config.dependencies.entries
@@ -122,10 +122,10 @@ Future<int> printDependencies(
   return 0;
 }
 
-void _printLocalDependencies(LocalDependenciesConfig localDependencies) {
+void _printLocalDependencies(LocalDependencies localDependencies) {
   for (var dep in localDependencies.jars
       .map((j) => '* ${j.path} [${j.spec.scope.name}] (local jar)')
-      .followedBy(localDependencies.subProjects
+      .followedBy(localDependencies.projectDependencies
           .map((s) => '* ${s.path} [${s.spec.scope.name}] (sub-project)'))) {
     logger.info(ColoredLogMessage(dep, LogColor.magenta));
   }

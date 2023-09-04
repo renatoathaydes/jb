@@ -29,10 +29,8 @@ class ExtensionProject {
 }
 
 /// Load an extension project from the given projectPath, if given, or from the default location otherwise.
-Future<ExtensionProject?> loadExtensionProject(JBuildComponents components,
-    SubProjectFactory subProjectFactory) async {
-  final stopWatch = Stopwatch()
-    ..start();
+Future<ExtensionProject?> loadExtensionProject(JBuildComponents components) async {
+  final stopWatch = Stopwatch()..start();
   final projectPath = components.config.extensionProject;
   final projectDir = projectPath?.map((path) => Directory(path)) ??
       components.files.jbExtensionProjectDir;
@@ -128,6 +126,8 @@ Future<ExtensionProject> _load(String projectPath, File jbuildJar,
 
 Task _createTask(JvmExecutor executor, ExtensionTask extensionTask, String path,
     DartleCache cache) {
+  // FIXME the task shouldn't be relative to the extension project,
+  //       as it becomes part of the main project!
   final runCondition = _runCondition(extensionTask, path, cache);
   return Task((_) async {
     final List<String> args =

@@ -11,12 +11,13 @@ import 'config_import.dart';
 import 'file_tree.dart';
 import 'path_dependency.dart';
 import 'properties.dart';
-import 'sub_project.dart';
 import 'utils.dart';
 
 final logger = log.Logger('jbuild');
 
 const jbuildCache = '.jbuild-cache';
+
+const jbFile = 'jbuild.yaml';
 
 const jbApi = 'com.athaydes.jbuild:jbuild-api';
 
@@ -24,7 +25,7 @@ const jbApi = 'com.athaydes.jbuild:jbuild-api';
 class JBuildFiles {
   final File jbuildJar;
 
-  File get configFile => File('jbuild.yaml');
+  final File configFile;
 
   File get dependenciesFile => File(p.join(jbuildCache, 'dependencies.txt'));
 
@@ -37,19 +38,15 @@ class JBuildFiles {
       File(p.join(jbuildCache, 'processor-dependencies.txt'));
   final processorLibsDir = p.join(jbuildCache, 'processor-dependencies');
 
-  JBuildFiles(this.jbuildJar);
+  JBuildFiles(this.jbuildJar, [String configFile = jbFile])
+      : configFile = File(configFile);
 }
 
 /// Parse the YAML/JSON jbuild file.
 ///
 /// Applies defaults and resolves properties and imports.
 Future<JBuildConfiguration> loadConfig(File configFile) async {
-  logger.fine(() {
-    final path = p.isAbsolute(configFile.path)
-        ? configFile.path
-        : p.join(Directory.current.path, configFile.path);
-    return 'Reading config file: $path';
-  });
+  logger.fine(() => 'Reading config file: ${configFile.path}');
   return await loadConfigString(await configFile.readAsString());
 }
 
@@ -489,27 +486,14 @@ class JBuildConfiguration {
 }
 
 /// Grouping of all local dependencies, which can be local
-/// [JarDependency] or [SubProject]s.
+/// [JarDependency] or [ProjectDependency]s.
 class LocalDependencies {
   final List<JarDependency> jars;
-  final List<SubProject> subProjects;
+  final List<ProjectDependency> projectDependencies;
 
-  const LocalDependencies(this.jars, this.subProjects);
+  const LocalDependencies(this.jars, this.projectDependencies);
 
-  bool get isEmpty => jars.isEmpty && subProjects.isEmpty;
-
-  LocalDependenciesConfig toConfig() => LocalDependenciesConfig(jars,
-      subProjects.map((e) => e.toSubProjectConfig()).toList(growable: false));
-}
-
-/// Sendable subset of [LocalDependencies].
-class LocalDependenciesConfig {
-  final List<JarDependency> jars;
-  final List<SubProjectConfig> subProjects;
-
-  const LocalDependenciesConfig(this.jars, this.subProjects);
-
-  bool get isEmpty => jars.isEmpty && subProjects.isEmpty;
+  bool get isEmpty => jars.isEmpty && projectDependencies.isEmpty;
 }
 
 enum _CompileOutputTag { dir, jar }
