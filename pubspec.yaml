@@ -14,8 +14,8 @@ dependencies:
   args: ^2.3.1
   logging: ^1.0.0
   yaml: ^3.1.1
-  file: ^6.1.4
-  isolate_current_directory: ^1.1.0
+  file: ^7.0.0
+  isolate_current_directory: ^2.0.0
   archive: ^3.3.4
   xml: ^6.2.2
 
