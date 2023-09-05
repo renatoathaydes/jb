@@ -10,8 +10,8 @@ import 'eclipse.dart';
 import 'exec.dart';
 import 'file_tree.dart';
 import 'java_tests.dart';
-import 'project_dependency.dart';
 import 'requirements.dart';
+import 'resolved_dependency.dart';
 import 'utils.dart';
 
 const cleanTaskName = 'clean';
@@ -257,8 +257,8 @@ Future<void> _install(String taskName, File jbuildJar, List<String> preArgs,
   }
 }
 
-Future<void> _copy(Iterable<ResolvedProjectDependency> resolvedDeps,
-    String destinationDir,
+Future<void> _copy(
+    Iterable<ResolvedProjectDependency> resolvedDeps, String destinationDir,
     {required bool runtime}) async {
   if (resolvedDeps.isEmpty) return;
   await Directory(destinationDir).create(recursive: true);

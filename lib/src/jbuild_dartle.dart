@@ -1,6 +1,6 @@
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
-import 'package:jb/src/project_dependency.dart';
+import 'package:jb/src/resolved_dependency.dart';
 
 import 'config.dart';
 import 'path_dependency.dart';
@@ -85,8 +85,8 @@ class JBuildDartle {
         await projectDeps.toStream().asyncMap((e) => e.resolve()).toList();
 
     logger.fine(() => 'Resolved $name configuration: '
-        '${subProjects.length} project dependencies, '
-        '${jars.length} local jar dependencies.');
+        '${subProjects.length} project dependenc${subProjects.length == 1 ? 'y' : 'ies'}, '
+        '${jars.length} local jar dependenc${jars.length == 1 ? 'y' : 'ies'}.');
 
     return ResolvedLocalDependencies(jars, subProjects);
   }
@@ -150,8 +150,10 @@ class JBuildDartle {
         description: 'deletes the outputs of all other tasks.');
     projectTasks.add(clean);
 
-    _addProjectDependenciesTasks(
-        projectTasks, localDependencies.projectDependencies);
+    if (localDependencies.projectDependencies.isNotEmpty) {
+      await _initializeProjectDeps(localDependencies.projectDependencies);
+      logger.info('All project dependencies have been initialized');
+    }
 
     tasks = Set.unmodifiable(projectTasks);
 
@@ -164,18 +166,11 @@ class JBuildDartle {
     return () {};
   }
 
-  void _addProjectDependenciesTasks(
-      Set<Task> tasks, List<ResolvedProjectDependency> projectDeps) {
+  Future<void> _initializeProjectDeps(
+      List<ResolvedProjectDependency> projectDeps) async {
     for (var dep in projectDeps) {
-      tasks.add(_createAndSetupDepTask(dep, compile));
-      tasks.add(_createAndSetupDepTask(dep, test));
+      await initializeProjectDependency(
+          dep, _components.options, _components.files.jbuildJar);
     }
-  }
-
-  Task _createAndSetupDepTask(ResolvedProjectDependency dep, Task mainTask) {
-    final depTask = createProjectDependencyTask(dep, _components.options,
-        mainTaskName: mainTask.name);
-    mainTask.dependsOn({depTask.name});
-    return depTask;
   }
 }

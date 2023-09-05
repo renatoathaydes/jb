@@ -2,12 +2,11 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:isolate_current_directory/isolate_current_directory.dart';
+import 'package:jb/jb.dart';
 import 'package:path/path.dart' as p;
 
-import 'config.dart';
 import 'path_dependency.dart';
 import 'runner.dart';
-import 'utils.dart';
 
 final class ResolvedProjectDependency {
   final ProjectDependency projectDependency;
@@ -80,53 +79,34 @@ extension Resolver on ProjectDependency {
   }
 }
 
-Task createProjectDependencyTask(ResolvedProjectDependency dep, Options options,
-    {required String mainTaskName}) {
-  final subTaskName = '${dep.path}:$mainTaskName';
-  return Task(
-      _ProjectDependencyCompileTask(
-          dep.configFile, dep._config, options, mainTaskName),
-      name: subTaskName,
-      argsValidator: const AcceptAnyArgs());
+Future<void> initializeProjectDependency(
+    ResolvedProjectDependency dep, Options options, File jbuildJar) async {
+  final configFile = dep.configFile;
+  final config = dep._config;
+  final runner = JbRunner(JBuildFiles(jbuildJar, configFile), config);
+  final dir = p.dirname(configFile);
+  logger.info(() => "Initializing project dependency at '$dir'");
+  final workingDir = Directory.current;
+  await withCurrentDirectory(
+      dir,
+      () async => await runner.run(
+          _createOptionsForProjectDep(
+              options, const [compileTaskName, installRuntimeDepsTaskName]),
+          Stopwatch()));
+  // Dartle changes the current dir, so we must restore it here
+  Directory.current = workingDir;
 }
 
-final class _ProjectDependencyCompileTask {
-  final String configFile;
-  final Options options;
-  final String taskName;
-  final JBuildConfiguration config;
-
-  _ProjectDependencyCompileTask(
-      this.configFile, this.config, this.options, this.taskName);
-
-  Future<void> call(List<String> args) async {
-    final jbuildJar = await createIfNeededAndGetJBuildJarFile();
-    final runner = JbRunner(JBuildFiles(jbuildJar, configFile), config);
-    final dir = p.dirname(configFile);
-    final pwd = Directory.current.path;
-    logger.info(
-        () => "Running project dependency task '$taskName' at directory '$dir',"
-            " current dir is ${Directory.current.path}");
-    await withCurrentDirectory(
-        dir,
-        () async => await runner.run(
-            _createOptionsForProjectDep(options, taskName), Stopwatch()));
-    // FIXME this shouldn't be needed!!
-    Directory.current = pwd;
-    logger.info(() =>
-        'Sub-project task run, current dir is: ${Directory.current.path}');
-  }
-
-  Options _createOptionsForProjectDep(Options options, String taskName) {
-    return Options(
-        logLevel: options.logLevel,
-        colorfulLog: options.colorfulLog,
-        forceTasks: options.forceTasks,
-        parallelizeTasks: options.parallelizeTasks,
-        resetCache: options.resetCache,
-        logBuildTime: false,
-        runPubGet: options.runPubGet,
-        disableCache: options.disableCache,
-        tasksInvocation: [taskName]);
-  }
+Options _createOptionsForProjectDep(
+    Options options, List<String> tasksInvocation) {
+  return Options(
+      logLevel: options.logLevel,
+      colorfulLog: options.colorfulLog,
+      forceTasks: options.forceTasks,
+      parallelizeTasks: options.parallelizeTasks,
+      resetCache: options.resetCache,
+      logBuildTime: false,
+      runPubGet: options.runPubGet,
+      disableCache: options.disableCache,
+      tasksInvocation: tasksInvocation);
 }
