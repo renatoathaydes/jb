@@ -7,16 +7,15 @@ class CreateOptions {
   const CreateOptions(this.arguments);
 }
 
-class JBuildCliOptions {
+class JbCliOptions {
   final List<String> dartleArgs;
   final String? rootDirectory;
   final CreateOptions? createOptions;
 
-  const JBuildCliOptions(
-      this.dartleArgs, this.rootDirectory, this.createOptions);
+  const JbCliOptions(this.dartleArgs, this.rootDirectory, this.createOptions);
 
-  static JBuildCliOptions parseArgs(List<String> arguments) {
-    if (arguments.isEmpty) return const JBuildCliOptions([], null, null);
+  static JbCliOptions parseArgs(List<String> arguments) {
+    if (arguments.isEmpty) return const JbCliOptions([], null, null);
     final dartleArgs = <String>[];
     final createArgs = <String>[];
     var currentArgs = dartleArgs;
@@ -47,6 +46,6 @@ class JBuildCliOptions {
       throw DartleException(
           message: 'The "create" command cannot be used with other tasks.');
     }
-    return JBuildCliOptions(dartleArgs, rootDir, createOptions);
+    return JbCliOptions(dartleArgs, rootDir, createOptions);
   }
 }

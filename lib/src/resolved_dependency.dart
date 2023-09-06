@@ -79,11 +79,11 @@ extension Resolver on ProjectDependency {
   }
 }
 
-Future<void> initializeProjectDependency(
-    ResolvedProjectDependency dep, Options options, File jbuildJar) async {
+Future<void> initializeProjectDependency(ResolvedProjectDependency dep,
+    Options options, JBuildFiles files) async {
   final configFile = dep.configFile;
   final config = dep._config;
-  final runner = JbRunner(JBuildFiles(jbuildJar, configFile), config);
+  final runner = JbRunner(files, config);
   final dir = p.dirname(configFile);
   logger.info(() => "Initializing project dependency at '$dir'");
   final workingDir = Directory.current;

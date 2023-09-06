@@ -1,10 +1,7 @@
-import 'dart:io';
-
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 
-import 'config.dart';
-import 'jbuild_dartle.dart';
+import '../jb.dart';
 
 class JbRunner {
   final JBuildFiles files;
@@ -12,35 +9,33 @@ class JbRunner {
 
   JbRunner(this.files, this.config);
 
-  static Future<JbRunner> create(File jbuildJar) async {
-    final files = JBuildFiles(jbuildJar);
-    final config = await _createConfig(files.configFile);
-    logger.fine(() => 'Parsed JBuild configuration: $config');
+  static Future<JbRunner> create(JBuildFiles files) async {
+    final config = await _createConfig(files.configSource);
+    logger.info(() => 'Parsed JBuild configuration: $config');
     return JbRunner(files, config);
   }
 
   Future<void> run(Options options, Stopwatch stopWatch) async {
-    final cache = DartleCache(jbuildCache);
+    final cache = DartleCache(files.jbCache);
 
-    final jbuildDartle =
-        JBuildDartle.root(files, config, cache, options, stopWatch);
+    final jb = JbDartle.create(files, config, cache, options, stopWatch);
 
-    final closable = await jbuildDartle.init;
+    final closable = await jb.init;
 
     try {
-      await runBasic(
-          jbuildDartle.tasks, jbuildDartle.defaultTasks, options, cache);
+      await runBasic(jb.tasks, jb.defaultTasks, options, cache);
     } finally {
       await closable();
     }
   }
 }
 
-Future<JBuildConfiguration> _createConfig(File configFile) async {
-  if (await configFile.exists()) {
-    return await loadConfig(configFile);
+Future<JBuildConfiguration> _createConfig(ConfigSource configSource) async {
+  try {
+    return await configSource.load();
+  } catch (e) {
+    throw DartleException(
+        message: 'Unable to load jb config due to: $e.'
+            '\nRun with the --help option to see usage.');
   }
-  throw DartleException(
-      message: '${configFile.path} configuration file not found.'
-          '\nRun with the --help option to see usage.');
 }

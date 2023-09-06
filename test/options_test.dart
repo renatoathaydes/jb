@@ -5,21 +5,21 @@ import 'package:test/test.dart';
 Future<void> main() async {
   group('CLI Options', () {
     test('Can parse empty', () {
-      final options = JBuildCliOptions.parseArgs(const []);
+      final options = JbCliOptions.parseArgs(const []);
       expect(options.createOptions, isNull);
       expect(options.dartleArgs, isEmpty);
       expect(options.rootDirectory, isNull);
     });
 
     test('Can parse basic Dartle options', () {
-      final options = JBuildCliOptions.parseArgs(const ['-l', 'debug', 'run']);
+      final options = JbCliOptions.parseArgs(const ['-l', 'debug', 'run']);
       expect(options.createOptions, isNull);
       expect(options.dartleArgs, equals(const ['-l', 'debug', 'run']));
       expect(options.rootDirectory, isNull);
     });
 
     test('Can parse Dartle options with custom rootDir', () {
-      final options = JBuildCliOptions.parseArgs(
+      final options = JbCliOptions.parseArgs(
           const ['-l', 'debug', 'run', '-p', 'root', 'test']);
       expect(options.createOptions, isNull);
       expect(options.dartleArgs, equals(const ['-l', 'debug', 'run', 'test']));
@@ -27,30 +27,28 @@ Future<void> main() async {
     });
 
     test('Can parse create command', () {
-      final options = JBuildCliOptions.parseArgs(const ['create']);
+      final options = JbCliOptions.parseArgs(const ['create']);
       expect(options.createOptions?.arguments, equals(const []));
       expect(options.dartleArgs, isEmpty);
       expect(options.rootDirectory, isNull);
     });
 
     test('Can parse create command with custom rootDir (create -p mydir)', () {
-      final options =
-          JBuildCliOptions.parseArgs(const ['create', '-p', 'mydir']);
+      final options = JbCliOptions.parseArgs(const ['create', '-p', 'mydir']);
       expect(options.createOptions?.arguments, equals(const []));
       expect(options.dartleArgs, isEmpty);
       expect(options.rootDirectory, 'mydir');
     });
 
     test('Do not mix project name "create" with command "create"', () {
-      final options = JBuildCliOptions.parseArgs(const ['-p', 'create']);
+      final options = JbCliOptions.parseArgs(const ['-p', 'create']);
       expect(options.createOptions, isNull);
       expect(options.dartleArgs, isEmpty);
       expect(options.rootDirectory, 'create');
     });
 
     test('Can parse create command with custom rootDir (-p mydir create)', () {
-      final options =
-          JBuildCliOptions.parseArgs(const ['-p', 'mydir', 'create']);
+      final options = JbCliOptions.parseArgs(const ['-p', 'mydir', 'create']);
       expect(options.createOptions?.arguments, equals(const []));
       expect(options.dartleArgs, isEmpty);
       expect(options.rootDirectory, 'mydir');
@@ -60,18 +58,18 @@ Future<void> main() async {
   group('CLI Options errors', () {
     test('missing -p argument', () {
       expect(
-          () => JBuildCliOptions.parseArgs(const ['-p']),
+          () => JbCliOptions.parseArgs(const ['-p']),
           throwsA(isA<DartleException>().having((e) => e.message, 'message',
               equals('-p option requires an argument.'))));
       expect(
-          () => JBuildCliOptions.parseArgs(const ['-l', 'debug', '-p']),
+          () => JbCliOptions.parseArgs(const ['-l', 'debug', '-p']),
           throwsA(isA<DartleException>().having((e) => e.message, 'message',
               equals('-p option requires an argument.'))));
     });
 
     test('create command cannot be used with other tasks', () {
       expect(
-          () => JBuildCliOptions.parseArgs(const ['run', 'test', 'create']),
+          () => JbCliOptions.parseArgs(const ['run', 'test', 'create']),
           throwsA(isA<DartleException>().having(
               (e) => e.message,
               'message',

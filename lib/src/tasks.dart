@@ -2,14 +2,12 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'package:jb/jb.dart';
 import 'package:path/path.dart' as p;
 
-import 'config.dart';
 import 'dependencies.dart';
 import 'eclipse.dart';
-import 'exec.dart';
 import 'file_tree.dart';
-import 'java_tests.dart';
 import 'requirements.dart';
 import 'resolved_dependency.dart';
 import 'utils.dart';
@@ -93,9 +91,16 @@ Task createWriteDependenciesTask(
     LocalDependencies localDependencies) {
   final depsFile = jbFiles.dependenciesFile;
   final procDepsFile = jbFiles.processorDependenciesFile;
+  final FileCollection inputs;
+  final configSource = jbFiles.configSource;
+  if (configSource is FileConfigSource) {
+    inputs = file(configSource.configFile);
+  } else {
+    inputs = FileCollection.empty;
+  }
 
   final runCondition = RunOnChanges(
-      inputs: file(jbFiles.configFile.path),
+      inputs: inputs,
       outputs: files([depsFile.path, procDepsFile.path]),
       cache: cache);
 

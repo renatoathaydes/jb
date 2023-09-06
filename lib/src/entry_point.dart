@@ -2,11 +2,9 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:isolate_current_directory/isolate_current_directory.dart';
+import 'package:jb/jb.dart';
 
-import 'config.dart';
-import 'create/create.dart';
 import 'help.dart';
-import 'options.dart';
 import 'runner.dart';
 
 /// Run jb.
@@ -14,23 +12,21 @@ import 'runner.dart';
 /// Returns `true` if the build executed tasks, false if it only printed info.
 ///
 /// The caller must handle errors.
-Future<bool> runJBuild(
-  JBuildCliOptions jbOptions,
-  Options dartleOptions,
-  Stopwatch stopwatch,
-  File jbuildJar,
-) async {
+Future<bool> runJBuild(JbCliOptions jbOptions, Options dartleOptions,
+    Stopwatch stopwatch,
+    [ConfigSource? configSource]) async {
   if (dartleOptions.showHelp) {
     printHelp();
     return false;
   }
+  final jbuildJar = await createIfNeededAndGetJBuildJarFile();
   if (dartleOptions.showVersion) {
     await printVersion(jbuildJar);
     return false;
   }
   final rootDir = jbOptions.rootDirectory;
   if (rootDir == null) {
-    await _runJb(jbOptions, dartleOptions, stopwatch, jbuildJar);
+    await _runJb(jbOptions, dartleOptions, configSource, stopwatch, jbuildJar);
   } else {
     final dir = Directory(rootDir);
     if (!(await dir.exists())) {
@@ -43,20 +39,23 @@ Future<bool> runJBuild(
     }
     await withCurrentDirectory(
         rootDir,
-        () async =>
-            await _runJb(jbOptions, dartleOptions, stopwatch, jbuildJar));
+        () async => await _runJb(
+            jbOptions, dartleOptions, configSource, stopwatch, jbuildJar));
   }
   return true;
 }
 
-Future<void> _runJb(JBuildCliOptions options, Options dartleOptions,
-    Stopwatch stopwatch, File jbuildJar) async {
+Future<void> _runJb(JbCliOptions options, Options dartleOptions,
+    ConfigSource? configSource, Stopwatch stopwatch, File jbuildJar) async {
   logger.log(profile,
       () => 'Initialized CLI and parsed options in ${elapsedTime(stopwatch)}');
   final createOptions = options.createOptions;
   if (createOptions != null) {
     return createNewProject(createOptions.arguments);
   }
-  final runner = await JbRunner.create(jbuildJar);
+  final runner = await JbRunner.create(JBuildFiles(
+    jbuildJar,
+    configSource: configSource ?? const FileConfigSource(jbFile),
+  ));
   return runner.run(dartleOptions, stopwatch);
 }

@@ -7,24 +7,24 @@ import 'path_dependency.dart';
 import 'tasks.dart';
 import 'utils.dart';
 
-/// Grouped components of a build.
-class JBuildComponents {
+/// Grouped components needed by jb.
+class _Components {
   final JBuildFiles files;
   final JBuildConfiguration config;
   final DartleCache cache;
   final Options options;
   final Stopwatch stopWatch;
 
-  JBuildComponents(
+  _Components(
       this.files, this.config, this.cache, this.options, this.stopWatch);
 }
 
-/// jb Dartle tasks, including sub-projects.
+/// jb Dartle build definition.
 ///
 /// Users of this class must await on the [init] Future for this class to
 /// be fully initialized before using it.
-class JBuildDartle {
-  JBuildComponents _components;
+class JbDartle {
+  _Components _components;
 
   late final Task compile,
       writeDeps,
@@ -48,7 +48,7 @@ class JBuildDartle {
   /// required.
   late final Future<Closable> init;
 
-  JBuildDartle(this._components) {
+  JbDartle._(this._components) {
     final localDeps = Future.wait([
       _resolveLocalDependencies(_components.config.dependencies, name: 'main'),
       _resolveLocalDependencies(_components.config.processorDependencies,
@@ -57,9 +57,9 @@ class JBuildDartle {
     init = localDeps.then((d) => _initialize(d[0], d[1]));
   }
 
-  JBuildDartle.root(JBuildFiles files, JBuildConfiguration config,
+  JbDartle.create(JBuildFiles files, JBuildConfiguration config,
       DartleCache cache, Options options, Stopwatch stopWatch)
-      : this(JBuildComponents(files, config, cache, options, stopWatch));
+      : this._(_Components(files, config, cache, options, stopWatch));
 
   /// Get the default tasks (`{ compile }`).
   Set<Task> get defaultTasks {
@@ -97,10 +97,6 @@ class JBuildDartle {
     final config = _components.config;
     final cache = _components.cache;
     final unresolvedLocalDeps = localDependencies.unresolved;
-
-    // must initialize the cache explicitly as this method may be running on
-    // sub-projects where the cache was not created by the cache constructor.
-    cache.init();
 
     final projectTasks = <Task>{};
 
@@ -170,7 +166,7 @@ class JBuildDartle {
       List<ResolvedProjectDependency> projectDeps) async {
     for (var dep in projectDeps) {
       await initializeProjectDependency(
-          dep, _components.options, _components.files.jbuildJar);
+          dep, _components.options, _components.files);
     }
   }
 }

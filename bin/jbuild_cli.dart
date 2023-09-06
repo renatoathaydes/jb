@@ -6,17 +6,16 @@ import 'package:logging/logging.dart';
 
 void main(List<String> arguments) async {
   final stopWatch = Stopwatch()..start();
-  final jbuildJar = await createIfNeededAndGetJBuildJarFile();
   var loggingEnabled = false;
   Options? dartleOptions;
   try {
-    final jbOptions = JBuildCliOptions.parseArgs(arguments);
+    final jbOptions = JbCliOptions.parseArgs(arguments);
     dartleOptions = parseOptions(jbOptions.dartleArgs);
     activateLogging(dartleOptions.logLevel,
         colorfulLog: dartleOptions.colorfulLog, logName: 'jbuild');
     loggingEnabled = true;
     final printBuildSuccess =
-        await runJBuild(jbOptions, dartleOptions, stopWatch, jbuildJar);
+        await runJBuild(jbOptions, dartleOptions, stopWatch);
     if (printBuildSuccess) {
       logger.info(ColoredLogMessage(
           'Build succeeded in ${_elapsedTime(stopWatch)}!', LogColor.green));
