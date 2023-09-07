@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show ChangeKind;
-import 'package:jb/src/config_source.dart';
 import 'package:logging/logging.dart' as log;
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
@@ -19,28 +18,6 @@ final logger = log.Logger('jbuild');
 const jbFile = 'jbuild.yaml';
 
 const jbApi = 'com.athaydes.jbuild:jbuild-api';
-
-/// Files and directories used by jb.
-class JBuildFiles {
-  final String jbCache;
-  final File jbuildJar;
-  final ConfigSource configSource;
-  final String processorLibsDir;
-
-  File get dependenciesFile => File(p.join(jbCache, 'dependencies.txt'));
-
-  File get javaSrcFileTreeFile =>
-      File(p.join(jbCache, 'java-src-file-tree.txt'));
-
-  Directory get jbExtensionProjectDir => Directory('jb-extension');
-
-  File get processorDependenciesFile =>
-      File(p.join(jbCache, 'processor-dependencies.txt'));
-
-  JBuildFiles(this.jbuildJar,
-      {required this.configSource, this.jbCache = '.jb-cache'})
-      : processorLibsDir = p.join(jbCache, 'processor-dependencies');
-}
 
 /// Parse the YAML/JSON jbuild file.
 ///

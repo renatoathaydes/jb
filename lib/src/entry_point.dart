@@ -2,18 +2,23 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:isolate_current_directory/isolate_current_directory.dart';
-import 'package:jb/jb.dart';
 
+import 'config.dart';
+import 'config_source.dart';
+import 'create/create.dart';
 import 'help.dart';
+import 'jb_files.dart';
+import 'options.dart';
 import 'runner.dart';
+import 'utils.dart';
 
 /// Run jb.
 ///
 /// Returns `true` if the build executed tasks, false if it only printed info.
 ///
 /// The caller must handle errors.
-Future<bool> runJBuild(JbCliOptions jbOptions, Options dartleOptions,
-    Stopwatch stopwatch,
+Future<bool> runJBuild(
+    JbCliOptions jbOptions, Options dartleOptions, Stopwatch stopwatch,
     [ConfigSource? configSource]) async {
   if (dartleOptions.showHelp) {
     printHelp();
@@ -53,7 +58,7 @@ Future<void> _runJb(JbCliOptions options, Options dartleOptions,
   if (createOptions != null) {
     return createNewProject(createOptions.arguments);
   }
-  final runner = await JbRunner.create(JBuildFiles(
+  final runner = await JbRunner.create(JbFiles(
     jbuildJar,
     configSource: configSource ?? const FileConfigSource(jbFile),
   ));

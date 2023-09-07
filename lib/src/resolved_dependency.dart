@@ -2,11 +2,13 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:isolate_current_directory/isolate_current_directory.dart';
-import 'package:jb/jb.dart';
 import 'package:path/path.dart' as p;
 
+import 'config.dart';
+import 'jb_files.dart';
 import 'path_dependency.dart';
 import 'runner.dart';
+import 'tasks.dart';
 
 final class ResolvedProjectDependency {
   final ProjectDependency projectDependency;
@@ -79,8 +81,8 @@ extension Resolver on ProjectDependency {
   }
 }
 
-Future<void> initializeProjectDependency(ResolvedProjectDependency dep,
-    Options options, JBuildFiles files) async {
+Future<void> initializeProjectDependency(
+    ResolvedProjectDependency dep, Options options, JbFiles files) async {
   final configFile = dep.configFile;
   final config = dep._config;
   final runner = JbRunner(files, config);

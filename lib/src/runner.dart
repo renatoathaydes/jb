@@ -1,15 +1,18 @@
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 
-import '../jb.dart';
+import 'config.dart';
+import 'config_source.dart';
+import 'jb_dartle.dart';
+import 'jb_files.dart';
 
 class JbRunner {
-  final JBuildFiles files;
+  final JbFiles files;
   final JBuildConfiguration config;
 
   JbRunner(this.files, this.config);
 
-  static Future<JbRunner> create(JBuildFiles files) async {
+  static Future<JbRunner> create(JbFiles files) async {
     final config = await _createConfig(files.configSource);
     logger.info(() => 'Parsed JBuild configuration: $config');
     return JbRunner(files, config);

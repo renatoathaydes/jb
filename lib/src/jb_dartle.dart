@@ -1,15 +1,16 @@
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
-import 'package:jb/src/resolved_dependency.dart';
 
 import 'config.dart';
+import 'jb_files.dart';
 import 'path_dependency.dart';
+import 'resolved_dependency.dart';
 import 'tasks.dart';
 import 'utils.dart';
 
 /// Grouped components needed by jb.
 class _Components {
-  final JBuildFiles files;
+  final JbFiles files;
   final JBuildConfiguration config;
   final DartleCache cache;
   final Options options;
@@ -57,8 +58,8 @@ class JbDartle {
     init = localDeps.then((d) => _initialize(d[0], d[1]));
   }
 
-  JbDartle.create(JBuildFiles files, JBuildConfiguration config,
-      DartleCache cache, Options options, Stopwatch stopWatch)
+  JbDartle.create(JbFiles files, JBuildConfiguration config, DartleCache cache,
+      Options options, Stopwatch stopWatch)
       : this._(_Components(files, config, cache, options, stopWatch));
 
   /// Get the default tasks (`{ compile }`).
