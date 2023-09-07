@@ -40,8 +40,8 @@ RunOnChanges createCompileRunCondition(
 }
 
 /// Create the `compile` task.
-Task createCompileTask(JbFiles jbFiles, JBuildConfiguration config,
-    DartleCache cache) {
+Task createCompileTask(
+    JbFiles jbFiles, JBuildConfiguration config, DartleCache cache) {
   return Task(
       (List<String> args, [ChangeSet? changes]) =>
           _compile(jbFiles, config, changes, args, cache),
@@ -230,8 +230,9 @@ Task _createInstallDepsTask(
   final inputDirs = <DirectoryEntry>[];
   for (final dep in projectDeps) {
     dep.output.when(
-        dir: (d) => inputDirs.add(DirectoryEntry(path: p.join(dep.path, d))),
-        jar: (j) => inputFiles.add(p.join(dep.path, j)));
+        dir: (d) => inputDirs
+            .add(DirectoryEntry(path: p.canonicalize(p.join(dep.path, d)))),
+        jar: (j) => inputFiles.add(p.canonicalize(p.join(dep.path, j))));
   }
   inputFiles.addAll(jarDeps);
   final runCondition = RunOnChanges(
@@ -299,8 +300,8 @@ Task createEclipseTask(JBuildConfiguration config) {
 }
 
 /// Create the `run` task.
-Task createRunTask(JbFiles files, JBuildConfiguration config,
-    DartleCache cache) {
+Task createRunTask(
+    JbFiles files, JBuildConfiguration config, DartleCache cache) {
   return Task((List<String> args) => _run(files.jbuildJar, config, args),
       dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
       argsValidator: const AcceptAnyArgs(),

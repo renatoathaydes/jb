@@ -14,14 +14,16 @@ class JbRunner {
 
   static Future<JbRunner> create(JbFiles files) async {
     final config = await _createConfig(files.configSource);
-    logger.info(() => 'Parsed JBuild configuration: $config');
+    logger.fine(() => 'Parsed jb configuration: $config');
     return JbRunner(files, config);
   }
 
-  Future<void> run(Options options, Stopwatch stopWatch) async {
+  Future<void> run(Options options, Stopwatch stopWatch,
+      {bool isRoot = true}) async {
     final cache = DartleCache(files.jbCache);
 
-    final jb = JbDartle.create(files, config, cache, options, stopWatch);
+    final jb = JbDartle.create(files, config, cache, options, stopWatch,
+        isRoot: isRoot);
 
     final closable = await jb.init;
 

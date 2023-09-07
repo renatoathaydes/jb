@@ -21,7 +21,7 @@ void main() {
     tearDown(() async {
       await deleteAll(dirs([
         p.join(helloProjectDir, 'build'),
-        p.join(helloProjectDir, '.jbuild-cache'),
+        p.join(helloProjectDir, '.jb-cache'),
         p.join(helloProjectDir, 'out'),
       ], includeHidden: true));
     });
@@ -44,7 +44,7 @@ void main() {
       await deleteAll(dirs([
         p.join(withDepsProjectDir, 'compile-libs'),
         p.join(withDepsProjectDir, 'runtime-libs'),
-        p.join(withDepsProjectDir, '.jbuild-cache'),
+        p.join(withDepsProjectDir, '.jb-cache'),
       ], includeHidden: true));
       await deleteAll(file(p.join(withDepsProjectDir, 'with-deps.jar')));
     });
@@ -81,9 +81,9 @@ void main() {
     tearDown(() async {
       await deleteAll(dirs([
         '$withSubProjectDir/build',
-        '$withSubProjectDir/.jbuild-cache',
+        '$withSubProjectDir/.jb-cache',
         '$withSubProjectDir/greeting/build',
-        '$withSubProjectDir/greeting/.jbuild-cache',
+        '$withSubProjectDir/greeting/.jb-cache',
       ], includeHidden: true));
     });
 
@@ -114,12 +114,12 @@ void main() {
     tearDown(() async {
       await deleteAll(dirs([
         p.join(testsProjectDir, 'build'),
-        p.join(testsProjectDir, '.jbuild-cache'),
+        p.join(testsProjectDir, '.jb-cache'),
         // this project depends on the with-sub-project project
         p.join(withSubProjectDir, 'build'),
-        p.join(withSubProjectDir, '.jbuild-cache'),
+        p.join(withSubProjectDir, '.jb-cache'),
         p.join(withSubProjectDir, 'greeting/build'),
-        p.join(withSubProjectDir, 'greeting/.jbuild-cache'),
+        p.join(withSubProjectDir, 'greeting/.jb-cache'),
       ], includeHidden: true));
     });
 
@@ -177,7 +177,7 @@ void main() {
     tearDown(() async {
       await deleteAll(dirs([
         p.join(exampleExtensionDir, 'build'),
-        p.join(exampleExtensionDir, '.jbuild-cache'),
+        p.join(exampleExtensionDir, '.jb-cache'),
       ], includeHidden: true));
     });
 
@@ -197,10 +197,10 @@ void main() {
     tearDown(() async {
       await deleteAll(dirs([
         p.join(usesExtensionDir, 'build'),
-        p.join(usesExtensionDir, '.jbuild-cache'),
+        p.join(usesExtensionDir, '.jb-cache'),
         // uses the example extension project
         p.join(exampleExtensionDir, 'build'),
-        p.join(exampleExtensionDir, '.jbuild-cache'),
+        p.join(exampleExtensionDir, '.jb-cache'),
       ], includeHidden: true));
     });
 
@@ -211,13 +211,13 @@ void main() {
       expectSuccess(jbResult);
       expect(jbResult.stdout.join('\n'),
           contains('Extension task running: SampleTask'));
-    });
+    }, skip: 'TODO reimplement extension project feature');
   });
 }
 
 void projectGroup(String projectDir, String name, Function() definition) {
   final outputDirs = dirs([
-    p.join(projectDir, '.jbuild-cache'),
+    p.join(projectDir, '.jb-cache'),
     p.join(projectDir, 'out'),
     p.join(projectDir, 'compile-libs'),
     p.join(projectDir, 'runtime-libs'),

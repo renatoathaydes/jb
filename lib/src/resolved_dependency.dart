@@ -65,12 +65,13 @@ extension Resolver on ProjectDependency {
       throw DartleException(
           message: 'no dependency project found at: "${configFile.path}"');
     }
+    final projectDir = p.canonicalize(p.dirname(configFile.absolute.path));
     JBuildConfiguration config;
     try {
       // the config loader defaults some stuff to the current directory,
       // so we must load it from the right dir.
-      config = await withCurrentDirectory(configFile.absolute.parent.path,
-          () async => await loadConfig(configFile));
+      config = await withCurrentDirectory(projectDir,
+          () async => await loadConfig(File(p.basename(configFile.path))));
     } catch (e, st) {
       logger.severe('Could not load project dependency', e, st);
       throw DartleException(
@@ -86,15 +87,20 @@ Future<void> initializeProjectDependency(
   final configFile = dep.configFile;
   final config = dep._config;
   final runner = JbRunner(files, config);
-  final dir = p.dirname(configFile);
+  final dir = p.canonicalize(p.dirname(configFile));
   logger.info(() => "Initializing project dependency at '$dir'");
-  final workingDir = Directory.current;
+  final workingDir = Directory.current.path;
   await withCurrentDirectory(
       dir,
       () async => await runner.run(
           _createOptionsForProjectDep(
               options, const [compileTaskName, installRuntimeDepsTaskName]),
-          Stopwatch()));
+          Stopwatch(),
+          isRoot: false));
+
+  logger.fine(() => "Project dependency '$dir' initialized,"
+      " moving back to $workingDir");
+
   // Dartle changes the current dir, so we must restore it here
   Directory.current = workingDir;
 }

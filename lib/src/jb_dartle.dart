@@ -25,7 +25,10 @@ class _Components {
 /// Users of this class must await on the [init] Future for this class to
 /// be fully initialized before using it.
 class JbDartle {
-  _Components _components;
+  final _Components _components;
+
+  /// Whether this project is the root project being executed.
+  final bool isRoot;
 
   late final Task compile,
       writeDeps,
@@ -49,7 +52,7 @@ class JbDartle {
   /// required.
   late final Future<Closable> init;
 
-  JbDartle._(this._components) {
+  JbDartle._(this._components, this.isRoot) {
     final localDeps = Future.wait([
       _resolveLocalDependencies(_components.config.dependencies, name: 'main'),
       _resolveLocalDependencies(_components.config.processorDependencies,
@@ -59,8 +62,9 @@ class JbDartle {
   }
 
   JbDartle.create(JbFiles files, JBuildConfiguration config, DartleCache cache,
-      Options options, Stopwatch stopWatch)
-      : this._(_Components(files, config, cache, options, stopWatch));
+      Options options, Stopwatch stopWatch,
+      {required bool isRoot})
+      : this._(_Components(files, config, cache, options, stopWatch), isRoot);
 
   /// Get the default tasks (`{ compile }`).
   Set<Task> get defaultTasks {
@@ -149,7 +153,9 @@ class JbDartle {
 
     if (localDependencies.projectDependencies.isNotEmpty) {
       await _initializeProjectDeps(localDependencies.projectDependencies);
-      logger.info('All project dependencies have been initialized');
+      if (isRoot) {
+        logger.info('All project dependencies have been initialized');
+      }
     }
 
     tasks = Set.unmodifiable(projectTasks);

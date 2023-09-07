@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dartle/dartle_dart.dart';
 import 'package:path/path.dart' as p;
+
 import 'paths.dart';
 
 class _CachedFileCollection {
@@ -42,7 +43,7 @@ Stream<Directory> _deletablesIn(Directory entity) async* {
   await for (final projectDir in entity.list()) {
     final name = p.basename(projectDir.path);
     if (projectDir is Directory &&
-        const {'build', '.jbuild-cache', '.dartle_tool', 'test-repo'}
+        const {'build', '.jb-cache', '.dartle_tool', 'test-repo'}
             .contains(name)) {
       yield projectDir;
       if (name == 'with-sub-project') {
