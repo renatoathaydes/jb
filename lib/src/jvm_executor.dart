@@ -209,14 +209,14 @@ dynamic _value(XmlElement element) {
   final child = children.first as XmlElement;
   switch (child.localName) {
     case 'string':
-      return child.text;
+      return child.innerText;
     case 'int':
     case 'i4':
-      return int.parse(child.text);
+      return int.parse(child.innerText);
     case 'double':
-      return double.parse(child.text);
+      return double.parse(child.innerText);
     case 'boolean':
-      return child.text == '1';
+      return child.innerText == '1';
     default:
       throw DartleException(
           message: 'RPC value type not supported: ${child.nodeType.name}');
@@ -234,7 +234,7 @@ Future<Never> _rpcFault(XmlElement fault) async {
 
   final members = struct.findElements('member');
   final faultString = members
-      .firstWhere((m) => m.getElement('name')?.text == 'faultString',
+      .firstWhere((m) => m.getElement('name')?.innerText == 'faultString',
           orElse: () => throw DartleException(
               message: 'RPC fault missing faultString:\n'
                   '${struct.toXmlString(pretty: true)}'))
@@ -244,10 +244,10 @@ Future<Never> _rpcFault(XmlElement fault) async {
       .getElement('string')
       .orThrowA(() => 'RPC faultString missing string value:\n'
           '${struct.toXmlString(pretty: true)}')
-      .text;
+      .innerText;
 
   final faultCode = int.parse(members
-      .firstWhere((m) => m.getElement('name')?.text == 'faultCode',
+      .firstWhere((m) => m.getElement('name')?.innerText == 'faultCode',
           orElse: () => throw DartleException(
               message: 'RPC faultCode missing:\n'
                   '${struct.toXmlString(pretty: true)}'))
@@ -257,7 +257,7 @@ Future<Never> _rpcFault(XmlElement fault) async {
       .getElement('int')
       .orThrowA(() => 'RPC faultCode missing int value:\n'
           '${struct.toXmlString(pretty: true)}')
-      .text);
+      .innerText);
 
   throw DartleException(message: faultString, exitCode: faultCode);
 }
