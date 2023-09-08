@@ -26,10 +26,10 @@ group: my-group
 module: my-app
 version: '0.0.0'
 
-# default is src/main/java
+# default is src
 source-dirs: [ src ]
 
-# default is src/main/resources
+# default is resources
 resource-dirs: [ resources ]
 # The following options use the default values and could be omitted
 compile-libs-dir: build/compile-libs
@@ -58,10 +58,10 @@ group: my-group
 module: tests
 version: '0.0.0'
 
-# default is src/main/java
+# default is src
 source-dirs: [ src ]
 
-# default is src/main/resources
+# default is resources
 resource-dirs: [ resources ]
 
 # do not create a redundant jar for tests

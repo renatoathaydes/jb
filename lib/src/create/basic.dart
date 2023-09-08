@@ -21,10 +21,10 @@ group: $groupId
 module: $artifactId
 version: '0.0.0'
 
-# default is src/main/java
+# default is src
 source-dirs: [ src ]
 
-# default is src/main/resources
+# default is resources
 resource-dirs: [ resources ]
 
 ${artifactId == _testArtifactId ? ''

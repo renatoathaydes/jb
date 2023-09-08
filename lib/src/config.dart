@@ -192,11 +192,10 @@ class JBuildConfiguration {
   /// That's expected to already have been done before calling this method.
   static JBuildConfiguration fromMap(Map<String, Object?> map,
       [Properties properties = const {}]) {
-    final sourceDirs =
-        _stringIterableValue(map, 'source-dirs', const {'src/main/java'});
+    final sourceDirs = _stringIterableValue(map, 'source-dirs', const {'src'});
     final output = _compileOutputValue(map, 'output-dir', 'output-jar');
-    final resourceDirs = _stringIterableValue(
-        map, 'resource-dirs', const {'src/main/resources'});
+    final resourceDirs =
+        _stringIterableValue(map, 'resource-dirs', const {'resources'});
     final javacArgs = _stringIterableValue(map, 'javac-args', const []);
     final runJavaArgs = _stringIterableValue(map, 'run-java-args', const []);
     final testJavaArgs = _stringIterableValue(map, 'test-java-args', const []);
