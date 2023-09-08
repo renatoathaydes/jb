@@ -38,6 +38,8 @@ class JbRunner {
 Future<JBuildConfiguration> _createConfig(ConfigSource configSource) async {
   try {
     return await configSource.load();
+  } on DartleException {
+    rethrow;
   } catch (e) {
     throw DartleException(
         message: 'Unable to load jb config due to: $e.'

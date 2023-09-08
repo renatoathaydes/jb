@@ -24,7 +24,16 @@ const jbApi = 'com.athaydes.jbuild:jbuild-api';
 /// Applies defaults and resolves properties and imports.
 Future<JBuildConfiguration> loadConfig(File configFile) async {
   logger.fine(() => 'Reading config file: ${configFile.path}');
-  return await loadConfigString(await configFile.readAsString());
+  String configString;
+  try {
+    configString = await configFile.readAsString();
+  } on PathNotFoundException {
+    throw DartleException(
+        message: 'jb config file not found.\n'
+            "To create one, run 'jb create'.\n"
+            "Run 'jb --help' to see usage.");
+  }
+  return await loadConfigString(configString);
 }
 
 /// Parse the YAML/JSON jb configuration.
