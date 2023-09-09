@@ -11,7 +11,7 @@ import 'utils.dart';
 /// Grouped components needed by jb.
 class _Components {
   final JbFiles files;
-  final JBuildConfiguration config;
+  final JbConfiguration config;
   final DartleCache cache;
   final Options options;
   final Stopwatch stopWatch;
@@ -61,7 +61,7 @@ class JbDartle {
     init = localDeps.then((d) => _initialize(d[0], d[1]));
   }
 
-  JbDartle.create(JbFiles files, JBuildConfiguration config, DartleCache cache,
+  JbDartle.create(JbFiles files, JbConfiguration config, DartleCache cache,
       Options options, Stopwatch stopWatch,
       {required bool isRoot})
       : this._(_Components(files, config, cache, options, stopWatch), isRoot);

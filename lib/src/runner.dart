@@ -8,7 +8,7 @@ import 'jb_files.dart';
 
 class JbRunner {
   final JbFiles files;
-  final JBuildConfiguration config;
+  final JbConfiguration config;
 
   JbRunner(this.files, this.config);
 
@@ -35,7 +35,7 @@ class JbRunner {
   }
 }
 
-Future<JBuildConfiguration> _createConfig(ConfigSource configSource) async {
+Future<JbConfiguration> _createConfig(ConfigSource configSource) async {
   try {
     return await configSource.load();
   } on DartleException {

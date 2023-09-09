@@ -91,7 +91,7 @@ void _writeDep(IOSink sink, String name, DependencySpec spec) {
 
 Future<int> printDependencies(
     File jbuildJar,
-    JBuildConfiguration config,
+    JbConfiguration config,
     DartleCache cache,
     LocalDependencies localDependencies,
     bool noColor,

@@ -22,7 +22,7 @@ const jbApi = 'com.athaydes.jbuild:jbuild-api';
 /// Parse the YAML/JSON jbuild file.
 ///
 /// Applies defaults and resolves properties and imports.
-Future<JBuildConfiguration> loadConfig(File configFile) async {
+Future<JbConfiguration> loadConfig(File configFile) async {
   logger.fine(() => 'Reading config file: ${configFile.path}');
   String configString;
   try {
@@ -39,12 +39,12 @@ Future<JBuildConfiguration> loadConfig(File configFile) async {
 /// Parse the YAML/JSON jb configuration.
 ///
 /// Applies defaults and resolves properties and imports.
-Future<JBuildConfiguration> loadConfigString(String config) async {
+Future<JbConfiguration> loadConfigString(String config) async {
   final json = loadYaml(config);
   if (json is Map) {
     final resolvedMap = resolvePropertiesFromMap(json);
     final imports = resolvedMap.map.remove('imports');
-    return await JBuildConfiguration.fromMap(
+    return await JbConfiguration.fromMap(
             resolvedMap.map, resolvedMap.properties)
         .applyImports(imports);
   } else {
@@ -57,13 +57,12 @@ Future<JBuildConfiguration> loadConfigString(String config) async {
 /// Parse the YAML/JSON jb extension model.
 ///
 /// Applies defaults and resolves properties and imports.
-Future<JBuildExtensionModel> loadJbExtensionModel(
+Future<JbExtensionModel> loadJbExtensionModel(
     String config, Uri yamlUri) async {
   final json = loadYaml(config, sourceUrl: yamlUri);
   if (json is Map) {
     final resolvedMap = resolvePropertiesFromMap(json);
-    return JBuildExtensionModel.fromMap(
-        resolvedMap.map, resolvedMap.properties);
+    return JbExtensionModel.fromMap(resolvedMap.map, resolvedMap.properties);
   } else {
     throw DartleException(
         message: '$yamlUri: Expecting jb extension to be a Map, '
@@ -110,20 +109,20 @@ class ExtensionTask {
 }
 
 /// jb extension model.
-class JBuildExtensionModel {
+class JbExtensionModel {
   final List<ExtensionTask> extensionTasks;
 
-  const JBuildExtensionModel(this.extensionTasks);
+  const JbExtensionModel(this.extensionTasks);
 
-  static JBuildExtensionModel fromMap(Map<String, Object?> map,
+  static JbExtensionModel fromMap(Map<String, Object?> map,
       [Properties properties = const {}]) {
     final extensionTasks = _extensionTasks(map);
-    return JBuildExtensionModel(extensionTasks);
+    return JbExtensionModel(extensionTasks);
   }
 }
 
 /// jb configuration model.
-class JBuildConfiguration {
+class JbConfiguration {
   final String? group;
   final String? module;
   final String? version;
@@ -154,7 +153,7 @@ class JBuildConfiguration {
   final bool _defaultTestReportsDir;
   final Properties properties;
 
-  const JBuildConfiguration({
+  const JbConfiguration({
     this.group,
     this.module,
     this.version,
@@ -191,15 +190,15 @@ class JBuildConfiguration {
         _defaultRuntimeLibsDir = defaultRuntimeLibsDir,
         _defaultTestReportsDir = defaultTestReportsDir;
 
-  /// Create a [JBuildConfiguration] from a map.
+  /// Create a [JbConfiguration] from a map.
   /// This method does not do any processing or validation of values, it simply
   /// reads values from the Map and includes defaults where needed.
   ///
   /// The optional [Properties] argument is stored within the returned
-  /// [JBuildConfiguration] but is not used to resolve properties values
+  /// [JbConfiguration] but is not used to resolve properties values
   /// (it only gets used when the returned configuration is merged with another).
   /// That's expected to already have been done before calling this method.
-  static JBuildConfiguration fromMap(Map<String, Object?> map,
+  static JbConfiguration fromMap(Map<String, Object?> map,
       [Properties properties = const {}]) {
     final sourceDirs = _stringIterableValue(map, 'source-dirs', const {'src'});
     final output = _compileOutputValue(map, 'output-dir', 'output-jar');
@@ -226,7 +225,7 @@ class JBuildConfiguration {
     final testReportsDir =
         _stringValue(map, 'test-reports-dir', 'build/test-reports');
 
-    return JBuildConfiguration(
+    return JbConfiguration(
       group: _optionalStringValue(map, 'group'),
       module: _optionalStringValue(map, 'module'),
       version: _optionalStringValue(map, 'version'),
@@ -262,10 +261,10 @@ class JBuildConfiguration {
   /// Merge this configuration with another.
   ///
   /// Values from the other configuration take precedence.
-  JBuildConfiguration merge(JBuildConfiguration other) {
+  JbConfiguration merge(JbConfiguration other) {
     final props = properties.union(other.properties);
 
-    return JBuildConfiguration(
+    return JbConfiguration(
       group: resolveOptionalString(other.group ?? group, props),
       module: resolveOptionalString(other.module ?? module, props),
       version: resolveOptionalString(other.version ?? version, props),

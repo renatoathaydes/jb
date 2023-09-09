@@ -4,7 +4,7 @@ import 'dart:io';
 import 'config.dart';
 
 abstract class ConfigSource {
-  FutureOr<JBuildConfiguration> load();
+  FutureOr<JbConfiguration> load();
 }
 
 class FileConfigSource implements ConfigSource {
@@ -13,18 +13,18 @@ class FileConfigSource implements ConfigSource {
   const FileConfigSource(this.configFile);
 
   @override
-  Future<JBuildConfiguration> load() {
+  Future<JbConfiguration> load() {
     return loadConfig(File(configFile));
   }
 }
 
 final class InstanceConfigSource implements ConfigSource {
-  final JBuildConfiguration configuration;
+  final JbConfiguration configuration;
 
   const InstanceConfigSource(this.configuration);
 
   @override
-  JBuildConfiguration load() {
+  JbConfiguration load() {
     return configuration;
   }
 }

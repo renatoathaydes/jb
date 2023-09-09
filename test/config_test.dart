@@ -7,7 +7,7 @@ import 'config_matcher.dart';
 void main() {
   group('JBuildConfiguration', () {
     test('can load', () {
-      final config = JBuildConfiguration(
+      final config = JbConfiguration(
           version: '0',
           sourceDirs: {'src'},
           output: CompileOutput.jar('lib.jar'),
@@ -82,7 +82,7 @@ void main() {
 
       expect(
           config,
-          equalsConfig(const JBuildConfiguration(
+          equalsConfig(const JbConfiguration(
             group: 'my-group',
             module: 'mod1',
             version: '0.1',
@@ -127,7 +127,7 @@ void main() {
 
       expect(
           config,
-          equalsConfig(const JBuildConfiguration(
+          equalsConfig(const JbConfiguration(
               sourceDirs: {'src/java'},
               output: CompileOutput.dir('out'),
               resourceDirs: {'resources'},
@@ -182,7 +182,7 @@ void main() {
           }));
     });
 
-    final config1 = JBuildConfiguration.fromMap(const {
+    final config1 = JbConfiguration.fromMap(const {
       'group': 'g1',
       'module': 'm1',
       'version': 'v1',
@@ -209,7 +209,7 @@ void main() {
     });
 
     test('can merge two full configurations', () async {
-      final config2 = JBuildConfiguration.fromMap(const {
+      final config2 = JbConfiguration.fromMap(const {
         'group': 'g2',
         'module': 'm2',
         'version': 'v2',
@@ -237,7 +237,7 @@ void main() {
 
       expect(
           config1.merge(config2),
-          equalsConfig(JBuildConfiguration.fromMap(const {
+          equalsConfig(JbConfiguration.fromMap(const {
             'group': 'g2',
             'module': 'm2',
             'version': 'v2',
@@ -268,7 +268,7 @@ void main() {
 
       expect(
           config2.merge(config1),
-          equalsConfig(JBuildConfiguration.fromMap(const {
+          equalsConfig(JbConfiguration.fromMap(const {
             'group': 'g1',
             'module': 'm1',
             'version': 'v1',
@@ -299,7 +299,7 @@ void main() {
     });
 
     test('can merge small config into full configuration', () {
-      final smallConfig = JBuildConfiguration.fromMap({
+      final smallConfig = JbConfiguration.fromMap({
         'module': 'small',
         'dependencies': [
           {
@@ -310,7 +310,7 @@ void main() {
 
       expect(
           config1.merge(smallConfig),
-          equalsConfig(JBuildConfiguration.fromMap(const {
+          equalsConfig(JbConfiguration.fromMap(const {
             'group': 'g1',
             'module': 'small',
             'version': 'v1',
@@ -341,7 +341,7 @@ void main() {
     });
 
     test('can merge two small configurations using properties', () {
-      final smallConfig1 = JBuildConfiguration.fromMap({
+      final smallConfig1 = JbConfiguration.fromMap({
         'version': 'v1',
         'dependencies': [
           {
@@ -352,7 +352,7 @@ void main() {
       }, const {
         'REPORTS_DIR': 'reports'
       });
-      final smallConfig2 = JBuildConfiguration.fromMap({
+      final smallConfig2 = JbConfiguration.fromMap({
         'module': 'small',
         'dependencies': [
           {
@@ -365,7 +365,7 @@ void main() {
 
       expect(
           smallConfig1.merge(smallConfig2),
-          equalsConfig(JBuildConfiguration.fromMap({
+          equalsConfig(JbConfiguration.fromMap({
             'module': 'small',
             'version': 'v1',
             'dependencies': [
@@ -384,7 +384,7 @@ void main() {
 
       expect(
           smallConfig2.merge(smallConfig1),
-          equalsConfig(JBuildConfiguration.fromMap({
+          equalsConfig(JbConfiguration.fromMap({
             'module': 'small',
             'version': 'v1',
             'dependencies': [

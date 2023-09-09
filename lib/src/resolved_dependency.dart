@@ -13,7 +13,7 @@ import 'tasks.dart';
 final class ResolvedProjectDependency {
   final ProjectDependency projectDependency;
   final String configFile;
-  final JBuildConfiguration _config;
+  final JbConfiguration _config;
 
   DependencySpec get spec => projectDependency.spec;
 
@@ -51,7 +51,7 @@ final class ResolvedLocalDependencies {
 }
 
 extension Resolver on ProjectDependency {
-  /// Resolve a [ProjectDependency]'s [JBuildConfiguration].
+  /// Resolve a [ProjectDependency]'s [JbConfiguration].
   Future<ResolvedProjectDependency> resolve() async {
     final dir = Directory(path);
     File configFile;
@@ -66,7 +66,7 @@ extension Resolver on ProjectDependency {
           message: 'no dependency project found at: "${configFile.path}"');
     }
     final projectDir = p.canonicalize(p.dirname(configFile.absolute.path));
-    JBuildConfiguration config;
+    JbConfiguration config;
     try {
       // the config loader defaults some stuff to the current directory,
       // so we must load it from the right dir.

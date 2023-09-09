@@ -282,7 +282,7 @@ Future<TransitiveChanges?> computeAllChanges(
 }
 
 Future<void> storeNewFileTree(String taskName, File jbuildJar,
-    JBuildConfiguration config, String buildOutput, File fileTreeFile) async {
+    JbConfiguration config, String buildOutput, File fileTreeFile) async {
   final jbuildOutput = _FileOutput(fileTreeFile);
   try {
     final exitCode = await execJBuild(taskName, jbuildJar, config.preArgs(),

@@ -30,8 +30,8 @@ const requirementsTaskName = 'requirements';
 const createEclipseTaskName = 'createEclipseFiles';
 
 /// Create run condition for the `compile` task.
-RunOnChanges createCompileRunCondition(
-    JBuildConfiguration config, DartleCache cache) {
+RunOnChanges createCompileRunCondition(JbConfiguration config,
+    DartleCache cache) {
   final outputs = config.output.when(dir: (d) => dir(d), jar: (j) => file(j));
   return RunOnChanges(
       inputs: dirs(config.sourceDirs.followedBy(config.resourceDirs)),
@@ -40,8 +40,8 @@ RunOnChanges createCompileRunCondition(
 }
 
 /// Create the `compile` task.
-Task createCompileTask(
-    JbFiles jbFiles, JBuildConfiguration config, DartleCache cache) {
+Task createCompileTask(JbFiles jbFiles, JbConfiguration config,
+    DartleCache cache) {
   return Task(
       (List<String> args, [ChangeSet? changes]) =>
           _compile(jbFiles, config, changes, args, cache),
@@ -55,7 +55,7 @@ Task createCompileTask(
       description: 'Compile Java source code.');
 }
 
-Future<void> _compile(JbFiles jbFiles, JBuildConfiguration config,
+Future<void> _compile(JbFiles jbFiles, JbConfiguration config,
     ChangeSet? changeSet, List<String> args, DartleCache cache) async {
   final stopwatch = Stopwatch()..start();
   final changes =
@@ -88,7 +88,7 @@ Future<void> _compile(JbFiles jbFiles, JBuildConfiguration config,
 }
 
 /// Create the `writeDependencies` task.
-Task createWriteDependenciesTask(JbFiles jbFiles, JBuildConfiguration config,
+Task createWriteDependenciesTask(JbFiles jbFiles, JbConfiguration config,
     DartleCache cache, LocalDependencies localDependencies) {
   final depsFile = jbFiles.dependenciesFile;
   final procDepsFile = jbFiles.processorDependenciesFile;
@@ -127,7 +127,7 @@ Task createWriteDependenciesTask(JbFiles jbFiles, JBuildConfiguration config,
 }
 
 /// Create the `installCompileDependencies` task.
-Task createInstallCompileDepsTask(JbFiles files, JBuildConfiguration config,
+Task createInstallCompileDepsTask(JbFiles files, JbConfiguration config,
     DartleCache cache, ResolvedLocalDependencies localDependencies) {
   final projectDeps = localDependencies.projectDependencies
       .where((s) => s.spec.scope.includedInCompilation())
@@ -159,7 +159,7 @@ Task createInstallCompileDepsTask(JbFiles files, JBuildConfiguration config,
 }
 
 /// Create the `installRuntimeDependencies` task.
-Task createInstallRuntimeDepsTask(JbFiles files, JBuildConfiguration config,
+Task createInstallRuntimeDepsTask(JbFiles files, JbConfiguration config,
     DartleCache cache, ResolvedLocalDependencies localDependencies) {
   final projectDeps = localDependencies.projectDependencies
       .where((s) => s.spec.scope.includedAtRuntime())
@@ -187,7 +187,7 @@ Task createInstallRuntimeDepsTask(JbFiles files, JBuildConfiguration config,
 }
 
 /// Create the `installProcessorDependencies` task.
-Task createInstallProcessorDepsTask(JbFiles files, JBuildConfiguration config,
+Task createInstallProcessorDepsTask(JbFiles files, JbConfiguration config,
     DartleCache cache, ResolvedLocalDependencies localDependencies) {
   final projectDeps = localDependencies.projectDependencies
       .where((s) => s.spec.scope.includedAtRuntime())
@@ -290,7 +290,7 @@ Future<void> _copyOutput(CompileOutput out, String destinationDir) {
       jar: (j) => File(j).copy(p.join(destinationDir, p.basename(j))));
 }
 
-Task createEclipseTask(JBuildConfiguration config) {
+Task createEclipseTask(JbConfiguration config) {
   return Task(
       (_) async => await generateEclipseFiles(config.sourceDirs,
           config.resourceDirs, config.module, config.compileLibsDir),
@@ -300,8 +300,7 @@ Task createEclipseTask(JBuildConfiguration config) {
 }
 
 /// Create the `run` task.
-Task createRunTask(
-    JbFiles files, JBuildConfiguration config, DartleCache cache) {
+Task createRunTask(JbFiles files, JbConfiguration config, DartleCache cache) {
   return Task((List<String> args) => _run(files.jbuildJar, config, args),
       dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
       argsValidator: const AcceptAnyArgs(),
@@ -309,8 +308,8 @@ Task createRunTask(
       description: 'Run Java Main class.');
 }
 
-Future<void> _run(
-    File jbuildJar, JBuildConfiguration config, List<String> args) async {
+Future<void> _run(File jbuildJar, JbConfiguration config,
+    List<String> args) async {
   var mainClass = config.mainClass ?? '';
   if (mainClass.isEmpty) {
     const mainClassArg = '--main-class=';
@@ -344,8 +343,8 @@ Future<void> _run(
 }
 
 /// Create the `downloadTestRunner` task.
-Task createDownloadTestRunnerTask(
-    File jbuildJar, JBuildConfiguration config, DartleCache cache) {
+Task createDownloadTestRunnerTask(File jbuildJar, JbConfiguration config,
+    DartleCache cache) {
   return Task((_) => _downloadTestRunner(jbuildJar, config, cache),
       runCondition: RunOnChanges(
           inputs: file(jbFile),
@@ -357,8 +356,8 @@ Task createDownloadTestRunnerTask(
 }
 
 /// Create the `test` task.
-Task createTestTask(File jbuildJar, JBuildConfiguration config,
-    DartleCache cache, bool noColor) {
+Task createTestTask(
+    File jbuildJar, JbConfiguration config, DartleCache cache, bool noColor) {
   return Task(
       (List<String> args) => _test(jbuildJar, config, cache, noColor, args),
       name: testTaskName,
@@ -371,8 +370,8 @@ Task createTestTask(File jbuildJar, JBuildConfiguration config,
       description: 'Run tests. JBuild automatically detects JUnit5.');
 }
 
-Future<void> _downloadTestRunner(
-    File jbuildJar, JBuildConfiguration config, DartleCache cache) async {
+Future<void> _downloadTestRunner(File jbuildJar, JbConfiguration config,
+    DartleCache cache) async {
   final junit = findJUnitSpec(config.dependencies);
   if (junit == null) {
     throw DartleException(
@@ -390,8 +389,8 @@ Future<void> _downloadTestRunner(
   }
 }
 
-Future<void> _test(File jbuildJar, JBuildConfiguration config,
-    DartleCache cache, bool noColor, List<String> args) async {
+Future<void> _test(File jbuildJar, JbConfiguration config, DartleCache cache,
+    bool noColor, List<String> args) async {
   final libs = Directory(config.runtimeLibsDir).list();
   final classpath = {
     config.output.when(dir: (d) => d, jar: (j) => j),
@@ -434,8 +433,8 @@ Future<void> _test(File jbuildJar, JBuildConfiguration config,
 }
 
 /// Create the `dependencies` task.
-Task createDepsTask(File jbuildJar, JBuildConfiguration config,
-    DartleCache cache, LocalDependencies localDependencies, bool noColor) {
+Task createDepsTask(File jbuildJar, JbConfiguration config, DartleCache cache,
+    LocalDependencies localDependencies, bool noColor) {
   return Task(
       (List<String> args) =>
           _deps(jbuildJar, config, cache, localDependencies, noColor, args),
@@ -447,7 +446,7 @@ Task createDepsTask(File jbuildJar, JBuildConfiguration config,
 
 Future<void> _deps(
     File jbuildJar,
-    JBuildConfiguration config,
+    JbConfiguration config,
     DartleCache cache,
     LocalDependencies localDependencies,
     bool noColor,
@@ -461,7 +460,7 @@ Future<void> _deps(
 }
 
 /// Create the `requirements` task.
-Task createRequirementsTask(File jbuildJar, JBuildConfiguration config,
+Task createRequirementsTask(File jbuildJar, JbConfiguration config,
     DartleCache cache, LocalDependencies localDependencies, bool noColor) {
   return Task(
       (List<String> args) => _requirements(
@@ -474,7 +473,7 @@ Task createRequirementsTask(File jbuildJar, JBuildConfiguration config,
 
 Future<void> _requirements(
     File jbuildJar,
-    JBuildConfiguration config,
+    JbConfiguration config,
     DartleCache cache,
     LocalDependencies localDependencies,
     bool noColor,

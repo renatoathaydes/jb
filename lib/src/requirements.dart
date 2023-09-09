@@ -6,8 +6,8 @@ import 'package:jb/jb.dart';
 
 import 'output_consumer.dart';
 
-Future<int> logRequirements(
-    File jbuildJar, JBuildConfiguration config, List<String> args) async {
+Future<int> logRequirements(File jbuildJar, JbConfiguration config,
+    List<String> args) async {
   return await execJBuild(
       'requirements', jbuildJar, config.preArgs(), 'requirements', args,
       onStdout: _RequirementsPrinter());
