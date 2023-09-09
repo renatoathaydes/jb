@@ -11,11 +11,9 @@ void main(List<String> arguments) async {
   try {
     final jbOptions = JbCliOptions.parseArgs(arguments);
     dartleOptions = parseOptions(jbOptions.dartleArgs);
-    activateLogging(dartleOptions.logLevel,
-        colorfulLog: dartleOptions.colorfulLog, logName: 'jbuild');
-    loggingEnabled = true;
-    final printBuildSuccess =
-        await runJBuild(jbOptions, dartleOptions, stopWatch);
+    loggingEnabled = activateLogging(dartleOptions.logLevel,
+        colorfulLog: dartleOptions.colorfulLog, logName: 'jb');
+    final printBuildSuccess = await runJb(jbOptions, dartleOptions, stopWatch);
     if (printBuildSuccess) {
       logger.info(ColoredLogMessage(
           'Build succeeded in ${_elapsedTime(stopWatch)}!', LogColor.green));

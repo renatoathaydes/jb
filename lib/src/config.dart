@@ -13,7 +13,7 @@ import 'path_dependency.dart';
 import 'properties.dart';
 import 'utils.dart';
 
-final logger = log.Logger('jbuild');
+final logger = log.Logger('jb');
 
 const jbFile = 'jbuild.yaml';
 

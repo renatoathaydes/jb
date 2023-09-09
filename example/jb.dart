@@ -27,7 +27,7 @@ Future<void> main(List<String> args) async {
   activateLogging(dartleOptions.logLevel,
       colorfulLog: dartleOptions.colorfulLog, logName: 'jbuild');
 
-  final buildRan = await runJBuild(
+  final buildRan = await runJb(
       jbOptions, dartleOptions, stopwatch, InstanceConfigSource(config));
   if (buildRan) {
     logger.info(ColoredLogMessage(

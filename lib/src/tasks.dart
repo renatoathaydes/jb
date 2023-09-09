@@ -30,8 +30,8 @@ const requirementsTaskName = 'requirements';
 const createEclipseTaskName = 'createEclipseFiles';
 
 /// Create run condition for the `compile` task.
-RunOnChanges createCompileRunCondition(JbConfiguration config,
-    DartleCache cache) {
+RunOnChanges createCompileRunCondition(
+    JbConfiguration config, DartleCache cache) {
   final outputs = config.output.when(dir: (d) => dir(d), jar: (j) => file(j));
   return RunOnChanges(
       inputs: dirs(config.sourceDirs.followedBy(config.resourceDirs)),
@@ -40,8 +40,8 @@ RunOnChanges createCompileRunCondition(JbConfiguration config,
 }
 
 /// Create the `compile` task.
-Task createCompileTask(JbFiles jbFiles, JbConfiguration config,
-    DartleCache cache) {
+Task createCompileTask(
+    JbFiles jbFiles, JbConfiguration config, DartleCache cache) {
   return Task(
       (List<String> args, [ChangeSet? changes]) =>
           _compile(jbFiles, config, changes, args, cache),
@@ -308,8 +308,8 @@ Task createRunTask(JbFiles files, JbConfiguration config, DartleCache cache) {
       description: 'Run Java Main class.');
 }
 
-Future<void> _run(File jbuildJar, JbConfiguration config,
-    List<String> args) async {
+Future<void> _run(
+    File jbuildJar, JbConfiguration config, List<String> args) async {
   var mainClass = config.mainClass ?? '';
   if (mainClass.isEmpty) {
     const mainClassArg = '--main-class=';
@@ -343,8 +343,8 @@ Future<void> _run(File jbuildJar, JbConfiguration config,
 }
 
 /// Create the `downloadTestRunner` task.
-Task createDownloadTestRunnerTask(File jbuildJar, JbConfiguration config,
-    DartleCache cache) {
+Task createDownloadTestRunnerTask(
+    File jbuildJar, JbConfiguration config, DartleCache cache) {
   return Task((_) => _downloadTestRunner(jbuildJar, config, cache),
       runCondition: RunOnChanges(
           inputs: file(jbFile),
@@ -370,8 +370,8 @@ Task createTestTask(
       description: 'Run tests. JBuild automatically detects JUnit5.');
 }
 
-Future<void> _downloadTestRunner(File jbuildJar, JbConfiguration config,
-    DartleCache cache) async {
+Future<void> _downloadTestRunner(
+    File jbuildJar, JbConfiguration config, DartleCache cache) async {
   final junit = findJUnitSpec(config.dependencies);
   if (junit == null) {
     throw DartleException(

@@ -18,7 +18,7 @@ import 'utils.dart';
 /// Returns `true` if the build executed tasks, false if it only printed info.
 ///
 /// The caller must handle errors.
-Future<bool> runJBuild(
+Future<bool> runJb(
     JbCliOptions jbOptions, Options dartleOptions, Stopwatch stopwatch,
     [ConfigSource? configSource]) async {
   if (dartleOptions.showHelp) {
