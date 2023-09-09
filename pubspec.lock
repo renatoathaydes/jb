@@ -10,7 +10,7 @@ packages:
     source: hosted
     version: "64.0.0"
   actors:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: actors
       sha256: "5ef8c9658bce65a42438777b20c8456c69f9e89cb68b4330fd8e5c491df2e995"

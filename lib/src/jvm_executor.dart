@@ -1,15 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' hide pid;
 import 'dart:isolate';
 
+import 'package:actors/actors.dart';
 import 'package:dartle/dartle.dart';
-import 'package:jb/jb.dart';
-import 'package:jb/src/utils.dart';
 import 'package:logging/logging.dart';
 import 'package:xml/xml.dart';
 
 import 'output_consumer.dart';
+import 'utils.dart';
+
+final logger = Logger('jbuild-rpc');
 
 class _Proc {
   final Process _process;
@@ -31,36 +33,77 @@ class _Proc {
   }
 }
 
-// Maintain a global process per Isolate so that it can be reused
-// by any JvmExecutor created in the same Isolate.
-Future<_Proc>? _process;
-
-class JvmExecutor {
+final class _JBuildActor implements Handler<List<String>, Object?> {
   final String _classpath;
 
-  JvmExecutor(this._classpath) {
-    logger.fine(() => 'JvmExecutor classpath: $_classpath');
-  }
+  // initialized on init()
+  _JBuildRpc? _rpc;
 
-  Future<int> runJBuild(List<String> args,
-      {Map<String, String> env = const {}}) async {
-    final value =
-        await run('jbuild.cli.RpcMain', 'runJBuild', [args], env: env);
-    if (value is int) {
-      return value;
+  _JBuildActor(this._classpath);
+
+  @override
+  FutureOr<void> init() async {
+    activateLogging(Level.FINE);
+    logger.fine('Starting JBuild RPC on Isolate ${Isolate.current.debugName}');
+    final proc = await Process.start(
+        'java', ['-cp', _classpath, 'jbuild.cli.RpcMain'],
+        runInShell: true, workingDirectory: Directory.current.path);
+
+    final pout = proc.stdout.lines().asBroadcastStream();
+    final [port, token] = await pout.take(2).toList();
+    final portNumber = int.tryParse(port);
+    if (portNumber == null) {
+      throw DartleException(
+          message: 'Could not obtain port from RpcMain JBuild Process. '
+              'Expected the port number to be printed, but got: "$port"');
     }
-    throw DartleException(
-        message: 'JBuild RPC returned unexpected value: $value');
+
+    final perr = proc.stderr.lines();
+    pout.listen(_RpcExecLogger('out>', 'remoteRunner', proc.pid));
+    perr.listen(_RpcExecLogger('err>', 'remoteRunner', proc.pid));
+
+    _rpc = _JBuildRpc(_Proc(proc, portNumber, token));
   }
 
-  Future<dynamic> run(
-      String? className, String methodName, List<List<String>> args,
-      {Map<String, String> env = const {}}) async {
-    final process = await _startOrGetProcess(env);
-    final client = HttpClient();
-    final req = await client.post('localhost', process.port, '/jbuild');
+  // TODO change the input message so besides JBuild commands, other Java
+  // methods can be executed so jb extensions can execute.
+  @override
+  Future<Object?> handle(List<String> args) {
+    final rpc =
+        _rpc.orThrow('JBuildActor called handle() before init() completed');
+    return rpc.runJBuild(args);
+  }
+
+  @override
+  FutureOr<void> close() {
+    _rpc?.stop();
+  }
+}
+
+/// Create a Java [Actor] which can be used to run JBuild commands and
+/// arbitrary Java methods (for jb extensions).
+///
+/// The Actor sender returns whatever the Java method returned.
+Actor<List<String>, Object?> createJavaActor(String classpath) {
+  return Actor(_JBuildActor(classpath));
+}
+
+class _JBuildRpc {
+  final _Proc proc;
+  final client = HttpClient();
+
+  _JBuildRpc(this.proc);
+
+  /// Run a JBuild command.
+  Future<Object?> runJBuild(List<String> args) async {
+    return await runJava('jbuild.cli.RpcMain', 'runJBuild', [args]);
+  }
+
+  Future<Object?> runJava(
+      String? className, String methodName, List<List<String>> args) async {
+    final req = await client.post('localhost', proc.port, '/jbuild');
     req.headers.add('Content-Type', 'text/xml; charset=utf-8');
-    req.headers.add('Authorization', process.authorizationHeader);
+    req.headers.add('Authorization', proc.authorizationHeader);
     req.add(_createRpcMessage(className, methodName, args));
     try {
       final resp = await req.close();
@@ -73,63 +116,6 @@ class JvmExecutor {
     } catch (e) {
       throw DartleException(message: 'RPC request failed: $e');
     }
-  }
-
-  Future<_Proc> _startOrGetProcess(Map<String, String> env) {
-    var proc = _process;
-    if (proc == null) {
-      logger.fine(
-          'Starting a Java executor on Isolate ${Isolate.current.debugName}');
-      proc = Process.start('java', ['-cp', _classpath, 'jbuild.cli.RpcMain'],
-              runInShell: true,
-              workingDirectory: Directory.current.path,
-              environment: env)
-          .then((p) async {
-        final perr = p.stderr.lines();
-        // allow Futures to continue after the structured_async scope ends
-        final pout = Zone.root.runUnary((Process proc) {
-          final pout = proc.stdout.lines().asBroadcastStream();
-          // first line is the port, skip that
-          pout.skip(2).listen(_RpcExecLogger('out>', 'remoteRunner'));
-          return pout;
-        }, p);
-
-        Zone.root.runUnary(
-            (Stream<String> s) =>
-                s.listen(_RpcExecLogger('err>', 'remoteRunner')),
-            perr);
-        final lines = await pout.take(2).toList();
-        final port = int.tryParse(lines[0]);
-        if (port == null) {
-          throw DartleException(
-              message: 'Could not obtain port from RpcMain Java Process. '
-                  'Expected the port number to be printed, but got: "${lines[0]}"');
-        }
-        final token = lines[1];
-        return _Proc(p, port, token);
-      });
-
-      _process = proc;
-    }
-    return proc;
-  }
-
-  Future<int> close() async {
-    logger.fine('Closing JvmExecutor');
-    final procFuture = _process;
-    if (procFuture != null) {
-      final proc = await procFuture;
-      if (proc.isClosed) return proc.exit;
-      // send a stop message to ensure the process dies quickly
-      await _sendStopMessage(proc.port, proc.authorizationHeader);
-      try {
-        proc.destroy();
-      } catch (e) {
-        logger.finest('Problem closing RPC executor: $e');
-      }
-      return await proc.exit;
-    }
-    return 0;
   }
 
   List<int> _createRpcMessage(
@@ -160,6 +146,23 @@ class JvmExecutor {
     return '<value><array><data>'
         '${arg.map(_rpcValue).join()}'
         '</data></array></value>';
+  }
+
+  Future<void> stop() async {
+    await _sendStopMessage();
+    proc.destroy();
+  }
+
+  Future<void> _sendStopMessage() async {
+    try {
+      final req = await client.delete('localhost', proc.port, '/jbuild');
+      req.headers.add('Authorization', proc.authorizationHeader);
+      final resp = await req.close();
+      logger.fine(() =>
+          'RPC Server responded with ${resp.statusCode} to request to stop');
+    } catch (e) {
+      logger.fine(() => 'A problem occurred trying to stop the RPC Server: $e');
+    }
   }
 }
 
@@ -262,24 +265,12 @@ Future<Never> _rpcFault(XmlElement fault) async {
   throw DartleException(message: faultString, exitCode: faultCode);
 }
 
-Future<void> _sendStopMessage(int port, String authorizationHeader) async {
-  final client = HttpClient();
-  try {
-    final req = await client.delete('localhost', port, '/jbuild');
-    req.headers.add('Authorization', authorizationHeader);
-    final resp = await req.close();
-    logger.fine(() =>
-        'RPC Server responded with ${resp.statusCode} to request to stop');
-  } catch (e) {
-    logger.fine(() => 'A problem occurred trying to stop the RPC Server: $e');
-  }
-}
-
 class _RpcExecLogger extends JbOutputConsumer {
   final String prompt;
   final String taskName;
+  final int pid;
 
-  _RpcExecLogger(this.prompt, this.taskName);
+  _RpcExecLogger(this.prompt, this.taskName, this.pid);
 
   LogColor? _colorFor(Level level) {
     if (level == Level.SEVERE) return LogColor.red;

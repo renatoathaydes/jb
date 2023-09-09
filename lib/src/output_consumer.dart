@@ -21,7 +21,7 @@ abstract class JbOutputConsumer implements ProcessOutputConsumer {
   @override
   void call(String line) {
     final level = _levelFor(line);
-    logger.log(level, createMessage(level, line));
+    logger.log(level, () => createMessage(level, line));
   }
 
   Level _levelFor(String line) {
