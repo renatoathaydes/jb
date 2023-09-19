@@ -45,7 +45,8 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   @override
   FutureOr<void> init() async {
     activateLogging(Level.FINE);
-    _logger.fine('Starting JBuild RPC on Isolate ${Isolate.current.debugName}');
+    _logger.fine(
+        () => 'Starting JBuild RPC on Isolate ${Isolate.current.debugName}');
   }
 
   Future<_JBuildRpc> _getRpc() {

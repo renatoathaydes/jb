@@ -579,7 +579,7 @@ class DependencySpec {
   });
 
   static DependencySpec fromMap(Map<String, Object?> map) {
-    if (map.keys.any(const {'transitive', 'scope', 'path'}.contains.not)) {
+    if (map.keys.any(const {'transitive', 'scope', 'path'}.contains.not$)) {
       throw DartleException(
           message: 'invalid dependency definition, '
               'only "transitive", "path" and "scope" fields can be set: $map');

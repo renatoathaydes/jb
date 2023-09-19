@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:path/path.dart' as p;
 
@@ -27,10 +28,6 @@ Future<void> _createJBuildJar(File jar) async {
   await jar.parent.create(recursive: true);
   await jar.writeAsBytes(base64Decode(jbuildJarB64));
   logger.info(() => PlainMessage('JBuild jar saved at ${jar.path}'));
-}
-
-extension FunctionExtension<T> on bool Function(T) {
-  bool Function(T) get not => (v) => !this(v);
 }
 
 extension NullIterable<T> on Iterable<T?> {
@@ -78,7 +75,7 @@ extension ListExtension on List<String> {
   Iterable<String> javaRuntimeArgs() =>
       where(_javaRuntimeArg).map((e) => e.substring(2));
 
-  Iterable<String> notJavaRuntimeArgs() => where(_javaRuntimeArg.not);
+  Iterable<String> notJavaRuntimeArgs() => where(_javaRuntimeArg.not$);
 }
 
 extension SetExtension on Set<String> {

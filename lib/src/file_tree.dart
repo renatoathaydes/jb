@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle.dart' show ChangeSet, DartleException;
 import 'package:dartle/dartle_cache.dart';
@@ -10,7 +11,6 @@ import 'package:path/path.dart' as p;
 import 'config.dart';
 import 'exec.dart';
 import 'output_consumer.dart';
-import 'utils.dart';
 
 final _newLine = utf8.encode(Platform.isWindows ? "\r\n" : '\n');
 
@@ -111,7 +111,7 @@ class FileTree {
 
     final totalChanges = changeSet
         .followedBy(transitiveChanges
-            .where(changeSetPaths.contains.not)
+            .where(changeSetPaths.contains.not$)
             .map((e) => FileChange(File(e), ChangeKind.modified)))
         .toList();
 
