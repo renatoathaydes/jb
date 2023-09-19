@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:actors/actors.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 import 'package:path/path.dart' as p;
@@ -12,6 +13,7 @@ import 'exec.dart';
 import 'file_tree.dart';
 import 'java_tests.dart';
 import 'jb_files.dart';
+import 'jvm_executor.dart';
 import 'requirements.dart';
 import 'resolved_dependency.dart';
 import 'utils.dart';
@@ -29,6 +31,8 @@ const depsTaskName = 'dependencies';
 const requirementsTaskName = 'requirements';
 const createEclipseTaskName = 'createEclipseFiles';
 
+typedef JBuildSender = Sendable<JavaCommand, Object?>;
+
 /// Create run condition for the `compile` task.
 RunOnChanges createCompileRunCondition(
     JbConfiguration config, DartleCache cache) {
@@ -40,11 +44,11 @@ RunOnChanges createCompileRunCondition(
 }
 
 /// Create the `compile` task.
-Task createCompileTask(
-    JbFiles jbFiles, JbConfiguration config, DartleCache cache) {
+Task createCompileTask(JbFiles jbFiles, JbConfiguration config,
+    DartleCache cache, JBuildSender jBuildSender) {
   return Task(
       (List<String> args, [ChangeSet? changes]) =>
-          _compile(jbFiles, config, changes, args, cache),
+          _compile(jbFiles, config, changes, args, cache, jBuildSender),
       runCondition: createCompileRunCondition(config, cache),
       name: compileTaskName,
       argsValidator: const AcceptAnyArgs(),
@@ -55,8 +59,13 @@ Task createCompileTask(
       description: 'Compile Java source code.');
 }
 
-Future<void> _compile(JbFiles jbFiles, JbConfiguration config,
-    ChangeSet? changeSet, List<String> args, DartleCache cache) async {
+Future<void> _compile(
+    JbFiles jbFiles,
+    JbConfiguration config,
+    ChangeSet? changeSet,
+    List<String> args,
+    DartleCache cache,
+    JBuildSender jBuildSender) async {
   final stopwatch = Stopwatch()..start();
   final changes =
       await computeAllChanges(changeSet, jbFiles.javaSrcFileTreeFile);
@@ -65,13 +74,16 @@ Future<void> _compile(JbFiles jbFiles, JbConfiguration config,
         () => 'Computed transitive changes in ${elapsedTime(stopwatch)}');
   }
   stopwatch.reset();
-  final exitCode = await execJBuild(
-      compileTaskName,
-      jbFiles.jbuildJar,
-      config.preArgs(),
-      'compile',
-      [...await config.compileArgs(jbFiles.processorLibsDir, changes), ...args],
-      env: config.javacEnv);
+
+  await jBuildSender.send(RunJBuild([
+    ...config.preArgs(),
+    'compile',
+    ...await config.compileArgs(jbFiles.processorLibsDir, changes),
+    ...args
+    // TODO how to honour javacEnv?
+    // env: config.javacEnv
+  ]));
+
   logger.log(
       profile, () => 'Java compilation completed in ${elapsedTime(stopwatch)}');
   if (exitCode != 0) {

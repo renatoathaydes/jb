@@ -2,16 +2,17 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' hide pid;
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:actors/actors.dart';
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:logging/logging.dart';
 import 'package:xml/xml.dart';
 
 import 'output_consumer.dart';
-import 'utils.dart';
 
-final logger = Logger('jbuild-rpc');
+final _logger = Logger('jbuild-rpc');
 
 class _Proc {
   final Process _process;
@@ -33,18 +34,25 @@ class _Proc {
   }
 }
 
-final class _JBuildActor implements Handler<List<String>, Object?> {
+final class _JBuildActor implements Handler<JavaCommand, Object?> {
   final String _classpath;
 
-  // initialized on init()
-  _JBuildRpc? _rpc;
+  // initialized on demand
+  Future<_JBuildRpc>? _rpc;
 
   _JBuildActor(this._classpath);
 
   @override
   FutureOr<void> init() async {
     activateLogging(Level.FINE);
-    logger.fine('Starting JBuild RPC on Isolate ${Isolate.current.debugName}');
+    _logger.fine('Starting JBuild RPC on Isolate ${Isolate.current.debugName}');
+  }
+
+  Future<_JBuildRpc> _getRpc() {
+    return _rpc.vmapOr((rpc) => rpc, () => _rpc = _startRpc());
+  }
+
+  Future<_JBuildRpc> _startRpc() async {
     final proc = await Process.start(
         'java', ['-cp', _classpath, 'jbuild.cli.RpcMain'],
         runInShell: true, workingDirectory: Directory.current.path);
@@ -62,30 +70,42 @@ final class _JBuildActor implements Handler<List<String>, Object?> {
     pout.listen(_RpcExecLogger('out>', 'remoteRunner', proc.pid));
     perr.listen(_RpcExecLogger('err>', 'remoteRunner', proc.pid));
 
-    _rpc = _JBuildRpc(_Proc(proc, portNumber, token));
-  }
-
-  // TODO change the input message so besides JBuild commands, other Java
-  // methods can be executed so jb extensions can execute.
-  @override
-  Future<Object?> handle(List<String> args) {
-    final rpc =
-        _rpc.orThrow('JBuildActor called handle() before init() completed');
-    return rpc.runJBuild(args);
+    return _JBuildRpc(_Proc(proc, portNumber, token));
   }
 
   @override
-  FutureOr<void> close() {
-    _rpc?.stop();
+  Future<Object?> handle(JavaCommand command) async {
+    final rpc = await _getRpc();
+    return switch (command) {
+      RunJBuild jb => rpc.runJBuild(jb.args),
+    };
   }
+
+  @override
+  Future<void> close() async {
+    await _rpc?.vmap((f) => f.then((rpc) => rpc.stop()));
+  }
+}
+
+sealed class JavaCommand {
+  final int messageId = _messageIds++;
+}
+
+// message IDs must be unique.
+int _messageIds = pow(-2, 16) as int;
+
+final class RunJBuild extends JavaCommand {
+  final List<String> args;
+
+  RunJBuild(this.args);
 }
 
 /// Create a Java [Actor] which can be used to run JBuild commands and
 /// arbitrary Java methods (for jb extensions).
 ///
 /// The Actor sender returns whatever the Java method returned.
-Actor<List<String>, Object?> createJavaActor(String classpath) {
-  return Actor(_JBuildActor(classpath));
+Actor<JavaCommand, Object?> createJavaActor(String classpath) {
+  return Actor.create(() => _JBuildActor(classpath));
 }
 
 class _JBuildRpc {
@@ -126,7 +146,7 @@ class _JBuildRpc {
         '<methodName>$method</methodName>'
         '<params>${_rpcParams(args)}</params>'
         '</methodCall>';
-    logger.fine(() => 'Sending RPC message: $message');
+    _logger.fine(() => 'Sending RPC message: $message');
     return utf8.encode(message);
   }
 
@@ -158,17 +178,18 @@ class _JBuildRpc {
       final req = await client.delete('localhost', proc.port, '/jbuild');
       req.headers.add('Authorization', proc.authorizationHeader);
       final resp = await req.close();
-      logger.fine(() =>
+      _logger.fine(() =>
           'RPC Server responded with ${resp.statusCode} to request to stop');
     } catch (e) {
-      logger.fine(() => 'A problem occurred trying to stop the RPC Server: $e');
+      _logger
+          .fine(() => 'A problem occurred trying to stop the RPC Server: $e');
     }
   }
 }
 
 Future<dynamic> _parseRpcResponse(Stream<List<int>> rpcResponse) async {
   final message = await rpcResponse.text();
-  logger.fine(() => 'Received RPC response: $message');
+  _logger.fine(() => 'Received RPC response: $message');
   final XmlDocument doc;
   try {
     doc = XmlDocument.parse(message);
@@ -176,18 +197,19 @@ Future<dynamic> _parseRpcResponse(Stream<List<int>> rpcResponse) async {
   } on XmlException catch (e) {
     throw DartleException(message: 'RPC response could not be parsed: $e');
   }
-  final response = doc
-      .getElement('methodResponse')
-      .orThrow('no methodResponse in RPC response:\n'
-          '${doc.toXmlString(pretty: true)}');
+  final response =
+      doc.getElement('methodResponse').orThrow(() => DartleException(
+          message: 'no methodResponse in RPC response:\n'
+              '${doc.toXmlString(pretty: true)}'));
 
   final fault = response.getElement('fault');
   if (fault != null) {
     return _rpcFault(fault);
   }
 
-  final params = response.getElement('params').orThrowA(
-      () => 'RPC response missing params:\n${doc.toXmlString(pretty: true)}');
+  final params = response.getElement('params').orThrow(() => DartleException(
+      message:
+          'RPC response missing params:\n${doc.toXmlString(pretty: true)}'));
 
   // params may be empty or contain one result
   final paramList = params.findElements('param').toList(growable: false);
@@ -229,10 +251,10 @@ dynamic _value(XmlElement element) {
 Future<Never> _rpcFault(XmlElement fault) async {
   final struct = fault
       .getElement('value')
-      .orThrowA(
+      .orThrow(
           () => 'RPC fault missing value:\n${fault.toXmlString(pretty: true)}')
       .getElement('struct')
-      .orThrowA(() =>
+      .orThrow(() =>
           'RPC fault missing struct:\n${fault.toXmlString(pretty: true)}');
 
   final members = struct.findElements('member');
@@ -242,10 +264,10 @@ Future<Never> _rpcFault(XmlElement fault) async {
               message: 'RPC fault missing faultString:\n'
                   '${struct.toXmlString(pretty: true)}'))
       .getElement('value')
-      .orThrowA(() => 'RPC faultString missing value:\n'
+      .orThrow(() => 'RPC faultString missing value:\n'
           '${struct.toXmlString(pretty: true)}')
       .getElement('string')
-      .orThrowA(() => 'RPC faultString missing string value:\n'
+      .orThrow(() => 'RPC faultString missing string value:\n'
           '${struct.toXmlString(pretty: true)}')
       .innerText;
 
@@ -255,10 +277,10 @@ Future<Never> _rpcFault(XmlElement fault) async {
               message: 'RPC faultCode missing:\n'
                   '${struct.toXmlString(pretty: true)}'))
       .getElement('value')
-      .orThrowA(() => 'RPC faultCode missing value:\n'
+      .orThrow(() => 'RPC faultCode missing value:\n'
           '${struct.toXmlString(pretty: true)}')
       .getElement('int')
-      .orThrowA(() => 'RPC faultCode missing int value:\n'
+      .orThrow(() => 'RPC faultCode missing int value:\n'
           '${struct.toXmlString(pretty: true)}')
       .innerText);
 
@@ -268,9 +290,8 @@ Future<Never> _rpcFault(XmlElement fault) async {
 class _RpcExecLogger extends JbOutputConsumer {
   final String prompt;
   final String taskName;
-  final int pid;
 
-  _RpcExecLogger(this.prompt, this.taskName, this.pid);
+  _RpcExecLogger(this.prompt, this.taskName, super.pid);
 
   LogColor? _colorFor(Level level) {
     if (level == Level.SEVERE) return LogColor.red;

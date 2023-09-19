@@ -44,8 +44,8 @@ Future<int> execJava(String taskName, List<String> args,
     return exec(Process.start('java', args,
         environment: env, runInShell: true, workingDirectory: workingDir));
   }
-  final stdoutFun = onStdout ?? _TaskExecLogger('-out>', taskName);
-  final stderrFun = onStderr ?? _TaskExecLogger('-err>', taskName);
+  final stdoutFun = onStdout ?? _TaskExecLogger('-out>', taskName, pid);
+  final stderrFun = onStderr ?? _TaskExecLogger('-err>', taskName, pid);
   return exec(
     Process.start('java', args,
             runInShell: true, environment: env, workingDirectory: workingDir)
@@ -63,7 +63,7 @@ class _TaskExecLogger extends JbOutputConsumer {
   final String prompt;
   final String taskName;
 
-  _TaskExecLogger(this.prompt, this.taskName);
+  _TaskExecLogger(this.prompt, this.taskName, super.pid);
 
   LogColor? _colorFor(Level level) {
     if (level == Level.SEVERE) return LogColor.red;

@@ -29,23 +29,6 @@ Future<void> _createJBuildJar(File jar) async {
   logger.info(() => PlainMessage('JBuild jar saved at ${jar.path}'));
 }
 
-extension AnyExtension<T> on T? {
-  T orThrow(String error) {
-    if (this == null) throw DartleException(message: error);
-    return this!;
-  }
-
-  T orThrowA(String Function() error) {
-    if (this == null) throw DartleException(message: error());
-    return this!;
-  }
-
-  V? map<V>(V Function(T) mapper) {
-    final self = this;
-    return self == null ? null : mapper(self);
-  }
-}
-
 extension FunctionExtension<T> on bool Function(T) {
   bool Function(T) get not => (v) => !this(v);
 }

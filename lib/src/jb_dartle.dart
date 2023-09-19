@@ -3,29 +3,21 @@ import 'package:dartle/dartle_cache.dart';
 
 import 'config.dart';
 import 'jb_files.dart';
+import 'jvm_executor.dart' show createJavaActor;
 import 'path_dependency.dart';
 import 'resolved_dependency.dart';
 import 'tasks.dart';
 import 'utils.dart';
-
-/// Grouped components needed by jb.
-class _Components {
-  final JbFiles files;
-  final JbConfiguration config;
-  final DartleCache cache;
-  final Options options;
-  final Stopwatch stopWatch;
-
-  _Components(
-      this.files, this.config, this.cache, this.options, this.stopWatch);
-}
 
 /// jb Dartle build definition.
 ///
 /// Users of this class must await on the [init] Future for this class to
 /// be fully initialized before using it.
 class JbDartle {
-  final _Components _components;
+  final JbFiles _files;
+  final JbConfiguration _config;
+  final DartleCache _cache;
+  final Options _options;
 
   /// Whether this project is the root project being executed.
   final bool isRoot;
@@ -52,19 +44,20 @@ class JbDartle {
   /// required.
   late final Future<Closable> init;
 
-  JbDartle._(this._components, this.isRoot) {
+  JbDartle._(this._files, this._config, this._cache, this._options, this.isRoot,
+      Stopwatch stopwatch) {
     final localDeps = Future.wait([
-      _resolveLocalDependencies(_components.config.dependencies, name: 'main'),
-      _resolveLocalDependencies(_components.config.processorDependencies,
+      _resolveLocalDependencies(_config.dependencies, name: 'main'),
+      _resolveLocalDependencies(_config.processorDependencies,
           name: 'annotation processor')
     ]);
-    init = localDeps.then((d) => _initialize(d[0], d[1]));
+    init = localDeps.then((d) => _initialize(d[0], d[1], stopwatch));
   }
 
   JbDartle.create(JbFiles files, JbConfiguration config, DartleCache cache,
       Options options, Stopwatch stopWatch,
       {required bool isRoot})
-      : this._(_Components(files, config, cache, options, stopWatch), isRoot);
+      : this._(files, config, cache, options, isRoot, stopWatch);
 
   /// Get the default tasks (`{ compile }`).
   Set<Task> get defaultTasks {
@@ -96,34 +89,36 @@ class JbDartle {
     return ResolvedLocalDependencies(jars, subProjects);
   }
 
-  Future<Closable> _initialize(ResolvedLocalDependencies localDependencies,
-      ResolvedLocalDependencies localProcessorDependencies) async {
-    final files = _components.files;
-    final config = _components.config;
-    final cache = _components.cache;
+  Future<Closable> _initialize(
+      ResolvedLocalDependencies localDependencies,
+      ResolvedLocalDependencies localProcessorDependencies,
+      Stopwatch stopwatch) async {
     final unresolvedLocalDeps = localDependencies.unresolved;
+
+    final jvmExecutor = createJavaActor(_files.jbuildJar.path);
+    final javaSender = await jvmExecutor.toSendable();
 
     final projectTasks = <Task>{};
 
-    compile = createCompileTask(files, config, cache);
-    writeDeps =
-        createWriteDependenciesTask(files, config, cache, unresolvedLocalDeps);
-    installCompile =
-        createInstallCompileDepsTask(files, config, cache, localDependencies);
-    installRuntime =
-        createInstallRuntimeDepsTask(files, config, cache, localDependencies);
-    installProcessor =
-        createInstallProcessorDepsTask(files, config, cache, localDependencies);
-    run = createRunTask(files, config, cache);
+    compile = createCompileTask(_files, _config, _cache, javaSender);
+    writeDeps = createWriteDependenciesTask(
+        _files, _config, _cache, unresolvedLocalDeps);
+    installCompile = createInstallCompileDepsTask(
+        _files, _config, _cache, localDependencies);
+    installRuntime = createInstallRuntimeDepsTask(
+        _files, _config, _cache, localDependencies);
+    installProcessor = createInstallProcessorDepsTask(
+        _files, _config, _cache, localDependencies);
+    run = createRunTask(_files, _config, _cache);
     downloadTestRunner =
-        createDownloadTestRunnerTask(files.jbuildJar, config, cache);
+        createDownloadTestRunnerTask(_files.jbuildJar, _config, _cache);
     test = createTestTask(
-        files.jbuildJar, config, cache, !_components.options.colorfulLog);
-    deps = createDepsTask(files.jbuildJar, config, cache, unresolvedLocalDeps,
-        !_components.options.colorfulLog);
-    requirements = createRequirementsTask(files.jbuildJar, config, cache,
-        unresolvedLocalDeps, !_components.options.colorfulLog);
-    generateEclipse = createEclipseTask(config);
+        _files.jbuildJar, _config, _cache, !_options.colorfulLog);
+    deps = createDepsTask(_files.jbuildJar, _config, _cache,
+        unresolvedLocalDeps, !_options.colorfulLog);
+    requirements = createRequirementsTask(_files.jbuildJar, _config, _cache,
+        unresolvedLocalDeps, !_options.colorfulLog);
+    generateEclipse = createEclipseTask(_config);
 
     // FIXME re-add support for extension projects
     // final extensionProject = await loadExtensionProject(_components);
@@ -163,17 +158,15 @@ class JbDartle {
     logger.log(
         profile,
         () => 'Project initialization completed in '
-            '${_components.stopWatch.elapsedMilliseconds} ms.');
+            '${stopwatch.elapsedMilliseconds} ms.');
 
-    // return extensionProject?.close ?? () {};
-    return () {};
+    return jvmExecutor.close;
   }
 
   Future<void> _initializeProjectDeps(
       List<ResolvedProjectDependency> projectDeps) async {
     for (var dep in projectDeps) {
-      await initializeProjectDependency(
-          dep, _components.options, _components.files);
+      await initializeProjectDependency(dep, _options, _files);
     }
   }
 }

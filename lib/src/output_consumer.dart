@@ -16,6 +16,8 @@ mixin ProcessOutputConsumer {
 abstract class JbOutputConsumer implements ProcessOutputConsumer {
   int pid = 0;
 
+  JbOutputConsumer(this.pid);
+
   Object createMessage(Level level, String line);
 
   @override

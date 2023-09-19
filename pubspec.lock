@@ -13,10 +13,10 @@ packages:
     dependency: "direct main"
     description:
       name: actors
-      sha256: "5ef8c9658bce65a42438777b20c8456c69f9e89cb68b4330fd8e5c491df2e995"
+      sha256: "89deeac280c1178d6ee300cbc29e92eb743dc1ac560d0251086ba3a1c5243747"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.0"
+    version: "0.10.0"
   analyzer:
     dependency: transitive
     description:
@@ -29,10 +29,10 @@ packages:
     dependency: "direct main"
     description:
       name: archive
-      sha256: "49b1fad315e57ab0bbc15bcbb874e83116a1d78f77ebd500a4af6c9407d6b28e"
+      sha256: e0902a06f0e00414e4e3438a084580161279f137aeb862274710f29ec10cf01e
       url: "https://pub.dev"
     source: hosted
-    version: "3.3.8"
+    version: "3.3.9"
   args:
     dependency: "direct main"
     description:
@@ -85,10 +85,10 @@ packages:
     dependency: transitive
     description:
       name: build_resolvers
-      sha256: a7417cc44d9edb3f2c8760000270c99dba8c72ff66d0146772b8326565780745
+      sha256: d912852cce27c9e80a93603db721c267716894462e7033165178b91138587972
       url: "https://pub.dev"
     source: hosted
-    version: "2.3.1"
+    version: "2.3.2"
   build_runner:
     dependency: "direct dev"
     description:
@@ -153,6 +153,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.18.0"
+  conveniently:
+    dependency: "direct main"
+    description:
+      name: conveniently
+      sha256: e1c85e62a2e19973865fb803cb69e906b4ac4d87071261f1e9d1ce3f4dbf30c1
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   convert:
     dependency: transitive
     description:
@@ -189,10 +197,10 @@ packages:
     dependency: "direct main"
     description:
       name: dartle
-      sha256: "5f8cecc9725fda0db900f4b4f787b428cd5bfe07a1623dd1535d8c9bed59bc47"
+      sha256: c95648327499bf86c02f3402d4f563fdc7fe66dad8ef8597ce65c6a5e275456a
       url: "https://pub.dev"
     source: hosted
-    version: "0.25.0"
+    version: "0.26.0"
   file:
     dependency: "direct main"
     description:
@@ -309,10 +317,10 @@ packages:
     dependency: transitive
     description:
       name: meta
-      sha256: "3c74dbf8763d36539f114c799d8a2d87343b5067e9d796ca22b5eb8437090ee3"
+      sha256: a6e590c838b18133bb482a2745ad77c5bb7715fb0451209e1a7567d416678b8e
       url: "https://pub.dev"
     source: hosted
-    version: "1.9.1"
+    version: "1.10.0"
   mime:
     dependency: transitive
     description:
@@ -485,10 +493,10 @@ packages:
     dependency: transitive
     description:
       name: tar
-      sha256: "85ffd53e277f2bac8afa2885e6b195e26937e9c402424c3d88d92fd920b56de9"
+      sha256: "7196d37d26fcf4d523cd0d086b463b66550bae0c29777bf398006827d5e5d453"
       url: "https://pub.dev"
     source: hosted
-    version: "0.5.6"
+    version: "1.0.1"
   term_glyph:
     dependency: transitive
     description:

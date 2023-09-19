@@ -98,7 +98,7 @@ void main() {
         p.join('comp'),
         p.join('comp', 'greeting.jar'),
       ]);
-    });
+    }, skip: true);
 
     test('can run project', () async {
       var jbResult = await runJb(

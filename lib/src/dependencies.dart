@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 import 'package:io/ansi.dart' as ansi;
@@ -8,7 +9,6 @@ import 'config.dart';
 import 'exec.dart';
 import 'output_consumer.dart';
 import 'tasks.dart' show depsTaskName;
-import 'utils.dart';
 
 Future<void> writeDependencies(
     {required File depsFile,
@@ -75,7 +75,7 @@ void _writeDep(IOSink sink, String name, DependencySpec spec) {
     ..write(name)
     ..write(':\n');
   if (spec != DependencySpec.defaultSpec) {
-    spec.path.map((path) => sink
+    spec.path?.vmap((path) => sink
       ..write('    path: ')
       ..write(path)
       ..write('\n'));

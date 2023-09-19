@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show ChangeKind;
 import 'package:logging/logging.dart' as log;
@@ -362,7 +363,7 @@ class JbConfiguration {
       result.addAll(javacArgs);
       if (processorDependencies.isNotEmpty) {
         result.add('-processorpath');
-        (await Directory(processorLibsDir).toClasspath()).map(result.add);
+        (await Directory(processorLibsDir).toClasspath())?.vmap(result.add);
       }
     }
     return result;
@@ -866,8 +867,9 @@ ExtensionTask _extensionTask(MapEntry<String, Object?> task) {
       dependents:
           _stringIterableValue(spec, 'dependents', const {}).value.toSet(),
       className: _optionalStringValue(spec, 'class-name')
-          .orThrow("declaration of task '${task.key}' is missing mandatory "
-              "'class-name'.\n$taskSyntaxHelp"),
+          .orThrow(() => DartleException(
+              message: "declaration of task '${task.key}' is missing mandatory "
+                  "'class-name'.\n$taskSyntaxHelp")),
       methodName: _stringValue(spec, 'method-name', 'run').value,
     );
   } else {
