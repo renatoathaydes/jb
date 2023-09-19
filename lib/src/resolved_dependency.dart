@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 
 import 'config.dart';
 import 'jb_files.dart';
+import 'options.dart';
 import 'path_dependency.dart';
 import 'runner.dart';
 import 'tasks.dart';
@@ -93,7 +94,7 @@ Future<void> initializeProjectDependency(
   await withCurrentDirectory(
       dir,
       () async => await runner.run(
-          _createOptionsForProjectDep(
+          copyDartleOptions(
               options, const [compileTaskName, installRuntimeDepsTaskName]),
           Stopwatch(),
           isRoot: false));
@@ -103,18 +104,4 @@ Future<void> initializeProjectDependency(
 
   // Dartle changes the current dir, so we must restore it here
   Directory.current = workingDir;
-}
-
-Options _createOptionsForProjectDep(
-    Options options, List<String> tasksInvocation) {
-  return Options(
-      logLevel: options.logLevel,
-      colorfulLog: options.colorfulLog,
-      forceTasks: options.forceTasks,
-      parallelizeTasks: options.parallelizeTasks,
-      resetCache: options.resetCache,
-      logBuildTime: false,
-      runPubGet: options.runPubGet,
-      disableCache: options.disableCache,
-      tasksInvocation: tasksInvocation);
 }

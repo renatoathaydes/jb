@@ -1,5 +1,6 @@
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'package:jb/src/jb_extension.dart';
 
 import 'config.dart';
 import 'jb_files.dart';
@@ -120,10 +121,10 @@ class JbDartle {
         unresolvedLocalDeps, !_options.colorfulLog);
     generateEclipse = createEclipseTask(_config);
 
-    // FIXME re-add support for extension projects
-    // final extensionProject = await loadExtensionProject(_components);
+    final extensionProject = await loadExtensionProject(
+        javaSender, _files, _options, _config.extensionProject);
 
-    // final extensionTasks = extensionProject?.tasks;
+    final extensionTasks = extensionProject?.tasks;
 
     projectTasks.addAll({
       compile,
@@ -137,7 +138,7 @@ class JbDartle {
       deps,
       requirements,
       generateEclipse,
-      // if (extensionTasks != null) ...extensionTasks,
+      if (extensionTasks != null) ...extensionTasks,
     });
 
     clean = createCleanTask(

@@ -49,3 +49,16 @@ class JbCliOptions {
     return JbCliOptions(dartleArgs, rootDir, createOptions);
   }
 }
+
+Options copyDartleOptions(Options options, List<String> tasksInvocation) {
+  return Options(
+      logLevel: options.logLevel,
+      colorfulLog: options.colorfulLog,
+      forceTasks: options.forceTasks,
+      parallelizeTasks: options.parallelizeTasks,
+      resetCache: options.resetCache,
+      logBuildTime: false,
+      runPubGet: options.runPubGet,
+      disableCache: options.disableCache,
+      tasksInvocation: tasksInvocation);
+}

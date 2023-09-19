@@ -4,6 +4,8 @@ import 'package:path/path.dart' as p;
 
 import 'config_source.dart';
 
+const jbExtension = 'jb-extension';
+
 /// Files and directories used by jb.
 class JbFiles {
   final String jbCache;
@@ -15,8 +17,6 @@ class JbFiles {
 
   File get javaSrcFileTreeFile =>
       File(p.join(jbCache, 'java-src-file-tree.txt'));
-
-  Directory get jbExtensionProjectDir => Directory('jb-extension');
 
   File get processorDependenciesFile =>
       File(p.join(jbCache, 'processor-dependencies.txt'));

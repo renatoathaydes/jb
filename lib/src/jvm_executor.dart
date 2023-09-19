@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' hide pid;
 import 'dart:isolate';
-import 'dart:math';
 
 import 'package:actors/actors.dart';
 import 'package:conveniently/conveniently.dart';
@@ -79,6 +78,8 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     final rpc = await _getRpc();
     return switch (command) {
       RunJBuild jb => rpc.runJBuild(jb.args),
+      RunJava(className: var c, methodName: var m, args: var a) =>
+        rpc.runJava(c, m, [a]),
     };
   }
 
@@ -89,16 +90,21 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
 }
 
 sealed class JavaCommand {
-  final int messageId = _messageIds++;
+  const JavaCommand();
 }
-
-// message IDs must be unique.
-int _messageIds = pow(-2, 16) as int;
 
 final class RunJBuild extends JavaCommand {
   final List<String> args;
 
-  RunJBuild(this.args);
+  const RunJBuild(this.args);
+}
+
+final class RunJava extends JavaCommand {
+  final String className;
+  final String methodName;
+  final List<String> args;
+
+  const RunJava(this.className, this.methodName, this.args);
 }
 
 /// Create a Java [Actor] which can be used to run JBuild commands and
