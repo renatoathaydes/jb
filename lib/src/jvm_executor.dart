@@ -78,8 +78,13 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     final rpc = await _getRpc();
     return switch (command) {
       RunJBuild jb => rpc.runJBuild(jb.args),
-      RunJava(className: var c, methodName: var m, args: var a) =>
-        rpc.runJava(c, m, [a]),
+      RunJava(
+        classpath: var classpath,
+        className: var className,
+        methodName: var methodName,
+        args: var args,
+      ) =>
+        rpc.runJava(classpath, className, methodName, args),
     };
   }
 
@@ -100,11 +105,12 @@ final class RunJBuild extends JavaCommand {
 }
 
 final class RunJava extends JavaCommand {
+  final String classpath;
   final String className;
   final String methodName;
   final List<String> args;
 
-  const RunJava(this.className, this.methodName, this.args);
+  const RunJava(this.classpath, this.className, this.methodName, this.args);
 }
 
 /// Create a Java [Actor] which can be used to run JBuild commands and
@@ -123,15 +129,25 @@ class _JBuildRpc {
 
   /// Run a JBuild command.
   Future<Object?> runJBuild(List<String> args) async {
-    return await runJava('jbuild.cli.RpcMain', 'runJBuild', [args]);
+    return await _runJava('runJBuild', [args]);
   }
 
-  Future<Object?> runJava(
-      String? className, String methodName, List<List<String>> args) async {
+  /// Run a particular class' method with the provided arguments.
+  ///
+  /// The classpath should include the class and its dependencies if it's not
+  /// included in the JBuild jar.
+  Future<Object?> runJava(String classpath, String className, String methodName,
+      List<String> args) async {
+    // This class should run the JBuild RpcMain's run method:
+    //Object run(String classpath, String className, String methodName, String... args)
+    return _runJava('run', [classpath, className, methodName, args]);
+  }
+
+  Future<Object?> _runJava(String methodName, List<Object> args) async {
     final req = await client.post('localhost', proc.port, '/jbuild');
     req.headers.add('Content-Type', 'text/xml; charset=utf-8');
     req.headers.add('Authorization', proc.authorizationHeader);
-    req.add(_createRpcMessage(className, methodName, args));
+    req.add(_createRpcMessage(methodName, args));
     try {
       final resp = await req.close();
       if (resp.statusCode == 200) {
@@ -145,34 +161,37 @@ class _JBuildRpc {
     }
   }
 
-  List<int> _createRpcMessage(
-      String? className, String methodName, List<List<String>> args) {
-    final method = className == null ? methodName : '$className.$methodName';
+  List<int> _createRpcMessage(String methodName, List<Object> args) {
     final message = '<?xml version="1.0"?>'
         '<methodCall>'
-        '<methodName>$method</methodName>'
+        '<methodName>$methodName</methodName>'
         '<params>${_rpcParams(args)}</params>'
         '</methodCall>';
     _logger.fine(() => 'Sending RPC message: $message');
     return utf8.encode(message);
   }
 
-  String _rpcParams(List<List<String>> args) {
+  String _rpcParams(List<Object> args) {
     return args.map(_rpcParam).join();
   }
 
-  String _rpcParam(List<String> arg) {
+  String _rpcParam(Object arg) {
     return '<param>${_rpcValues(arg)}</param>';
+  }
+
+  String _rpcValues(Object? arg) {
+    return switch (arg) {
+      String s => _rpcValue(s),
+      List<String> list => '<value><array><data>'
+          '${list.map(_rpcValue).join()}'
+          '</data></array></value>',
+      _ => throw DartleException(
+          message: 'Unsupported RPC method call parameter: $arg'),
+    };
   }
 
   String _rpcValue(String arg) {
     return '<value><string>$arg</string></value>';
-  }
-
-  String _rpcValues(List<String> arg) {
-    return '<value><array><data>'
-        '${arg.map(_rpcValue).join()}'
-        '</data></array></value>';
   }
 
   Future<void> stop() async {

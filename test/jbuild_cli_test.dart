@@ -98,7 +98,7 @@ void main() {
         p.join('comp'),
         p.join('comp', 'greeting.jar'),
       ]);
-    }, skip: true);
+    });
 
     test('can run project', () async {
       var jbResult = await runJb(
@@ -206,12 +206,11 @@ void main() {
 
     test('can run custom task defined by extension project', () async {
       var jbResult = await runJb(
-              Directory(usesExtensionDir), const ['sample-task', '--no-color'])
-          .timeout(Duration(seconds: 10));
+          Directory(usesExtensionDir), const ['sample-task', '--no-color']);
       expectSuccess(jbResult);
       expect(jbResult.stdout.join('\n'),
           contains('Extension task running: SampleTask'));
-    }, skip: 'TODO reimplement extension project feature');
+    }, timeout: const Timeout(Duration(seconds: 10)));
   });
 }
 

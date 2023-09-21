@@ -52,12 +52,12 @@ Future<ExtensionProject?> loadExtensionProject(
   final dir = projectDir.path;
   logger.info(() => '========= Loading jb extension project: $dir =========');
 
-  final config = await withCurrentDirectory(dir, () async {
+  final extensionConfig = await withCurrentDirectory(dir, () async {
     return await loadConfig(File(jbFile));
   });
-  _verify(config);
+  _verify(extensionConfig);
 
-  final runner = JbRunner(files, config);
+  final runner = JbRunner(files, extensionConfig);
   final workingDir = Directory.current.path;
   await withCurrentDirectory(
       dir,
@@ -73,42 +73,51 @@ Future<ExtensionProject?> loadExtensionProject(
   // Dartle changes the current dir, so we must restore it here
   Directory.current = workingDir;
 
-  final jbExtensionConfig = await config.output.when(dir: (d) async {
-    final yamlFile =
-        File(p.join(dir, d, 'META-INF', 'jb', '$jbExtension.yaml'));
-    return _JbExtensionConfig(
-        path: yamlFile.path,
-        yaml: await yamlFile.readAsString(),
-        scheme: 'file');
-  }, jar: (j) async {
-    final stream = InputFileStream(p.join(dir, j));
-    try {
-      final buffer = ZipDecoder().decodeBuffer(stream);
-      final extensionEntry = 'META-INF/jb/$jbExtension.yaml';
-      final archiveFile =
-          buffer.findFile(extensionEntry).orThrow(() => DartleException(
-              message: 'jb extension jar at $j '
-                  'is missing metadata file: $extensionEntry'));
-      final content = archiveFile.content as List<int>;
-      return _JbExtensionConfig(
-          path: '${stream.path}!$extensionEntry',
-          yaml: utf8.decode(content),
-          scheme: 'jar');
-    } finally {
-      await stream.close();
-    }
-  });
+  final jbExtensionConfig = await extensionConfig.output.when(
+    dir: (d) async => await _jbExtensionFromDir(dir, d),
+    jar: (j) async => await _jbExtensionFromJar(dir, j),
+  );
 
   final extensionModel = await loadJbExtensionModel(
       jbExtensionConfig.yaml, jbExtensionConfig.yamlUri);
 
-  final tasks = _createTasks(extensionModel, jvmExecutor, dir, files);
+  final tasks = await _createTasks(
+          extensionModel, extensionConfig, jvmExecutor, dir, files)
+      .toList();
 
   logger.log(profile,
       () => 'Loaded jb extension project in ${elapsedTime(stopWatch)}');
   logger.info('========= jb extension loaded =========');
 
   return ExtensionProject(tasks);
+}
+
+Future<_JbExtensionConfig> _jbExtensionFromJar(
+    String rootDir, String jarPath) async {
+  final stream = InputFileStream(p.join(rootDir, jarPath));
+  try {
+    final buffer = ZipDecoder().decodeBuffer(stream);
+    final extensionEntry = 'META-INF/jb/$jbExtension.yaml';
+    final archiveFile =
+        buffer.findFile(extensionEntry).orThrow(() => DartleException(
+            message: 'jb extension jar at $jarPath '
+                'is missing metadata file: $extensionEntry'));
+    final content = archiveFile.content as List<int>;
+    return _JbExtensionConfig(
+        path: '${stream.path}!$extensionEntry',
+        yaml: utf8.decode(content),
+        scheme: 'jar');
+  } finally {
+    await stream.close();
+  }
+}
+
+Future<_JbExtensionConfig> _jbExtensionFromDir(
+    String rootDir, String outputDir) async {
+  final yamlFile =
+      File(p.join(rootDir, outputDir, 'META-INF', 'jb', '$jbExtension.yaml'));
+  return _JbExtensionConfig(
+      path: yamlFile.path, yaml: await yamlFile.readAsString(), scheme: 'file');
 }
 
 void _verify(JbConfiguration config) {
@@ -121,21 +130,23 @@ void _verify(JbConfiguration config) {
   }
 }
 
-Iterable<Task> _createTasks(
+Stream<Task> _createTasks(
     JbExtensionModel extensionModel,
+    JbConfiguration extensionConfig,
     Sendable<JavaCommand, Object?> jvmExecutor,
     String dir,
-    JbFiles files) sync* {
+    JbFiles files) async* {
   final cache = DartleCache(p.join(dir, files.jbCache));
+  final classpath = await _toClasspath(dir, extensionConfig);
   for (final task in extensionModel.extensionTasks) {
-    yield _createTask(jvmExecutor, task, dir, cache);
+    yield _createTask(jvmExecutor, classpath, task, dir, cache);
   }
 }
 
-Task _createTask(Sendable<JavaCommand, Object?> jvmExecutor,
+Task _createTask(Sendable<JavaCommand, Object?> jvmExecutor, String classpath,
     ExtensionTask extensionTask, String path, DartleCache cache) {
   final runCondition = _runCondition(extensionTask, path, cache);
-  return Task(_taskAction(jvmExecutor, extensionTask, path),
+  return Task(_taskAction(jvmExecutor, classpath, extensionTask, path),
       name: extensionTask.name,
       argsValidator: const AcceptAnyArgs(),
       description: extensionTask.description,
@@ -146,13 +157,18 @@ Task _createTask(Sendable<JavaCommand, Object?> jvmExecutor,
 
 Function(List<String> p1) _taskAction(
     Sendable<JavaCommand, Object?> jvmExecutor,
+    String classpath,
     ExtensionTask extensionTask,
     String path) {
   return (args) async {
+    logger.fine(() => 'Requesting JBuild to run classpath=$classpath, '
+        'className=${extensionTask.className}, '
+        'method=${extensionTask.methodName}, '
+        'args=$args');
     return await withCurrentDirectory(
         path,
-        () async => await jvmExecutor.send(
-            RunJava(extensionTask.className, extensionTask.methodName, args)));
+        () async => await jvmExecutor.send(RunJava(classpath,
+            extensionTask.className, extensionTask.methodName, args)));
   };
 }
 
@@ -167,4 +183,21 @@ RunCondition _runCondition(
           extensionTask.inputs.map((f) => p.join(path, f))),
       outputs: patternFileCollection(
           extensionTask.outputs.map((f) => p.join(path, f))));
+}
+
+Future<String> _toClasspath(
+    String rootDir, JbConfiguration extensionConfig) async {
+  final absRootDir = p.canonicalize(rootDir);
+  final artifact = p.join(absRootDir,
+      extensionConfig.output.when(dir: (d) => '$d/', jar: (j) => j));
+  final libsDir = Directory(p.join(absRootDir, extensionConfig.runtimeLibsDir));
+  if (await libsDir.exists()) {
+    final libs = await libsDir
+        .list()
+        .where((f) => f is File && f.path.endsWith('.jar'))
+        .map((f) => f.path)
+        .toList();
+    return libs.followedBy([artifact]).join(Platform.isWindows ? ';' : ':');
+  }
+  return artifact;
 }
