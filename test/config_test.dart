@@ -187,7 +187,7 @@ void main() {
       'module': 'm1',
       'version': 'v1',
       'main-class': 'm1',
-      'source-dirs': ['source', 'src'],
+      'source-dirs': ['source', 'other-src'],
       'output-jar': 'my.jar',
       'resource-dirs': ['rsrc'],
       'javac-args': ['-Xmx1G'],
@@ -242,7 +242,7 @@ void main() {
             'module': 'm2',
             'version': 'v2',
             'main-class': 'm2',
-            'source-dirs': ['source', 'src', 'source2'],
+            'source-dirs': ['source', 'other-src', 'source2'],
             'output-jar': 'my2.jar',
             'resource-dirs': ['rsrc', 'rsrc2'],
             'javac-args': ['-Xmx1G', '-Xmx2G'],
@@ -273,7 +273,7 @@ void main() {
             'module': 'm1',
             'version': 'v1',
             'main-class': 'm1',
-            'source-dirs': ['source2', 'src', 'source'],
+            'source-dirs': ['source2', 'other-src', 'source'],
             'output-jar': 'my.jar',
             'resource-dirs': ['rsrc2', 'rsrc'],
             'javac-args': ['-Xmx2G', '-Xmx1G'],
@@ -298,7 +298,7 @@ void main() {
           })));
     });
 
-    test('can merge small config into full configuration', () {
+    test('can merge small config into full configuration and vice-versa', () {
       final smallConfig = JbConfiguration.fromMap({
         'module': 'small',
         'dependencies': [
@@ -315,7 +315,38 @@ void main() {
             'module': 'small',
             'version': 'v1',
             'main-class': 'm1',
-            'source-dirs': ['source', 'src'],
+            'source-dirs': ['source', 'other-src'],
+            'output-jar': 'my.jar',
+            'resource-dirs': ['rsrc'],
+            'javac-args': ['-Xmx1G'],
+            'run-java-args': ['-D'],
+            'test-java-args': ['-T'],
+            'javac-env': {'A': 'B'},
+            'run-java-env': {'C': 'D'},
+            'test-java-env': {'E': 'F'},
+            'repositories': {'r1', 'r2'},
+            'dependencies': [
+              {
+                'dep1': {'transitive': true}
+              },
+              {
+                'big': {'transitive': true}
+              }
+            ],
+            'exclusions': {'e1'},
+            'compile-libs-dir': 'comp',
+            'runtime-libs-dir': 'runtime',
+            'test-reports-dir': 'reports'
+          })));
+
+      expect(
+          smallConfig.merge(config1),
+          equalsConfig(JbConfiguration.fromMap(const {
+            'group': 'g1',
+            'module': 'm1',
+            'version': 'v1',
+            'main-class': 'm1',
+            'source-dirs': ['source', 'other-src'],
             'output-jar': 'my.jar',
             'resource-dirs': ['rsrc'],
             'javac-args': ['-Xmx1G'],

@@ -272,16 +272,14 @@ class JbConfiguration {
       mainClass: resolveOptionalString(other.mainClass ?? mainClass, props),
       extensionProject: resolveOptionalString(
           other.extensionProject ?? extensionProject, props),
-      sourceDirs: other._defaultSourceDirs
-          ? sourceDirs.merge(const {}, props)
-          : sourceDirs.merge(other.sourceDirs, props),
+      sourceDirs: _mergeWithDefault(sourceDirs, _defaultSourceDirs,
+          other.sourceDirs, other._defaultSourceDirs, props),
       defaultSourceDirs: _defaultSourceDirs && other._defaultSourceDirs,
       output: (other._defaultOutput ? output : other.output)
           .resolveProperties(props),
       defaultOutput: _defaultOutput && other._defaultOutput,
-      resourceDirs: other._defaultResourceDirs
-          ? resourceDirs.merge(const {}, props)
-          : resourceDirs.merge(other.resourceDirs, props),
+      resourceDirs: _mergeWithDefault(resourceDirs, _defaultResourceDirs,
+          other.resourceDirs, other._defaultResourceDirs, props),
       defaultResourceDirs: _defaultResourceDirs && other._defaultResourceDirs,
       javacArgs: javacArgs.merge(other.javacArgs, props),
       runJavaArgs: runJavaArgs.merge(other.runJavaArgs, props),
@@ -468,6 +466,17 @@ class JbConfiguration {
         'compileLibsDir: $compileLibsDir, runtimeLibsDir: $runtimeLibsDir, '
         'testReportsDir: $testReportsDir, properties: $properties}';
   }
+}
+
+Set<String> _mergeWithDefault(
+    Set<String> values,
+    bool defaultValues,
+    Set<String> otherValues,
+    bool defaultOtherValues,
+    Map<String, Object?> props) {
+  if (defaultValues) return otherValues.merge(const {}, props);
+  if (defaultOtherValues) return values.merge(const {}, props);
+  return values.merge(otherValues, props);
 }
 
 /// Grouping of all local dependencies, which can be local
