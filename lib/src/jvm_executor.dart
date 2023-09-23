@@ -44,8 +44,6 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   @override
   FutureOr<void> init() async {
     activateLogging(Level.FINE);
-    _logger.fine(
-        () => 'Starting JBuild RPC on Isolate ${Isolate.current.debugName}');
   }
 
   Future<_JBuildRpc> _getRpc() {
@@ -53,6 +51,9 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   }
 
   Future<_JBuildRpc> _startRpc() async {
+    _logger.fine(
+        () => 'Starting JBuild RPC on Isolate ${Isolate.current.debugName}');
+
     final proc = await Process.start(
         'java', ['-cp', _classpath, 'jbuild.cli.RpcMain'],
         runInShell: true, workingDirectory: Directory.current.path);
@@ -121,6 +122,7 @@ Actor<JavaCommand, Object?> createJavaActor(String classpath) {
   return Actor.create(() => _JBuildActor(classpath));
 }
 
+/// Class executed by the _JBuildActor in its own Isolate.
 class _JBuildRpc {
   final _Proc proc;
   final client = HttpClient();
@@ -128,8 +130,16 @@ class _JBuildRpc {
   _JBuildRpc(this.proc);
 
   /// Run a JBuild command.
-  Future<Object?> runJBuild(List<String> args) async {
-    return await _runJava('runJBuild', [args]);
+  Future<void> runJBuild(List<String> args) async {
+    final result = await _runJava('runJBuild', [args]);
+    if (result is! int) {
+      throw DartleException(
+          message: 'JBuild did not return an integer: $result');
+    }
+    if (result != 0) {
+      throw DartleException(
+          message: 'JBuild execution failed, exit code: $result');
+    }
   }
 
   /// Run a particular class' method with the provided arguments.
