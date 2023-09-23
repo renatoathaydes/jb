@@ -339,12 +339,13 @@ class JbConfiguration {
   Future<List<String>> compileArgs(
       String processorLibsDir, TransitiveChanges? changes) async {
     final result = <String>[];
-    result.addAll(['-cp', compileLibsDir]);
+    final workingDir = Directory.current.path;
+    result.addAll(['-cp', p.join(workingDir, compileLibsDir)]);
     output.when(
-        dir: (d) => result.addAll(['-d', d]),
-        jar: (j) => result.addAll(['-j', j]));
+        dir: (d) => result.addAll(['-d', p.join(workingDir, d)]),
+        jar: (j) => result.addAll(['-j', p.join(workingDir, j)]));
     for (final r in resourceDirs) {
-      result.addAll(['-r', r]);
+      result.addAll(['-r', p.join(workingDir, r)]);
     }
     final main = mainClass;
     if (main != null && main.isNotEmpty) {
@@ -354,14 +355,15 @@ class JbConfiguration {
       result.add('--jb-extension');
     }
     if (changes == null || !_addIncrementalCompileArgs(result, changes)) {
-      result.addAll(sourceDirs);
+      result.addAll(sourceDirs.map((d) => p.join(workingDir, d)));
     }
     if (javacArgs.isNotEmpty || processorDependencies.isNotEmpty) {
       result.add('--');
       result.addAll(javacArgs);
       if (processorDependencies.isNotEmpty) {
         result.add('-processorpath');
-        (await Directory(processorLibsDir).toClasspath())?.vmap(result.add);
+        (await Directory(p.join(workingDir, processorLibsDir)).toClasspath())
+            ?.vmap(result.add);
       }
     }
     return result;
