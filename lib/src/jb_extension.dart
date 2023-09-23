@@ -53,7 +53,7 @@ Future<ExtensionProject?> loadExtensionProject(
   logger.info(() => '========= Loading jb extension project: $dir =========');
 
   final extensionConfig = await withCurrentDirectory(dir, () async {
-    return await loadConfig(File(jbFile));
+    return await defaultJbConfigSource.load();
   });
   _verify(extensionConfig);
 

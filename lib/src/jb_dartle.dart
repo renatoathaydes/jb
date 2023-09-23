@@ -3,6 +3,7 @@ import 'package:dartle/dartle_cache.dart';
 import 'package:jb/src/jb_extension.dart';
 
 import 'config.dart';
+import 'config_source.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart' show createJavaActor;
 import 'path_dependency.dart';
@@ -99,11 +100,19 @@ class JbDartle {
     final jvmExecutor = createJavaActor(_files.jbuildJar.path);
     final javaSender = await jvmExecutor.toSendable();
 
+    final FileCollection jbFileInputs;
+    final configSource = _files.configSource;
+    if (configSource is FileConfigSource) {
+      jbFileInputs = file((await configSource.selectFile()).path);
+    } else {
+      jbFileInputs = FileCollection.empty;
+    }
+
     final projectTasks = <Task>{};
 
     compile = createCompileTask(_files, _config, _cache, javaSender);
     writeDeps = createWriteDependenciesTask(
-        _files, _config, _cache, unresolvedLocalDeps);
+        _files, _config, _cache, jbFileInputs, unresolvedLocalDeps);
     installCompile = createInstallCompileDepsTask(
         _files, _config, _cache, localDependencies);
     installRuntime = createInstallRuntimeDepsTask(
@@ -111,8 +120,8 @@ class JbDartle {
     installProcessor = createInstallProcessorDepsTask(
         _files, _config, _cache, localDependencies);
     run = createRunTask(_files, _config, _cache);
-    downloadTestRunner =
-        createDownloadTestRunnerTask(_files.jbuildJar, _config, _cache);
+    downloadTestRunner = createDownloadTestRunnerTask(
+        _files.jbuildJar, _config, _cache, jbFileInputs);
     test = createTestTask(
         _files.jbuildJar, _config, _cache, !_options.colorfulLog);
     deps = createDepsTask(_files.jbuildJar, _config, _cache,
@@ -167,7 +176,7 @@ class JbDartle {
   Future<void> _initializeProjectDeps(
       List<ResolvedProjectDependency> projectDeps) async {
     for (var dep in projectDeps) {
-      await initializeProjectDependency(dep, _options, _files);
+      await dep.initialize(_options, _files);
     }
   }
 }

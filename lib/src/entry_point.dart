@@ -63,7 +63,7 @@ Future<void> _runJb(JbCliOptions options, Options dartleOptions,
   }
   final runner = await JbRunner.create(JbFiles(
     jbuildJar,
-    configSource: configSource ?? const FileConfigSource(jbFile),
+    configSource: configSource ?? defaultJbConfigSource,
   ));
   return runner.run(dartleOptions, stopwatch);
 }

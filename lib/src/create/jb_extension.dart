@@ -12,8 +12,8 @@ source-dirs: [ src ]
 resource-dirs: [ resources ]
 
 dependencies:
-  - com.athaydes.jb:jb-api:0.1.0:
-    scope: compile-only
+  - com.athaydes.jbuild:jbuild-api:0.1.0:
+      scope: compile-only
 ''';
 
 String _mainJava(String package) => '''

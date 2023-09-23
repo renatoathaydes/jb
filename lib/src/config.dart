@@ -16,7 +16,8 @@ import 'utils.dart';
 
 final logger = log.Logger('jb');
 
-const jbFile = 'jbuild.yaml';
+const yamlJbFile = 'jbuild.yaml';
+const jsonJbFile = 'jbuild.json';
 
 const jbApi = 'com.athaydes.jbuild:jbuild-api';
 

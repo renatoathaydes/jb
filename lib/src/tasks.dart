@@ -6,7 +6,6 @@ import 'package:dartle/dartle_cache.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
-import 'config_source.dart';
 import 'dependencies.dart';
 import 'eclipse.dart';
 import 'exec.dart';
@@ -100,20 +99,17 @@ Future<void> _compile(
 }
 
 /// Create the `writeDependencies` task.
-Task createWriteDependenciesTask(JbFiles jbFiles, JbConfiguration config,
-    DartleCache cache, LocalDependencies localDependencies) {
+Task createWriteDependenciesTask(
+    JbFiles jbFiles,
+    JbConfiguration config,
+    DartleCache cache,
+    FileCollection jbFileInputs,
+    LocalDependencies localDependencies) {
   final depsFile = jbFiles.dependenciesFile;
   final procDepsFile = jbFiles.processorDependenciesFile;
-  final FileCollection inputs;
-  final configSource = jbFiles.configSource;
-  if (configSource is FileConfigSource) {
-    inputs = file(configSource.configFile);
-  } else {
-    inputs = FileCollection.empty;
-  }
 
   final runCondition = RunOnChanges(
-      inputs: inputs,
+      inputs: jbFileInputs,
       outputs: files([depsFile.path, procDepsFile.path]),
       cache: cache);
 
@@ -336,7 +332,7 @@ Future<void> _run(
     throw DartleException(
         message: 'cannot run Java application as '
             'no main-class has been configured or provided.\n'
-            'To configure one, add "main-class: your.Main" to your $jbFile file.');
+            'To configure one, add "main-class: your.Main" to your jb config file.');
   }
 
   final classpath = {
@@ -355,11 +351,11 @@ Future<void> _run(
 }
 
 /// Create the `downloadTestRunner` task.
-Task createDownloadTestRunnerTask(
-    File jbuildJar, JbConfiguration config, DartleCache cache) {
+Task createDownloadTestRunnerTask(File jbuildJar, JbConfiguration config,
+    DartleCache cache, FileCollection jbFileInputs) {
   return Task((_) => _downloadTestRunner(jbuildJar, config, cache),
       runCondition: RunOnChanges(
-          inputs: file(jbFile),
+          inputs: jbFileInputs,
           outputs: dir(p.join(cache.rootDir, junitRunnerLibsDir)),
           cache: cache),
       name: downloadTestRunnerTaskName,

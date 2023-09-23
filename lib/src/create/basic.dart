@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../config.dart' show jbFile;
+import '../config.dart' show yamlJbFile;
 import 'helpers.dart';
 
 const _testArtifactId = 'tests';
@@ -95,7 +95,7 @@ List<FileCreator> getBasicFileCreators(File jbuildFile,
 List<FileCreator> _createTestModule(String groupId, String package) {
   final javaTestCreator = createJavaFile(
       package, 'MainTest', p.join('test', 'src'), _mainTestJava(package));
-  final buildFile = File(p.join('test', jbFile));
+  final buildFile = File(p.join('test', yamlJbFile));
   final buildFileCreator = FileCreator(
       buildFile,
       () => buildFile.writeAsString(

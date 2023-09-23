@@ -1,20 +1,37 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dartle/dartle.dart' show DartleException;
+
 import 'config.dart';
 
-abstract class ConfigSource {
+sealed class ConfigSource {
   FutureOr<JbConfiguration> load();
 }
 
-class FileConfigSource implements ConfigSource {
-  final String configFile;
+const defaultJbConfigSource = FileConfigSource([yamlJbFile, jsonJbFile]);
 
-  const FileConfigSource(this.configFile);
+final class FileConfigSource implements ConfigSource {
+  final List<String> configFiles;
+
+  const FileConfigSource(this.configFiles);
+
+  Future<File> selectFile() async {
+    for (final path in configFiles) {
+      final file = File(path);
+      if (await file.exists()) {
+        return file;
+      }
+    }
+    throw DartleException(
+        message: 'None of the expected jb config files exist.\n'
+            'Run `jb create` to create a project, '
+            'or create a config file: ${configFiles.join(' or ')}.');
+  }
 
   @override
-  Future<JbConfiguration> load() {
-    return loadConfig(File(configFile));
+  Future<JbConfiguration> load() async {
+    return await loadConfig(await selectFile());
   }
 }
 
