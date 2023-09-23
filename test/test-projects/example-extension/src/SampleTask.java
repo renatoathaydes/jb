@@ -2,9 +2,7 @@ import jbuild.api.JbTask;
 import jbuild.api.JbTaskInfo;
 
 @JbTaskInfo( name = "sample-task",
-        description = "A sample jb task.",
-        inputs = { "*.txt" },
-        outputs = { "*.out" } )
+        description = "A sample jb task.")
 public final class SampleTask implements JbTask {
     @Override
     public void run( String... args ) {

@@ -2,6 +2,6 @@ source-dirs: [ src ]
 resource-dirs: [ resources ]
 
 dependencies:
-  - com.athaydes.jbuild:jbuild-api:0.8.0:
+  - com.athaydes.jbuild:jbuild-api:0.0:
       path: ../../../jb-api
       scope: compile-only
