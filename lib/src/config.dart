@@ -316,21 +316,13 @@ class JbConfiguration {
   /// Get the list of JBuild global arguments (pre-args)
   /// from this configuration.
   List<String> preArgs() {
-    var result = const <String>[];
+    final result = <String>['-w', Directory.current.path];
     if (logger.isLoggable(Level.FINE)) {
-      result = const ['-V'];
+      result.add('-V');
     }
-    if (repositories.isNotEmpty) {
-      final args = List.filled(result.length + 2 * repositories.length, '');
-      var index = 0;
-      for (final arg in result) {
-        args[index++] = arg;
-      }
-      for (final repo in repositories) {
-        args[index++] = '-r';
-        args[index++] = repo;
-      }
-      result = args;
+    for (final repo in repositories) {
+      result.add('-r');
+      result.add(repo);
     }
     return result;
   }
@@ -339,13 +331,12 @@ class JbConfiguration {
   Future<List<String>> compileArgs(
       String processorLibsDir, TransitiveChanges? changes) async {
     final result = <String>[];
-    final workingDir = Directory.current.path;
-    result.addAll(['-cp', p.join(workingDir, compileLibsDir)]);
+    result.addAll(['-cp', compileLibsDir]);
     output.when(
-        dir: (d) => result.addAll(['-d', p.join(workingDir, d)]),
-        jar: (j) => result.addAll(['-j', p.join(workingDir, j)]));
+        dir: (d) => result.addAll(['-d', d]),
+        jar: (j) => result.addAll(['-j', j]));
     for (final r in resourceDirs) {
-      result.addAll(['-r', p.join(workingDir, r)]);
+      result.addAll(['-r', r]);
     }
     final main = mainClass;
     if (main != null && main.isNotEmpty) {
@@ -355,15 +346,14 @@ class JbConfiguration {
       result.add('--jb-extension');
     }
     if (changes == null || !_addIncrementalCompileArgs(result, changes)) {
-      result.addAll(sourceDirs.map((d) => p.join(workingDir, d)));
+      result.addAll(sourceDirs);
     }
     if (javacArgs.isNotEmpty || processorDependencies.isNotEmpty) {
       result.add('--');
       result.addAll(javacArgs);
       if (processorDependencies.isNotEmpty) {
         result.add('-processorpath');
-        (await Directory(p.join(workingDir, processorLibsDir)).toClasspath())
-            ?.vmap(result.add);
+        (await Directory(processorLibsDir).toClasspath())?.vmap(result.add);
       }
     }
     return result;
