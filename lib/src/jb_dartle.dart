@@ -97,7 +97,8 @@ class JbDartle {
       Stopwatch stopwatch) async {
     final unresolvedLocalDeps = localDependencies.unresolved;
 
-    final jvmExecutor = createJavaActor(_files.jbuildJar.path);
+    final jvmExecutor =
+        createJavaActor(_files.jbuildJar.path, _options.logLevel);
     final javaSender = await jvmExecutor.toSendable();
 
     final FileCollection jbFileInputs;

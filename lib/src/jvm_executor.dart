@@ -35,15 +35,16 @@ class _Proc {
 
 final class _JBuildActor implements Handler<JavaCommand, Object?> {
   final String _classpath;
+  final Level _level;
 
   // initialized on demand
   Future<_JBuildRpc>? _rpc;
 
-  _JBuildActor(this._classpath);
+  _JBuildActor(this._classpath, this._level);
 
   @override
-  FutureOr<void> init() async {
-    activateLogging(Level.FINE);
+  void init() {
+    activateLogging(_level);
   }
 
   Future<_JBuildRpc> _getRpc() {
@@ -118,8 +119,8 @@ final class RunJava extends JavaCommand {
 /// arbitrary Java methods (for jb extensions).
 ///
 /// The Actor sender returns whatever the Java method returned.
-Actor<JavaCommand, Object?> createJavaActor(String classpath) {
-  return Actor.create(() => _JBuildActor(classpath));
+Actor<JavaCommand, Object?> createJavaActor(String classpath, Level level) {
+  return Actor.create(() => _JBuildActor(classpath, level));
 }
 
 /// Class executed by the _JBuildActor in its own Isolate.
