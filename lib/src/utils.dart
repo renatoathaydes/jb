@@ -148,3 +148,10 @@ extension NullableStringExtension on String? {
     return result;
   }
 }
+
+extension BinaryStreamExtension on Stream<List<int>> {
+  Future<String> text() => transform(utf8.decoder).join();
+
+  Stream<String> lines() =>
+      transform(utf8.decoder).transform(const LineSplitter());
+}
