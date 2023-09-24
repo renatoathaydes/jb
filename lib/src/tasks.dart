@@ -85,10 +85,7 @@ Future<void> _compile(
 
   logger.log(
       profile, () => 'Java compilation completed in ${elapsedTime(stopwatch)}');
-  if (exitCode != 0) {
-    throw DartleException(
-        message: 'jbuild compile command failed', exitCode: exitCode);
-  }
+
   stopwatch.reset();
   logger.fine('Computing Java source tree for incremental builds');
   final output = config.output.when(dir: (d) => d, jar: (j) => j);
@@ -135,8 +132,12 @@ Task createWriteDependenciesTask(
 }
 
 /// Create the `installCompileDependencies` task.
-Task createInstallCompileDepsTask(JbFiles files, JbConfiguration config,
-    DartleCache cache, ResolvedLocalDependencies localDependencies) {
+Task createInstallCompileDepsTask(
+    JbFiles files,
+    JbConfiguration config,
+    JBuildSender jBuildSender,
+    DartleCache cache,
+    ResolvedLocalDependencies localDependencies) {
   final projectDeps = localDependencies.projectDependencies
       .where((s) => s.spec.scope.includedInCompilation())
       .toList(growable: false);
@@ -144,13 +145,12 @@ Task createInstallCompileDepsTask(JbFiles files, JbConfiguration config,
       .where((j) => j.spec.scope.includedInCompilation())
       .map((j) => j.path)
       .toList(growable: false);
-  final jbuildJar = files.jbuildJar;
   final preArgs = config.preArgs();
   final args = config.installArgsForCompilation();
   final libsDir = config.compileLibsDir;
   // can only use Sendable objects inside action
   Future<void> action(_) async {
-    await _install(installCompileDepsTaskName, jbuildJar, preArgs, args);
+    await _install(installCompileDepsTaskName, jBuildSender, preArgs, args);
     await _copy(projectDeps, libsDir, runtime: false);
     await _copyFiles(jarDeps, libsDir);
   }
@@ -167,8 +167,12 @@ Task createInstallCompileDepsTask(JbFiles files, JbConfiguration config,
 }
 
 /// Create the `installRuntimeDependencies` task.
-Task createInstallRuntimeDepsTask(JbFiles files, JbConfiguration config,
-    DartleCache cache, ResolvedLocalDependencies localDependencies) {
+Task createInstallRuntimeDepsTask(
+    JbFiles files,
+    JbConfiguration config,
+    JBuildSender jBuildSender,
+    DartleCache cache,
+    ResolvedLocalDependencies localDependencies) {
   final projectDeps = localDependencies.projectDependencies
       .where((s) => s.spec.scope.includedAtRuntime())
       .toList(growable: false);
@@ -177,8 +181,8 @@ Task createInstallRuntimeDepsTask(JbFiles files, JbConfiguration config,
       .map((j) => j.path)
       .toList(growable: false);
   Future<void> action(_) async {
-    await _install(installRuntimeDepsTaskName, files.jbuildJar,
-        config.preArgs(), config.installArgsForRuntime());
+    await _install(installRuntimeDepsTaskName, jBuildSender, config.preArgs(),
+        config.installArgsForRuntime());
     await _copy(projectDeps, config.runtimeLibsDir, runtime: true);
     await _copyFiles(jarDeps, config.runtimeLibsDir);
   }
@@ -195,8 +199,12 @@ Task createInstallRuntimeDepsTask(JbFiles files, JbConfiguration config,
 }
 
 /// Create the `installProcessorDependencies` task.
-Task createInstallProcessorDepsTask(JbFiles files, JbConfiguration config,
-    DartleCache cache, ResolvedLocalDependencies localDependencies) {
+Task createInstallProcessorDepsTask(
+    JbFiles files,
+    JbConfiguration config,
+    JBuildSender jBuildSender,
+    DartleCache cache,
+    ResolvedLocalDependencies localDependencies) {
   final projectDeps = localDependencies.projectDependencies
       .where((s) => s.spec.scope.includedAtRuntime())
       .toList(growable: false);
@@ -205,10 +213,7 @@ Task createInstallProcessorDepsTask(JbFiles files, JbConfiguration config,
       .map((j) => j.path)
       .toList(growable: false);
   Future<void> action(_) async {
-    await _install(
-        installProcessorDepsTaskName,
-        files.jbuildJar,
-        config.preArgs(),
+    await _install(installProcessorDepsTaskName, jBuildSender, config.preArgs(),
         config.installArgsForProcessor(files.processorLibsDir));
     await _copy(projectDeps, files.processorLibsDir, runtime: true);
     await _copyFiles(jarDeps, files.processorLibsDir);
@@ -256,17 +261,12 @@ Task _createInstallDepsTask(
       description: 'Install $scopeName dependencies.');
 }
 
-Future<void> _install(String taskName, File jbuildJar, List<String> preArgs,
-    List<String> args) async {
+Future<void> _install(String taskName, JBuildSender jBuildSender,
+    List<String> preArgs, List<String> args) async {
   if (args.isEmpty) {
     return logger.fine("No dependencies to install for '$taskName'.");
   }
-  final exitCode =
-      await execJBuild(taskName, jbuildJar, preArgs, 'install', args);
-  if (exitCode != 0) {
-    throw DartleException(
-        message: 'jbuild install command failed', exitCode: exitCode);
-  }
+  await jBuildSender.send(RunJBuild([...preArgs, 'install', ...args]));
 }
 
 Future<void> _copy(
@@ -351,9 +351,9 @@ Future<void> _run(
 }
 
 /// Create the `downloadTestRunner` task.
-Task createDownloadTestRunnerTask(File jbuildJar, JbConfiguration config,
-    DartleCache cache, FileCollection jbFileInputs) {
-  return Task((_) => _downloadTestRunner(jbuildJar, config, cache),
+Task createDownloadTestRunnerTask(JbConfiguration config,
+    JBuildSender jBuildSender, DartleCache cache, FileCollection jbFileInputs) {
+  return Task((_) => _downloadTestRunner(jBuildSender, config, cache),
       runCondition: RunOnChanges(
           inputs: jbFileInputs,
           outputs: dir(p.join(cache.rootDir, junitRunnerLibsDir)),
@@ -378,8 +378,8 @@ Task createTestTask(
       description: 'Run tests. JBuild automatically detects JUnit5.');
 }
 
-Future<void> _downloadTestRunner(
-    File jbuildJar, JbConfiguration config, DartleCache cache) async {
+Future<void> _downloadTestRunner(JBuildSender jBuildSender,
+    JbConfiguration config, DartleCache cache) async {
   final junit = findJUnitSpec(config.dependencies);
   if (junit == null) {
     throw DartleException(
@@ -392,7 +392,7 @@ Future<void> _downloadTestRunner(
   if (junit.runtimeIncludesJUnitConsole) {
     await File(p.join(outDir.path, '.no-dependencies')).create();
   } else {
-    await _install(downloadTestRunnerTaskName, jbuildJar, config.preArgs(),
+    await _install(downloadTestRunnerTaskName, jBuildSender, config.preArgs(),
         ['-d', outDir.path, '-m', junitConsoleLib(junit.consoleVersion)]);
   }
 }

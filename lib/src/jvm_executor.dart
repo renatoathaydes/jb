@@ -183,8 +183,8 @@ class _JBuildRpc {
       rpcLogger.fine(() =>
           'RPC Server responded with ${resp.statusCode} to request to stop');
     } catch (e) {
-      rpcLogger
-          .fine(() => 'A problem occurred trying to stop the RPC Server: $e');
+      rpcLogger.finer(() => 'Got an expected error '
+          'after stopping the RPC Server: $e');
     }
   }
 }

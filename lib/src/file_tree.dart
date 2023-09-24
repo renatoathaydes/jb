@@ -285,10 +285,14 @@ Future<void> storeNewFileTree(String taskName, File jbuildJar,
     JbConfiguration config, String buildOutput, File fileTreeFile) async {
   final jbuildOutput = _FileOutput(fileTreeFile);
   try {
-    // TODO use JVM Actor
+    // TODO use JVM Actor (must be able to capture output to file)
     final exitCode = await execJBuild(taskName, jbuildJar, config.preArgs(),
         'requirements', ['-c', buildOutput],
         onStdout: jbuildOutput);
+
+    // final exitCode = await jBuildSender.send(
+    //         RunJBuild([...config.preArgs(), 'requirements', '-c', buildOutput]))
+    //     as int;
 
     if (exitCode != 0) {
       throw DartleException(

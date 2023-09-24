@@ -29,8 +29,8 @@ final class ResolvedProjectDependency {
 
   String get compileLibsDir => _relativize(_config.compileLibsDir);
 
-  const ResolvedProjectDependency(this.projectDependency, this.projectDir,
-      this._config);
+  const ResolvedProjectDependency(
+      this.projectDependency, this.projectDir, this._config);
 
   String _relativize(String path) {
     return p.join(projectDir, path);
@@ -48,7 +48,7 @@ final class ResolvedProjectDependency {
             Stopwatch(),
             isRoot: false));
 
-    logger.fine(() => "Project dependency '$dir' initialized,"
+    logger.fine(() => "Project dependency '$projectDir' initialized,"
         " moving back to $workingDir");
 
     // Dartle changes the current dir, so we must restore it here

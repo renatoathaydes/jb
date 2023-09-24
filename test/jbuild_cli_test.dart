@@ -42,8 +42,8 @@ void main() {
   projectGroup(withDepsProjectDir, 'with-deps project', () {
     tearDown(() async {
       await deleteAll(dirs([
-        p.join(withDepsProjectDir, 'compile-libs'),
-        p.join(withDepsProjectDir, 'runtime-libs'),
+        p.join(withDepsProjectDir, 'build', 'compile-libs'),
+        p.join(withDepsProjectDir, 'build', 'runtime-libs'),
         p.join(withDepsProjectDir, '.jb-cache'),
       ], includeHidden: true));
       await deleteAll(file(p.join(withDepsProjectDir, 'with-deps.jar')));
