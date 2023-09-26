@@ -7,9 +7,12 @@ import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:logging/logging.dart';
 
+import 'config.dart' show logger;
 import 'output_consumer.dart';
 import 'utils.dart';
 import 'xml_rpc.dart';
+
+typedef JBuildSender = Sendable<JavaCommand, Object?>;
 
 class _Proc {
   final Process _process;
@@ -54,8 +57,15 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
         () => 'Starting JBuild RPC on Isolate ${Isolate.current.debugName}');
 
     final proc = await Process.start(
-        'java', ['-cp', _classpath, 'jbuild.cli.RpcMain'],
-        runInShell: true, workingDirectory: Directory.current.path);
+        'java',
+        [
+          '-cp',
+          _classpath,
+          'jbuild.cli.RpcMain',
+          if (logger.isLoggable(Level.FINE)) '-V',
+        ],
+        runInShell: true,
+        workingDirectory: Directory.current.path);
 
     final pout = proc.stdout.lines().asBroadcastStream();
     final [port, token] = await pout.take(2).toList();
@@ -67,24 +77,27 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     }
 
     final perr = proc.stderr.lines();
-    pout.listen(_RpcExecLogger('out>', 'remoteRunner', proc.pid));
-    perr.listen(_RpcExecLogger('err>', 'remoteRunner', proc.pid));
+    final stdoutLogger = _RpcExecLogger('stdout', proc.pid);
+    final stderrLogger = _RpcExecLogger('stderr', proc.pid);
+    pout.listen(stdoutLogger);
+    perr.listen(stderrLogger);
 
-    return _JBuildRpc(_Proc(proc, portNumber, token));
+    return _JBuildRpc(_Proc(proc, portNumber, token), stdoutLogger);
   }
 
   @override
   Future<Object?> handle(JavaCommand command) async {
     final rpc = await _getRpc();
+    final taskName = command.taskName;
     return switch (command) {
-      RunJBuild jb => rpc.runJBuild(jb.args),
+      RunJBuild jb => rpc.runJBuild(taskName, jb.args, jb.stdoutConsumer),
       RunJava(
         classpath: var classpath,
         className: var className,
         methodName: var methodName,
         args: var args,
       ) =>
-        rpc.runJava(classpath, className, methodName, args),
+        rpc.runJava(taskName, classpath, className, methodName, args),
     };
   }
 
@@ -95,13 +108,16 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
 }
 
 sealed class JavaCommand {
-  const JavaCommand();
+  final String taskName;
+
+  const JavaCommand(this.taskName);
 }
 
 final class RunJBuild extends JavaCommand {
   final List<String> args;
+  final Sendable<String, void>? stdoutConsumer;
 
-  const RunJBuild(this.args);
+  const RunJBuild(super.taskName, this.args, [this.stdoutConsumer]);
 }
 
 final class RunJava extends JavaCommand {
@@ -110,7 +126,8 @@ final class RunJava extends JavaCommand {
   final String methodName;
   final List<String> args;
 
-  const RunJava(this.classpath, this.className, this.methodName, this.args);
+  const RunJava(super.taskName, this.classpath, this.className, this.methodName,
+      this.args);
 }
 
 /// Create a Java [Actor] which can be used to run JBuild commands and
@@ -121,16 +138,37 @@ Actor<JavaCommand, Object?> createJavaActor(String classpath, Level level) {
   return Actor.create(() => _JBuildActor(classpath, level));
 }
 
+class _RpcRequestMetadata {
+  final int id;
+  final String logPrefix;
+  final Sendable<String, void>? stdoutConsumer;
+
+  const _RpcRequestMetadata(this.id, this.logPrefix, [this.stdoutConsumer]);
+
+  void addTo(_RpcExecLogger logger) {
+    logger.metadataByTrackId[id] = this;
+  }
+
+  void removeFrom(_RpcExecLogger logger) {
+    logger.metadataByTrackId.remove(id);
+  }
+}
+
 /// Class executed by the _JBuildActor in its own Isolate.
 class _JBuildRpc {
   final _Proc proc;
   final client = HttpClient();
+  final _RpcExecLogger stdoutLogger;
+  int _currentMessageIndex = -65536;
 
-  _JBuildRpc(this.proc);
+  _JBuildRpc(this.proc, this.stdoutLogger);
 
   /// Run a JBuild command.
-  Future<void> runJBuild(List<String> args) async {
-    final result = await _runJava('runJBuild', [args]);
+  Future<void> runJBuild(String taskName, List<String> args,
+      Sendable<String, void>? stdoutConsumer) async {
+    final trackId = _currentMessageIndex++;
+    final result = await _runJava('runJBuild', [args],
+        _RpcRequestMetadata(trackId, taskName, stdoutConsumer));
     if (result is! int) {
       throw DartleException(
           message: 'JBuild did not return an integer: $result');
@@ -145,18 +183,25 @@ class _JBuildRpc {
   ///
   /// The classpath should include the class and its dependencies if it's not
   /// included in the JBuild jar.
-  Future<Object?> runJava(String classpath, String className, String methodName,
-      List<String> args) async {
+  Future<Object?> runJava(String taskName, String classpath, String className,
+      String methodName, List<String> args) async {
     // This class should run the JBuild RpcMain's run method:
     //Object run(String classpath, String className, String methodName, String... args)
-    return _runJava('run', [classpath, className, methodName, args]);
+    return _runJava('run', [classpath, className, methodName, args],
+        _RpcRequestMetadata(_currentMessageIndex++, taskName));
   }
 
-  Future<Object?> _runJava(String methodName, List<Object> args) async {
+  Future<Object?> _runJava(String methodName, List<Object> args,
+      _RpcRequestMetadata requestMetadata) async {
     final req = await client.post('localhost', proc.port, '/jbuild');
-    req.headers.add('Content-Type', 'text/xml; charset=utf-8');
-    req.headers.add('Authorization', proc.authorizationHeader);
+    req.headers
+      ..add('Content-Type', 'text/xml; charset=utf-8')
+      ..add('Authorization', proc.authorizationHeader)
+      ..add('Track-Id', requestMetadata.id);
+
     req.add(createRpcMessage(methodName, args));
+    requestMetadata.addTo(stdoutLogger);
+
     try {
       final resp = await req.close();
       if (resp.statusCode == 200) {
@@ -167,6 +212,8 @@ class _JBuildRpc {
               'RPC request failed (code=${resp.statusCode}): ${await resp.text()}');
     } catch (e) {
       throw DartleException(message: 'RPC request failed: $e');
+    } finally {
+      requestMetadata.removeFrom(stdoutLogger);
     }
   }
 
@@ -189,25 +236,45 @@ class _JBuildRpc {
   }
 }
 
+final _trackIdPattern = RegExp(r'^(-)?\d{1,9}\s');
+
 class _RpcExecLogger extends JbOutputConsumer {
   final String prompt;
-  final String taskName;
+  final Map<int, _RpcRequestMetadata> metadataByTrackId = {};
 
-  _RpcExecLogger(this.prompt, this.taskName, super.pid);
+  _RpcExecLogger(this.prompt, super.pid);
 
   LogColor? _colorFor(Level level) {
-    if (level == Level.SEVERE) return LogColor.red;
-    if (level == Level.WARNING) return LogColor.yellow;
-    return null;
+    return switch (level) {
+      Level.SEVERE => LogColor.red,
+      Level.WARNING => LogColor.yellow,
+      _ => null,
+    };
   }
 
   @override
-  Object createMessage(Level level, String line) {
-    final message = '$prompt $taskName [jvm-rpc $pid]: $line';
-    final color = _colorFor(level);
-    if (color != null) {
-      return ColoredLogMessage(message, color);
+  void consume(Level Function(String) getLevel, String line) {
+    var prefix = '?';
+    var message = line;
+    final trackIdEndIndex = _trackIdPattern.firstMatch(line)?.end;
+    if (trackIdEndIndex != null) {
+      final trackId = int.tryParse(line.substring(0, trackIdEndIndex - 1));
+      final metadata = trackId == null ? null : metadataByTrackId[trackId];
+      if (metadata != null) {
+        prefix = metadata.logPrefix;
+        message = line.substring(trackIdEndIndex);
+        final stdoutConsumer = metadata.stdoutConsumer;
+        if (stdoutConsumer != null) {
+          unawaited(stdoutConsumer.send(message));
+          return; // the message is not logged as it's been consumed.
+        }
+      }
     }
-    return PlainMessage(message);
+    final level = getLevel(message);
+    if (!logger.isLoggable(level)) return;
+    final color = _colorFor(level);
+    final text = '$prefix:$prompt [jvm $pid]: $message';
+    logger.log(level,
+        color != null ? ColoredLogMessage(text, color) : PlainMessage(text));
   }
 }

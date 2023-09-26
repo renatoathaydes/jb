@@ -526,7 +526,12 @@ class CompileOutput {
   int get hashCode => _tag.hashCode ^ _value.hashCode;
 
   @override
-  String toString() => 'CompileOutput{_tag: $_tag, _value: $_value}';
+  String toString() {
+    return switch (_tag) {
+      _CompileOutputTag.dir => 'DIR($_value)',
+      _CompileOutputTag.jar => 'JAR($_value)',
+    };
+  }
 }
 
 /// Scope of a dependency.

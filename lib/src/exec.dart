@@ -72,12 +72,15 @@ class _TaskExecLogger extends JbOutputConsumer {
   }
 
   @override
-  Object createMessage(Level level, String line) {
+  void consume(Level Function(String) getLevel, String line) {
+    final level = getLevel(line);
+    if (!logger.isLoggable(level)) return;
     final color = _colorFor(level);
     final message = '$prompt $taskName [java $pid]: $line';
-    if (color != null) {
-      return ColoredLogMessage(message, color);
-    }
-    return PlainMessage(message);
+    logger.log(
+        level,
+        color != null
+            ? ColoredLogMessage(message, color)
+            : PlainMessage(message));
   }
 }

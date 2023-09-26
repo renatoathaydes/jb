@@ -35,6 +35,7 @@ String _rpcParam(Object arg) {
 }
 
 String _rpcValue(String arg) {
+  // FIXME the type is optional for string
   return '<value><string>$arg</string></value>';
 }
 

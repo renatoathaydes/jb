@@ -1,7 +1,5 @@
 import 'package:logging/logging.dart';
 
-import 'config.dart' show logger;
-
 /// Consumer of another process' output.
 mixin ProcessOutputConsumer {
   /// The PID of the process.
@@ -18,12 +16,11 @@ abstract class JbOutputConsumer implements ProcessOutputConsumer {
 
   JbOutputConsumer(this.pid);
 
-  Object createMessage(Level level, String line);
+  void consume(Level Function(String) getLevel, String line);
 
   @override
   void call(String line) {
-    final level = _levelFor(line);
-    logger.log(level, () => createMessage(level, line));
+    consume(_levelFor, line);
   }
 
   Level _levelFor(String line) {

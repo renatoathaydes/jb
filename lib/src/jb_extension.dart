@@ -167,8 +167,12 @@ Function(List<String> p1) _taskAction(
         'args=$args');
     return await withCurrentDirectory(
         path,
-        () async => await jvmExecutor.send(RunJava(classpath,
-            extensionTask.className, extensionTask.methodName, args)));
+        () async => await jvmExecutor.send(RunJava(
+            extensionTask.name,
+            classpath,
+            extensionTask.className,
+            extensionTask.methodName,
+            args)));
   };
 }
 

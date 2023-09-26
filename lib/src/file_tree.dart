@@ -2,15 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:actors/actors.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
-import 'package:dartle/dartle.dart' show ChangeSet, DartleException;
+import 'package:dartle/dartle.dart' show ChangeSet;
 import 'package:dartle/dartle_cache.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
-import 'exec.dart';
-import 'output_consumer.dart';
+import 'jvm_executor.dart';
 
 final _newLine = utf8.encode(Platform.isWindows ? "\r\n" : '\n');
 
@@ -281,41 +281,38 @@ Future<TransitiveChanges?> computeAllChanges(
   return null;
 }
 
-Future<void> storeNewFileTree(String taskName, File jbuildJar,
-    JbConfiguration config, String buildOutput, File fileTreeFile) async {
-  final jbuildOutput = _FileOutput(fileTreeFile);
+Future<void> storeNewFileTree(String taskName, JbConfiguration config,
+    JBuildSender jBuildSender, String buildOutput, File fileTreeFile) async {
+  final outputConsumer =
+      Actor.create(() => _FileOutput(fileTreeFile.absolute.path));
   try {
-    // TODO use JVM Actor (must be able to capture output to file)
-    final exitCode = await execJBuild(taskName, jbuildJar, config.preArgs(),
-        'requirements', ['-c', buildOutput],
-        onStdout: jbuildOutput);
-
-    // final exitCode = await jBuildSender.send(
-    //         RunJBuild([...config.preArgs(), 'requirements', '-c', buildOutput]))
-    //     as int;
-
-    if (exitCode != 0) {
-      throw DartleException(
-          message: 'jbuild requirements command failed', exitCode: exitCode);
-    }
+    await jBuildSender.send(RunJBuild(
+        'requirements',
+        [...config.preArgs(), 'requirements', '-c', buildOutput],
+        await outputConsumer.toSendable()));
   } finally {
-    await jbuildOutput.close();
+    await outputConsumer.close();
   }
 }
 
-class _FileOutput with ProcessOutputConsumer {
-  int pid = -1;
+class _FileOutput with Handler<String, void> {
+  late final IOSink _sink;
+  final String path;
 
-  final IOSink _sink;
-
-  _FileOutput(File file) : _sink = file.openWrite();
+  _FileOutput(this.path);
 
   @override
-  void call(String line) {
+  void init() {
+    _sink = File(path).openWrite();
+  }
+
+  @override
+  void handle(String line) {
     _sink.add(utf8.encode(line));
     _sink.add(_newLine);
   }
 
+  @override
   Future<void> close() async {
     await _sink.flush();
     await _sink.close();

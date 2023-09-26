@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:actors/actors.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 import 'package:path/path.dart' as p;
@@ -29,8 +28,6 @@ const writeDepsTaskName = 'writeDependencies';
 const depsTaskName = 'dependencies';
 const requirementsTaskName = 'requirements';
 const createEclipseTaskName = 'createEclipseFiles';
-
-typedef JBuildSender = Sendable<JavaCommand, Object?>;
 
 /// Create run condition for the `compile` task.
 RunOnChanges createCompileRunCondition(
@@ -74,7 +71,7 @@ Future<void> _compile(
   }
   stopwatch.reset();
 
-  await jBuildSender.send(RunJBuild([
+  await jBuildSender.send(RunJBuild('compile', [
     ...config.preArgs(),
     'compile',
     ...await config.compileArgs(jbFiles.processorLibsDir, changes),
@@ -89,7 +86,7 @@ Future<void> _compile(
   stopwatch.reset();
   logger.fine('Computing Java source tree for incremental builds');
   final output = config.output.when(dir: (d) => d, jar: (j) => j);
-  await storeNewFileTree(compileTaskName, jbFiles.jbuildJar, config, output,
+  await storeNewFileTree(compileTaskName, config, jBuildSender, output,
       jbFiles.javaSrcFileTreeFile);
   logger.log(
       profile, () => 'Computed Java source tree in ${elapsedTime(stopwatch)}');
@@ -266,7 +263,8 @@ Future<void> _install(String taskName, JBuildSender jBuildSender,
   if (args.isEmpty) {
     return logger.fine("No dependencies to install for '$taskName'.");
   }
-  await jBuildSender.send(RunJBuild([...preArgs, 'install', ...args]));
+  await jBuildSender
+      .send(RunJBuild('install', [...preArgs, 'install', ...args]));
 }
 
 Future<void> _copy(
