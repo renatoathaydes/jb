@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show ChangeKind;
+import 'package:dartle/src/_log.dart' show colorize;
 import 'package:logging/logging.dart' as log;
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
@@ -444,6 +445,67 @@ class JbConfiguration {
     return result;
   }
 
+  String toYaml() {
+    String quote(String? value) => value == null
+        ? colorize('null', LogColor.magenta)
+        : colorize('"$value"', LogColor.blue);
+
+    String depsToYaml(Iterable<MapEntry<String, DependencySpec>> deps) {
+      if (deps.isEmpty) return ' []';
+      return '\n${deps.map((dep) => '  - ${quote(dep.key)}:\n${dep.value.toYaml('    ')}').join('\n')}';
+    }
+
+    const gray = LogColor.gray;
+
+    return '''
+${colorize('''
+######################## Full jb configuration ########################
+    
+### For more information, visit https://github.com/renatoathaydes/jb
+''', gray)}
+${colorize('# Maven artifact groupId', gray)}
+group: ${quote(group)}
+${colorize('# Maven artifactId', gray)}
+module: ${quote(module)}
+${colorize('# Maven version', gray)}
+version: ${quote(version)}
+${colorize('# List of source directories', gray)}
+source-dirs: [${sourceDirs.map(quote).join(', ')}]
+${colorize('# List of resource directories (assets)', gray)}
+resource-dirs: [${resourceDirs.map(quote).join(', ')}]
+${colorize('# Output directory (class files)', gray)}
+output-dir: ${quote(output.when(dir: (d) => d, jar: (j) => null))}
+${colorize('# Output jar (may be used instead of output-dir)', gray)}
+output-jar: ${quote(output.when(dir: (d) => null, jar: (j) => j))}
+${colorize('# Java Main class name', gray)}
+main-class: ${quote(mainClass)}
+${colorize('# Java Compiler arguments', gray)}
+javac-args: [${javacArgs.map(quote).join(', ')}]
+${colorize('# Java runtime arguments', gray)}
+run-java-args: [${runJavaArgs.map(quote).join(', ')}]
+${colorize('# Java test run arguments', gray)}
+test-java-args: [${javacArgs.map(quote).join(', ')}]
+${colorize('# Maven repositories (URLs or directories)', gray)}
+repositories: [${repositories.map(quote).join(', ')}]
+${colorize('# Maven dependencies', gray)}
+dependencies:${depsToYaml(dependencies.entries)}
+${colorize('# Dependency exclusions (may use regex)', gray)}
+exclusions: [${exclusions.map(quote).join(', ')}]
+${colorize('# Annotation processor Maven dependencies', gray)}
+processor-dependencies:${depsToYaml(processorDependencies.entries)}
+${colorize('# Annotation processor dependency exclusions (may use regex)', gray)}
+processor-dependencies-exclusions: [${processorDependenciesExclusions.map(quote).join(', ')}]
+${colorize('# Compile-time libs output dir', gray)}
+compile-libs-dir: ${quote(compileLibsDir)}
+${colorize('# Runtime libs output dir', gray)}
+runtime-libs-dir: ${quote(runtimeLibsDir)}
+${colorize('# Test reports output dir', gray)}
+test-reports-dir: ${quote(testReportsDir)}
+${colorize('# jb extension project path (for custom tasks)', gray)}
+extension-project: ${quote(extensionProject)}
+''';
+  }
+
   @override
   String toString() {
     return 'JBuildConfiguration{group: $group, '
@@ -547,18 +609,14 @@ enum DependencyScope {
 
   /// Convert a String to a [DependencyScope].
   static DependencyScope fromName(String name) {
-    switch (name) {
-      case 'runtime-only':
-        return runtimeOnly;
-      case 'compile-only':
-        return compileOnly;
-      case 'all':
-        return all;
-      default:
-        throw DartleException(
-            message: "Invalid scope: '$name'. "
-                "Valid names are: runtime-only, compile-only, all");
-    }
+    return switch (name) {
+      'runtime-only' => runtimeOnly,
+      'compile-only' => compileOnly,
+      'all' => all,
+      _ => throw DartleException(
+          message: "Invalid scope: '$name'. "
+              "Valid names are: runtime-only, compile-only, all")
+    };
   }
 
   bool includedInCompilation() {
@@ -567,6 +625,14 @@ enum DependencyScope {
 
   bool includedAtRuntime() {
     return this != DependencyScope.compileOnly;
+  }
+
+  String toYaml() {
+    return switch (this) {
+      runtimeOnly => 'runtime-only',
+      compileOnly => 'compile-only',
+      all => 'all',
+    };
   }
 }
 
@@ -631,6 +697,12 @@ class DependencySpec {
           path: resolveString(p, properties));
     }
     return this;
+  }
+
+  String toYaml(String ident) {
+    return '${ident}transitive: $transitive\n'
+        '${ident}scope: ${scope.toYaml()}\n'
+        '${ident}path: $path';
   }
 }
 
@@ -773,7 +845,7 @@ Use the following syntax to declare dependencies:
     - first:dep:1.0
     - another:dep:2.0:
         transitive: false  # true (at runtime) by default
-        scope: runtimeOnly # or compileOnly or all
+        scope: runtime-only # or compile-only or all
 ''';
 
 _Value<Map<String, DependencySpec>> _dependencies(Map<String, Object?> map,

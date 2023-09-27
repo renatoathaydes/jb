@@ -94,7 +94,6 @@ Future<int> printDependencies(
     JbConfiguration config,
     DartleCache cache,
     LocalDependencies localDependencies,
-    bool noColor,
     List<String> args) async {
   final deps = config.dependencies.entries
       .where((dep) => dep.value.path == null)

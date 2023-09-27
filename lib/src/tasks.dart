@@ -26,6 +26,7 @@ const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const installProcessorDepsTaskName = 'installProcessorDependencies';
 const writeDepsTaskName = 'writeDependencies';
 const depsTaskName = 'dependencies';
+const showJbConfigTaskName = 'showJbConfiguration';
 const requirementsTaskName = 'requirements';
 const createEclipseTaskName = 'createEclipseFiles';
 
@@ -440,29 +441,31 @@ Future<void> _test(File jbuildJar, JbConfiguration config, DartleCache cache,
 
 /// Create the `dependencies` task.
 Task createDepsTask(File jbuildJar, JbConfiguration config, DartleCache cache,
-    LocalDependencies localDependencies, bool noColor) {
+    LocalDependencies localDependencies) {
   return Task(
       (List<String> args) =>
-          _deps(jbuildJar, config, cache, localDependencies, noColor, args),
+          _deps(jbuildJar, config, cache, localDependencies, args),
       name: depsTaskName,
       argsValidator: const AcceptAnyArgs(),
       phase: TaskPhase.setup,
       description: 'Shows information about project dependencies.');
 }
 
-Future<void> _deps(
-    File jbuildJar,
-    JbConfiguration config,
-    DartleCache cache,
-    LocalDependencies localDependencies,
-    bool noColor,
-    List<String> args) async {
+Future<void> _deps(File jbuildJar, JbConfiguration config, DartleCache cache,
+    LocalDependencies localDependencies, List<String> args) async {
   final exitCode = await printDependencies(
-      jbuildJar, config, cache, localDependencies, noColor, args);
+      jbuildJar, config, cache, localDependencies, args);
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild dependencies command failed', exitCode: exitCode);
   }
+}
+
+Task createShowConfigTask(JbConfiguration config) {
+  return Task((_) => print(config.toYaml()),
+      name: showJbConfigTaskName,
+      phase: TaskPhase.setup,
+      description: 'Shows the fully resolved jb configuration.');
 }
 
 /// Create the `requirements` task.

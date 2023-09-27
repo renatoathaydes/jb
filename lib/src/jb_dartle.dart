@@ -35,6 +35,7 @@ class JbDartle {
       run,
       downloadTestRunner,
       test,
+      showConfig,
       deps;
 
   /// Get the tasks that are configured as part of a build.
@@ -125,8 +126,9 @@ class JbDartle {
         createDownloadTestRunnerTask(_config, javaSender, _cache, jbFileInputs);
     test = createTestTask(
         _files.jbuildJar, _config, _cache, !_options.colorfulLog);
-    deps = createDepsTask(_files.jbuildJar, _config, _cache,
-        unresolvedLocalDeps, !_options.colorfulLog);
+    deps =
+        createDepsTask(_files.jbuildJar, _config, _cache, unresolvedLocalDeps);
+    showConfig = createShowConfigTask(_config);
     requirements = createRequirementsTask(_files.jbuildJar, _config, _cache,
         unresolvedLocalDeps, !_options.colorfulLog);
     generateEclipse = createEclipseTask(_config);
@@ -146,6 +148,7 @@ class JbDartle {
       downloadTestRunner,
       test,
       deps,
+      showConfig,
       requirements,
       generateEclipse,
       if (extensionTasks != null) ...extensionTasks,
