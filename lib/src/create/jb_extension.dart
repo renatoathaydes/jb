@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'helpers.dart';
 
+// TODO update the jb-api version to be that of the JBuild jar used.
 String _jbuildYaml(String groupId, String artifactId) => '''
 group: $groupId
 module: $artifactId
@@ -11,40 +12,23 @@ source-dirs: [ src ]
 resource-dirs: [ resources ]
 
 dependencies:
-  - com.athaydes.jb:jb-api:0.1.0
+  - com.athaydes.jbuild:jbuild-api:0.1.0:
+      scope: compile-only
 ''';
 
 String _mainJava(String package) => '''
 package $package;
 
-import java.util.Set;
-import jb.api.JbTask;
-import jb.api.TaskContext;
+import java.io.IOException;
 
+import jbuild.api.JbTask;
+import jbuild.api.JbTaskInfo;
+
+@JbTaskInfo(name = "sample-task",
+            description = "Prints a message to show this extension works.")
 public final class ExampleTask implements JbTask {
-
     @Override
-    public String getName() {
-      return "example";
-    }
-    
-    @Override
-    public String getDescription() {
-      return "Task description.";
-    }
-    
-    @Override
-    public Set<String> getInputs() {
-      return Set.of("*.txt");
-    }
-    
-    @Override
-    public Set<String> getOutputs() {
-      return Set.of("*.out");
-    }
-    
-    @Override
-    public void run(String[] args, TaskContext context) {
+    public void run(String... args) throws IOException {
         System.out.println("Extension task running: " + getClass().getName());
     }
 }

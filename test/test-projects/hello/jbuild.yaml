@@ -1,3 +1,3 @@
-source-dirs:
-  - src
+source-dirs: [ src ]
+resource-dirs: [ resources ]
 output-dir: out

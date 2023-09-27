@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 
-import '../config.dart' show logger;
+import '../config.dart' show logger, yamlJbFile;
 import 'basic.dart';
 import 'helpers.dart';
 import 'jb_extension.dart';
@@ -15,7 +15,7 @@ Future<void> createNewProject(List<String> arguments) async {
     throw DartleException(
         message: 'create command does not accept any arguments');
   }
-  final jbuildFile = File('jbuild.yaml');
+  final jbuildFile = File(yamlJbFile);
   await FileCreator(jbuildFile).check();
   await _create(jbuildFile);
 }
@@ -77,6 +77,7 @@ extension on Stdin {
       final answer = readLineSync()?.trim();
       switch (answer) {
         case '1':
+        case '':
           return _ProjectType.basic;
         case '2':
           return _ProjectType.jbExtension;

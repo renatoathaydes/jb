@@ -2,10 +2,10 @@ import 'package:collection/collection.dart';
 import 'package:jb/jb.dart';
 import 'package:test/test.dart';
 
-Matcher equalsConfig(JBuildConfiguration expected) => _ConfigMatcher(expected);
+Matcher equalsConfig(JbConfiguration expected) => _ConfigMatcher(expected);
 
 class _ConfigMatcher extends Matcher {
-  final JBuildConfiguration expected;
+  final JbConfiguration expected;
 
   const _ConfigMatcher(this.expected);
 
@@ -17,7 +17,7 @@ class _ConfigMatcher extends Matcher {
   @override
   bool matches(item, Map matchState) {
     if (identical(expected, item)) return true;
-    if (item is! JBuildConfiguration) {
+    if (item is! JbConfiguration) {
       matchState[#reason] = 'wrong type: ${item.runtimeType}';
       return false;
     }

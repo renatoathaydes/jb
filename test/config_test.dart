@@ -4,10 +4,115 @@ import 'package:test/test.dart';
 
 import 'config_matcher.dart';
 
+const _fullConfig = '''
+  properties:
+    versions:
+      guava: "1.2.3"
+  group: my-group
+  module: mod1
+  version: '0.1'
+  source-dirs:
+    - src/main/groovy
+    - src/test/kotlin
+  dependencies:
+    - com.google:guava:{{versions.guava}}
+  exclusion-patterns:
+    - test.*
+    - .*other\\d+.*
+  
+  processor-dependencies:
+    - foo.bar:zort:1.0:
+        scope: runtime-only
+        transitive: false
+        path: foo/bar/zort
+  processor-dependencies-exclusions:
+    - others
+  output-dir: target/
+  resource-dirs:
+    - src/resources
+  
+  compile-libs-dir: libs
+  runtime-libs-dir: all-libs
+  test-lib-dir: test-libs
+
+  main-class: my.Main
+
+  javac-args:
+    - -Xmx2G
+    - --verbose
+  run-java-args: [ -Xmx1G ]
+  test-java-args: [ -Xmx2G, -Xms512m ]
+  javac-env:
+    JAVAC: 1
+  run-java-env:
+    JAVA: 11
+    CLASSPATH: foo
+  test-java-env:
+    TEST: true
+  repositories:
+    - https://maven.org
+    - ftp://foo.bar
+  ''';
+
+const _fullConfigExpanded =
+    '\x1B[90m######################## Full jb configuration ########################\n'
+    '    \n'
+    '### For more information, visit https://github.com/renatoathaydes/jb\n'
+    '\x1B[0m\n'
+    '\x1B[90m# Maven artifact groupId\x1B[0m\n'
+    'group: \x1B[34m"my-group"\x1B[0m\n'
+    '\x1B[90m# Maven artifactId\x1B[0m\n'
+    'module: \x1B[34m"mod1"\x1B[0m\n'
+    '\x1B[90m# Maven version\x1B[0m\n'
+    'version: \x1B[34m"0.1"\x1B[0m\n'
+    '\x1B[90m# List of source directories\x1B[0m\n'
+    'source-dirs: [\x1B[34m"src/main/groovy"\x1B[0m, \x1B[34m"src/test/kotlin"\x1B[0m]\n'
+    '\x1B[90m# List of resource directories (assets)\x1B[0m\n'
+    'resource-dirs: [\x1B[34m"src/resources"\x1B[0m]\n'
+    '\x1B[90m# Output directory (class files)\x1B[0m\n'
+    'output-dir: \x1B[34m"target/"\x1B[0m\n'
+    '\x1B[90m# Output jar (may be used instead of output-dir)\x1B[0m\n'
+    'output-jar: \x1B[35mnull\x1B[0m\n'
+    '\x1B[90m# Java Main class name\x1B[0m\n'
+    'main-class: \x1B[34m"my.Main"\x1B[0m\n'
+    '\x1B[90m# Java Compiler arguments\x1B[0m\n'
+    'javac-args: [\x1B[34m"-Xmx2G"\x1B[0m, \x1B[34m"--verbose"\x1B[0m]\n'
+    '\x1B[90m# Java runtime arguments\x1B[0m\n'
+    'run-java-args: [\x1B[34m"-Xmx1G"\x1B[0m]\n'
+    '\x1B[90m# Java test run arguments\x1B[0m\n'
+    'test-java-args: [\x1B[34m"-Xmx2G"\x1B[0m, \x1B[34m"--verbose"\x1B[0m]\n'
+    '\x1B[90m# Maven repositories (URLs or directories)\x1B[0m\n'
+    'repositories: [\x1B[34m"https://maven.org"\x1B[0m, \x1B[34m"ftp://foo.bar"\x1B[0m]\n'
+    '\x1B[90m# Maven dependencies\x1B[0m\n'
+    'dependencies:\n'
+    '  - \x1B[34m"com.google:guava:1.2.3"\x1B[0m:\n'
+    '    transitive: true\n'
+    '    scope: all\n'
+    '    path: null\n'
+    '\x1B[90m# Dependency exclusions (may use regex)\x1B[0m\n'
+    'exclusions: [\x1B[34m"test.*"\x1B[0m, \x1B[34m".*other\\d+.*"\x1B[0m]\n'
+    '\x1B[90m# Annotation processor Maven dependencies\x1B[0m\n'
+    'processor-dependencies:\n'
+    '  - \x1B[34m"foo.bar:zort:1.0"\x1B[0m:\n'
+    '    transitive: false\n'
+    '    scope: runtime-only\n'
+    '    path: foo/bar/zort\n'
+    '\x1B[90m# Annotation processor dependency exclusions (may use regex)\x1B[0m\n'
+    'processor-dependencies-exclusions: [\x1B[34m"others"\x1B[0m]\n'
+    '\x1B[90m# Compile-time libs output dir\x1B[0m\n'
+    'compile-libs-dir: \x1B[34m"libs"\x1B[0m\n'
+    '\x1B[90m# Runtime libs output dir\x1B[0m\n'
+    'runtime-libs-dir: \x1B[34m"all-libs"\x1B[0m\n'
+    '\x1B[90m# Test reports output dir\x1B[0m\n'
+    'test-reports-dir: \x1B[34m"build/test-reports"\x1B[0m\n'
+    '\x1B[90m# jb extension project path (for custom tasks)\x1B[0m\n'
+    'extension-project: \x1B[35mnull\x1B[0m\n'
+    '';
+
 void main() {
   group('JBuildConfiguration', () {
     test('can load', () {
-      final config = JBuildConfiguration(
+      final config = JbConfiguration(
           version: '0',
           sourceDirs: {'src'},
           output: CompileOutput.jar('lib.jar'),
@@ -33,56 +138,11 @@ void main() {
     });
 
     test('can parse full config', () async {
-      final config = await loadConfigString('''
-      properties:
-        versions:
-          guava: "1.2.3"
-      group: my-group
-      module: mod1
-      version: '0.1'
-      source-dirs:
-        - src/main/groovy
-        - src/test/kotlin
-      dependencies:
-        - com.google:guava:{{versions.guava}}
-      exclusion-patterns:
-        - test.*
-        - .*other\\d+.*
-      
-      processor-dependencies:
-        - foo.bar:zort:1.0
-      processor-dependencies-exclusions:
-        - others
-      output-dir: target/
-      resource-dirs:
-        - src/resources
-      
-      compile-libs-dir: libs
-      runtime-libs-dir: all-libs
-      test-lib-dir: test-libs
-
-      main-class: my.Main
-
-      javac-args:
-        - -Xmx2G
-        - --verbose
-      run-java-args: [ -Xmx1G ]
-      test-java-args: [ -Xmx2G, -Xms512m ]
-      javac-env:
-        JAVAC: 1
-      run-java-env:
-        JAVA: 11
-        CLASSPATH: foo
-      test-java-env:
-        TEST: true
-      repositories:
-        - https://maven.org
-        - ftp://foo.bar
-      ''');
+      final config = await loadConfigString(_fullConfig);
 
       expect(
           config,
-          equalsConfig(const JBuildConfiguration(
+          equalsConfig(const JbConfiguration(
             group: 'my-group',
             module: 'mod1',
             version: '0.1',
@@ -100,7 +160,12 @@ void main() {
             dependencies: {
               'com.google:guava:1.2.3': DependencySpec.defaultSpec,
             },
-            processorDependencies: {'foo.bar:zort:1.0'},
+            processorDependencies: {
+              'foo.bar:zort:1.0': DependencySpec(
+                  transitive: true,
+                  scope: DependencyScope.runtimeOnly,
+                  path: 'foo/bar/zort'),
+            },
             processorDependenciesExclusions: {'others'},
             exclusions: {'test.*', '.*other\\d+.*'},
             compileLibsDir: 'libs',
@@ -110,6 +175,11 @@ void main() {
               'versions': {'guava': '1.2.3'}
             },
           )));
+    });
+
+    test('can print full config as YAML', () async {
+      expect((await loadConfigString(_fullConfig)).toYaml(),
+          equals(_fullConfigExpanded));
     });
 
     test('can parse string-iterable from single string', () async {
@@ -125,7 +195,7 @@ void main() {
 
       expect(
           config,
-          equalsConfig(const JBuildConfiguration(
+          equalsConfig(const JbConfiguration(
               sourceDirs: {'src/java'},
               output: CompileOutput.dir('out'),
               resourceDirs: {'resources'},
@@ -165,7 +235,7 @@ void main() {
       dependencies:
         - foo:bar:1.0:
             transitive: false
-            scope: runtimeOnly
+            scope: runtime-only
         - second:dep:0.1
         - var:
       ''');
@@ -180,12 +250,12 @@ void main() {
           }));
     });
 
-    final config1 = JBuildConfiguration.fromMap(const {
+    final config1 = JbConfiguration.fromMap(const {
       'group': 'g1',
       'module': 'm1',
       'version': 'v1',
       'main-class': 'm1',
-      'source-dirs': ['source', 'src'],
+      'source-dirs': ['source', 'other-src'],
       'output-jar': 'my.jar',
       'resource-dirs': ['rsrc'],
       'javac-args': ['-Xmx1G'],
@@ -207,7 +277,7 @@ void main() {
     });
 
     test('can merge two full configurations', () async {
-      final config2 = JBuildConfiguration.fromMap(const {
+      final config2 = JbConfiguration.fromMap(const {
         'group': 'g2',
         'module': 'm2',
         'version': 'v2',
@@ -235,12 +305,12 @@ void main() {
 
       expect(
           config1.merge(config2),
-          equalsConfig(JBuildConfiguration.fromMap(const {
+          equalsConfig(JbConfiguration.fromMap(const {
             'group': 'g2',
             'module': 'm2',
             'version': 'v2',
             'main-class': 'm2',
-            'source-dirs': ['source', 'src', 'source2'],
+            'source-dirs': ['source', 'other-src', 'source2'],
             'output-jar': 'my2.jar',
             'resource-dirs': ['rsrc', 'rsrc2'],
             'javac-args': ['-Xmx1G', '-Xmx2G'],
@@ -266,12 +336,12 @@ void main() {
 
       expect(
           config2.merge(config1),
-          equalsConfig(JBuildConfiguration.fromMap(const {
+          equalsConfig(JbConfiguration.fromMap(const {
             'group': 'g1',
             'module': 'm1',
             'version': 'v1',
             'main-class': 'm1',
-            'source-dirs': ['source2', 'src', 'source'],
+            'source-dirs': ['source2', 'other-src', 'source'],
             'output-jar': 'my.jar',
             'resource-dirs': ['rsrc2', 'rsrc'],
             'javac-args': ['-Xmx2G', '-Xmx1G'],
@@ -296,8 +366,8 @@ void main() {
           })));
     });
 
-    test('can merge small config into full configuration', () {
-      final smallConfig = JBuildConfiguration.fromMap({
+    test('can merge small config into full configuration and vice-versa', () {
+      final smallConfig = JbConfiguration.fromMap({
         'module': 'small',
         'dependencies': [
           {
@@ -308,12 +378,43 @@ void main() {
 
       expect(
           config1.merge(smallConfig),
-          equalsConfig(JBuildConfiguration.fromMap(const {
+          equalsConfig(JbConfiguration.fromMap(const {
             'group': 'g1',
             'module': 'small',
             'version': 'v1',
             'main-class': 'm1',
-            'source-dirs': ['source', 'src'],
+            'source-dirs': ['source', 'other-src'],
+            'output-jar': 'my.jar',
+            'resource-dirs': ['rsrc'],
+            'javac-args': ['-Xmx1G'],
+            'run-java-args': ['-D'],
+            'test-java-args': ['-T'],
+            'javac-env': {'A': 'B'},
+            'run-java-env': {'C': 'D'},
+            'test-java-env': {'E': 'F'},
+            'repositories': {'r1', 'r2'},
+            'dependencies': [
+              {
+                'dep1': {'transitive': true}
+              },
+              {
+                'big': {'transitive': true}
+              }
+            ],
+            'exclusions': {'e1'},
+            'compile-libs-dir': 'comp',
+            'runtime-libs-dir': 'runtime',
+            'test-reports-dir': 'reports'
+          })));
+
+      expect(
+          smallConfig.merge(config1),
+          equalsConfig(JbConfiguration.fromMap(const {
+            'group': 'g1',
+            'module': 'm1',
+            'version': 'v1',
+            'main-class': 'm1',
+            'source-dirs': ['source', 'other-src'],
             'output-jar': 'my.jar',
             'resource-dirs': ['rsrc'],
             'javac-args': ['-Xmx1G'],
@@ -339,7 +440,7 @@ void main() {
     });
 
     test('can merge two small configurations using properties', () {
-      final smallConfig1 = JBuildConfiguration.fromMap({
+      final smallConfig1 = JbConfiguration.fromMap({
         'version': 'v1',
         'dependencies': [
           {
@@ -350,7 +451,7 @@ void main() {
       }, const {
         'REPORTS_DIR': 'reports'
       });
-      final smallConfig2 = JBuildConfiguration.fromMap({
+      final smallConfig2 = JbConfiguration.fromMap({
         'module': 'small',
         'dependencies': [
           {
@@ -363,7 +464,7 @@ void main() {
 
       expect(
           smallConfig1.merge(smallConfig2),
-          equalsConfig(JBuildConfiguration.fromMap({
+          equalsConfig(JbConfiguration.fromMap({
             'module': 'small',
             'version': 'v1',
             'dependencies': [
@@ -382,7 +483,7 @@ void main() {
 
       expect(
           smallConfig2.merge(smallConfig1),
-          equalsConfig(JBuildConfiguration.fromMap({
+          equalsConfig(JbConfiguration.fromMap({
             'module': 'small',
             'version': 'v1',
             'dependencies': [

@@ -4,19 +4,9 @@ import 'package:dartle/dartle.dart';
 import 'package:logging/logging.dart';
 
 import 'config.dart' show logger;
+import 'output_consumer.dart';
 import 'tasks.dart';
 import 'utils.dart';
-
-/// Consumer of another process' output.
-mixin ProcessOutputConsumer {
-  /// The PID of the process.
-  ///
-  /// This is called immediately as the process starts.
-  set pid(int pid);
-
-  /// Receive a line of the process output.
-  void call(String line);
-}
 
 /// Execute the jbuild tool.
 Future<int> execJBuild(String taskName, File jbuildJar, List<String> preArgs,
@@ -54,8 +44,8 @@ Future<int> execJava(String taskName, List<String> args,
     return exec(Process.start('java', args,
         environment: env, runInShell: true, workingDirectory: workingDir));
   }
-  final stdoutFun = onStdout ?? _TaskExecLogger('-out>', taskName);
-  final stderrFun = onStderr ?? _TaskExecLogger('-err>', taskName);
+  final stdoutFun = onStdout ?? _TaskExecLogger('-out>', taskName, pid);
+  final stderrFun = onStderr ?? _TaskExecLogger('-err>', taskName, pid);
   return exec(
     Process.start('java', args,
             runInShell: true, environment: env, workingDirectory: workingDir)
@@ -69,35 +59,28 @@ Future<int> execJava(String taskName, List<String> args,
   );
 }
 
-class _TaskExecLogger implements ProcessOutputConsumer {
+class _TaskExecLogger extends JbOutputConsumer {
   final String prompt;
   final String taskName;
-  int pid = 0;
 
-  _TaskExecLogger(this.prompt, this.taskName);
+  _TaskExecLogger(this.prompt, this.taskName, super.pid);
 
-  @override
-  void call(String line) {
-    final level = _levelFor(line);
-    logger.log(
-        level,
-        ColoredLogMessage(
-            '$prompt $taskName [java $pid]: $line', _colorFor(level)));
-  }
-
-  Level _levelFor(String line) {
-    if (line.startsWith('ERROR:') || line.startsWith('JBuild failed ')) {
-      return Level.SEVERE;
-    }
-    if (line.startsWith('WARN:')) {
-      return Level.WARNING;
-    }
-    return Level.INFO;
-  }
-
-  LogColor _colorFor(Level level) {
+  LogColor? _colorFor(Level level) {
     if (level == Level.SEVERE) return LogColor.red;
     if (level == Level.WARNING) return LogColor.yellow;
-    return LogColor.gray;
+    return null;
+  }
+
+  @override
+  void consume(Level Function(String) getLevel, String line) {
+    final level = getLevel(line);
+    if (!logger.isLoggable(level)) return;
+    final color = _colorFor(level);
+    final message = '$prompt $taskName [java $pid]: $line';
+    logger.log(
+        level,
+        color != null
+            ? ColoredLogMessage(message, color)
+            : PlainMessage(message));
   }
 }

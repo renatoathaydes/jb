@@ -24,6 +24,7 @@ void main(List<String> args) async {
     dist.distributionTask,
     gen.generateVersionFileTask,
     await cleaners.cleanTestsTask(),
+    await cleaners.cleanExamplesTask(),
     ...dartleDart.tasks,
   }, defaultTasks: {
     dartleDart.build

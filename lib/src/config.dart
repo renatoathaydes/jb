@@ -1,51 +1,53 @@
 import 'dart:io';
 
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
+import 'package:dartle/dartle_cache.dart' show ChangeKind;
+import 'package:dartle/src/_log.dart' show colorize;
 import 'package:logging/logging.dart' as log;
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 import 'config_import.dart';
+import 'file_tree.dart';
 import 'path_dependency.dart';
 import 'properties.dart';
-import 'sub_project.dart';
 import 'utils.dart';
 
-final logger = log.Logger('jbuild');
+final logger = log.Logger('jb');
 
-const jbuildCache = '.jbuild-cache';
+const yamlJbFile = 'jbuild.yaml';
+const jsonJbFile = 'jbuild.json';
 
-/// Files and directories used by jb.
-class JBuildFiles {
-  final File jbuildJar;
-  File get configFile => File('jbuild.yaml');
-  File get dependenciesFile => File(p.join(jbuildCache, 'dependencies.txt'));
-  Directory get jbExtensionProjectDir => Directory('jb-src');
-  File get processorDependenciesFile =>
-      File(p.join(jbuildCache, 'processor-dependencies.txt'));
-  final processorLibsDir = p.join(jbuildCache, 'processor-dependencies');
-
-  JBuildFiles(this.jbuildJar);
-}
+const jbApi = 'com.athaydes.jbuild:jbuild-api';
 
 /// Parse the YAML/JSON jbuild file.
 ///
 /// Applies defaults and resolves properties and imports.
-Future<JBuildConfiguration> loadConfig(File configFile) async {
+Future<JbConfiguration> loadConfig(File configFile) async {
   logger.fine(() => 'Reading config file: ${configFile.path}');
-  return await loadConfigString(await configFile.readAsString());
+  String configString;
+  try {
+    configString = await configFile.readAsString();
+  } on PathNotFoundException {
+    throw DartleException(
+        message: 'jb config file not found.\n'
+            "To create one, run 'jb create'.\n"
+            "Run 'jb --help' to see usage.");
+  }
+  return await loadConfigString(configString);
 }
 
 /// Parse the YAML/JSON jb configuration.
 ///
 /// Applies defaults and resolves properties and imports.
-Future<JBuildConfiguration> loadConfigString(String config) async {
+Future<JbConfiguration> loadConfigString(String config) async {
   final json = loadYaml(config);
   if (json is Map) {
     final resolvedMap = resolvePropertiesFromMap(json);
     final imports = resolvedMap.map.remove('imports');
-    return await JBuildConfiguration.fromMap(
+    return await JbConfiguration.fromMap(
             resolvedMap.map, resolvedMap.properties)
         .applyImports(imports);
   } else {
@@ -58,13 +60,12 @@ Future<JBuildConfiguration> loadConfigString(String config) async {
 /// Parse the YAML/JSON jb extension model.
 ///
 /// Applies defaults and resolves properties and imports.
-Future<JBuildExtensionModel> loadJbExtensionModel(
+Future<JbExtensionModel> loadJbExtensionModel(
     String config, Uri yamlUri) async {
   final json = loadYaml(config, sourceUrl: yamlUri);
   if (json is Map) {
     final resolvedMap = resolvePropertiesFromMap(json);
-    return JBuildExtensionModel.fromMap(
-        resolvedMap.map, resolvedMap.properties);
+    return JbExtensionModel.fromMap(resolvedMap.map, resolvedMap.properties);
   } else {
     throw DartleException(
         message: '$yamlUri: Expecting jb extension to be a Map, '
@@ -89,39 +90,47 @@ extension on _Value<Iterable<String>> {
 class ExtensionTask {
   final String name;
   final String description;
-  final String phase;
+  final TaskPhase phase;
   final Set<String> inputs;
   final Set<String> outputs;
+  final Set<String> dependsOn;
+  final Set<String> dependents;
   final String className;
+  final String methodName;
 
-  ExtensionTask(
-      {required this.name,
-      required this.description,
-      required this.phase,
-      required this.inputs,
-      required this.outputs,
-      required this.className});
+  ExtensionTask({
+    required this.name,
+    required this.description,
+    required this.phase,
+    required this.inputs,
+    required this.outputs,
+    required this.dependsOn,
+    required this.className,
+    required this.methodName,
+    required this.dependents,
+  });
 }
 
 /// jb extension model.
-class JBuildExtensionModel {
+class JbExtensionModel {
   final List<ExtensionTask> extensionTasks;
 
-  const JBuildExtensionModel(this.extensionTasks);
+  const JbExtensionModel(this.extensionTasks);
 
-  static JBuildExtensionModel fromMap(Map<String, Object?> map,
+  static JbExtensionModel fromMap(Map<String, Object?> map,
       [Properties properties = const {}]) {
     final extensionTasks = _extensionTasks(map);
-    return JBuildExtensionModel(extensionTasks);
+    return JbExtensionModel(extensionTasks);
   }
 }
 
 /// jb configuration model.
-class JBuildConfiguration {
+class JbConfiguration {
   final String? group;
   final String? module;
   final String? version;
   final String? mainClass;
+  final String? extensionProject;
   final Set<String> sourceDirs;
   final bool _defaultSourceDirs;
   final CompileOutput output;
@@ -137,7 +146,7 @@ class JBuildConfiguration {
   final Set<String> repositories;
   final Map<String, DependencySpec> dependencies;
   final Set<String> exclusions;
-  final Set<String> processorDependencies;
+  final Map<String, DependencySpec> processorDependencies;
   final Set<String> processorDependenciesExclusions;
   final String compileLibsDir;
   final bool _defaultCompileLibsDir;
@@ -147,11 +156,12 @@ class JBuildConfiguration {
   final bool _defaultTestReportsDir;
   final Properties properties;
 
-  const JBuildConfiguration({
+  const JbConfiguration({
     this.group,
     this.module,
     this.version,
     this.mainClass,
+    this.extensionProject,
     bool defaultSourceDirs = false,
     bool defaultOutput = false,
     bool defaultResourceDirs = false,
@@ -183,21 +193,20 @@ class JBuildConfiguration {
         _defaultRuntimeLibsDir = defaultRuntimeLibsDir,
         _defaultTestReportsDir = defaultTestReportsDir;
 
-  /// Create a [JBuildConfiguration] from a map.
+  /// Create a [JbConfiguration] from a map.
   /// This method does not do any processing or validation of values, it simply
   /// reads values from the Map and includes defaults where needed.
   ///
   /// The optional [Properties] argument is stored within the returned
-  /// [JBuildConfiguration] but is not used to resolve properties values
+  /// [JbConfiguration] but is not used to resolve properties values
   /// (it only gets used when the returned configuration is merged with another).
   /// That's expected to already have been done before calling this method.
-  static JBuildConfiguration fromMap(Map<String, Object?> map,
+  static JbConfiguration fromMap(Map<String, Object?> map,
       [Properties properties = const {}]) {
-    final sourceDirs =
-        _stringIterableValue(map, 'source-dirs', const {'src/main/java'});
+    final sourceDirs = _stringIterableValue(map, 'source-dirs', const {'src'});
     final output = _compileOutputValue(map, 'output-dir', 'output-jar');
-    final resourceDirs = _stringIterableValue(
-        map, 'resource-dirs', const {'src/main/resources'});
+    final resourceDirs =
+        _stringIterableValue(map, 'resource-dirs', const {'resources'});
     final javacArgs = _stringIterableValue(map, 'javac-args', const []);
     final runJavaArgs = _stringIterableValue(map, 'run-java-args', const []);
     final testJavaArgs = _stringIterableValue(map, 'test-java-args', const []);
@@ -209,7 +218,7 @@ class JBuildConfiguration {
     final exclusions =
         _stringIterableValue(map, 'exclusion-patterns', const {});
     final processorDependencies =
-        _stringIterableValue(map, 'processor-dependencies', const {});
+        _dependencies(map, 'processor-dependencies', const {});
     final processorDependenciesExclusions = _stringIterableValue(
         map, 'processor-dependencies-exclusions', const {});
     final compileLibsDir =
@@ -219,11 +228,12 @@ class JBuildConfiguration {
     final testReportsDir =
         _stringValue(map, 'test-reports-dir', 'build/test-reports');
 
-    return JBuildConfiguration(
+    return JbConfiguration(
       group: _optionalStringValue(map, 'group'),
       module: _optionalStringValue(map, 'module'),
       version: _optionalStringValue(map, 'version'),
       mainClass: _optionalStringValue(map, 'main-class'),
+      extensionProject: _optionalStringValue(map, 'extension-project'),
       sourceDirs: sourceDirs.toSet(),
       defaultSourceDirs: sourceDirs.isDefault,
       output: output ?? _defaultOutputValue(),
@@ -239,7 +249,7 @@ class JBuildConfiguration {
       dependencies: dependencies.value,
       repositories: repositories.toSet(),
       exclusions: exclusions.toSet(),
-      processorDependencies: processorDependencies.toSet(),
+      processorDependencies: processorDependencies.value,
       processorDependenciesExclusions: processorDependenciesExclusions.toSet(),
       compileLibsDir: compileLibsDir.value,
       defaultCompileLibsDir: compileLibsDir.isDefault,
@@ -254,24 +264,24 @@ class JBuildConfiguration {
   /// Merge this configuration with another.
   ///
   /// Values from the other configuration take precedence.
-  JBuildConfiguration merge(JBuildConfiguration other) {
+  JbConfiguration merge(JbConfiguration other) {
     final props = properties.union(other.properties);
 
-    return JBuildConfiguration(
+    return JbConfiguration(
       group: resolveOptionalString(other.group ?? group, props),
       module: resolveOptionalString(other.module ?? module, props),
       version: resolveOptionalString(other.version ?? version, props),
       mainClass: resolveOptionalString(other.mainClass ?? mainClass, props),
-      sourceDirs: other._defaultSourceDirs
-          ? sourceDirs.merge(const {}, props)
-          : sourceDirs.merge(other.sourceDirs, props),
+      extensionProject: resolveOptionalString(
+          other.extensionProject ?? extensionProject, props),
+      sourceDirs: _mergeWithDefault(sourceDirs, _defaultSourceDirs,
+          other.sourceDirs, other._defaultSourceDirs, props),
       defaultSourceDirs: _defaultSourceDirs && other._defaultSourceDirs,
       output: (other._defaultOutput ? output : other.output)
           .resolveProperties(props),
       defaultOutput: _defaultOutput && other._defaultOutput,
-      resourceDirs: other._defaultResourceDirs
-          ? resourceDirs.merge(const {}, props)
-          : resourceDirs.merge(other.resourceDirs, props),
+      resourceDirs: _mergeWithDefault(resourceDirs, _defaultResourceDirs,
+          other.resourceDirs, other._defaultResourceDirs, props),
       defaultResourceDirs: _defaultResourceDirs && other._defaultResourceDirs,
       javacArgs: javacArgs.merge(other.javacArgs, props),
       runJavaArgs: runJavaArgs.merge(other.runJavaArgs, props),
@@ -308,29 +318,21 @@ class JBuildConfiguration {
   /// Get the list of JBuild global arguments (pre-args)
   /// from this configuration.
   List<String> preArgs() {
-    var result = const <String>[];
+    final result = <String>['-w', Directory.current.path];
     if (logger.isLoggable(Level.FINE)) {
-      result = const ['-V'];
+      result.add('-V');
     }
-    if (repositories.isNotEmpty) {
-      final args = List.filled(result.length + 2 * repositories.length, '');
-      var index = 0;
-      for (final arg in result) {
-        args[index++] = arg;
-      }
-      for (final repo in repositories) {
-        args[index++] = '-r';
-        args[index++] = repo;
-      }
-      result = args;
+    for (final repo in repositories) {
+      result.add('-r');
+      result.add(repo);
     }
     return result;
   }
 
   /// Get the compile task arguments from this configuration.
-  Future<List<String>> compileArgs(String processorLibsDir) async {
+  Future<List<String>> compileArgs(
+      String processorLibsDir, TransitiveChanges? changes) async {
     final result = <String>[];
-    result.addAll(sourceDirs);
     result.addAll(['-cp', compileLibsDir]);
     output.when(
         dir: (d) => result.addAll(['-d', d]),
@@ -342,20 +344,55 @@ class JBuildConfiguration {
     if (main != null && main.isNotEmpty) {
       result.addAll(['-m', main]);
     }
+    if (dependencies.keys.any((d) => d.startsWith(jbApi))) {
+      result.add('--jb-extension');
+    }
+    if (changes == null || !_addIncrementalCompileArgs(result, changes)) {
+      result.addAll(sourceDirs);
+    }
     if (javacArgs.isNotEmpty || processorDependencies.isNotEmpty) {
       result.add('--');
       result.addAll(javacArgs);
       if (processorDependencies.isNotEmpty) {
         result.add('-processorpath');
-        final jars = await Directory(processorLibsDir)
-            .list()
-            .map((f) => f.path)
-            .where((p) => p.endsWith('.jar'))
-            .join(Platform.isWindows ? ';' : ':');
-        result.add(jars);
+        (await Directory(processorLibsDir).toClasspath())?.vmap(result.add);
       }
     }
     return result;
+  }
+
+  /// Add the incremental compilation args if applicable.
+  ///
+  /// Return true if added, false otherwise.
+  bool _addIncrementalCompileArgs(
+      List<String> args, TransitiveChanges changes) {
+    var incremental = false;
+    for (final change in changes.fileChanges) {
+      if (change.entity is! File) continue;
+      incremental = true;
+      if (change.kind == ChangeKind.deleted) {
+        final path = change.entity.path;
+        if (path.endsWith('.java')) {
+          for (final classFile in changes.fileTree
+              .classFilesOf(sourceDirs, change.entity.path)) {
+            args.add('--deleted');
+            args.add(classFile);
+          }
+        } else {
+          args.add('--deleted');
+          args.add(change.entity.path);
+        }
+      } else {
+        args.add('--added');
+        args.add(change.entity.path);
+      }
+    }
+
+    // previous compilation output must be part of the classpath
+    args.add('-cp');
+    args.add(output.when(dir: (d) => d, jar: (j) => j));
+
+    return incremental;
   }
 
   /// Get the install arguments for the compile task from this configuration.
@@ -379,14 +416,27 @@ class JBuildConfiguration {
 
   /// Get the install arguments for the installRuntime task from this configuration.
   List<String> installArgsForRuntime() {
-    final depsToInstall = dependencies.entries
+    return _installArgs(dependencies, exclusions, runtimeLibsDir);
+  }
+
+  /// Get the install arguments for the installProcessor task from this configuration.
+  List<String> installArgsForProcessor(String destinationDir) {
+    return _installArgs(
+        processorDependencies, processorDependenciesExclusions, destinationDir);
+  }
+
+  static List<String> _installArgs(Map<String, DependencySpec> deps,
+      Set<String> exclusions, String destinationDir) {
+    if (deps.isEmpty) return const [];
+
+    final depsToInstall = deps.entries
         .where((e) => e.value.scope.includedAtRuntime() && e.value.path == null)
         .map((e) => e.key)
         .toList(growable: false);
 
     if (depsToInstall.isEmpty) return const [];
 
-    final result = ['-s', 'runtime', '-m', '-d', runtimeLibsDir];
+    final result = ['-s', 'runtime', '-m', '-d', destinationDir];
     for (final exclude in exclusions) {
       result.add('--exclusion');
       result.add(exclude);
@@ -395,29 +445,104 @@ class JBuildConfiguration {
     return result;
   }
 
-  /// Get the install arguments for the installProcessor task from this configuration.
-  List<String> installArgsForProcessor(String destinationDir) {
-    if (processorDependencies.isEmpty) return const [];
+  String toYaml() {
+    String quote(String? value) => value == null
+        ? colorize('null', LogColor.magenta)
+        : colorize('"$value"', LogColor.blue);
 
-    final result = ['-s', 'runtime', '-m', '-d', destinationDir];
-    for (final exclude in processorDependenciesExclusions) {
-      result.add('--exclusion');
-      result.add(exclude);
+    String depsToYaml(Iterable<MapEntry<String, DependencySpec>> deps) {
+      if (deps.isEmpty) return ' []';
+      return '\n${deps.map((dep) => '  - ${quote(dep.key)}:\n${dep.value.toYaml('    ')}').join('\n')}';
     }
-    result.addAll(processorDependencies);
-    return result;
+
+    const gray = LogColor.gray;
+
+    return '''
+${colorize('''
+######################## Full jb configuration ########################
+    
+### For more information, visit https://github.com/renatoathaydes/jb
+''', gray)}
+${colorize('# Maven artifact groupId', gray)}
+group: ${quote(group)}
+${colorize('# Maven artifactId', gray)}
+module: ${quote(module)}
+${colorize('# Maven version', gray)}
+version: ${quote(version)}
+${colorize('# List of source directories', gray)}
+source-dirs: [${sourceDirs.map(quote).join(', ')}]
+${colorize('# List of resource directories (assets)', gray)}
+resource-dirs: [${resourceDirs.map(quote).join(', ')}]
+${colorize('# Output directory (class files)', gray)}
+output-dir: ${quote(output.when(dir: (d) => d, jar: (j) => null))}
+${colorize('# Output jar (may be used instead of output-dir)', gray)}
+output-jar: ${quote(output.when(dir: (d) => null, jar: (j) => j))}
+${colorize('# Java Main class name', gray)}
+main-class: ${quote(mainClass)}
+${colorize('# Java Compiler arguments', gray)}
+javac-args: [${javacArgs.map(quote).join(', ')}]
+${colorize('# Java runtime arguments', gray)}
+run-java-args: [${runJavaArgs.map(quote).join(', ')}]
+${colorize('# Java test run arguments', gray)}
+test-java-args: [${javacArgs.map(quote).join(', ')}]
+${colorize('# Maven repositories (URLs or directories)', gray)}
+repositories: [${repositories.map(quote).join(', ')}]
+${colorize('# Maven dependencies', gray)}
+dependencies:${depsToYaml(dependencies.entries)}
+${colorize('# Dependency exclusions (may use regex)', gray)}
+exclusions: [${exclusions.map(quote).join(', ')}]
+${colorize('# Annotation processor Maven dependencies', gray)}
+processor-dependencies:${depsToYaml(processorDependencies.entries)}
+${colorize('# Annotation processor dependency exclusions (may use regex)', gray)}
+processor-dependencies-exclusions: [${processorDependenciesExclusions.map(quote).join(', ')}]
+${colorize('# Compile-time libs output dir', gray)}
+compile-libs-dir: ${quote(compileLibsDir)}
+${colorize('# Runtime libs output dir', gray)}
+runtime-libs-dir: ${quote(runtimeLibsDir)}
+${colorize('# Test reports output dir', gray)}
+test-reports-dir: ${quote(testReportsDir)}
+${colorize('# jb extension project path (for custom tasks)', gray)}
+extension-project: ${quote(extensionProject)}
+''';
+  }
+
+  @override
+  String toString() {
+    return 'JBuildConfiguration{group: $group, '
+        'module: $module, version: $version, mainClass: $mainClass, '
+        'extensionProject: $extensionProject, sourceDirs: $sourceDirs, '
+        'output: $output, resourceDirs: $resourceDirs, javacArgs: $javacArgs, '
+        'runJavaArgs: $runJavaArgs, testJavaArgs: $testJavaArgs, '
+        'javacEnv: $javacEnv, runJavaEnv: $runJavaEnv, '
+        'testJavaEnv: $testJavaEnv, repositories: $repositories, '
+        'dependencies: $dependencies, exclusions: $exclusions, '
+        'processorDependencies: $processorDependencies, '
+        'processorDependenciesExclusions: $processorDependenciesExclusions, '
+        'compileLibsDir: $compileLibsDir, runtimeLibsDir: $runtimeLibsDir, '
+        'testReportsDir: $testReportsDir, properties: $properties}';
   }
 }
 
+Set<String> _mergeWithDefault(
+    Set<String> values,
+    bool defaultValues,
+    Set<String> otherValues,
+    bool defaultOtherValues,
+    Map<String, Object?> props) {
+  if (defaultValues) return otherValues.merge(const {}, props);
+  if (defaultOtherValues) return values.merge(const {}, props);
+  return values.merge(otherValues, props);
+}
+
 /// Grouping of all local dependencies, which can be local
-/// [JarDependency] or [SubProject]s.
+/// [JarDependency] or [ProjectDependency]s.
 class LocalDependencies {
   final List<JarDependency> jars;
-  final List<SubProject> subProjects;
+  final List<ProjectDependency> projectDependencies;
 
-  const LocalDependencies(this.jars, this.subProjects);
+  const LocalDependencies(this.jars, this.projectDependencies);
 
-  bool get isEmpty => jars.isEmpty && subProjects.isEmpty;
+  bool get isEmpty => jars.isEmpty && projectDependencies.isEmpty;
 }
 
 enum _CompileOutputTag { dir, jar }
@@ -463,14 +588,36 @@ class CompileOutput {
   int get hashCode => _tag.hashCode ^ _value.hashCode;
 
   @override
-  String toString() => 'CompileOutput{_tag: $_tag, _value: $_value}';
+  String toString() {
+    return switch (_tag) {
+      _CompileOutputTag.dir => 'DIR($_value)',
+      _CompileOutputTag.jar => 'JAR($_value)',
+    };
+  }
 }
 
 /// Scope of a dependency.
 enum DependencyScope {
+  /// dependency is required both at compile-time and runtime.
   all,
+
+  /// dependency is required at compile-time, but not runtime.
   compileOnly,
+
+  /// dependency is required at runtime, but not compile-time.
   runtimeOnly;
+
+  /// Convert a String to a [DependencyScope].
+  static DependencyScope fromName(String name) {
+    return switch (name) {
+      'runtime-only' => runtimeOnly,
+      'compile-only' => compileOnly,
+      'all' => all,
+      _ => throw DartleException(
+          message: "Invalid scope: '$name'. "
+              "Valid names are: runtime-only, compile-only, all")
+    };
+  }
 
   bool includedInCompilation() {
     return this != DependencyScope.runtimeOnly;
@@ -478,6 +625,14 @@ enum DependencyScope {
 
   bool includedAtRuntime() {
     return this != DependencyScope.compileOnly;
+  }
+
+  String toYaml() {
+    return switch (this) {
+      runtimeOnly => 'runtime-only',
+      compileOnly => 'compile-only',
+      all => 'all',
+    };
   }
 }
 
@@ -497,7 +652,7 @@ class DependencySpec {
   });
 
   static DependencySpec fromMap(Map<String, Object?> map) {
-    if (map.keys.any(const {'transitive', 'scope', 'path'}.contains.not)) {
+    if (map.keys.any(const {'transitive', 'scope', 'path'}.contains.not$)) {
       throw DartleException(
           message: 'invalid dependency definition, '
               'only "transitive", "path" and "scope" fields can be set: $map');
@@ -542,6 +697,12 @@ class DependencySpec {
           path: resolveString(p, properties));
     }
     return this;
+  }
+
+  String toYaml(String ident) {
+    return '${ident}transitive: $transitive\n'
+        '${ident}scope: ${scope.toYaml()}\n'
+        '${ident}path: $path';
   }
 }
 
@@ -595,12 +756,7 @@ DependencyScope _scopeValue(
   final value = map[key];
   if (value == null) return defaultValue;
   if (value is String) {
-    return DependencyScope.values
-        .firstWhere((enumValue) => enumValue.name == value, orElse: () {
-      throw DartleException(
-          message: "expecting one of ${DependencyScope.values} for '$key', "
-              "but got '$value'.");
-    });
+    return DependencyScope.fromName(value);
   }
   throw DartleException(
       message: "expecting a String value for '$key', "
@@ -689,7 +845,7 @@ Use the following syntax to declare dependencies:
     - first:dep:1.0
     - another:dep:2.0:
         transitive: false  # true (at runtime) by default
-        scope: runtimeOnly # or compileOnly or all
+        scope: runtime-only # or compile-only or all
 ''';
 
 _Value<Map<String, DependencySpec>> _dependencies(Map<String, Object?> map,
@@ -780,18 +936,61 @@ ExtensionTask _extensionTask(MapEntry<String, Object?> task) {
   final spec = task.value;
   if (spec is Map<String, Object?>) {
     return ExtensionTask(
-        name: task.key,
-        description: _stringValue(spec, 'description', '').value,
-        phase: _stringValue(spec, 'phase', 'build').value,
-        inputs: _stringIterableValue(spec, 'inputs', const {}).value.toSet(),
-        outputs: _stringIterableValue(spec, 'outputs', const {}).value.toSet(),
-        className: _optionalStringValue(spec, 'class-name')
-            .orThrow("declaration of task '${task.key}' is missing mandatory "
-                "'class-name'.\n$taskSyntaxHelp"));
+      name: task.key,
+      description: _stringValue(spec, 'description', '').value,
+      phase: _taskPhase(spec['phase']),
+      inputs: _stringIterableValue(spec, 'inputs', const {}).value.toSet(),
+      outputs: _stringIterableValue(spec, 'outputs', const {}).value.toSet(),
+      dependsOn:
+          _stringIterableValue(spec, 'depends-on', const {}).value.toSet(),
+      dependents:
+          _stringIterableValue(spec, 'dependents', const {}).value.toSet(),
+      className: _optionalStringValue(spec, 'class-name')
+          .orThrow(() => DartleException(
+              message: "declaration of task '${task.key}' is missing mandatory "
+                  "'class-name'.\n$taskSyntaxHelp")),
+      methodName: _stringValue(spec, 'method-name', 'run').value,
+    );
   } else {
     throw DartleException(
         message: 'bad task declaration, '
             "expected String or Map value, got '$task'.\n"
             "$taskSyntaxHelp");
   }
+}
+
+final _defaultPhaseIndex = TaskPhase.build.index + 10;
+
+const _phaseHelpMessage = '''
+To declare an existing phase or a custom phase that runs after the 'build' phase:
+  phase: phase-name
+Use the following syntax to declare custom phases:
+  phase:
+    # phase name:  phase index
+    my-phase-name: 700
+''';
+
+TaskPhase _taskPhase(Object? phase) {
+  if (phase == null) return TaskPhase.build;
+  if (phase is String) {
+    final builtIn = TaskPhase.builtInPhases.where((p) => p.name == phase);
+    if (builtIn.isNotEmpty) return builtIn.first;
+    return TaskPhase.custom(_defaultPhaseIndex, phase);
+  }
+  if (phase is Map) {
+    if (phase.length != 1) {
+      throw DartleException(
+          message: 'invalid custom phase declaration.\n$_phaseHelpMessage');
+    }
+
+    final name = phase.keys.first.toString();
+    final index = phase.values.first;
+    if (index is int) {
+      return TaskPhase.custom(index, name);
+    }
+    throw DartleException(
+        message: "phase '$name' has an invalid index.\n$_phaseHelpMessage");
+  }
+  throw DartleException(
+      message: 'invalid custom phase declaration.\n$_phaseHelpMessage');
 }

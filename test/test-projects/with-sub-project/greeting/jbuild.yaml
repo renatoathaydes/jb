@@ -3,3 +3,4 @@ module: greetings
 version: '1.0'
 
 source-dirs: [ src ]
+resource-dirs: [ resources ]

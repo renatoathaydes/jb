@@ -3,7 +3,7 @@
 ![jb-CI](https://github.com/renatoathaydes/jb/workflows/jb-CI/badge.svg)
 [![pub package](https://img.shields.io/pub/v/jb.svg)](https://pub.dev/packages/jb)
 
-`jb` is a modern (2020's era) build tool for Java.
+`jb` is a modern build tool for Java that looks like what you would expect in the 2020's.
 
 It aims to simplify Java project management and provide an excellent developer experience by being much simpler
 than Maven or Gradle, while still providing enough flexibility for most projects to achieve complex workflows.
@@ -19,17 +19,17 @@ jb create
 This creates a `jb` project with two modules, one at the working dir (or the directory given by the `-p` option),
 and one in the `test` directory (optionally).
 
-Each module has a `jbuild.yaml` file describing it. `./jbuild.yaml` looks like this:
+Each module has a `jbuild.yaml` or `jbuild.json` build file describing it. The build file may look like this:
 
 ```yaml
 group: my-group
 module: my-app
 version: '0.0.0'
 
-# default is src/main/java
+# default is src
 source-dirs: [ src ]
 
-# default is src/main/resources
+# default is resources
 resource-dirs: [ resources ]
 # The following options use the default values and could be omitted
 compile-libs-dir: build/compile-libs
@@ -47,6 +47,7 @@ main-class: my_group.my_app.Main
 
 # dependencies can be Maven artifacts or other jb projects
 dependencies:
+  - some.group:some.module:1.0.0
 ```
 
 The `test` module is just a `jb` project which depends on a supported testing library API, and contains tests.
@@ -58,10 +59,10 @@ group: my-group
 module: tests
 version: '0.0.0'
 
-# default is src/main/java
+# default is src
 source-dirs: [ src ]
 
-# default is src/main/resources
+# default is resources
 resource-dirs: [ resources ]
 
 # do not create a redundant jar for tests
@@ -75,7 +76,7 @@ dependencies:
       path: ../
 ```
 
-Some very basic Java code and a test are added as well.
+> If you run `jb create` on an empty directory, a basic project with some Java code and a test module is created.
 
 To compile the main module:
 
@@ -83,9 +84,17 @@ To compile the main module:
 jb compile
 ```
 
+In fact, because `compile` is the default task, you can just run:
+
+```shell
+jb
+```
+
+> Run `jb -s` to see all tasks in the build, and `jb -h` for help and listing all options.
+
 This should create a jar file at `./build/my-app.jar`.
 
-As the basic Java class `jb` creates has a main method, you can run it with:
+If your build file declares the `main-class`, you can ask `jb` to run it with:
 
 ```shell
 jb run
@@ -105,7 +114,7 @@ java -jar build/my-app.jar
 > libraries at the `build/runtime` directory by default, so just pass `-cp "build/runtime/*"` to Java after
 > building the project with `jb compile installRuntime`.
 
-To run the tests:
+To run the tests, point to the directory where the test project is with `-p`, and run the `test` task:
 
 ```shell
 jb -p test test
@@ -126,6 +135,31 @@ jb -s     # or e.g. 'jb -s run' to see which tasks 'run' would require
 
 # show a task dependency graph
 jb -g
+```
+
+## Extending jb
+
+To create your own tasks, first run `jb create` on a sub-directory of your root project and select `jb extension`
+when asked about the project type.
+
+A `jb` extension project consists of a regular `jb` project that has a dependency on `com.athaydes.jbuild:jbuild-api`,
+and has one or more Java classes implementing `jbuild.api.JbTask`, which makes them tasks `jb` can execute.
+
+The sample `JbTask` looks like this:
+
+```java
+package my_group.my_extension;
+
+import jbuild.api.*;
+
+@JbTaskInfo(name = "sample-task",
+        description = "Prints a message to show this extension works.")
+public final class ExampleTask implements JbTask {
+    @Override
+    public void run(String... args) throws IOException {
+        System.out.println("Extension task running: " + getClass().getName());
+    }
+}
 ```
 
 ## Demo Project

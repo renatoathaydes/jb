@@ -1,19 +1,99 @@
 import 'dart:io';
 
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 import 'package:io/ansi.dart' as ansi;
 
 import 'config.dart';
 import 'exec.dart';
+import 'output_consumer.dart';
 import 'tasks.dart' show depsTaskName;
+
+Future<void> writeDependencies(
+    {required File depsFile,
+    required LocalDependencies localDeps,
+    required Map<String, DependencySpec> deps,
+    required Set<String> exclusions,
+    required File processorDepsFile,
+    required Map<String, DependencySpec> processorDeps,
+    required Set<String> processorsExclusions}) async {
+  await _withFile(depsFile, (handle) async {
+    handle.write('dependencies:\n');
+    await _writeDeps(handle, deps, exclusions, localDeps);
+  });
+  await _withFile(processorDepsFile, (handle) async {
+    handle.write('processor-dependencies:\n');
+    await _writeDeps(handle, processorDeps, processorsExclusions);
+  });
+}
+
+Future<void> _withFile(File file, Future<void> Function(IOSink) action) async {
+  final handle = file.openWrite();
+  try {
+    await action(handle);
+  } finally {
+    await handle.flush();
+    await handle.close();
+  }
+}
+
+Future<void> _writeDeps(
+    IOSink sink, Map<String, DependencySpec> deps, Set<String> exclusions,
+    [LocalDependencies? localDeps]) async {
+  final nonLocalDeps = deps.entries
+      .where((e) => e.value.path == null)
+      .toList(growable: false)
+    ..sort((a, b) => a.key.compareTo(b.key));
+  for (final entry in nonLocalDeps) {
+    _writeDep(sink, entry.key, entry.value);
+  }
+  if (localDeps != null) {
+    for (final jarDep in [...localDeps.jars]
+      ..sort((a, b) => a.path.compareTo(b.path))) {
+      _writeDep(sink, "${jarDep.path} (jar)", jarDep.spec);
+    }
+    for (final subProject in [...localDeps.projectDependencies]
+      ..sort((a, b) => a.path.compareTo(b.path))) {
+      _writeDep(sink, "${subProject.path} (sub-project)", subProject.spec);
+    }
+  }
+  if (exclusions.isNotEmpty) {
+    sink.write('exclusions:\n');
+    for (final exclusion in [...exclusions]..sort()) {
+      sink
+        ..write('  - ')
+        ..write(exclusion)
+        ..write('\n');
+    }
+  }
+}
+
+void _writeDep(IOSink sink, String name, DependencySpec spec) {
+  sink
+    ..write('  - ')
+    ..write(name)
+    ..write(':\n');
+  if (spec != DependencySpec.defaultSpec) {
+    spec.path?.vmap((path) => sink
+      ..write('    path: ')
+      ..write(path)
+      ..write('\n'));
+    sink
+      ..write('    scope: ')
+      ..write(spec.scope.name)
+      ..write('\n')
+      ..write('    transitive: ')
+      ..write(spec.transitive)
+      ..write('\n');
+  }
+}
 
 Future<int> printDependencies(
     File jbuildJar,
-    JBuildConfiguration config,
+    JbConfiguration config,
     DartleCache cache,
     LocalDependencies localDependencies,
-    bool noColor,
     List<String> args) async {
   final deps = config.dependencies.entries
       .where((dep) => dep.value.path == null)
@@ -44,7 +124,7 @@ Future<int> printDependencies(
 void _printLocalDependencies(LocalDependencies localDependencies) {
   for (var dep in localDependencies.jars
       .map((j) => '* ${j.path} [${j.spec.scope.name}] (local jar)')
-      .followedBy(localDependencies.subProjects
+      .followedBy(localDependencies.projectDependencies
           .map((s) => '* ${s.path} [${s.spec.scope.name}] (sub-project)'))) {
     logger.info(ColoredLogMessage(dep, LogColor.magenta));
   }

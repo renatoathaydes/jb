@@ -1,10 +1,12 @@
 import 'config.dart' show DependencySpec;
 
 /// A dependency that refers to a local path.
-mixin PathDependency {
+sealed class PathDependency {
   DependencySpec get spec;
 
   String get path;
+
+  const PathDependency();
 
   static PathDependency jar(DependencySpec spec, String path) {
     return JarDependency(spec, path);
@@ -19,13 +21,13 @@ mixin PathDependency {
       required T Function(ProjectDependency) jbuildProject});
 }
 
-class ProjectDependency with PathDependency {
+final class ProjectDependency extends PathDependency {
   @override
   final DependencySpec spec;
   @override
   final String path;
 
-  ProjectDependency(this.spec, this.path);
+  const ProjectDependency(this.spec, this.path);
 
   @override
   T when<T>(
@@ -34,13 +36,13 @@ class ProjectDependency with PathDependency {
       jbuildProject(this);
 }
 
-class JarDependency with PathDependency {
+final class JarDependency extends PathDependency {
   @override
   final DependencySpec spec;
   @override
   final String path;
 
-  JarDependency(this.spec, this.path);
+  const JarDependency(this.spec, this.path);
 
   @override
   T when<T>(

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:path/path.dart' as p;
 
@@ -9,6 +10,10 @@ import 'config.dart';
 import 'jbuild_jar.g.dart';
 import 'paths.dart';
 import 'properties.dart';
+
+typedef Closable = FutureOr<void> Function();
+
+final classpathSeparator = Platform.isWindows ? ';' : ':';
 
 Future<File> createIfNeededAndGetJBuildJarFile() async {
   final file = File(jbuildJarPath()).absolute;
@@ -25,21 +30,21 @@ Future<void> _createJBuildJar(File jar) async {
   logger.info(() => PlainMessage('JBuild jar saved at ${jar.path}'));
 }
 
-extension AnyExtension<T> on T? {
-  T orThrow(String error) {
-    if (this == null) throw DartleException(message: error);
-    return this!;
-  }
-}
-
-extension FunctionExtension<T> on bool Function(T) {
-  bool Function(T) get not => (v) => !this(v);
-}
-
 extension NullIterable<T> on Iterable<T?> {
   Iterable<T> whereNonNull() sync* {
     for (final item in this) {
       if (item != null) yield item;
+    }
+  }
+}
+
+extension on Stream<String> {
+  Stream<String> followedBy(Iterable<String> rest) async* {
+    await for (final s in this) {
+      yield s;
+    }
+    for (final s in rest) {
+      yield s;
     }
   }
 }
@@ -70,7 +75,7 @@ extension ListExtension on List<String> {
   Iterable<String> javaRuntimeArgs() =>
       where(_javaRuntimeArg).map((e) => e.substring(2));
 
-  Iterable<String> notJavaRuntimeArgs() => where(_javaRuntimeArg.not);
+  Iterable<String> notJavaRuntimeArgs() => where(_javaRuntimeArg.not$);
 }
 
 extension SetExtension on Set<String> {
@@ -103,6 +108,17 @@ extension MapEntryIterable<K, V> on Iterable<MapEntry<K, V>> {
 }
 
 extension DirectoryExtension on Directory {
+  Future<String?> toClasspath([Set<File> extraEntries = const {}]) async =>
+      await exists()
+          ? list()
+              .where((f) =>
+                  FileSystemEntity.isFileSync(f.path) &&
+                  p.extension(f.path) == '.jar')
+              .map((f) => f.path)
+              .followedBy(extraEntries.map((f) => f.path))
+              .join(classpathSeparator)
+          : null;
+
   Future<void> copyContentsInto(String destinationDir) async {
     if (!await exists()) return;
     await for (final child in list(recursive: true)) {
@@ -131,4 +147,11 @@ extension NullableStringExtension on String? {
     }
     return result;
   }
+}
+
+extension BinaryStreamExtension on Stream<List<int>> {
+  Future<String> text() => transform(utf8.decoder).join();
+
+  Stream<String> lines() =>
+      transform(utf8.decoder).transform(const LineSplitter());
 }

@@ -4,8 +4,8 @@ import 'package:dartle/dartle.dart' show DartleException;
 
 import 'config.dart';
 
-extension ImportsJBuildConfigurationExtension on JBuildConfiguration {
-  Future<JBuildConfiguration> applyImports(imports) async {
+extension ImportsJBuildConfigurationExtension on JbConfiguration {
+  Future<JbConfiguration> applyImports(imports) async {
     if (imports == null) return this;
     var result = this;
     if (imports is String) {
@@ -29,8 +29,8 @@ extension ImportsJBuildConfigurationExtension on JBuildConfiguration {
   }
 }
 
-Future<JBuildConfiguration> _resolveImport(
-    JBuildConfiguration config, File importedConfigFile) async {
+Future<JbConfiguration> _resolveImport(
+    JbConfiguration config, File importedConfigFile) async {
   logger.fine(() => 'Reading imported config file: ${importedConfigFile.path}');
   final imported =
       await loadConfigString(await importedConfigFile.readAsString());

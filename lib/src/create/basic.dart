@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../config.dart' show yamlJbFile;
 import 'helpers.dart';
 
 const _testArtifactId = 'tests';
@@ -20,10 +21,10 @@ group: $groupId
 module: $artifactId
 version: '0.0.0'
 
-# default is src/main/java
+# default is src
 source-dirs: [ src ]
 
-# default is src/main/resources
+# default is resources
 resource-dirs: [ resources ]
 
 ${artifactId == _testArtifactId ? ''
@@ -94,7 +95,7 @@ List<FileCreator> getBasicFileCreators(File jbuildFile,
 List<FileCreator> _createTestModule(String groupId, String package) {
   final javaTestCreator = createJavaFile(
       package, 'MainTest', p.join('test', 'src'), _mainTestJava(package));
-  final buildFile = File(p.join('test', 'jbuild.yaml'));
+  final buildFile = File(p.join('test', yamlJbFile));
   final buildFileCreator = FileCreator(
       buildFile,
       () => buildFile.writeAsString(
