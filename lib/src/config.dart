@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show ChangeKind;
-import 'package:dartle/src/_log.dart' show colorize;
 import 'package:logging/logging.dart' as log;
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+import 'ansi.dart';
 import 'config_import.dart';
 import 'file_tree.dart';
 import 'path_dependency.dart';
@@ -445,63 +445,62 @@ class JbConfiguration {
     return result;
   }
 
-  String toYaml() {
-    String quote(String? value) => value == null
-        ? colorize('null', LogColor.magenta)
-        : colorize('"$value"', LogColor.blue);
+  String toYaml(bool noColor) {
+    final color = createAnsiColor(noColor);
+    String quote(String? value) =>
+        value == null ? color('null', kwColor) : color('"$value"', strColor);
 
     String depsToYaml(Iterable<MapEntry<String, DependencySpec>> deps) {
       if (deps.isEmpty) return ' []';
-      return '\n${deps.map((dep) => '  - ${quote(dep.key)}:\n${dep.value.toYaml('    ')}').join('\n')}';
+      return '\n${deps.map((dep) => '  - '
+          '${quote(dep.key)}:\n${dep.value.toYaml(color, '    ')}').join('\n')}';
     }
 
-    const gray = LogColor.gray;
-
     return '''
-${colorize('''
+${color('''
 ######################## Full jb configuration ########################
-    
+
 ### For more information, visit https://github.com/renatoathaydes/jb
-''', gray)}
-${colorize('# Maven artifact groupId', gray)}
+''', commentColor)}
+${color('# Maven artifact groupId', commentColor)}
 group: ${quote(group)}
-${colorize('# Maven artifactId', gray)}
+${color('# Maven artifactId', commentColor)}
 module: ${quote(module)}
-${colorize('# Maven version', gray)}
+${color('# Maven version', commentColor)}
 version: ${quote(version)}
-${colorize('# List of source directories', gray)}
+${color('# List of source directories', commentColor)}
 source-dirs: [${sourceDirs.map(quote).join(', ')}]
-${colorize('# List of resource directories (assets)', gray)}
+${color('# List of resource directories (assets)', commentColor)}
 resource-dirs: [${resourceDirs.map(quote).join(', ')}]
-${colorize('# Output directory (class files)', gray)}
+${color('# Output directory (class files)', commentColor)}
 output-dir: ${quote(output.when(dir: (d) => d, jar: (j) => null))}
-${colorize('# Output jar (may be used instead of output-dir)', gray)}
+${color('# Output jar (may be used instead of output-dir)', commentColor)}
 output-jar: ${quote(output.when(dir: (d) => null, jar: (j) => j))}
-${colorize('# Java Main class name', gray)}
+${color('# Java Main class name', commentColor)}
 main-class: ${quote(mainClass)}
-${colorize('# Java Compiler arguments', gray)}
+${color('# Java Compiler arguments', commentColor)}
 javac-args: [${javacArgs.map(quote).join(', ')}]
-${colorize('# Java runtime arguments', gray)}
+${color('# Java runtime arguments', commentColor)}
 run-java-args: [${runJavaArgs.map(quote).join(', ')}]
-${colorize('# Java test run arguments', gray)}
+${color('# Java test run arguments', commentColor)}
 test-java-args: [${javacArgs.map(quote).join(', ')}]
-${colorize('# Maven repositories (URLs or directories)', gray)}
+${color('# Maven repositories (URLs or directories)', commentColor)}
 repositories: [${repositories.map(quote).join(', ')}]
-${colorize('# Maven dependencies', gray)}
+${color('# Maven dependencies', commentColor)}
 dependencies:${depsToYaml(dependencies.entries)}
-${colorize('# Dependency exclusions (may use regex)', gray)}
+${color('# Dependency exclusions (may use regex)', commentColor)}
 exclusions: [${exclusions.map(quote).join(', ')}]
-${colorize('# Annotation processor Maven dependencies', gray)}
+${color('# Annotation processor Maven dependencies', commentColor)}
 processor-dependencies:${depsToYaml(processorDependencies.entries)}
-${colorize('# Annotation processor dependency exclusions (may use regex)', gray)}
+${color('# Annotation processor dependency exclusions (may use regex)', commentColor)}
 processor-dependencies-exclusions: [${processorDependenciesExclusions.map(quote).join(', ')}]
-${colorize('# Compile-time libs output dir', gray)}
+${color('# Compile-time libs output dir', commentColor)}
 compile-libs-dir: ${quote(compileLibsDir)}
-${colorize('# Runtime libs output dir', gray)}
+${color('# Runtime libs output dir', commentColor)}
 runtime-libs-dir: ${quote(runtimeLibsDir)}
-${colorize('# Test reports output dir', gray)}
+${color('# Test reports output dir', commentColor)}
 test-reports-dir: ${quote(testReportsDir)}
-${colorize('# jb extension project path (for custom tasks)', gray)}
+${color('# jb extension project path (for custom tasks)', commentColor)}
 extension-project: ${quote(extensionProject)}
 ''';
   }
@@ -627,12 +626,14 @@ enum DependencyScope {
     return this != DependencyScope.compileOnly;
   }
 
-  String toYaml() {
-    return switch (this) {
-      runtimeOnly => 'runtime-only',
-      compileOnly => 'compile-only',
-      all => 'all',
-    };
+  String toYaml(AnsiColor color) {
+    return color(
+        switch (this) {
+          runtimeOnly => '"runtime-only"',
+          compileOnly => '"compile-only"',
+          all => '"all"',
+        },
+        strColor);
   }
 }
 
@@ -699,10 +700,12 @@ class DependencySpec {
     return this;
   }
 
-  String toYaml(String ident) {
-    return '${ident}transitive: $transitive\n'
-        '${ident}scope: ${scope.toYaml()}\n'
-        '${ident}path: $path';
+  String toYaml(AnsiColor color, String ident) {
+    final colorPath =
+        path == null ? color('null', kwColor) : color('"$path"', strColor);
+    return '${ident}transitive: ${color('$transitive', kwColor)}\n'
+        '${ident}scope: ${scope.toYaml(color)}\n'
+        '${ident}path: $colorPath';
   }
 }
 

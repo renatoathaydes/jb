@@ -128,7 +128,7 @@ class JbDartle {
         _files.jbuildJar, _config, _cache, !_options.colorfulLog);
     deps =
         createDepsTask(_files.jbuildJar, _config, _cache, unresolvedLocalDeps);
-    showConfig = createShowConfigTask(_config);
+    showConfig = createShowConfigTask(_config, !_options.colorfulLog);
     requirements = createRequirementsTask(_files.jbuildJar, _config, _cache,
         unresolvedLocalDeps, !_options.colorfulLog);
     generateEclipse = createEclipseTask(_config);

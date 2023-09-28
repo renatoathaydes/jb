@@ -461,8 +461,8 @@ Future<void> _deps(File jbuildJar, JbConfiguration config, DartleCache cache,
   }
 }
 
-Task createShowConfigTask(JbConfiguration config) {
-  return Task((_) => print(config.toYaml()),
+Task createShowConfigTask(JbConfiguration config, bool noColor) {
+  return Task((_) => print(config.toYaml(noColor)),
       name: showJbConfigTaskName,
       phase: TaskPhase.setup,
       description: 'Shows the fully resolved jb configuration.');
