@@ -231,7 +231,7 @@ class JbConfiguration {
     return JbConfiguration(
       group: _optionalStringValue(map, 'group'),
       module: _optionalStringValue(map, 'module'),
-      version: _optionalStringValue(map, 'version'),
+      version: _optionalStringValue(map, 'version', allowNumber: true),
       mainClass: _optionalStringValue(map, 'main-class'),
       extensionProject: _optionalStringValue(map, 'extension-project'),
       sourceDirs: sourceDirs.toSet(),
@@ -744,11 +744,15 @@ _Value<String> _stringValue(
   return _Value(isDefault, result);
 }
 
-String? _optionalStringValue(Map<String, Object?> map, String key) {
+String? _optionalStringValue(Map<String, Object?> map, String key,
+    {bool allowNumber = false}) {
   final value = map[key];
   if (value == null) return null;
   if (value is String) {
     return value;
+  }
+  if (allowNumber && value is num) {
+    return value.toString();
   }
   throw DartleException(
       message: "expecting a String value for '$key', but got '$value'.");
