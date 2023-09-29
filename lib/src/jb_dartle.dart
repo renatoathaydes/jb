@@ -30,6 +30,7 @@ class JbDartle {
       installRuntime,
       installProcessor,
       generateEclipse,
+      generatePom,
       requirements,
       clean,
       run,
@@ -132,6 +133,7 @@ class JbDartle {
     requirements = createRequirementsTask(_files.jbuildJar, _config, _cache,
         unresolvedLocalDeps, !_options.colorfulLog);
     generateEclipse = createEclipseTask(_config);
+    generatePom = createGeneratePomTask(_config, localDependencies);
 
     final extensionProject = await loadExtensionProject(
         javaSender, _files, _options, _config.extensionProject);
@@ -151,6 +153,7 @@ class JbDartle {
       showConfig,
       requirements,
       generateEclipse,
+      generatePom,
       if (extensionTasks != null) ...extensionTasks,
     });
 

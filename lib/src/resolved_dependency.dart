@@ -21,6 +21,14 @@ final class ResolvedProjectDependency {
 
   String get path => projectDependency.path;
 
+  String? get group => _config.group;
+
+  String? get module => _config.module;
+
+  String? get version => _config.version;
+
+  DependencyScope get scope => projectDependency.spec.scope;
+
   CompileOutput get output => _config.output.when(
       dir: (d) => CompileOutput.dir(_relativize(d)),
       jar: (j) => CompileOutput.jar(_relativize(j)));

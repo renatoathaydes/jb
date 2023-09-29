@@ -12,6 +12,7 @@ import 'file_tree.dart';
 import 'java_tests.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart';
+import 'pom.dart';
 import 'requirements.dart';
 import 'resolved_dependency.dart';
 import 'utils.dart';
@@ -29,6 +30,7 @@ const depsTaskName = 'dependencies';
 const showJbConfigTaskName = 'showJbConfiguration';
 const requirementsTaskName = 'requirements';
 const createEclipseTaskName = 'createEclipseFiles';
+const createPomTaskName = 'generatePom';
 
 /// Create run condition for the `compile` task.
 RunOnChanges createCompileRunCondition(
@@ -304,6 +306,14 @@ Task createEclipseTask(JbConfiguration config) {
       name: createEclipseTaskName,
       description: 'Generate Eclipse IDE files for the project.',
       dependsOn: const {installCompileDepsTaskName});
+}
+
+Task createGeneratePomTask(
+    JbConfiguration config, ResolvedLocalDependencies localDependencies) {
+  return Task((_) => print(createPom(config, localDependencies)),
+      name: createPomTaskName,
+      phase: TaskPhase.setup,
+      description: 'Generate Maven POM for publishing the project.');
 }
 
 /// Create the `run` task.
