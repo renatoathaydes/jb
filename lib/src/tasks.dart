@@ -310,10 +310,20 @@ Task createEclipseTask(JbConfiguration config) {
 
 Task createGeneratePomTask(
     JbConfiguration config, ResolvedLocalDependencies localDependencies) {
-  return Task((_) => print(createPom(config, localDependencies)),
+  return Task(
+      (List<String> args) => _pom(args, createPom(config, localDependencies)),
       name: createPomTaskName,
       phase: TaskPhase.setup,
-      description: 'Generate Maven POM for publishing the project.');
+      argsValidator: ArgsCount.range(min: 0, max: 1),
+      description: 'Generate Maven POM for publishing the project. '
+          'An optional argument can be used to specify the POM destination.');
+}
+
+Future<void> _pom(List<String> args, Object pom) async {
+  final destination = File(args.isEmpty ? 'pom.xml' : args[0]);
+  await destination.parent.create(recursive: true);
+  logger.fine(() => "Writing POM to $destination");
+  await destination.writeAsString(pom.toString(), flush: true);
 }
 
 /// Create the `run` task.
