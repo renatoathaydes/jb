@@ -11,6 +11,8 @@ import 'package:yaml/yaml.dart';
 import 'ansi.dart';
 import 'config_import.dart';
 import 'file_tree.dart';
+import 'license.dart';
+import 'licenses.g.dart';
 import 'path_dependency.dart';
 import 'properties.dart';
 import 'utils.dart';
@@ -129,6 +131,7 @@ class JbConfiguration {
   final String? group;
   final String? module;
   final String? version;
+  final List<License> licenses;
   final String? mainClass;
   final String? extensionProject;
   final Set<String> sourceDirs;
@@ -168,6 +171,7 @@ class JbConfiguration {
     bool defaultCompileLibsDir = false,
     bool defaultRuntimeLibsDir = false,
     bool defaultTestReportsDir = false,
+    required this.licenses,
     required this.sourceDirs,
     required this.output,
     required this.resourceDirs,
@@ -208,6 +212,7 @@ class JbConfiguration {
     final resourceDirs =
         _stringIterableValue(map, 'resource-dirs', const {'resources'});
     final javacArgs = _stringIterableValue(map, 'javac-args', const []);
+    final licenses = _stringIterableValue(map, 'licenses', const []);
     final runJavaArgs = _stringIterableValue(map, 'run-java-args', const []);
     final testJavaArgs = _stringIterableValue(map, 'test-java-args', const []);
     final javacEnv = _stringMapValue(map, 'javac-env', const {});
@@ -240,6 +245,9 @@ class JbConfiguration {
       defaultOutput: output == null,
       resourceDirs: resourceDirs.toSet(),
       defaultResourceDirs: resourceDirs.isDefault,
+      licenses: licenses.value
+          .map((id) => allLicenses[id].orThrow(() => _invalidLicense(id)))
+          .toList(),
       javacArgs: javacArgs.toList(),
       runJavaArgs: runJavaArgs.toList(),
       testJavaArgs: testJavaArgs.toList(),
@@ -283,6 +291,12 @@ class JbConfiguration {
       resourceDirs: _mergeWithDefault(resourceDirs, _defaultResourceDirs,
           other.resourceDirs, other._defaultResourceDirs, props),
       defaultResourceDirs: _defaultResourceDirs && other._defaultResourceDirs,
+      licenses: licenses
+          .map((lic) => lic.licenseId)
+          .toSet() // for uniqueness on merging
+          .merge(other.licenses.map((lic) => lic.licenseId), props)
+          .map((id) => allLicenses[id].orThrow(() => _invalidLicense(id)))
+          .toList(),
       javacArgs: javacArgs.merge(other.javacArgs, props),
       runJavaArgs: runJavaArgs.merge(other.runJavaArgs, props),
       testJavaArgs: testJavaArgs.merge(other.testJavaArgs, props),
@@ -468,6 +482,8 @@ ${color('# Maven artifactId', commentColor)}
 module: ${quote(module)}
 ${color('# Maven version', commentColor)}
 version: ${quote(version)}
+${color('# Licenses this project uses', commentColor)}
+licenses: [${licenses.map((lic) => quote(lic.licenseId)).join(', ')}]
 ${color('# List of source directories', commentColor)}
 source-dirs: [${sourceDirs.map(quote).join(', ')}]
 ${color('# List of resource directories (assets)', commentColor)}
@@ -508,7 +524,8 @@ extension-project: ${quote(extensionProject)}
   @override
   String toString() {
     return 'JBuildConfiguration{group: $group, '
-        'module: $module, version: $version, mainClass: $mainClass, '
+        'module: $module, version: $version, '
+        'licenses: $licenses, mainClass: $mainClass, '
         'extensionProject: $extensionProject, sourceDirs: $sourceDirs, '
         'output: $output, resourceDirs: $resourceDirs, javacArgs: $javacArgs, '
         'runJavaArgs: $runJavaArgs, testJavaArgs: $testJavaArgs, '
@@ -531,6 +548,12 @@ Set<String> _mergeWithDefault(
   if (defaultValues) return otherValues.merge(const {}, props);
   if (defaultOtherValues) return values.merge(const {}, props);
   return values.merge(otherValues, props);
+}
+
+Exception _invalidLicense(String id) {
+  return DartleException(
+      message: 'License is not recognized: "$id". '
+          'See https://spdx.org/licenses/ for valid license identifiers.');
 }
 
 /// Grouping of all local dependencies, which can be local

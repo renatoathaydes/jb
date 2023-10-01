@@ -109,6 +109,15 @@ dartle emptyGeneratedAssets
 dartle build
 ```
 
+## Updating the SPDX licenses list
+
+`jb` uses [the SPDX licenses list](https://spdx.org/licenses/) to validate license IDs in the config files,
+as well as to generate Maven metadata for publishing.
+
+To re-generate the list in `[licenses.g.dart](lib/src/licenses.g.dart)`, delete this file and build again.
+
+The `generateLicenses` Dartle task will download the licenses list and create the file again automatically.
+
 ## Publishing
 
 To publish `jb` to [pub.dev](https://pub.dev/):

@@ -4,9 +4,9 @@
 final class License {
   final String licenseId;
   final String name;
-  final Uri uri;
-  final bool isOsiApproved;
-  final bool isFsfLibre;
+  final String uri;
+  final bool? isOsiApproved;
+  final bool? isFsfLibre;
 
   const License(
       {required this.licenseId,

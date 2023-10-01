@@ -65,9 +65,10 @@ extension AsyncIterable<T> on Iterable<FutureOr<T>> {
   }
 }
 
-extension ListExtension on List<String> {
-  List<String> merge(List<String> other, Properties props) => followedBy(other)
-      .map((e) => resolveString(e, props))
+extension ListExtension on Iterable<String> {
+  List<String> merge(Iterable<String> other, Properties props) =>
+      followedBy(other)
+          .map((e) => resolveString(e, props))
       .toList(growable: false);
 
   bool _javaRuntimeArg(String arg) => arg.startsWith('-J-');
@@ -79,7 +80,7 @@ extension ListExtension on List<String> {
 }
 
 extension SetExtension on Set<String> {
-  Set<String> merge(Set<String> other, Properties props) =>
+  Set<String> merge(Iterable<String> other, Properties props) =>
       followedBy(other).map((e) => resolveString(e, props)).toSet();
 }
 

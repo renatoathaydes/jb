@@ -12,6 +12,8 @@ const _fullConfig = '''
   group: my-group
   module: mod1
   version: '0.1'
+  licenses:
+    - "0BSD"
   source-dirs:
     - src/main/groovy
     - src/test/kotlin
@@ -66,6 +68,8 @@ group: \x1B[34m"my-group"\x1B[0m
 module: \x1B[34m"mod1"\x1B[0m
 \x1B[90m# Maven version\x1B[0m
 version: \x1B[34m"0.1"\x1B[0m
+\x1B[90m# Licenses this project uses\x1B[0m
+licenses: [\x1B[34m"0BSD"\x1B[0m]
 \x1B[90m# List of source directories\x1B[0m
 source-dirs: [\x1B[34m"src/main/groovy"\x1B[0m, \x1B[34m"src/test/kotlin"\x1B[0m]
 \x1B[90m# List of resource directories (assets)\x1B[0m
@@ -133,6 +137,8 @@ group: null
 module: "basic"
 # Maven version
 version: null
+# Licenses this project uses
+licenses: []
 # List of source directories
 source-dirs: ["src"]
 # List of resource directories (assets)
@@ -186,6 +192,7 @@ void main() {
     test('can load', () {
       final config = JbConfiguration(
           version: '0',
+          licenses: const [],
           sourceDirs: {'src'},
           output: CompileOutput.jar('lib.jar'),
           resourceDirs: const {},
@@ -214,10 +221,11 @@ void main() {
 
       expect(
           config,
-          equalsConfig(const JbConfiguration(
+          equalsConfig(JbConfiguration(
             group: 'my-group',
             module: 'mod1',
             version: '0.1',
+            licenses: [allLicenses['0BSD']!],
             sourceDirs: {'src/main/groovy', 'src/test/kotlin'},
             output: CompileOutput.dir('target/'),
             resourceDirs: {'src/resources'},
@@ -275,6 +283,7 @@ void main() {
       expect(
           config,
           equalsConfig(const JbConfiguration(
+              licenses: [],
               sourceDirs: {'src/java'},
               output: CompileOutput.dir('out'),
               resourceDirs: {'resources'},
