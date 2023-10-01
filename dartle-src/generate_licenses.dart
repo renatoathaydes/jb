@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dartle/dartle_dart.dart';
+import 'package:jb/jb.dart' show logger;
 
 const spdxLicensesUrl = 'https://raw.githubusercontent.com'
     '/spdx/license-list-data/main/json/licenses.json';
@@ -16,14 +17,21 @@ void setupTaskDependencies(DartleDart dartleDart) {
 
 final generateLicensesTask = Task(
   _generateLicenses,
+  // DO NOT add a RunCondition otherwise this task will run in CI (no cache)
   name: licensesTaskName,
   phase: TaskPhase.setup,
   description:
-      'Generates $licensesDartFile file containing SPDX license details',
-  runCondition: RunOnChanges(outputs: file(licensesDartFile)),
+      'Generates $licensesDartFile file containing SPDX license details. '
+      'Delete this file to regenerate.',
 );
 
 Future<void> _generateLicenses(_) async {
+  final output = File(licensesDartFile);
+  if (await output.exists()) {
+    logger.fine(
+        () => 'Will not generate licenses file because it already exists.');
+    return;
+  }
   final client = HttpClient();
   dynamic licensesContainer;
   try {
@@ -35,11 +43,10 @@ Future<void> _generateLicenses(_) async {
     client.close();
   }
 
-  await _generate(licensesContainer['licenses']);
+  await _generate(licensesContainer['licenses'], output);
 }
 
-Future<void> _generate(licenses) async {
-  final output = File(licensesDartFile);
+Future<void> _generate(licenses, File output) async {
   final outHandle = output.openWrite();
   try {
     await _writeLicenses(outHandle, licenses);
