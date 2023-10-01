@@ -2007,6 +2007,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "HPND-doc": License(
+    licenseId: "HPND-doc",
+    name: "Historical Permission Notice and Disclaimer - documentation variant",
+    uri: "https://spdx.org/licenses/HPND-doc.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "HPND-doc-sell": License(
     licenseId: "HPND-doc-sell",
     name:
