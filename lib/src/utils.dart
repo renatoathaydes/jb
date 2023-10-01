@@ -4,11 +4,10 @@ import 'dart:io';
 
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
+import 'package:jb/jb.dart';
 import 'package:path/path.dart' as p;
 
-import 'config.dart';
 import 'jbuild_jar.g.dart';
-import 'paths.dart';
 import 'properties.dart';
 
 typedef Closable = FutureOr<void> Function();
@@ -69,7 +68,7 @@ extension ListExtension on Iterable<String> {
   List<String> merge(Iterable<String> other, Properties props) =>
       followedBy(other)
           .map((e) => resolveString(e, props))
-      .toList(growable: false);
+          .toList(growable: false);
 
   bool _javaRuntimeArg(String arg) => arg.startsWith('-J-');
 
@@ -77,6 +76,44 @@ extension ListExtension on Iterable<String> {
       where(_javaRuntimeArg).map((e) => e.substring(2));
 
   Iterable<String> notJavaRuntimeArgs() => where(_javaRuntimeArg.not$);
+}
+
+extension ScmExtension on SourceControlManagement? {
+  SourceControlManagement? merge(
+      SourceControlManagement? other, Properties props) {
+    return switch ((this, other)) {
+      (null, null) => null,
+      (SourceControlManagement self, null) => self.applying(props),
+      (_, SourceControlManagement that) => that.applying(props),
+    };
+  }
+
+  SourceControlManagement? applying(Properties props) {
+    return this?.vmap((self) => SourceControlManagement(
+        connection: resolveString(self.connection, props),
+        developerConnection: resolveString(self.developerConnection, props),
+        url: resolveString(self.url, props)));
+  }
+}
+
+extension DevelopersExtension on List<Developer> {
+  List<Developer> merge(List<Developer> others, Properties props) {
+    return [
+      ...map((dev) => dev.applying(props)),
+      ...others.map((dev) => dev.applying(props)),
+    ];
+  }
+}
+
+extension _DeveloperExtension on Developer {
+  Developer applying(Properties props) {
+    return Developer(
+      name: resolveString(name, props),
+      email: resolveString(email, props),
+      organization: resolveString(organization, props),
+      organizationUrl: resolveString(organizationUrl, props),
+    );
+  }
 }
 
 extension SetExtension on Set<String> {

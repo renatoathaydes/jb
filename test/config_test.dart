@@ -12,8 +12,19 @@ const _fullConfig = '''
   group: my-group
   module: mod1
   version: '0.1'
+  description: A simple module
+  url: https://my.mod
   licenses:
     - "0BSD"
+  developers:
+    - name: Joe
+      email: joe
+      organization: ACME
+      organization-url: http://acme.org
+  scm:
+    connection: git
+    developer-connection: git-dev
+    url: github
   source-dirs:
     - src/main/groovy
     - src/test/kotlin
@@ -68,8 +79,23 @@ group: \x1B[34m"my-group"\x1B[0m
 module: \x1B[34m"mod1"\x1B[0m
 \x1B[90m# Maven version\x1B[0m
 version: \x1B[34m"0.1"\x1B[0m
+\x1B[90m# Description for this project\x1B[0m
+description: \x1B[34m"A simple module"\x1B[0m
+\x1B[90m# URL of this project\x1B[0m
+url: \x1B[34m"https://my.mod"\x1B[0m
 \x1B[90m# Licenses this project uses\x1B[0m
 licenses: [\x1B[34m"0BSD"\x1B[0m]
+\x1B[90m# Developers who have contributed to this project\x1B[0m
+developers:
+  - name: \x1B[34m"Joe"\x1B[0m
+    email: \x1B[34m"joe"\x1B[0m
+    organization: \x1B[34m"ACME"\x1B[0m
+    organization-url: \x1B[34m"http://acme.org"\x1B[0m
+\x1B[90m# Source control management\x1B[0m
+scm:
+  connection: \x1B[34m"git"\x1B[0m
+  developer-connection: \x1B[34m"git-dev"\x1B[0m
+  url: \x1B[34m"github"\x1B[0m
 \x1B[90m# List of source directories\x1B[0m
 source-dirs: [\x1B[34m"src/main/groovy"\x1B[0m, \x1B[34m"src/test/kotlin"\x1B[0m]
 \x1B[90m# List of resource directories (assets)\x1B[0m
@@ -137,8 +163,16 @@ group: null
 module: "basic"
 # Maven version
 version: null
+# Description for this project
+description: null
+# URL of this project
+url: null
 # Licenses this project uses
 licenses: []
+# Developers who have contributed to this project
+developers: []
+# Source control management
+scm: null
 # List of source directories
 source-dirs: ["src"]
 # List of resource directories (assets)
@@ -189,28 +223,10 @@ extension-project: null
 
 void main() {
   group('JBuildConfiguration', () {
-    test('can load', () {
-      final config = JbConfiguration(
-          version: '0',
-          licenses: const [],
-          sourceDirs: {'src'},
-          output: CompileOutput.jar('lib.jar'),
-          resourceDirs: const {},
-          mainClass: '',
-          dependencies: const {},
-          exclusions: const {},
-          processorDependencies: const {},
-          processorDependenciesExclusions: const {},
-          repositories: const {},
-          javacArgs: const [],
-          runJavaArgs: const [],
-          testJavaArgs: const [],
-          javacEnv: const {},
-          runJavaEnv: const {},
-          testJavaEnv: const {},
-          compileLibsDir: '',
-          runtimeLibsDir: '',
-          testReportsDir: '');
+    test('can load', () async {
+      final config = await loadConfigString('''
+      output-jar: lib.jar
+      ''');
 
       expect(config.sourceDirs, equals(const {'src'}));
       expect(config.output.when(dir: (d) => 'dir', jar: (j) => j), 'lib.jar');
@@ -225,7 +241,22 @@ void main() {
             group: 'my-group',
             module: 'mod1',
             version: '0.1',
+            description: 'A simple module',
+            url: 'https://my.mod',
             licenses: [allLicenses['0BSD']!],
+            developers: [
+              Developer(
+                name: 'Joe',
+                email: 'joe',
+                organization: 'ACME',
+                organizationUrl: 'http://acme.org',
+              )
+            ],
+            scm: SourceControlManagement(
+              connection: 'git',
+              developerConnection: 'git-dev',
+              url: 'github',
+            ),
             sourceDirs: {'src/main/groovy', 'src/test/kotlin'},
             output: CompileOutput.dir('target/'),
             resourceDirs: {'src/resources'},
@@ -284,6 +315,7 @@ void main() {
           config,
           equalsConfig(const JbConfiguration(
               licenses: [],
+              developers: [],
               sourceDirs: {'src/java'},
               output: CompileOutput.dir('out'),
               resourceDirs: {'resources'},

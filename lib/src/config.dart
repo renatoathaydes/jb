@@ -11,8 +11,8 @@ import 'package:yaml/yaml.dart';
 import 'ansi.dart';
 import 'config_import.dart';
 import 'file_tree.dart';
-import 'license.dart';
 import 'licenses.g.dart';
+import 'maven_metadata.dart';
 import 'path_dependency.dart';
 import 'properties.dart';
 import 'utils.dart';
@@ -131,7 +131,11 @@ class JbConfiguration {
   final String? group;
   final String? module;
   final String? version;
+  final String? description;
+  final String? url;
   final List<License> licenses;
+  final List<Developer> developers;
+  final SourceControlManagement? scm;
   final String? mainClass;
   final String? extensionProject;
   final Set<String> sourceDirs;
@@ -163,6 +167,9 @@ class JbConfiguration {
     this.group,
     this.module,
     this.version,
+    this.description,
+    this.url,
+    this.scm,
     this.mainClass,
     this.extensionProject,
     bool defaultSourceDirs = false,
@@ -172,6 +179,7 @@ class JbConfiguration {
     bool defaultRuntimeLibsDir = false,
     bool defaultTestReportsDir = false,
     required this.licenses,
+    required this.developers,
     required this.sourceDirs,
     required this.output,
     required this.resourceDirs,
@@ -219,6 +227,8 @@ class JbConfiguration {
     final runJavaEnv = _stringMapValue(map, 'run-java-env', const {});
     final testJavaEnv = _stringMapValue(map, 'test-java-env', const {});
     final dependencies = _dependencies(map, 'dependencies', const {});
+    final scm = _scm(map);
+    final developers = _developers(map);
     final repositories = _stringIterableValue(map, 'repositories', const {});
     final exclusions =
         _stringIterableValue(map, 'exclusion-patterns', const {});
@@ -237,6 +247,10 @@ class JbConfiguration {
       group: _optionalStringValue(map, 'group'),
       module: _optionalStringValue(map, 'module'),
       version: _optionalStringValue(map, 'version', allowNumber: true),
+      description: _optionalStringValue(map, 'description'),
+      url: _optionalStringValue(map, 'url'),
+      scm: scm,
+      developers: developers,
       mainClass: _optionalStringValue(map, 'main-class'),
       extensionProject: _optionalStringValue(map, 'extension-project'),
       sourceDirs: sourceDirs.toSet(),
@@ -279,6 +293,11 @@ class JbConfiguration {
       group: resolveOptionalString(other.group ?? group, props),
       module: resolveOptionalString(other.module ?? module, props),
       version: resolveOptionalString(other.version ?? version, props),
+      description:
+          resolveOptionalString(other.description ?? description, props),
+      url: resolveOptionalString(other.url ?? url, props),
+      scm: scm.merge(other.scm, props),
+      developers: developers.merge(other.developers, props),
       mainClass: resolveOptionalString(other.mainClass ?? mainClass, props),
       extensionProject: resolveOptionalString(
           other.extensionProject ?? extensionProject, props),
@@ -470,6 +489,16 @@ class JbConfiguration {
           '${quote(dep.key)}:\n${dep.value.toYaml(color, '    ')}').join('\n')}';
     }
 
+    String developersToYaml(Iterable<Developer> developers) {
+      if (developers.isEmpty) return ' []';
+      return '\n${developers.map((dev) => '  - ${dev.toYaml(color, '    ')}').join('\n')}';
+    }
+
+    String scmToYaml(SourceControlManagement? scm) {
+      if (scm == null) return color(' null', kwColor);
+      return '\n  ${scm.toYaml(color, '  ')}';
+    }
+
     return '''
 ${color('''
 ######################## Full jb configuration ########################
@@ -482,8 +511,16 @@ ${color('# Maven artifactId', commentColor)}
 module: ${quote(module)}
 ${color('# Maven version', commentColor)}
 version: ${quote(version)}
+${color('# Description for this project', commentColor)}
+description: ${quote(description)}
+${color('# URL of this project', commentColor)}
+url: ${quote(url)}
 ${color('# Licenses this project uses', commentColor)}
 licenses: [${licenses.map((lic) => quote(lic.licenseId)).join(', ')}]
+${color('# Developers who have contributed to this project', commentColor)}
+developers:${developersToYaml(developers)}
+${color('# Source control management', commentColor)}
+scm:${scmToYaml(scm)}
 ${color('# List of source directories', commentColor)}
 source-dirs: [${sourceDirs.map(quote).join(', ')}]
 ${color('# List of resource directories (assets)', commentColor)}
@@ -682,10 +719,10 @@ class DependencySpec {
               'only "transitive", "path" and "scope" fields can be set: $map');
     }
     return DependencySpec(
-        transitive: _boolValue(map, 'transitive', true),
+        transitive: _boolValue(map, 'transitive', true, type: 'Dependency'),
         scope: _scopeValue(map, 'scope', DependencyScope.all),
-        path:
-            _optionalStringValue(map, 'path').removeFromEnd(const {'/', '\\'}));
+        path: _optionalStringValue(map, 'path', type: 'Dependency')
+            .removeFromEnd(const {'/', '\\'}));
   }
 
   Future<PathDependency>? toPathDependency() {
@@ -732,7 +769,29 @@ class DependencySpec {
   }
 }
 
-bool _boolValue(Map<String, Object?> map, String key, bool defaultValue) {
+SourceControlManagement _scmFromMap(Map<String, Object?> map) {
+  return SourceControlManagement(
+      connection: _mandatoryValue(map, 'connection', 'Scm'),
+      developerConnection: _mandatoryValue(map, 'developer-connection', 'Scm'),
+      url: _mandatoryValue(map, 'url', 'Scm'));
+}
+
+Developer _developerFromMap(Map<String, Object?> map) {
+  return Developer(
+    name: _mandatoryValue(map, 'name', 'Developer'),
+    email: _mandatoryValue(map, 'email', 'Developer'),
+    organization: _mandatoryValue(map, 'organization', 'Developer'),
+    organizationUrl: _mandatoryValue(map, 'organization-url', 'Developer'),
+  );
+}
+
+String _mandatoryValue(Map<String, Object?> map, String key, String type) {
+  return map[key]
+      .vmap((name) => _stringValue(map, key, null, type: type).value);
+}
+
+bool _boolValue(Map<String, Object?> map, String key, bool defaultValue,
+    {String? type}) {
   final value = map[key];
   if (value == null) return defaultValue;
   if (value is bool) {
@@ -746,29 +805,34 @@ bool _boolValue(Map<String, Object?> map, String key, bool defaultValue) {
       return false;
     }
   }
+  final prefix = type == null ? '' : 'on $type: ';
   throw DartleException(
-      message: "expecting a boolean value for '$key', but got '$value'.");
+      message:
+          "${prefix}expecting a boolean value for '$key', but got '$value'.");
 }
 
 _Value<String> _stringValue(
-    Map<String, Object?> map, String key, String defaultValue) {
+    Map<String, Object?> map, String key, String? defaultValue,
+    {String? type}) {
   final value = map[key];
   String result;
   bool isDefault = false;
-  if (value == null) {
+  if (value == null && defaultValue != null) {
     result = defaultValue;
     isDefault = true;
   } else if (value is String) {
     result = value;
   } else {
+    final prefix = type == null ? '' : 'on $type: ';
     throw DartleException(
-        message: "expecting a String value for '$key', but got '$value'.");
+        message:
+            "${prefix}expecting a String value for '$key', but got '$value'.");
   }
   return _Value(isDefault, result);
 }
 
 String? _optionalStringValue(Map<String, Object?> map, String key,
-    {bool allowNumber = false}) {
+    {bool allowNumber = false, String? type}) {
   final value = map[key];
   if (value == null) return null;
   if (value is String) {
@@ -777,8 +841,10 @@ String? _optionalStringValue(Map<String, Object?> map, String key,
   if (allowNumber && value is num) {
     return value.toString();
   }
+  final prefix = type == null ? '' : 'on $type: ';
   throw DartleException(
-      message: "expecting a String value for '$key', but got '$value'.");
+      message:
+          "${prefix}expecting a String value for '$key', but got '$value'.");
 }
 
 DependencyScope _scopeValue(
@@ -789,12 +855,13 @@ DependencyScope _scopeValue(
     return DependencyScope.fromName(value);
   }
   throw DartleException(
-      message: "expecting a String value for '$key', "
+      message: "on Dependency: expecting a String value for '$key', "
           "but got '$value'.");
 }
 
 _Value<Iterable<String>> _stringIterableValue(
-    Map<String, Object?> map, String key, Iterable<String> defaultValue) {
+    Map<String, Object?> map, String key, Iterable<String> defaultValue,
+    {String? type}) {
   final value = map[key];
   bool isDefault = false;
   Iterable<String> result;
@@ -804,8 +871,9 @@ _Value<Iterable<String>> _stringIterableValue(
   } else if (value is Iterable) {
     result = value.map((e) {
       if (e == null || e is Iterable || e is Map) {
+        final prefix = type == null ? '' : 'on $type: ';
         throw DartleException(
-            message: "expecting a list of String values for '$key', "
+            message: "${prefix}expecting a list of String values for '$key', "
                 "but got element '$e'.");
       }
       return e.toString();
@@ -813,8 +881,9 @@ _Value<Iterable<String>> _stringIterableValue(
   } else if (value is String) {
     result = {value};
   } else {
+    final prefix = type == null ? '' : 'on $type: ';
     throw DartleException(
-        message: "expecting a list of String values for '$key', "
+        message: "${prefix}expecting a list of String values for '$key', "
             "but got '$value'.");
   }
   return _Value(isDefault, result);
@@ -875,7 +944,27 @@ Use the following syntax to declare dependencies:
     - first:dep:1.0
     - another:dep:2.0:
         transitive: false  # true (at runtime) by default
-        scope: runtime-only # or compile-only or all
+        scope: runtime-only # or: compile-only, all
+        path: "<path to local project or jar>"
+''';
+
+const scmSyntaxHelp = '''
+Use the following syntax to declare scm (source control management):
+
+  scm:
+    connection: "<source control connection>"
+    developer-connection: "<source control dev connection>"
+    url: "<repository URL>"
+''';
+
+const developerSyntaxHelp = '''
+Use the following syntax to declare 'developers':
+
+  developers:
+    - name: John Doe
+      email: john@doe.com
+      organization: ACME
+      organization-url: https://acme.example.org
 ''';
 
 _Value<Map<String, DependencySpec>> _dependencies(Map<String, Object?> map,
@@ -937,6 +1026,35 @@ CompileOutput _defaultOutputValue() {
       p.join('build', '${p.basename(Directory.current.path)}.jar'));
 }
 
+SourceControlManagement? _scm(Map<String, Object?> map) {
+  final value = map['scm'];
+  if (value == null) return null;
+  if (value is Map<String, Object?>) {
+    return _scmFromMap(value);
+  }
+  throw DartleException(
+      message: "bad scm declaration: '$value'.\n"
+          "$scmSyntaxHelp");
+}
+
+List<Developer> _developers(Map<String, Object?> map) {
+  final value = map['developers'];
+  if (value == null) return const [];
+  if (value is List<Object?>) {
+    return value.map((item) {
+      if (item is Map<String, Object?>) {
+        return _developerFromMap(item);
+      }
+      throw DartleException(
+          message: "bad developer item declaration: '$item'.\n"
+              "$developerSyntaxHelp");
+    }).toList(growable: false);
+  }
+  throw DartleException(
+      message: "bad developers declaration: '$value'.\n"
+          "$developerSyntaxHelp");
+}
+
 List<ExtensionTask> _extensionTasks(Map<String, Object?> map) {
   final tasks = map['tasks'];
   if (tasks is Map<String, Object?>) {
@@ -967,19 +1085,27 @@ ExtensionTask _extensionTask(MapEntry<String, Object?> task) {
   if (spec is Map<String, Object?>) {
     return ExtensionTask(
       name: task.key,
-      description: _stringValue(spec, 'description', '').value,
+      description: _stringValue(spec, 'description', '', type: 'Task').value,
       phase: _taskPhase(spec['phase']),
-      inputs: _stringIterableValue(spec, 'inputs', const {}).value.toSet(),
-      outputs: _stringIterableValue(spec, 'outputs', const {}).value.toSet(),
+      inputs: _stringIterableValue(spec, 'inputs', const {}, type: 'Task')
+          .value
+          .toSet(),
+      outputs: _stringIterableValue(spec, 'outputs', const {}, type: 'Task')
+          .value
+          .toSet(),
       dependsOn:
-          _stringIterableValue(spec, 'depends-on', const {}).value.toSet(),
+          _stringIterableValue(spec, 'depends-on', const {}, type: 'Task')
+              .value
+              .toSet(),
       dependents:
-          _stringIterableValue(spec, 'dependents', const {}).value.toSet(),
-      className: _optionalStringValue(spec, 'class-name')
+          _stringIterableValue(spec, 'dependents', const {}, type: 'Task')
+              .value
+              .toSet(),
+      className: _optionalStringValue(spec, 'class-name', type: 'Task')
           .orThrow(() => DartleException(
               message: "declaration of task '${task.key}' is missing mandatory "
                   "'class-name'.\n$taskSyntaxHelp")),
-      methodName: _stringValue(spec, 'method-name', 'run').value,
+      methodName: _stringValue(spec, 'method-name', 'run', type: 'Task').value,
     );
   } else {
     throw DartleException(
