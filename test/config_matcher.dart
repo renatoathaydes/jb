@@ -97,9 +97,10 @@ class _ConfigMatcher extends Matcher {
           'dependencies should be "${expected.dependencies}" but is "${item.dependencies}"';
       return false;
     }
-    if (!const SetEquality().equals(expected.exclusions, item.exclusions)) {
+    if (!const SetEquality().equals(expected.dependencyExclusionPatterns,
+        item.dependencyExclusionPatterns)) {
       matchState[#reason] =
-          'exclusions should be "${expected.exclusions}" but is "${item.exclusions}"';
+          'exclusions should be "${expected.dependencyExclusionPatterns}" but is "${item.dependencyExclusionPatterns}"';
       return false;
     }
     if (expected.compileLibsDir != item.compileLibsDir) {

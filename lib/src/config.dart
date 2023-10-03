@@ -152,9 +152,9 @@ class JbConfiguration {
   final Map<String, String> testJavaEnv;
   final Set<String> repositories;
   final Map<String, DependencySpec> dependencies;
-  final Set<String> exclusions;
+  final Set<String> dependencyExclusionPatterns;
   final Map<String, DependencySpec> processorDependencies;
-  final Set<String> processorDependenciesExclusions;
+  final Set<String> processorDependencyExclusionPatterns;
   final String compileLibsDir;
   final bool _defaultCompileLibsDir;
   final String runtimeLibsDir;
@@ -191,9 +191,9 @@ class JbConfiguration {
     required this.testJavaEnv,
     required this.repositories,
     required this.dependencies,
-    required this.exclusions,
+    required this.dependencyExclusionPatterns,
     required this.processorDependencies,
-    required this.processorDependenciesExclusions,
+    required this.processorDependencyExclusionPatterns,
     required this.compileLibsDir,
     required this.runtimeLibsDir,
     required this.testReportsDir,
@@ -231,11 +231,11 @@ class JbConfiguration {
     final developers = _developers(map);
     final repositories = _stringIterableValue(map, 'repositories', const {});
     final exclusions =
-        _stringIterableValue(map, 'exclusion-patterns', const {});
+        _stringIterableValue(map, 'dependency-exclusion-patterns', const {});
     final processorDependencies =
         _dependencies(map, 'processor-dependencies', const {});
     final processorDependenciesExclusions = _stringIterableValue(
-        map, 'processor-dependencies-exclusions', const {});
+        map, 'processor-dependency-exclusion-patterns', const {});
     final compileLibsDir =
         _stringValue(map, 'compile-libs-dir', 'build/compile-libs');
     final runtimeLibsDir =
@@ -270,9 +270,10 @@ class JbConfiguration {
       testJavaEnv: testJavaEnv.value,
       dependencies: dependencies.value,
       repositories: repositories.toSet(),
-      exclusions: exclusions.toSet(),
+      dependencyExclusionPatterns: exclusions.toSet(),
       processorDependencies: processorDependencies.value,
-      processorDependenciesExclusions: processorDependenciesExclusions.toSet(),
+      processorDependencyExclusionPatterns:
+          processorDependenciesExclusions.toSet(),
       compileLibsDir: compileLibsDir.value,
       defaultCompileLibsDir: compileLibsDir.isDefault,
       runtimeLibsDir: runtimeLibsDir.value,
@@ -324,11 +325,12 @@ class JbConfiguration {
       testJavaEnv: testJavaEnv.merge(other.testJavaEnv, props),
       repositories: repositories.merge(other.repositories, props),
       dependencies: dependencies.merge(other.dependencies, props),
-      exclusions: exclusions.merge(other.exclusions, props),
+      dependencyExclusionPatterns: dependencyExclusionPatterns.merge(
+          other.dependencyExclusionPatterns, props),
       processorDependencies:
           processorDependencies.merge(other.processorDependencies, props),
-      processorDependenciesExclusions: processorDependenciesExclusions.merge(
-          other.processorDependenciesExclusions, props),
+      processorDependencyExclusionPatterns: processorDependencyExclusionPatterns
+          .merge(other.processorDependencyExclusionPatterns, props),
       compileLibsDir: resolveString(
           other._defaultCompileLibsDir ? compileLibsDir : other.compileLibsDir,
           props),
@@ -439,7 +441,7 @@ class JbConfiguration {
     if (depsToInstall.isEmpty) return const [];
 
     final result = ['-s', 'compile', '-m', '-d', compileLibsDir];
-    for (final exclude in exclusions) {
+    for (final exclude in dependencyExclusionPatterns) {
       result.add('--exclusion');
       result.add(exclude);
     }
@@ -449,13 +451,14 @@ class JbConfiguration {
 
   /// Get the install arguments for the installRuntime task from this configuration.
   List<String> installArgsForRuntime() {
-    return _installArgs(dependencies, exclusions, runtimeLibsDir);
+    return _installArgs(
+        dependencies, dependencyExclusionPatterns, runtimeLibsDir);
   }
 
   /// Get the install arguments for the installProcessor task from this configuration.
   List<String> installArgsForProcessor(String destinationDir) {
-    return _installArgs(
-        processorDependencies, processorDependenciesExclusions, destinationDir);
+    return _installArgs(processorDependencies,
+        processorDependencyExclusionPatterns, destinationDir);
   }
 
   static List<String> _installArgs(Map<String, DependencySpec> deps,
@@ -483,15 +486,18 @@ class JbConfiguration {
     String quote(String? value) =>
         value == null ? color('null', kwColor) : color('"$value"', strColor);
 
+    String multilineList(Iterable<String> lines) {
+      if (lines.isEmpty) return ' []';
+      return '\n${lines.map((line) => '  - $line').join('\n')}';
+    }
+
     String depsToYaml(Iterable<MapEntry<String, DependencySpec>> deps) {
-      if (deps.isEmpty) return ' []';
-      return '\n${deps.map((dep) => '  - '
-          '${quote(dep.key)}:\n${dep.value.toYaml(color, '    ')}').join('\n')}';
+      return multilineList(deps.map(
+          (dep) => '${quote(dep.key)}:\n${dep.value.toYaml(color, '    ')}'));
     }
 
     String developersToYaml(Iterable<Developer> developers) {
-      if (developers.isEmpty) return ' []';
-      return '\n${developers.map((dev) => '  - ${dev.toYaml(color, '    ')}').join('\n')}';
+      return multilineList(developers.map((dev) => dev.toYaml(color, '    ')));
     }
 
     String scmToYaml(SourceControlManagement? scm) {
@@ -541,12 +547,12 @@ ${color('# Maven repositories (URLs or directories)', commentColor)}
 repositories: [${repositories.map(quote).join(', ')}]
 ${color('# Maven dependencies', commentColor)}
 dependencies:${depsToYaml(dependencies.entries)}
-${color('# Dependency exclusions (may use regex)', commentColor)}
-exclusions: [${exclusions.map(quote).join(', ')}]
+${color('# Dependency exclusions (regular expressions)', commentColor)}
+dependency-exclusion-patterns:${multilineList(dependencyExclusionPatterns.map(quote))}
 ${color('# Annotation processor Maven dependencies', commentColor)}
 processor-dependencies:${depsToYaml(processorDependencies.entries)}
-${color('# Annotation processor dependency exclusions (may use regex)', commentColor)}
-processor-dependencies-exclusions: [${processorDependenciesExclusions.map(quote).join(', ')}]
+${color('# Annotation processor dependency exclusions (regular expressions)', commentColor)}
+processor-dependency-exclusion-patterns:${multilineList(processorDependencyExclusionPatterns.map(quote))}
 ${color('# Compile-time libs output dir', commentColor)}
 compile-libs-dir: ${quote(compileLibsDir)}
 ${color('# Runtime libs output dir', commentColor)}
@@ -568,9 +574,9 @@ extension-project: ${quote(extensionProject)}
         'runJavaArgs: $runJavaArgs, testJavaArgs: $testJavaArgs, '
         'javacEnv: $javacEnv, runJavaEnv: $runJavaEnv, '
         'testJavaEnv: $testJavaEnv, repositories: $repositories, '
-        'dependencies: $dependencies, exclusions: $exclusions, '
+        'dependencies: $dependencies, exclusions: $dependencyExclusionPatterns, '
         'processorDependencies: $processorDependencies, '
-        'processorDependenciesExclusions: $processorDependenciesExclusions, '
+        'processorDependenciesExclusions: $processorDependencyExclusionPatterns, '
         'compileLibsDir: $compileLibsDir, runtimeLibsDir: $runtimeLibsDir, '
         'testReportsDir: $testReportsDir, properties: $properties}';
   }

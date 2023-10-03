@@ -30,7 +30,7 @@ const _fullConfig = '''
     - src/test/kotlin
   dependencies:
     - com.google:guava:{{versions.guava}}
-  exclusion-patterns:
+  dependency-exclusion-patterns:
     - test.*
     - .*other\\d+.*
   
@@ -39,7 +39,7 @@ const _fullConfig = '''
         scope: runtime-only
         transitive: false
         path: foo/bar/zort
-  processor-dependencies-exclusions:
+  processor-dependency-exclusion-patterns:
     - others
   output-dir: target/
   resource-dirs:
@@ -120,16 +120,19 @@ dependencies:
     transitive: \x1B[35mtrue\x1B[0m
     scope: \x1B[34m"all"\x1B[0m
     path: \x1B[35mnull\x1B[0m
-\x1B[90m# Dependency exclusions (may use regex)\x1B[0m
-exclusions: [\x1B[34m"test.*"\x1B[0m, \x1B[34m".*other\\d+.*"\x1B[0m]
+\x1B[90m# Dependency exclusions (regular expressions)\x1B[0m
+dependency-exclusion-patterns:
+  - \x1B[34m"test.*"\x1B[0m
+  - \x1B[34m".*other\\d+.*"\x1B[0m
 \x1B[90m# Annotation processor Maven dependencies\x1B[0m
 processor-dependencies:
   - \x1B[34m"foo.bar:zort:1.0"\x1B[0m:
     transitive: \x1B[35mfalse\x1B[0m
     scope: \x1B[34m"runtime-only"\x1B[0m
     path: \x1B[34m"foo/bar/zort"\x1B[0m
-\x1B[90m# Annotation processor dependency exclusions (may use regex)\x1B[0m
-processor-dependencies-exclusions: [\x1B[34m"others"\x1B[0m]
+\x1B[90m# Annotation processor dependency exclusions (regular expressions)\x1B[0m
+processor-dependency-exclusion-patterns:
+  - \x1B[34m"others"\x1B[0m
 \x1B[90m# Compile-time libs output dir\x1B[0m
 compile-libs-dir: \x1B[34m"libs"\x1B[0m
 \x1B[90m# Runtime libs output dir\x1B[0m
@@ -205,12 +208,12 @@ dependencies:
     transitive: false
     scope: "runtime-only"
     path: null
-# Dependency exclusions (may use regex)
-exclusions: []
+# Dependency exclusions (regular expressions)
+dependency-exclusion-patterns: []
 # Annotation processor Maven dependencies
 processor-dependencies: []
-# Annotation processor dependency exclusions (may use regex)
-processor-dependencies-exclusions: []
+# Annotation processor dependency exclusions (regular expressions)
+processor-dependency-exclusion-patterns: []
 # Compile-time libs output dir
 compile-libs-dir: "build/compile-libs"
 # Runtime libs output dir
@@ -277,8 +280,8 @@ void main() {
                   scope: DependencyScope.runtimeOnly,
                   path: 'foo/bar/zort'),
             },
-            processorDependenciesExclusions: {'others'},
-            exclusions: {'test.*', '.*other\\d+.*'},
+            processorDependencyExclusionPatterns: {'others'},
+            dependencyExclusionPatterns: {'test.*', '.*other\\d+.*'},
             compileLibsDir: 'libs',
             runtimeLibsDir: 'all-libs',
             testReportsDir: 'build/test-reports',
@@ -303,7 +306,7 @@ void main() {
     test('can parse string-iterable from single string', () async {
       final config = await loadConfigString('''
       source-dirs: src/java
-      exclusion-patterns: one  
+      dependency-exclusion-patterns: one  
       output-dir: out
       resource-dirs: resources
       javac-args: -X
@@ -328,8 +331,8 @@ void main() {
               repositories: {'https://maven.org'},
               dependencies: {},
               processorDependencies: {},
-              processorDependenciesExclusions: {},
-              exclusions: {'one'},
+              processorDependencyExclusionPatterns: {},
+              dependencyExclusionPatterns: {'one'},
               compileLibsDir: 'build/compile-libs',
               runtimeLibsDir: 'build/runtime-libs',
               testReportsDir: 'reports')));
@@ -390,7 +393,7 @@ void main() {
           'dep1': {'transitive': true}
         }
       ],
-      'exclusions': {'e1'},
+      'dependency-exclusion-patterns': {'e1'},
       'compile-libs-dir': 'comp',
       'runtime-libs-dir': 'runtime',
       'test-reports-dir': 'reports'
@@ -417,7 +420,7 @@ void main() {
             'dep2': {'transitive': false}
           }
         ],
-        'exclusions': {'e2'},
+        'dependency-exclusion-patterns': {'e2'},
         'compile-libs-dir': 'comp2',
         'runtime-libs-dir': 'runtime2',
         'test-reports-dir': 'reports2'
@@ -448,7 +451,7 @@ void main() {
                 'dep2': {'transitive': false}
               },
             ],
-            'exclusions': {'e1', 'e2'},
+            'dependency-exclusion-patterns': {'e1', 'e2'},
             'compile-libs-dir': 'comp2',
             'runtime-libs-dir': 'runtime2',
             'test-reports-dir': 'reports2'
@@ -479,7 +482,7 @@ void main() {
                 'dep2': {'transitive': false}
               }
             ],
-            'exclusions': {'e2', 'e1'},
+            'dependency-exclusion-patterns': {'e2', 'e1'},
             'compile-libs-dir': 'comp',
             'runtime-libs-dir': 'runtime',
             'test-reports-dir': 'reports'
@@ -521,7 +524,7 @@ void main() {
                 'big': {'transitive': true}
               }
             ],
-            'exclusions': {'e1'},
+            'dependency-exclusion-patterns': {'e1'},
             'compile-libs-dir': 'comp',
             'runtime-libs-dir': 'runtime',
             'test-reports-dir': 'reports'
@@ -552,7 +555,7 @@ void main() {
                 'big': {'transitive': true}
               }
             ],
-            'exclusions': {'e1'},
+            'dependency-exclusion-patterns': {'e1'},
             'compile-libs-dir': 'comp',
             'runtime-libs-dir': 'runtime',
             'test-reports-dir': 'reports'
