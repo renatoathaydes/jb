@@ -1,7 +1,11 @@
 group: my-group
 module: my-app
 version: '0.0.0'
-
+description: |
+  This is an example Java HTTP Server built with jb.
+  It uses the Javalin library and fixes up slf4j version conflicts
+  by excluding it from transitive dependencies, then explicitly choosing one.
+licenses: [ Apache-2.0 ]
 source-dirs: [ src ]
 resource-dirs: [ resources ]
 output-jar: build/my-app.jar
@@ -22,3 +26,4 @@ dependencies:
 exclusion-patterns:
   - org.slf4j:slf4j-api:.* # imported directly to avoid version conflicts
   - .*:jetty-annotations:.* # unnecessary cruft
+  - org.jetbrains.kotlin.*  # kotlin should not be even a mandatory dependency
