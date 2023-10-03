@@ -23,7 +23,6 @@ dependencies:
       scope: runtime-only
 
 # Dependency fixes are easy to apply by running `jb dependencies` and reading the output
-exclusion-patterns:
+dependency-exclusion-patterns:
   - org.slf4j:slf4j-api:.* # imported directly to avoid version conflicts
   - .*:jetty-annotations:.* # unnecessary cruft
-  - org.jetbrains.kotlin.*  # kotlin should not be even a mandatory dependency

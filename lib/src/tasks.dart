@@ -504,8 +504,8 @@ Task createRequirementsTask(File jbuildJar, JbConfiguration config) {
       description: 'Shows information about project requirements.');
 }
 
-Future<void> _requirements(File jbuildJar, JbConfiguration config,
-    List<String> args) async {
+Future<void> _requirements(
+    File jbuildJar, JbConfiguration config, List<String> args) async {
   final out = config.output.when(dir: (dir) => dir, jar: (jar) => jar);
   final exitCode = await logRequirements(jbuildJar, config, [out, ...args]);
   if (exitCode != 0) {
