@@ -45,7 +45,14 @@ Future<JbConfiguration> loadConfig(File configFile) async {
 ///
 /// Applies defaults and resolves properties and imports.
 Future<JbConfiguration> loadConfigString(String config) async {
-  final json = loadYaml(config);
+  final json;
+  try {
+    json = loadYaml(config);
+  } catch (e) {
+    throw DartleException(
+        message: 'Invalid jbuild configuration: '
+            'parsing error: $e');
+  }
   if (json is Map) {
     final resolvedMap = resolvePropertiesFromMap(json);
     final imports = resolvedMap.map.remove('imports');
@@ -215,6 +222,7 @@ class JbConfiguration {
   /// That's expected to already have been done before calling this method.
   static JbConfiguration fromMap(Map<String, Object?> map,
       [Properties properties = const {}]) {
+    _validateConfigKeys(map);
     final sourceDirs = _stringIterableValue(map, 'source-dirs', const {'src'});
     final output = _compileOutputValue(map, 'output-dir', 'output-jar');
     final resourceDirs =
@@ -582,6 +590,47 @@ extension-project: ${quote(extensionProject)}
   }
 }
 
+void _validateConfigKeys(Map<String, Object?> map) {
+  const validKeys = {
+    'group',
+    'module',
+    'version',
+    'description',
+    'url',
+    'main-class',
+    'extension-project',
+    'source-dirs',
+    'output-dir',
+    'output-jar',
+    'resource-dirs',
+    'javac-args',
+    'licenses',
+    'developers',
+    'scm',
+    'run-java-args',
+    'test-java-args',
+    'javac-env',
+    'run-java-env',
+    'test-java-env',
+    'dependencies',
+    'repositories',
+    'dependency-exclusion-patterns',
+    'processor-dependencies',
+    'processor-dependency-exclusion-patterns',
+    'compile-libs-dir',
+    'runtime-libs-dir',
+    'test-reports-dir',
+  };
+  final keys = map.keys.toSet();
+  keys.removeAll(validKeys);
+  if (keys.isNotEmpty) {
+    throw DartleException(
+        message:
+            'Invalid jbuild configuration: unrecognized field${keys.length == 1 ? '' : 's'}: '
+            '${keys.map((e) => '"$e"').join(', ')}');
+  }
+}
+
 Set<String> _mergeWithDefault(
     Set<String> values,
     bool defaultValues,
@@ -778,6 +827,13 @@ class DependencySpec {
 }
 
 SourceControlManagement _scmFromMap(Map<String, Object?> map) {
+  if (map.keys
+      .any(const {'connection', 'developer-connection', 'url'}.contains.not$)) {
+    throw DartleException(
+        message: 'invalid "scm" definition, '
+            'only "connection", "developer-connection" and "url" '
+            'fields can be set: $map');
+  }
   return SourceControlManagement(
       connection: _mandatoryValue(map, 'connection', 'Scm'),
       developerConnection: _mandatoryValue(map, 'developer-connection', 'Scm'),
@@ -785,6 +841,14 @@ SourceControlManagement _scmFromMap(Map<String, Object?> map) {
 }
 
 Developer _developerFromMap(Map<String, Object?> map) {
+  if (map.keys.any(const {'name', 'email', 'organization', 'organization-url'}
+      .contains
+      .not$)) {
+    throw DartleException(
+        message: 'invalid "developer" definition, '
+            'only "name", "email", "organization" and "organization-url" '
+            'fields can be set: $map');
+  }
   return Developer(
     name: _mandatoryValue(map, 'name', 'Developer'),
     email: _mandatoryValue(map, 'email', 'Developer'),

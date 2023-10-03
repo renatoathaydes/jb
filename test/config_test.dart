@@ -47,7 +47,7 @@ const _fullConfig = '''
   
   compile-libs-dir: libs
   runtime-libs-dir: all-libs
-  test-lib-dir: test-libs
+  test-reports-dir: reports-dir
 
   main-class: my.Main
 
@@ -138,7 +138,7 @@ compile-libs-dir: \x1B[34m"libs"\x1B[0m
 \x1B[90m# Runtime libs output dir\x1B[0m
 runtime-libs-dir: \x1B[34m"all-libs"\x1B[0m
 \x1B[90m# Test reports output dir\x1B[0m
-test-reports-dir: \x1B[34m"build/test-reports"\x1B[0m
+test-reports-dir: \x1B[34m"reports-dir"\x1B[0m
 \x1B[90m# jb extension project path (for custom tasks)\x1B[0m
 extension-project: \x1B[35mnull\x1B[0m
 ''';
@@ -284,7 +284,7 @@ void main() {
             dependencyExclusionPatterns: {'test.*', '.*other\\d+.*'},
             compileLibsDir: 'libs',
             runtimeLibsDir: 'all-libs',
-            testReportsDir: 'build/test-reports',
+            testReportsDir: 'reports-dir',
             properties: {
               'versions': {'guava': '1.2.3'}
             },
@@ -654,6 +654,90 @@ void main() {
               'message',
               equals("'dependencies' should be a List.\n"
                   "$dependenciesSyntaxHelp"))));
+    });
+
+    test('invalid keys are not allowed on top config', () async {
+      createConfig() => loadConfigString('''
+      module: foo
+      version: 1.0
+      custom: true
+      ''');
+
+      expect(
+          createConfig,
+          throwsA(isA<DartleException>().having(
+              (e) => e.message,
+              'message',
+              equals('Invalid jbuild configuration: '
+                  'unrecognized field: "custom"'))));
+    });
+
+    test('invalid keys are not allowed in dependency', () async {
+      createConfig() => loadConfigString('''
+      module: foo
+      dependencies:
+        - foo:
+          transitive: false
+          checked: true
+      ''');
+
+      expect(
+          createConfig,
+          throwsA(isA<DartleException>().having((e) => e.message, 'message',
+              startsWith('bad dependency declaration:'))));
+    });
+
+    test('invalid keys are not allowed in scm', () async {
+      createConfig() => loadConfigString('''
+      module: foo
+      scm:
+        connection: foo
+        developer: me
+      ''');
+
+      expect(
+          createConfig,
+          throwsA(isA<DartleException>().having(
+              (e) => e.message,
+              'message',
+              startsWith('invalid "scm" definition, only '
+                  '"connection", "developer-connection" and "url" '
+                  'fields can be set:'))));
+    });
+
+    test('invalid keys are not allowed in developer', () async {
+      createConfig() => loadConfigString('''
+      module: foo
+      developers:
+        - name: Renato
+          email: a@b.com
+          surname: Athaydes
+      ''');
+
+      expect(
+          createConfig,
+          throwsA(isA<DartleException>().having(
+              (e) => e.message,
+              'message',
+              startsWith('invalid "developer" definition, only "name", '
+                  '"email", "organization" and "organization-url" '
+                  'fields can be set:'))));
+    });
+
+    test('duplicate keys are not allowed', () async {
+      createConfig() => loadConfigString('''
+      module: foo
+      version: 1.0
+      module: foo
+      ''');
+
+      expect(
+          createConfig,
+          throwsA(isA<DartleException>().having(
+              (e) => e.message,
+              'message',
+              startsWith('Invalid jbuild configuration: parsing error: '
+                  'Error on line 3, column 7: Duplicate mapping key.'))));
     });
   });
 }
