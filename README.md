@@ -165,7 +165,7 @@ public final class ExampleTask implements JbTask {
 ## Demo Project
 
 A demo Java project (using the [Javalin Web Framework](https://javalin.io/)) is available in the
-[example/sample-java-project](example/sample-java-project) directory.
+[example/javalin-http-server-sample](example/javalin-http-server-sample) directory.
 
 ## About `jb` (implementation)
 
