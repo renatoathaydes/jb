@@ -101,7 +101,8 @@ Task createWriteDependenciesTask(
     JbConfiguration config,
     DartleCache cache,
     FileCollection jbFileInputs,
-    LocalDependencies localDependencies) {
+    LocalDependencies localDependencies,
+    LocalDependencies localProcessorDeps) {
   final depsFile = jbFiles.dependenciesFile;
   final procDepsFile = jbFiles.processorDependenciesFile;
 
@@ -121,6 +122,7 @@ Task createWriteDependenciesTask(
             depsFile: depsFile,
             localDeps: localDependencies,
             deps: deps,
+            localProcessorDeps: localProcessorDeps,
             exclusions: exclusions,
             processorDepsFile: procDepsFile,
             processorDeps: procDeps,
@@ -461,20 +463,25 @@ Future<void> _test(File jbuildJar, JbConfiguration config, DartleCache cache,
 
 /// Create the `dependencies` task.
 Task createDepsTask(File jbuildJar, JbConfiguration config, DartleCache cache,
-    LocalDependencies localDependencies) {
+    LocalDependencies localDependencies, LocalDependencies localProcessorDeps) {
   return Task(
-      (List<String> args) =>
-          _deps(jbuildJar, config, cache, localDependencies, args),
+      (List<String> args) => _deps(jbuildJar, config, cache, localDependencies,
+          localProcessorDeps, args),
       name: depsTaskName,
       argsValidator: const AcceptAnyArgs(),
       phase: TaskPhase.setup,
       description: 'Shows information about project dependencies.');
 }
 
-Future<void> _deps(File jbuildJar, JbConfiguration config, DartleCache cache,
-    LocalDependencies localDependencies, List<String> args) async {
-  final exitCode = await printDependencies(
-      jbuildJar, config, cache, localDependencies, args);
+Future<void> _deps(
+    File jbuildJar,
+    JbConfiguration config,
+    DartleCache cache,
+    LocalDependencies localDependencies,
+    LocalDependencies localProcessorDependencies,
+    List<String> args) async {
+  final exitCode = await printDependencies(jbuildJar, config, cache,
+      localDependencies, localProcessorDependencies, args);
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild dependencies command failed', exitCode: exitCode);
@@ -489,23 +496,15 @@ Task createShowConfigTask(JbConfiguration config, bool noColor) {
 }
 
 /// Create the `requirements` task.
-Task createRequirementsTask(File jbuildJar, JbConfiguration config,
-    DartleCache cache, LocalDependencies localDependencies, bool noColor) {
-  return Task(
-      (List<String> args) => _requirements(
-          jbuildJar, config, cache, localDependencies, noColor, args),
+Task createRequirementsTask(File jbuildJar, JbConfiguration config) {
+  return Task((List<String> args) => _requirements(jbuildJar, config, args),
       name: requirementsTaskName,
       argsValidator: const AcceptAnyArgs(),
       dependsOn: const {compileTaskName},
       description: 'Shows information about project requirements.');
 }
 
-Future<void> _requirements(
-    File jbuildJar,
-    JbConfiguration config,
-    DartleCache cache,
-    LocalDependencies localDependencies,
-    bool noColor,
+Future<void> _requirements(File jbuildJar, JbConfiguration config,
     List<String> args) async {
   final out = config.output.when(dir: (dir) => dir, jar: (jar) => jar);
   final exitCode = await logRequirements(jbuildJar, config, [out, ...args]);

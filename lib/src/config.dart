@@ -602,6 +602,8 @@ class LocalDependencies {
   const LocalDependencies(this.jars, this.projectDependencies);
 
   bool get isEmpty => jars.isEmpty && projectDependencies.isEmpty;
+
+  bool get isNotEmpty => !isEmpty;
 }
 
 enum _CompileOutputTag { dir, jar }

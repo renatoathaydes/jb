@@ -13,6 +13,7 @@ import 'tasks.dart' show depsTaskName;
 Future<void> writeDependencies(
     {required File depsFile,
     required LocalDependencies localDeps,
+    required LocalDependencies localProcessorDeps,
     required Map<String, DependencySpec> deps,
     required Set<String> exclusions,
     required File processorDepsFile,
@@ -24,7 +25,8 @@ Future<void> writeDependencies(
   });
   await _withFile(processorDepsFile, (handle) async {
     handle.write('processor-dependencies:\n');
-    await _writeDeps(handle, processorDeps, processorsExclusions);
+    await _writeDeps(
+        handle, processorDeps, processorsExclusions, localProcessorDeps);
   });
 }
 
@@ -38,9 +40,8 @@ Future<void> _withFile(File file, Future<void> Function(IOSink) action) async {
   }
 }
 
-Future<void> _writeDeps(
-    IOSink sink, Map<String, DependencySpec> deps, Set<String> exclusions,
-    [LocalDependencies? localDeps]) async {
+Future<void> _writeDeps(IOSink sink, Map<String, DependencySpec> deps,
+    Set<String> exclusions, LocalDependencies localDeps) async {
   final nonLocalDeps = deps.entries
       .where((e) => e.value.path == null)
       .toList(growable: false)
@@ -48,15 +49,13 @@ Future<void> _writeDeps(
   for (final entry in nonLocalDeps) {
     _writeDep(sink, entry.key, entry.value);
   }
-  if (localDeps != null) {
-    for (final jarDep in [...localDeps.jars]
-      ..sort((a, b) => a.path.compareTo(b.path))) {
-      _writeDep(sink, "${jarDep.path} (jar)", jarDep.spec);
-    }
-    for (final subProject in [...localDeps.projectDependencies]
-      ..sort((a, b) => a.path.compareTo(b.path))) {
-      _writeDep(sink, "${subProject.path} (sub-project)", subProject.spec);
-    }
+  for (final jarDep in [...localDeps.jars]
+    ..sort((a, b) => a.path.compareTo(b.path))) {
+    _writeDep(sink, "${jarDep.path} (jar)", jarDep.spec);
+  }
+  for (final subProject in [...localDeps.projectDependencies]
+    ..sort((a, b) => a.path.compareTo(b.path))) {
+    _writeDep(sink, "${subProject.path} (sub-project)", subProject.spec);
   }
   if (exclusions.isNotEmpty) {
     sink.write('exclusions:\n');
@@ -94,27 +93,53 @@ Future<int> printDependencies(
     JbConfiguration config,
     DartleCache cache,
     LocalDependencies localDependencies,
+    LocalDependencies localProcessorDependencies,
     List<String> args) async {
   final deps = config.dependencies.entries
       .where((dep) => dep.value.path == null)
       .map((dep) => dep.key);
+  final procDeps = config.processorDependencies.entries
+      .where((dep) => dep.value.path == null)
+      .map((dep) => dep.key);
 
-  if (deps.isEmpty && localDependencies.isEmpty) {
+  if (deps.isEmpty &&
+      procDeps.isEmpty &&
+      localDependencies.isEmpty &&
+      localProcessorDependencies.isEmpty) {
     logger.info(
         const PlainMessage('This project does not have any dependencies!'));
     return 0;
   }
 
-  logger.info(const AnsiMessage([
+  final preArgs = config.preArgs();
+  var result = 0;
+  if (deps.isNotEmpty || localDependencies.isNotEmpty) {
+    result = await _print(deps, localDependencies, jbuildJar, preArgs,
+        header: 'This project has the following dependencies:');
+  }
+  if (result == 0 &&
+      (procDeps.isNotEmpty || localProcessorDependencies.isNotEmpty)) {
+    result = await _print(
+        procDeps, localProcessorDependencies, jbuildJar, preArgs,
+        header: 'Annotation processor dependencies:');
+  }
+
+  return result;
+}
+
+Future<int> _print(Iterable<String> deps, LocalDependencies localDeps,
+    File jbuildJar, List<String> preArgs,
+    {required String header}) async {
+  logger.info(AnsiMessage([
     AnsiMessagePart.code(ansi.styleItalic),
     AnsiMessagePart.code(ansi.styleBold),
-    AnsiMessagePart.text('This project has the following dependencies:')
+    AnsiMessagePart.text(header)
   ]));
 
-  _printLocalDependencies(localDependencies);
+  _printLocalDependencies(localDeps);
 
   if (deps.isNotEmpty) {
-    return await execJBuild(depsTaskName, jbuildJar, config.preArgs(), 'deps',
+    return await execJBuild(depsTaskName, jbuildJar, preArgs, 'deps',
         ['-t', '-s', 'compile', ...deps],
         onStdout: _JBuildDepsPrinter());
   }

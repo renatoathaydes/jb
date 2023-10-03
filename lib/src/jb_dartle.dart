@@ -98,6 +98,7 @@ class JbDartle {
       ResolvedLocalDependencies localProcessorDependencies,
       Stopwatch stopwatch) async {
     final unresolvedLocalDeps = localDependencies.unresolved;
+    final unresolvedLocalProcessorDeps = localProcessorDependencies.unresolved;
 
     final jvmExecutor =
         createJavaActor(_files.jbuildJar.path, _options.logLevel);
@@ -114,24 +115,23 @@ class JbDartle {
     final projectTasks = <Task>{};
 
     compile = createCompileTask(_files, _config, _cache, javaSender);
-    writeDeps = createWriteDependenciesTask(
-        _files, _config, _cache, jbFileInputs, unresolvedLocalDeps);
+    writeDeps = createWriteDependenciesTask(_files, _config, _cache,
+        jbFileInputs, unresolvedLocalDeps, unresolvedLocalProcessorDeps);
     installCompile = createInstallCompileDepsTask(
         _files, _config, javaSender, _cache, localDependencies);
     installRuntime = createInstallRuntimeDepsTask(
         _files, _config, javaSender, _cache, localDependencies);
     installProcessor = createInstallProcessorDepsTask(
-        _files, _config, javaSender, _cache, localDependencies);
+        _files, _config, javaSender, _cache, localProcessorDependencies);
     run = createRunTask(_files, _config, _cache);
     downloadTestRunner =
         createDownloadTestRunnerTask(_config, javaSender, _cache, jbFileInputs);
     test = createTestTask(
         _files.jbuildJar, _config, _cache, !_options.colorfulLog);
-    deps =
-        createDepsTask(_files.jbuildJar, _config, _cache, unresolvedLocalDeps);
+    deps = createDepsTask(_files.jbuildJar, _config, _cache,
+        unresolvedLocalDeps, unresolvedLocalProcessorDeps);
     showConfig = createShowConfigTask(_config, !_options.colorfulLog);
-    requirements = createRequirementsTask(_files.jbuildJar, _config, _cache,
-        unresolvedLocalDeps, !_options.colorfulLog);
+    requirements = createRequirementsTask(_files.jbuildJar, _config);
     generateEclipse = createEclipseTask(_config);
     generatePom = createGeneratePomTask(_config, localDependencies);
 
