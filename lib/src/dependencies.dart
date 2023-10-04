@@ -115,12 +115,13 @@ Future<int> printDependencies(
   var result = 0;
   if (deps.isNotEmpty || localDependencies.isNotEmpty) {
     result = await _print(deps, localDependencies, jbuildJar, preArgs,
+        config.dependencyExclusionPatterns,
         header: 'This project has the following dependencies:');
   }
   if (result == 0 &&
       (procDeps.isNotEmpty || localProcessorDependencies.isNotEmpty)) {
-    result = await _print(
-        procDeps, localProcessorDependencies, jbuildJar, preArgs,
+    result = await _print(procDeps, localProcessorDependencies, jbuildJar,
+        preArgs, config.processorDependencyExclusionPatterns,
         header: 'Annotation processor dependencies:');
   }
 
@@ -128,7 +129,7 @@ Future<int> printDependencies(
 }
 
 Future<int> _print(Iterable<String> deps, LocalDependencies localDeps,
-    File jbuildJar, List<String> preArgs,
+    File jbuildJar, List<String> preArgs, Set<String> exclusionPatterns,
     {required String header}) async {
   logger.info(AnsiMessage([
     AnsiMessagePart.code(ansi.styleItalic),
@@ -139,8 +140,18 @@ Future<int> _print(Iterable<String> deps, LocalDependencies localDeps,
   _printLocalDependencies(localDeps);
 
   if (deps.isNotEmpty) {
-    return await execJBuild(depsTaskName, jbuildJar, preArgs, 'deps',
-        ['-t', '-s', 'compile', ...deps],
+    return await execJBuild(
+        depsTaskName,
+        jbuildJar,
+        preArgs,
+        'deps',
+        [
+          '-t',
+          '-s',
+          'compile',
+          ...exclusionPatterns.expand((ex) => ['-x', ex]),
+          ...deps
+        ],
         onStdout: _JBuildDepsPrinter());
   }
   return 0;
