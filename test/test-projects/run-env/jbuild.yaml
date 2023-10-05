@@ -1,0 +1,6 @@
+source-dirs: [ src ]
+main-class: PrintEnv
+run-java-env:
+  MY_VAR: hello jbuild
+javac-env:
+  JAVAC_VAR: How to test this?

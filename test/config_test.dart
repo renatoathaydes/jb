@@ -54,15 +54,15 @@ const _fullConfig = '''
   javac-args:
     - -Xmx2G
     - --verbose
-  run-java-args: [ -Xmx1G ]
-  test-java-args: [ -Xmx2G, -Xms512m ]
   javac-env:
-    JAVAC: 1
-  run-java-env:
-    JAVA: 11
     CLASSPATH: foo
+  run-java-args: [ -Xmx1G ]
+  run-java-env:
+    HELLO: hi
+    FOO: bar
+  test-java-args: [ -Xmx2G, -Xms512m ]
   test-java-env:
-    TEST: true
+    TESTING: 'true'
   repositories:
     - https://maven.org
     - ftp://foo.bar
@@ -108,10 +108,20 @@ output-jar: \x1B[35mnull\x1B[0m
 main-class: \x1B[34m"my.Main"\x1B[0m
 \x1B[90m# Java Compiler arguments\x1B[0m
 javac-args: [\x1B[34m"-Xmx2G"\x1B[0m, \x1B[34m"--verbose"\x1B[0m]
-\x1B[90m# Java runtime arguments\x1B[0m
+\x1B[90m# Java Compiler environment variables\x1B[0m
+javac-env:
+  \x1B[34m"CLASSPATH"\x1B[0m: \x1B[34m"foo"\x1B[0m
+\x1B[90m# Java Runtime arguments\x1B[0m
 run-java-args: [\x1B[34m"-Xmx1G"\x1B[0m]
-\x1B[90m# Java test run arguments\x1B[0m
+\x1B[90m# Java Runtime environment variables\x1B[0m
+run-java-env:
+  \x1B[34m"HELLO"\x1B[0m: \x1B[34m"hi"\x1B[0m
+  \x1B[34m"FOO"\x1B[0m: \x1B[34m"bar"\x1B[0m
+\x1B[90m# Java Test run arguments\x1B[0m
 test-java-args: [\x1B[34m"-Xmx2G"\x1B[0m, \x1B[34m"--verbose"\x1B[0m]
+\x1B[90m# Java Test environment variables\x1B[0m
+test-java-env:
+  \x1B[34m"TESTING"\x1B[0m: \x1B[34m"true"\x1B[0m
 \x1B[90m# Maven repositories (URLs or directories)\x1B[0m
 repositories: [\x1B[34m"https://maven.org"\x1B[0m, \x1B[34m"ftp://foo.bar"\x1B[0m]
 \x1B[90m# Maven dependencies\x1B[0m
@@ -188,10 +198,16 @@ output-jar: "my.jar"
 main-class: null
 # Java Compiler arguments
 javac-args: []
-# Java runtime arguments
+# Java Compiler environment variables
+javac-env: {}
+# Java Runtime arguments
 run-java-args: []
-# Java test run arguments
+# Java Runtime environment variables
+run-java-env: {}
+# Java Test run arguments
 test-java-args: []
+# Java Test environment variables
+test-java-env: {}
 # Maven repositories (URLs or directories)
 repositories: []
 # Maven dependencies
@@ -267,9 +283,9 @@ void main() {
             javacArgs: ['-Xmx2G', '--verbose'],
             runJavaArgs: ['-Xmx1G'],
             testJavaArgs: ['-Xmx2G', '-Xms512m'],
-            javacEnv: {'JAVAC': '1'},
-            runJavaEnv: {'JAVA': '11', 'CLASSPATH': 'foo'},
-            testJavaEnv: {'TEST': 'true'},
+            javacEnv: {'CLASSPATH': 'foo'},
+            runJavaEnv: {'HELLO': 'hi', 'FOO': 'bar'},
+            testJavaEnv: {'TESTING': 'true'},
             repositories: {'https://maven.org', 'ftp://foo.bar'},
             dependencies: {
               'com.google:guava:1.2.3': DependencySpec.defaultSpec,

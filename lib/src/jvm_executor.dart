@@ -38,11 +38,12 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   final String _classpath;
   final Level _level;
   final List<String> _jvmArgs;
+  final Map<String, String> _javaEnv;
 
   // initialized on demand
   Future<_JBuildRpc>? _rpc;
 
-  _JBuildActor(this._classpath, this._level, this._jvmArgs);
+  _JBuildActor(this._classpath, this._level, this._jvmArgs, this._javaEnv);
 
   @override
   void init() {
@@ -67,7 +68,8 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
           if (logger.isLoggable(Level.FINE)) '-V',
         ],
         runInShell: true,
-        workingDirectory: Directory.current.path);
+        workingDirectory: Directory.current.path,
+        environment: _javaEnv);
 
     final pout = proc.stdout.lines().asBroadcastStream();
     final [port, token] = await pout.take(2).toList();
@@ -136,9 +138,10 @@ final class RunJava extends JavaCommand {
 /// arbitrary Java methods (for jb extensions).
 ///
 /// The Actor sender returns whatever the Java method returned.
-Actor<JavaCommand, Object?> createJavaActor(
-    String classpath, Level level, List<String> javaCompilerArgs) {
-  return Actor.create(() => _JBuildActor(classpath, level, javaCompilerArgs));
+Actor<JavaCommand, Object?> createJavaActor(String classpath, Level level,
+    List<String> javaCompilerArgs, Map<String, String> javaEnv) {
+  return Actor.create(
+      () => _JBuildActor(classpath, level, javaCompilerArgs, javaEnv));
 }
 
 class _RpcRequestMetadata {

@@ -82,8 +82,6 @@ Future<void> _compile(
     'compile',
     // the Java compiler runtime args are sent when starting the JVM
     ...commandArgs.notJavaRuntimeArgs(),
-    // TODO how to honour javacEnv?
-    // env: config.javacEnv
   ]));
 
   logger.log(

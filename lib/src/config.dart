@@ -513,6 +513,12 @@ class JbConfiguration {
       return '\n  ${scm.toYaml(color, '  ')}';
     }
 
+    String mapToYaml(Map<String, String> map) {
+      if (map.isEmpty) return ' {}';
+      return '\n${map.entries.map((e) => '  ${quote(e.key)}: '
+          '${quote(e.value)}').join('\n')}';
+    }
+
     return '''
 ${color('''
 ######################## Full jb configuration ########################
@@ -547,10 +553,16 @@ ${color('# Java Main class name', commentColor)}
 main-class: ${quote(mainClass)}
 ${color('# Java Compiler arguments', commentColor)}
 javac-args: [${javacArgs.map(quote).join(', ')}]
-${color('# Java runtime arguments', commentColor)}
+${color('# Java Compiler environment variables', commentColor)}
+javac-env:${mapToYaml(javacEnv)}
+${color('# Java Runtime arguments', commentColor)}
 run-java-args: [${runJavaArgs.map(quote).join(', ')}]
-${color('# Java test run arguments', commentColor)}
+${color('# Java Runtime environment variables', commentColor)}
+run-java-env:${mapToYaml(runJavaEnv)}
+${color('# Java Test run arguments', commentColor)}
 test-java-args: [${javacArgs.map(quote).join(', ')}]
+${color('# Java Test environment variables', commentColor)}
+test-java-env:${mapToYaml(testJavaEnv)}
 ${color('# Maven repositories (URLs or directories)', commentColor)}
 repositories: [${repositories.map(quote).join(', ')}]
 ${color('# Maven dependencies', commentColor)}

@@ -13,6 +13,7 @@ const withSubProjectDir = 'test/test-projects/with-sub-project';
 const exampleExtensionDir = 'test/test-projects/example-extension';
 const usesExtensionDir = 'test/test-projects/uses-extension';
 const testsProjectDir = 'test/test-projects/tests';
+const runEnvProjectDir = 'test/test-projects/run-env';
 
 const _expectedWithSubProjectPom = '''\
 <?xml version="1.0" encoding="UTF-8"?>
@@ -39,14 +40,6 @@ void main() {
   activateLogging(Level.FINE);
 
   projectGroup(helloProjectDir, 'hello project', () {
-    tearDown(() async {
-      await deleteAll(dirs([
-        p.join(helloProjectDir, 'build'),
-        p.join(helloProjectDir, '.jb-cache'),
-        p.join(helloProjectDir, 'out'),
-      ], includeHidden: true));
-    });
-
     test('can compile basic Java class and cache result', () async {
       final jbResult = await runJb(Directory(helloProjectDir));
       expectSuccess(jbResult);
@@ -61,15 +54,6 @@ void main() {
   });
 
   projectGroup(withDepsProjectDir, 'with-deps project', () {
-    tearDown(() async {
-      await deleteAll(dirs([
-        p.join(withDepsProjectDir, 'build', 'compile-libs'),
-        p.join(withDepsProjectDir, 'build', 'runtime-libs'),
-        p.join(withDepsProjectDir, '.jb-cache'),
-      ], includeHidden: true));
-      await deleteAll(file(p.join(withDepsProjectDir, 'with-deps.jar')));
-    });
-
     test('can install dependencies and compile project', () async {
       final jbResult =
           await runJb(Directory(withDepsProjectDir), const ['-l', 'debug']);
@@ -101,8 +85,6 @@ void main() {
   projectGroup(withSubProjectDir, 'with-sub-project project', () {
     tearDown(() async {
       await deleteAll(dirs([
-        '$withSubProjectDir/build',
-        '$withSubProjectDir/.jb-cache',
         '$withSubProjectDir/greeting/build',
         '$withSubProjectDir/greeting/.jb-cache',
       ], includeHidden: true));
@@ -146,8 +128,6 @@ void main() {
   projectGroup(testsProjectDir, 'tests project', () {
     tearDown(() async {
       await deleteAll(dirs([
-        p.join(testsProjectDir, 'build'),
-        p.join(testsProjectDir, '.jb-cache'),
         // this project depends on the with-sub-project project
         p.join(withSubProjectDir, 'build'),
         p.join(withSubProjectDir, '.jb-cache'),
@@ -207,13 +187,6 @@ void main() {
   });
 
   projectGroup(exampleExtensionDir, 'extension project', () {
-    tearDown(() async {
-      await deleteAll(dirs([
-        p.join(exampleExtensionDir, 'build'),
-        p.join(exampleExtensionDir, '.jb-cache'),
-      ], includeHidden: true));
-    });
-
     test('can compile extension project', () async {
       var jbResult = await runJb(Directory(exampleExtensionDir));
       expectSuccess(jbResult);
@@ -229,8 +202,6 @@ void main() {
   projectGroup(usesExtensionDir, 'uses extension project', () {
     tearDown(() async {
       await deleteAll(dirs([
-        p.join(usesExtensionDir, 'build'),
-        p.join(usesExtensionDir, '.jb-cache'),
         // uses the example extension project
         p.join(exampleExtensionDir, 'build'),
         p.join(exampleExtensionDir, '.jb-cache'),
@@ -245,23 +216,12 @@ void main() {
           contains('Extension task running: SampleTask'));
     }, timeout: const Timeout(Duration(seconds: 10)));
   });
-}
 
-void projectGroup(String projectDir, String name, Function() definition) {
-  final outputDirs = dirs([
-    p.join(projectDir, '.jb-cache'),
-    p.join(projectDir, 'out'),
-    p.join(projectDir, 'compile-libs'),
-    p.join(projectDir, 'runtime-libs'),
-  ], includeHidden: true);
-
-  setUp(() async {
-    await deleteAll(outputDirs);
+  projectGroup(runEnvProjectDir, 'Run with Env Var project', () {
+    test('can run Java class that uses the environment', () async {
+      var jbResult = await runJb(Directory(runEnvProjectDir), const ['run']);
+      expectSuccess(jbResult);
+      expect(jbResult.stdout.join('\n'), contains("MY_VAR is 'hello jbuild'"));
+    }, timeout: const Timeout(Duration(seconds: 10)));
   });
-
-  tearDownAll(() async {
-    await deleteAll(outputDirs);
-  });
-
-  group(name, definition);
 }

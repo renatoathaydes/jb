@@ -4,10 +4,30 @@ import 'dart:math';
 import 'package:dartle/dartle.dart';
 import 'package:jb/src/utils.dart';
 import 'package:path/path.dart' as p;
-import 'package:test/expect.dart';
+import 'package:test/test.dart';
 
 final jbuildExecutable = p.join(Directory.current.path, 'build', 'bin',
     Platform.isWindows ? 'jb.exe' : 'jb');
+
+void projectGroup(String projectDir, String name, Function() definition) {
+  final outputDirs = dirs([
+    p.join(projectDir, '.jb-cache'),
+    p.join(projectDir, 'out'),
+    p.join(projectDir, 'build'),
+    p.join(projectDir, 'compile-libs'),
+    p.join(projectDir, 'runtime-libs'),
+  ], includeHidden: true);
+
+  setUp(() async {
+    await deleteAll(outputDirs);
+  });
+
+  tearDownAll(() async {
+    await deleteAll(outputDirs);
+  });
+
+  group(name, definition);
+}
 
 Future<Directory> createTempFiles(Map<String, String> files) async {
   final random = Random();
@@ -47,8 +67,8 @@ String classpath(Iterable<String> entries) {
   return entries.join(classpathSeparator);
 }
 
-void expectSuccess(ProcessResult result) {
-  expect(result.exitCode, equals(0),
+void expectSuccess(ProcessResult result, {int expectedExitCode = 0}) {
+  expect(result.exitCode, equals(expectedExitCode),
       reason: 'exit code was ${result.exitCode}.\n'
           '  => stdout:\n${result.stdout.join('\n')}\n'
           '  => stderr:\n${result.stderr.join('\n')}');

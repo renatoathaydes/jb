@@ -105,7 +105,8 @@ class JbDartle {
         _options.logLevel,
         (await _config.compileArgs(_files.processorLibsDir))
             .javaRuntimeArgs()
-            .toList());
+            .toList(),
+        _config.javacEnv);
     final javaSender = await jvmExecutor.toSendable();
 
     final FileCollection jbFileInputs;
