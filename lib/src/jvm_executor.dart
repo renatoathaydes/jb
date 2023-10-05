@@ -37,11 +37,12 @@ class _Proc {
 final class _JBuildActor implements Handler<JavaCommand, Object?> {
   final String _classpath;
   final Level _level;
+  final List<String> _jvmArgs;
 
   // initialized on demand
   Future<_JBuildRpc>? _rpc;
 
-  _JBuildActor(this._classpath, this._level);
+  _JBuildActor(this._classpath, this._level, this._jvmArgs);
 
   @override
   void init() {
@@ -59,6 +60,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     final proc = await Process.start(
         'java',
         [
+          ..._jvmArgs,
           '-cp',
           _classpath,
           'jbuild.cli.RpcMain',
@@ -134,8 +136,9 @@ final class RunJava extends JavaCommand {
 /// arbitrary Java methods (for jb extensions).
 ///
 /// The Actor sender returns whatever the Java method returned.
-Actor<JavaCommand, Object?> createJavaActor(String classpath, Level level) {
-  return Actor.create(() => _JBuildActor(classpath, level));
+Actor<JavaCommand, Object?> createJavaActor(
+    String classpath, Level level, List<String> javaCompilerArgs) {
+  return Actor.create(() => _JBuildActor(classpath, level, javaCompilerArgs));
 }
 
 class _RpcRequestMetadata {

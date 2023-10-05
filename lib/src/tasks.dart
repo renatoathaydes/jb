@@ -73,12 +73,15 @@ Future<void> _compile(
         () => 'Computed transitive changes in ${elapsedTime(stopwatch)}');
   }
   stopwatch.reset();
-
+  final commandArgs = [
+    ...await config.compileArgs(jbFiles.processorLibsDir, changes),
+    ...args,
+  ];
   await jBuildSender.send(RunJBuild('compile', [
     ...config.preArgs(),
     'compile',
-    ...await config.compileArgs(jbFiles.processorLibsDir, changes),
-    ...args
+    // the Java compiler runtime args are sent when starting the JVM
+    ...commandArgs.notJavaRuntimeArgs(),
     // TODO how to honour javacEnv?
     // env: config.javacEnv
   ]));

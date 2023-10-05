@@ -100,8 +100,12 @@ class JbDartle {
     final unresolvedLocalDeps = localDependencies.unresolved;
     final unresolvedLocalProcessorDeps = localProcessorDependencies.unresolved;
 
-    final jvmExecutor =
-        createJavaActor(_files.jbuildJar.path, _options.logLevel);
+    final jvmExecutor = createJavaActor(
+        _files.jbuildJar.path,
+        _options.logLevel,
+        (await _config.compileArgs(_files.processorLibsDir))
+            .javaRuntimeArgs()
+            .toList());
     final javaSender = await jvmExecutor.toSendable();
 
     final FileCollection jbFileInputs;

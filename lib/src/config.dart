@@ -361,7 +361,7 @@ class JbConfiguration {
   /// Get the list of JBuild global arguments (pre-args)
   /// from this configuration.
   List<String> preArgs() {
-    final result = <String>['-w', Directory.current.path];
+    final result = <String>['-w', Directory.current.path, '-q'];
     if (logger.isLoggable(Level.FINE)) {
       result.add('-V');
     }
@@ -373,8 +373,8 @@ class JbConfiguration {
   }
 
   /// Get the compile task arguments from this configuration.
-  Future<List<String>> compileArgs(
-      String processorLibsDir, TransitiveChanges? changes) async {
+  Future<List<String>> compileArgs(String processorLibsDir,
+      [TransitiveChanges? changes]) async {
     final result = <String>[];
     result.addAll(['-cp', compileLibsDir]);
     output.when(
