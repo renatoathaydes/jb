@@ -430,11 +430,6 @@ Future<void> _test(File jbuildJar, JbConfiguration config, DartleCache cache,
   }.join(classpathSeparator);
 
   const mainClass = 'org.junit.platform.console.ConsoleLauncher';
-  if (mainClass.isEmpty) {
-    throw DartleException(
-        message: 'cannot run tests as no test libraries have been detected'
-            'no main-class has been configured');
-  }
 
   final hasCustomSelect = args.any((arg) =>
       arg.startsWith('--select') || arg.startsWith('--scan-classpath'));
