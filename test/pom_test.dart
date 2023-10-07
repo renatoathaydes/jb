@@ -6,11 +6,14 @@ const emptyLocalDependencies = ResolvedLocalDependencies([], []);
 void main() {
   group('POM generation', () {
     test('simple POM', () async {
-      expect(createPom(await loadConfigString('''
-      group: foo
-      module: bar
-      version: 1.0
-      '''), emptyLocalDependencies).toString(), equals('''\
+      expect(
+          createPom((
+            group: 'foo',
+            module: 'bar',
+            version: '1.0',
+          ), const {}, emptyLocalDependencies)
+              .toString(),
+          equals('''\
 $pomHeader
     <groupId>foo</groupId>
     <artifactId>bar</artifactId>
@@ -22,14 +25,17 @@ $pomHeader
     });
 
     test('POM with Maven dependencies', () async {
-      expect(createPom(await loadConfigString('''
-      group: foo
-      module: bar
-      version: 1.0
-      dependencies:
-        - org.apache:json.parser:1.0.0
-        - com.junit.api:junit:4.12
-      '''), emptyLocalDependencies).toString(), equals('''\
+      expect(
+          createPom((
+            group: 'foo',
+            module: 'bar',
+            version: '1.0',
+          ), {
+            'org.apache:json.parser:1.0.0': DependencySpec.defaultSpec,
+            'com.junit.api:junit:4.12': DependencySpec.defaultSpec,
+          }, emptyLocalDependencies)
+              .toString(),
+          equals('''\
 $pomHeader
     <groupId>foo</groupId>
     <artifactId>bar</artifactId>
@@ -53,17 +59,19 @@ $pomHeader
     });
 
     test('POM with configured Maven dependencies', () async {
-      expect(createPom(await loadConfigString('''
-      group: foo
-      module: bar
-      version: 1.0
-      dependencies:
-        - org.apache:json.parser:1.0.0:
-            scope: runtime-only
-        - com.junit.api:junit:4.12:
-            scope: compile-only
-            transitive: false
-      '''), emptyLocalDependencies).toString(), equals('''\
+      expect(
+          createPom((
+            group: 'foo',
+            module: 'bar',
+            version: '1.0'
+          ), {
+            'org.apache:json.parser:1.0.0': DependencySpec(
+                scope: DependencyScope.runtimeOnly, transitive: true),
+            'com.junit.api:junit:4.12': DependencySpec(
+                scope: DependencyScope.compileOnly, transitive: false),
+          }, emptyLocalDependencies)
+              .toString(),
+          equals('''\
 $pomHeader
     <groupId>foo</groupId>
     <artifactId>bar</artifactId>
@@ -93,15 +101,17 @@ $nonTransitiveDependency
       group: com.athaydes.jb
       version: 0.1.0
       ''');
+
       expect(
           createPom(
-              await loadConfigString('''
-      group: my.group
-      module: my.module
-      version: 4.3.2.1
-      dependencies:
-        - org.apache:json.parser:1.0.0
-      '''),
+              (
+                group: 'my.group',
+                module: 'my.module',
+                version: '4.3.2.1'
+              ),
+              {
+                'org.apache:json.parser:1.0.0': DependencySpec.defaultSpec,
+              },
               ResolvedLocalDependencies([], [
                 ResolvedProjectDependency(
                     ProjectDependency(

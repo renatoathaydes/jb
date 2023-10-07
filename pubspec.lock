@@ -157,10 +157,10 @@ packages:
     dependency: "direct main"
     description:
       name: conveniently
-      sha256: e1c85e62a2e19973865fb803cb69e906b4ac4d87071261f1e9d1ce3f4dbf30c1
+      sha256: a497c69c3f8127a301b4c8d8d5d8432758cec5778e89ebe9a5bdf88bc953624f
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.0"
+    version: "1.2.0"
   convert:
     dependency: transitive
     description:

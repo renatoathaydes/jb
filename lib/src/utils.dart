@@ -172,6 +172,10 @@ extension DirectoryExtension on Directory {
   }
 }
 
+extension StringExtension on String {
+  String replaceExtension(String ext) => '${p.withoutExtension(this)}$ext';
+}
+
 extension NullableStringExtension on String? {
   String? removeFromEnd(Set<String> suffixes) {
     final self = this;
@@ -184,6 +188,12 @@ extension NullableStringExtension on String? {
       }
     }
     return result;
+  }
+
+  String ifBlank(Object Function() orElse) {
+    final value = orThrow(orElse).trim();
+    if (value.isEmpty) orElse();
+    return value;
   }
 }
 

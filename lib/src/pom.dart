@@ -4,6 +4,7 @@ import 'package:dartle/dartle.dart';
 import 'config.dart';
 import 'path_dependency.dart';
 import 'resolved_dependency.dart';
+import 'utils.dart';
 
 const _errorPrefix = 'Cannot generate POM, ';
 
@@ -23,26 +24,35 @@ const nonTransitiveDependency = '''\
                 </exclusion>
             </exclusions>''';
 
+/// Maven artifact.
+typedef Artifact = ({String group, String module, String version});
+
+Result<Artifact> createArtifact(JbConfiguration config) {
+  Never Function() mandatory(String what) =>
+      () => _fail('"$what" must be provided in the jb configuration file.');
+  return catching$(() => (
+        group: config.group.ifBlank(mandatory('group')),
+        module: config.module.ifBlank(mandatory('module')),
+        version: config.version.ifBlank(mandatory('version')),
+      ));
+}
+
 /// Create a Maven POM for publishing purposes.
 ///
 /// The resulting POM is not meant to be used as a build file with the Maven
 /// tool because it does not contain non-published POM data, such as
 /// source locations, Maven plugins for tests/compilation etc.
-Object createPom(
-    JbConfiguration config, ResolvedLocalDependencies localDependencies) {
-  final group = config.group.orThrow(() => _fail('"group" is mandatory.'));
-  final module = config.module.orThrow(() => _fail('"module" is mandatory.'));
-  final version =
-      config.version.orThrow(() => _fail('"version" is mandatory.'));
+Object createPom(Artifact artifact, Map<String, DependencySpec> dependencies,
+    ResolvedLocalDependencies localDependencies) {
   final builder = StringBuffer('''\
 $pomHeader
-    <groupId>$group</groupId>
-    <artifactId>$module</artifactId>
-    <version>$version</version>
+    <groupId>${artifact.group}</groupId>
+    <artifactId>${artifact.module}</artifactId>
+    <version>${artifact.version}</version>
     <dependencies>
 ''');
   // add only non-local deps first
-  for (final dep in config.dependencies.entries) {
+  for (final dep in dependencies.entries) {
     final spec = dep.value;
     if (spec.path == null) builder.addDependency(dep.key, spec);
   }

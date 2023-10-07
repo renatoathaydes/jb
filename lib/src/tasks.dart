@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 import 'package:path/path.dart' as p;
@@ -13,12 +14,15 @@ import 'java_tests.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart';
 import 'pom.dart';
+import 'publish.dart';
 import 'requirements.dart';
 import 'resolved_dependency.dart';
+import 'run_conditions.dart';
 import 'utils.dart';
 
 const cleanTaskName = 'clean';
 const compileTaskName = 'compile';
+const publicationCompileTaskName = 'publicationCompile';
 const testTaskName = 'test';
 const downloadTestRunnerTaskName = 'downloadTestRunner';
 const runTaskName = 'runJavaMainClass';
@@ -31,9 +35,16 @@ const showJbConfigTaskName = 'showJbConfiguration';
 const requirementsTaskName = 'requirements';
 const createEclipseTaskName = 'createEclipseFiles';
 const createPomTaskName = 'generatePom';
+const publishTaskName = 'publish';
+
+const _reasonPublicationCompileCannotRun =
+    'Cannot publish project because "output-jar" is not configured. '
+    'Replace "output-dir" with "output-jar" to publish.';
+
+final publishPhase = TaskPhase.custom(TaskPhase.build.index + 1, 'publish');
 
 /// Create run condition for the `compile` task.
-RunOnChanges createCompileRunCondition(
+RunOnChanges _createCompileRunCondition(
     JbConfiguration config, DartleCache cache) {
   final outputs = config.output.when(dir: (d) => dir(d), jar: (j) => file(j));
   return RunOnChanges(
@@ -42,13 +53,27 @@ RunOnChanges createCompileRunCondition(
       cache: cache);
 }
 
+RunCondition _createPublicationCompileRunCondition(
+    JbConfiguration config, DartleCache cache) {
+  return config.output.when(
+      dir: (d) => const CannotRun(_reasonPublicationCompileCannotRun),
+      jar: (jar) => RunOnChanges(
+          inputs: dirs(config.sourceDirs.followedBy(config.resourceDirs)),
+          outputs: files([
+            jar,
+            jar.replaceExtension('-sources.jar'),
+            jar.replaceExtension('-javadoc.jar'),
+          ]),
+          cache: cache));
+}
+
 /// Create the `compile` task.
 Task createCompileTask(JbFiles jbFiles, JbConfiguration config,
     DartleCache cache, JBuildSender jBuildSender) {
   return Task(
       (List<String> args, [ChangeSet? changes]) =>
           _compile(jbFiles, config, changes, args, cache, jBuildSender),
-      runCondition: createCompileRunCondition(config, cache),
+      runCondition: _createCompileRunCondition(config, cache),
       name: compileTaskName,
       argsValidator: const AcceptAnyArgs(),
       dependsOn: const {
@@ -58,13 +83,39 @@ Task createCompileTask(JbFiles jbFiles, JbConfiguration config,
       description: 'Compile Java source code.');
 }
 
+/// Create the publicationCompile task.
+Task createPublicationCompileTask(JbFiles jbFiles, JbConfiguration config,
+    DartleCache cache, JBuildSender jBuildSender) {
+  return Task(
+      (List<String> args) =>
+          _publishCompile(jbFiles, config, args, cache, jBuildSender),
+      runCondition: _createPublicationCompileRunCondition(config, cache),
+      name: publicationCompileTaskName,
+      argsValidator: const AcceptAnyArgs(),
+      dependsOn: const {
+        installCompileDepsTaskName,
+        installProcessorDepsTaskName
+      },
+      description: 'Compile Java source code, javadocs and sources jar.');
+}
+
+Future<void> _publishCompile(JbFiles jbFiles, JbConfiguration config,
+    List<String> args, DartleCache cache, JBuildSender jBuildSender) async {
+  config.output.when(
+      dir: (_) => failBuild(reason: _reasonPublicationCompileCannotRun),
+      jar: (_) => null);
+  await _compile(jbFiles, config, null, args, cache, jBuildSender,
+      publication: true);
+}
+
 Future<void> _compile(
     JbFiles jbFiles,
     JbConfiguration config,
     ChangeSet? changeSet,
     List<String> args,
     DartleCache cache,
-    JBuildSender jBuildSender) async {
+    JBuildSender jBuildSender,
+    {bool publication = false}) async {
   final stopwatch = Stopwatch()..start();
   final changes =
       await computeAllChanges(changeSet, jbFiles.javaSrcFileTreeFile);
@@ -80,6 +131,7 @@ Future<void> _compile(
   await jBuildSender.send(RunJBuild('compile', [
     ...config.preArgs(),
     'compile',
+    if (publication) ...const ['-sj', '-dj'],
     // the Java compiler runtime args are sent when starting the JVM
     ...commandArgs.notJavaRuntimeArgs(),
   ]));
@@ -302,6 +354,7 @@ Future<void> _copyOutput(CompileOutput out, String destinationDir) {
       jar: (j) => File(j).copy(p.join(destinationDir, p.basename(j))));
 }
 
+/// Create the eclipse task.
 Task createEclipseTask(JbConfiguration config) {
   return Task(
       (_) async => await generateEclipseFiles(config.sourceDirs,
@@ -311,12 +364,26 @@ Task createEclipseTask(JbConfiguration config) {
       dependsOn: const {installCompileDepsTaskName});
 }
 
+/// Create the generatePom task.
 Task createGeneratePomTask(
-    JbConfiguration config, ResolvedLocalDependencies localDependencies) {
+    Result<Artifact> artifact,
+    Map<String, DependencySpec> dependencies,
+    ResolvedLocalDependencies localDependencies) {
   return Task(
-      (List<String> args) => _pom(args, createPom(config, localDependencies)),
+      (List<String> args) => _pom(
+          args,
+          createPom(
+              switch (artifact) {
+                Ok(value: var theArtifact) => theArtifact,
+                Fail(exception: var e) => throw e,
+              },
+              dependencies,
+              localDependencies)),
       name: createPomTaskName,
-      phase: TaskPhase.setup,
+      phase: publishPhase,
+      runCondition: artifact.isError
+          ? CannotRun(artifact.failureOrNull.toString())
+          : const AlwaysRun(),
       argsValidator: ArgsCount.range(min: 0, max: 1),
       description: 'Generate Maven POM for publishing the project. '
           'An optional argument can be used to specify the POM destination.');
@@ -327,6 +394,25 @@ Future<void> _pom(List<String> args, Object pom) async {
   await destination.parent.create(recursive: true);
   logger.fine(() => "Writing POM to $destination");
   await destination.writeAsString(pom.toString(), flush: true);
+}
+
+/// Create the publish task.
+Task createPublishTask(
+    Result<Artifact> artifact,
+    Map<String, DependencySpec> dependencies,
+    String? outputJar,
+    ResolvedLocalDependencies localDependencies) {
+  return Task(Publisher(artifact, dependencies, localDependencies, outputJar),
+      name: publishTaskName,
+      dependsOn: const {publicationCompileTaskName},
+      runCondition: artifact.isError
+          ? CannotRun(artifact.failureOrNull.toString())
+          : const AlwaysRun(),
+      phase: publishPhase,
+      argsValidator: Publisher.argsValidator,
+      description: 'Publish project to a Maven repository (local m2 by '
+          'default). An argument may provide a custom repository '
+          '(use -m for Maven Central).');
 }
 
 /// Create the `run` task.

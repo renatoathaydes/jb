@@ -7,6 +7,7 @@ import 'config_source.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart' show createJavaActor;
 import 'path_dependency.dart';
+import 'pom.dart';
 import 'resolved_dependency.dart';
 import 'tasks.dart';
 import 'utils.dart';
@@ -25,6 +26,7 @@ class JbDartle {
   final bool isRoot;
 
   late final Task compile,
+      publicationCompile,
       writeDeps,
       installCompile,
       installRuntime,
@@ -37,7 +39,8 @@ class JbDartle {
       downloadTestRunner,
       test,
       showConfig,
-      deps;
+      deps,
+      publish;
 
   /// Get the tasks that are configured as part of a build.
   late final Set<Task> tasks;
@@ -116,10 +119,13 @@ class JbDartle {
     } else {
       jbFileInputs = FileCollection.empty;
     }
+    final artifact = createArtifact(_config);
 
     final projectTasks = <Task>{};
 
     compile = createCompileTask(_files, _config, _cache, javaSender);
+    publicationCompile =
+        createPublicationCompileTask(_files, _config, _cache, javaSender);
     writeDeps = createWriteDependenciesTask(_files, _config, _cache,
         jbFileInputs, unresolvedLocalDeps, unresolvedLocalProcessorDeps);
     installCompile = createInstallCompileDepsTask(
@@ -138,7 +144,13 @@ class JbDartle {
     showConfig = createShowConfigTask(_config, !_options.colorfulLog);
     requirements = createRequirementsTask(_files.jbuildJar, _config);
     generateEclipse = createEclipseTask(_config);
-    generatePom = createGeneratePomTask(_config, localDependencies);
+    generatePom = createGeneratePomTask(
+        artifact, _config.dependencies, localDependencies);
+    publish = createPublishTask(
+        artifact,
+        _config.dependencies,
+        _config.output.when(dir: (_) => null, jar: (j) => j),
+        localDependencies);
 
     final extensionProject = await loadExtensionProject(
         javaSender, _files, _options, _config.extensionProject);
@@ -147,6 +159,7 @@ class JbDartle {
 
     projectTasks.addAll({
       compile,
+      publicationCompile,
       writeDeps,
       installCompile,
       installRuntime,
@@ -159,6 +172,7 @@ class JbDartle {
       requirements,
       generateEclipse,
       generatePom,
+      publish,
       if (extensionTasks != null) ...extensionTasks,
     });
 
