@@ -48,7 +48,6 @@ class Publisher {
     };
 
     final destination = Directory(_pathFor(theArtifact, repoPath));
-    logger.fine(() => 'Publishing to local repository: ${destination.path}');
     await _putPublicationOn(destination, theArtifact);
   }
 
@@ -62,15 +61,16 @@ class Publisher {
     // so this should never fail
     final jarFile = jar.ifBlank(() => 'Cannot publish, jar was not provided');
 
+    logger.info(() => 'Publishing artifacts to ${destination.path}');
+
     final pom = createPom(artifact, dependencies, localDependencies);
-    await File(p.join(
-            destination.path, p.basename(jarFile).replaceExtension('.pom')))
+    await File(p.join(destination.path, _fileFor(artifact, extension: '.pom')))
         .writeAsString(pom.toString());
-    await File(jarFile).copy(p.join(destination.path, _jarFile(artifact)));
-    await File(jarFile.replaceExtension('-sources.jar'))
-        .rename(p.join(destination.path, _jarFile(artifact, '-sources')));
-    await File(jarFile.replaceExtension('-javadoc.jar'))
-        .rename(p.join(destination.path, _jarFile(artifact, '-javadoc')));
+    await File(jarFile).copy(p.join(destination.path, _fileFor(artifact)));
+    await File(jarFile.replaceExtension('-sources.jar')).rename(
+        p.join(destination.path, _fileFor(artifact, qualifier: '-sources')));
+    await File(jarFile.replaceExtension('-javadoc.jar')).rename(
+        p.join(destination.path, _fileFor(artifact, qualifier: '-javadoc')));
   }
 
   Future<void> _publishHttp(String repoUri) async {
@@ -88,5 +88,6 @@ String _pathFor(Artifact artifact, String parent) {
   ]);
 }
 
-String _jarFile(Artifact artifact, [String suffix = '']) =>
-    '${artifact.module}-${artifact.version}$suffix.jar';
+String _fileFor(Artifact artifact,
+        {String qualifier = '', String extension = '.jar'}) =>
+    '${artifact.module}-${artifact.version}$qualifier$extension';
