@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:conveniently/conveniently.dart';
+import 'package:crypto/crypto.dart';
 import 'package:dartle/dartle.dart'
-    show ArgsCount, DartleException, homeDir, failBuild;
+    show ArgsCount, DartleException, homeDir, failBuild, execProc, profile;
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
@@ -63,20 +64,75 @@ class Publisher {
 
     logger.info(() => 'Publishing artifacts to ${destination.path}');
 
+    final stopwatch = Stopwatch()..start();
+
     final pom = createPom(artifact, dependencies, localDependencies);
+
+    logger.log(
+        profile, () => 'Created POM in ${stopwatch.elapsedMilliseconds} ms');
+    stopwatch.reset();
     await File(p.join(destination.path, _fileFor(artifact, extension: '.pom')))
-        .writeAsString(pom.toString());
-    await File(jarFile).copy(p.join(destination.path, _fileFor(artifact)));
-    await File(jarFile.replaceExtension('-sources.jar')).rename(
-        p.join(destination.path, _fileFor(artifact, qualifier: '-sources')));
-    await File(jarFile.replaceExtension('-javadoc.jar')).rename(
-        p.join(destination.path, _fileFor(artifact, qualifier: '-javadoc')));
+        .writeAsString(pom.toString())
+        .then(_signFile)
+        .then(_shaFile);
+    await File(jarFile)
+        .copy(p.join(destination.path, _fileFor(artifact)))
+        .then(_signFile)
+        .then(_shaFile);
+    await File(jarFile.replaceExtension('-sources.jar'))
+        .rename(
+            p.join(destination.path, _fileFor(artifact, qualifier: '-sources')))
+        .then(_signFile)
+        .then(_shaFile);
+    await File(jarFile.replaceExtension('-javadoc.jar'))
+        .rename(
+            p.join(destination.path, _fileFor(artifact, qualifier: '-javadoc')))
+        .then(_signFile)
+        .then(_shaFile);
+    logger.log(
+        profile,
+        () => 'Created publication artifacts in '
+            '${stopwatch.elapsedMilliseconds} ms');
   }
 
   Future<void> _publishHttp(String repoUri) async {
     throw DartleException(
         message: 'Publishing to HTTP repositories is not supported yet');
   }
+}
+
+Future<void> _shaFile(File file) async {
+  logger.finer(() => 'Computing SHA1 of $file');
+  await File('${file.path}.sha1')
+      .writeAsString(sha1.convert(await file.readAsBytes()).toString());
+  logger.finer(() => 'Computed SHA1 of $file');
+}
+
+// remember if GPG fails so we don't try again
+bool _gpgExists = true;
+
+Future<File> _signFile(File file) async {
+  if (_gpgExists) {
+    logger.finer(() => 'Signing $file');
+    try {
+      await execProc(Process.start('gpg', [
+        '--armor',
+        '--detach-sign',
+        '--pinentry-mode',
+        'loopback',
+        file.path,
+      ]));
+      logger.finer(() => 'Signed $file');
+    } catch (e) {
+      logger.info(
+          'Unable to sign artifacts as "gpg" does not seem to be installed.');
+      logger.fine(() => 'GPG failed with: $e');
+      _gpgExists = false;
+    }
+  } else {
+    logger.fine(() => 'Skipping "gpg" signature for $file.');
+  }
+  return file;
 }
 
 String _pathFor(Artifact artifact, String parent) {

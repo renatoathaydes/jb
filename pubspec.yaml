@@ -21,6 +21,7 @@ dependencies:
   #    path: ../actors
   conveniently: ^1.2.0
   structured_async: ^0.3.2
+  crypto: ^3.0.3
 
 dev_dependencies:
   build_runner: ^2.2.0

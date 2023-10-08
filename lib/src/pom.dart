@@ -42,7 +42,9 @@ Result<Artifact> createArtifact(JbConfiguration config) {
 /// The resulting POM is not meant to be used as a build file with the Maven
 /// tool because it does not contain non-published POM data, such as
 /// source locations, Maven plugins for tests/compilation etc.
-Object createPom(Artifact artifact, Map<String, DependencySpec> dependencies,
+StringBuffer createPom(
+    Artifact artifact,
+    Map<String, DependencySpec> dependencies,
     ResolvedLocalDependencies localDependencies) {
   final builder = StringBuffer('''\
 $pomHeader
