@@ -6,6 +6,7 @@ import 'package:actors/actors.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:logging/logging.dart';
+import 'package:structured_async/structured_async.dart' show FutureCancelled;
 
 import 'config.dart' show logger;
 import 'output_consumer.dart';
@@ -173,8 +174,15 @@ class _JBuildRpc {
   Future<void> runJBuild(String taskName, List<String> args,
       Sendable<String, void>? stdoutConsumer) async {
     final trackId = _currentMessageIndex++;
-    final result = await _runJava('runJBuild', [args],
-        _RpcRequestMetadata(trackId, taskName, stdoutConsumer));
+    final Object? result;
+    try {
+      result = await _runJava('runJBuild', [args],
+          _RpcRequestMetadata(trackId, taskName, stdoutConsumer));
+    } on FutureCancelled {
+      rpcLogger.fine('Jobs cancelled, forcibly stopping the Java process');
+      proc.destroy();
+      rethrow;
+    }
     if (result is! int) {
       throw DartleException(
           message: 'JBuild did not return an integer: $result');
@@ -193,8 +201,14 @@ class _JBuildRpc {
       String methodName, List<String> args) async {
     // This class should run the JBuild RpcMain's run method:
     //Object run(String classpath, String className, String methodName, String... args)
-    return _runJava('run', [classpath, className, methodName, args],
-        _RpcRequestMetadata(_currentMessageIndex++, taskName));
+    try {
+      return await _runJava('run', [classpath, className, methodName, args],
+          _RpcRequestMetadata(_currentMessageIndex++, taskName));
+    } on FutureCancelled {
+      rpcLogger.fine('Jobs cancelled, forcibly stopping the Java process');
+      proc.destroy();
+      rethrow;
+    }
   }
 
   Future<Object?> _runJava(String methodName, List<Object> args,
@@ -233,7 +247,7 @@ class _JBuildRpc {
       final req = await client.delete('localhost', proc.port, '/jbuild');
       req.headers.add('Authorization', proc.authorizationHeader);
       final resp = await req.close();
-      rpcLogger.fine(() =>
+      rpcLogger.finer(() =>
           'RPC Server responded with ${resp.statusCode} to request to stop');
     } catch (e) {
       rpcLogger.finer(() => 'Got an expected error '

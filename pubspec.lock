@@ -482,7 +482,7 @@ packages:
     source: hosted
     version: "1.2.0"
   structured_async:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: structured_async
       sha256: "769c3b3d0f1d3f1b74b6644c4e8715b3d373081c8ad9e47d2058ebcaa610c9fd"
