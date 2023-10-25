@@ -1,6 +1,9 @@
 package jb.example.error_prone;
 
-final class Main {
+/**
+ * This is a main class.
+ **/
+public final class Main {
     // intentionally not final to trigger error-prone warning
     static String HELLO = "Hello ErrorProne";
 
