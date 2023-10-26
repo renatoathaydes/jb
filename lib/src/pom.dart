@@ -22,7 +22,6 @@ typedef Artifact = ({
   String group,
   String module,
   String version,
-  Map<String, DependencySpec> dependencies,
   String? description,
   List<Developer> developers,
   SourceControlManagement? scm,
@@ -37,7 +36,6 @@ Result<Artifact> createArtifact(JbConfiguration config) {
         group: config.group.ifBlank(mandatory('group')),
         module: config.module.ifBlank(mandatory('module')),
         version: config.version.ifBlank(mandatory('version')),
-        dependencies: config.dependencies,
         description: config.description,
         developers: config.developers,
         scm: config.scm,
@@ -61,8 +59,14 @@ String createPom(Artifact artifact, Map<String, DependencySpec> dependencies,
         ..tag('modelVersion', '4.0.0') //
         ..tag('groupId', artifact.group) //
         ..tag('artifactId', artifact.module) //
-        ..tag('version', artifact.version) //
-        ..element('dependencies', nest: () {
+        ..tag('version', artifact.version);
+      artifact.description.ifNonBlank((d) => xml.tag('description', d));
+      artifact.url.ifNonBlank((url) => xml.tag('url', url));
+      artifact.scm?.vmap(xml.scm);
+      xml.addAll(artifact.licenses, 'licenses', xml.license);
+      xml.addAll(artifact.developers, 'developers', xml.developer);
+      if (dependencies.isNotEmpty) {
+        xml.element('dependencies', nest: () {
           for (final dep in dependencies.entries) {
             final spec = dep.value;
             if (spec.path == null) xml.dependency(dep.key, spec);
@@ -74,6 +78,7 @@ String createPom(Artifact artifact, Map<String, DependencySpec> dependencies,
             xml.jarDependency(localDep);
           }
         });
+      }
     });
   return xml.buildDocument().toXmlString(pretty: true);
 }
@@ -140,5 +145,38 @@ extension on XmlBuilder {
   void jarDependency(JarDependency jar) {
     _fail('jar dependency is not supported when publishing Maven projects.\n'
         'Replace jar dependency "${jar.path}" with a Maven dependency.');
+  }
+
+  void addAll<T>(List<T> items, String tagName, void Function(T) fun) {
+    if (items.isEmpty) return;
+    element(tagName, nest: () {
+      for (final item in items) {
+        fun(item);
+      }
+    });
+  }
+
+  void developer(Developer dev) {
+    element('developer', nest: () {
+      tag('name', dev.name);
+      tag('email', dev.email);
+      tag('organization', dev.organization);
+      tag('organizationUrl', dev.organizationUrl);
+    });
+  }
+
+  void license(License license) {
+    element('license', nest: () {
+      tag('name', license.name);
+      tag('url', license.uri);
+    });
+  }
+
+  void scm(SourceControlManagement scm) {
+    element('scm', nest: () {
+      tag('connection', scm.connection);
+      tag('developerConnection', scm.developerConnection);
+      tag('url', scm.url);
+    });
   }
 }

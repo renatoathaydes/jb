@@ -26,7 +26,6 @@ Artifact _artifact(
       group: group,
       module: module,
       version: version,
-      dependencies: const {},
       description: '',
       developers: const [],
       scm: null,
@@ -51,7 +50,6 @@ $pomHeader
   <groupId>foo</groupId>
   <artifactId>bar</artifactId>
   <version>1.0</version>
-  <dependencies/>
 </project>'''));
     });
 
@@ -167,6 +165,79 @@ $pomHeader
       <groupId>com.athaydes.jb</groupId>
       <artifactId>jb-api</artifactId>
       <version>0.1.0</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+</project>'''));
+    });
+
+    test('Full POM', () async {
+      expect(
+          createPom(
+            (
+              group: 'com.athaydes.jbuild',
+              module: 'jb',
+              version: '1.0',
+              developers: [
+                const Developer(
+                    name: 'Renato Athaydes',
+                    email: 'renato@athaydes.com',
+                    organization: 'athaydes.com',
+                    organizationUrl: 'https://renato.athaydes.com')
+              ],
+              description: 'JBuild - a developer-friendly Java build tool',
+              licenses: [allLicenses['Apache-2.0']!],
+              scm: const SourceControlManagement(
+                  connection: 'git@github.com:renatoathaydes/jbuild.git',
+                  developerConnection:
+                      'git@github.com:renatoathaydes/jbuild.git',
+                  url: 'https://github.com/renatoathaydes/jbuild'),
+              url: 'https://github.com/renatoathaydes/jbuild',
+            ),
+            {
+              'org.apache:json.parser:1.0.0': DependencySpec.defaultSpec,
+              'junit:junit:4.12': DependencySpec(
+                  transitive: true, scope: DependencyScope.compileOnly),
+            },
+            const ResolvedLocalDependencies([], []),
+          ).toString(),
+          equals('''\
+$pomHeader
+  <groupId>com.athaydes.jbuild</groupId>
+  <artifactId>jb</artifactId>
+  <version>1.0</version>
+  <description>JBuild - a developer-friendly Java build tool</description>
+  <url>https://github.com/renatoathaydes/jbuild</url>
+  <scm>
+    <connection>git@github.com:renatoathaydes/jbuild.git</connection>
+    <developerConnection>git@github.com:renatoathaydes/jbuild.git</developerConnection>
+    <url>https://github.com/renatoathaydes/jbuild</url>
+  </scm>
+  <licenses>
+    <license>
+      <name>Apache License 2.0</name>
+      <url>https://spdx.org/licenses/Apache-2.0.html</url>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <name>Renato Athaydes</name>
+      <email>renato@athaydes.com</email>
+      <organization>athaydes.com</organization>
+      <organizationUrl>https://renato.athaydes.com</organizationUrl>
+    </developer>
+  </developers>
+  <dependencies>
+    <dependency>
+      <groupId>org.apache</groupId>
+      <artifactId>json.parser</artifactId>
+      <version>1.0.0</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.12</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>

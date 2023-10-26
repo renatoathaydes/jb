@@ -17,24 +17,20 @@ const runEnvProjectDir = 'test/test-projects/run-env';
 
 const _expectedWithSubProjectPom = '''\
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <groupId>tests</groupId>
-    <artifactId>greetings-app</artifactId>
-    <version>1.0</version>
-    <dependencies>
-        <dependency>
-            <groupId>tests</groupId>
-            <artifactId>greetings</artifactId>
-            <version>1.0</version>
-            <scope>compile</scope>
-        </dependency>
-    </dependencies>
-</project>
-''';
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>tests</groupId>
+  <artifactId>greetings-app</artifactId>
+  <version>1.0</version>
+  <dependencies>
+    <dependency>
+      <groupId>tests</groupId>
+      <artifactId>greetings</artifactId>
+      <version>1.0</version>
+      <scope>compile</scope>
+    </dependency>
+  </dependencies>
+</project>''';
 
 void main() {
   activateLogging(Level.FINE);

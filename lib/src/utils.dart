@@ -190,10 +190,16 @@ extension NullableStringExtension on String? {
     return result;
   }
 
-  String ifBlank(Object Function() orElse) {
-    final value = orThrow(orElse).trim();
-    if (value.isEmpty) orElse();
+  String ifBlank(String Function() orElse) {
+    final value = this?.trim() ?? '';
+    if (value.isEmpty) return orElse();
     return value;
+  }
+
+  T? ifNonBlank<T>(T? Function(String) then) {
+    final value = this?.trim() ?? '';
+    if (value.isNotEmpty) return then(value);
+    return null;
   }
 }
 
