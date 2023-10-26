@@ -112,9 +112,9 @@ class Publisher {
   }
 
   Future<void> _publishFiles(Directory destination, Artifact artifact,
-      StringBuffer pom, String jarFile) async {
+      String pom, String jarFile) async {
     await File(p.join(destination.path, _fileFor(artifact, extension: '.pom')))
-        .writeAsString(pom.toString())
+        .writeAsString(pom)
         .then(_signFile)
         .then(_shaFile);
     await File(jarFile)

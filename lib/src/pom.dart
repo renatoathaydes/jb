@@ -1,31 +1,34 @@
 import 'package:conveniently/conveniently.dart';
-import 'package:dartle/dartle.dart';
+import 'package:dartle/dartle.dart' show failBuild;
+import 'package:xml/xml.dart' show XmlBuilder;
 
 import 'config.dart';
+import 'maven_metadata.dart';
 import 'path_dependency.dart';
 import 'resolved_dependency.dart';
 import 'utils.dart';
 
 const _errorPrefix = 'Cannot generate POM, ';
 
-const pomHeader = '''\
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-''';
-
-const nonTransitiveDependency = '''\
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>''';
+const _pomHeaderAttributes = {
+  'xmlns': 'http://maven.apache.org/POM/4.0.0',
+  'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+  'xsi:schemaLocation': 'http://maven.apache.org/POM/4.0.0 '
+      'http://maven.apache.org/xsd/maven-4.0.0.xsd',
+};
 
 /// Maven artifact.
-typedef Artifact = ({String group, String module, String version});
+typedef Artifact = ({
+  String group,
+  String module,
+  String version,
+  Map<String, DependencySpec> dependencies,
+  String? description,
+  List<Developer> developers,
+  SourceControlManagement? scm,
+  String? url,
+  List<License> licenses,
+});
 
 Result<Artifact> createArtifact(JbConfiguration config) {
   Never Function() mandatory(String what) =>
@@ -34,6 +37,12 @@ Result<Artifact> createArtifact(JbConfiguration config) {
         group: config.group.ifBlank(mandatory('group')),
         module: config.module.ifBlank(mandatory('module')),
         version: config.version.ifBlank(mandatory('version')),
+        dependencies: config.dependencies,
+        description: config.description,
+        developers: config.developers,
+        scm: config.scm,
+        url: config.url,
+        licenses: config.licenses,
       ));
 }
 
@@ -42,37 +51,34 @@ Result<Artifact> createArtifact(JbConfiguration config) {
 /// The resulting POM is not meant to be used as a build file with the Maven
 /// tool because it does not contain non-published POM data, such as
 /// source locations, Maven plugins for tests/compilation etc.
-StringBuffer createPom(
-    Artifact artifact,
-    Map<String, DependencySpec> dependencies,
+String createPom(Artifact artifact, Map<String, DependencySpec> dependencies,
     ResolvedLocalDependencies localDependencies) {
-  final builder = StringBuffer('''\
-$pomHeader
-    <groupId>${artifact.group}</groupId>
-    <artifactId>${artifact.module}</artifactId>
-    <version>${artifact.version}</version>
-    <dependencies>
-''');
-  // add only non-local deps first
-  for (final dep in dependencies.entries) {
-    final spec = dep.value;
-    if (spec.path == null) builder.addDependency(dep.key, spec);
-  }
-  // add local deps
-  for (final localDep in localDependencies.projectDependencies) {
-    builder.addProjectDependency(localDep);
-  }
-  for (final localDep in localDependencies.jars) {
-    builder.addJarDependency(localDep);
-  }
-  builder.writeln('''\
-    </dependencies>
-</project>''');
-  return builder;
+  final xml = XmlBuilder();
+  xml
+    ..processing('xml', 'version="1.0" encoding="UTF-8"')
+    ..element('project', attributes: _pomHeaderAttributes, nest: () {
+      xml
+        ..tag('modelVersion', '4.0.0') //
+        ..tag('groupId', artifact.group) //
+        ..tag('artifactId', artifact.module) //
+        ..tag('version', artifact.version) //
+        ..element('dependencies', nest: () {
+          for (final dep in dependencies.entries) {
+            final spec = dep.value;
+            if (spec.path == null) xml.dependency(dep.key, spec);
+          }
+          for (final localDep in localDependencies.projectDependencies) {
+            xml.projectDependency(localDep);
+          }
+          for (final localDep in localDependencies.jars) {
+            xml.jarDependency(localDep);
+          }
+        });
+    });
+  return xml.buildDocument().toXmlString(pretty: true);
 }
 
-Never _fail(String message) =>
-    throw DartleException(message: '$_errorPrefix$message');
+Never _fail(String message) => failBuild(reason: '$_errorPrefix$message');
 
 (String, String, String) _parseDependency(String spec) {
   return switch (spec.split(':')) {
@@ -83,45 +89,6 @@ Never _fail(String message) =>
   };
 }
 
-extension on StringBuffer {
-  void addDependency(String name, DependencySpec dep) {
-    final (group, module, version) = _parseDependency(name);
-    write('''\
-        <dependency>
-            <groupId>$group</groupId>
-            <artifactId>$module</artifactId>
-            <version>$version</version>
-            <scope>${dep.scope.toMaven()}</scope>
-''');
-    if (!dep.transitive) {
-      writeln(nonTransitiveDependency);
-    }
-    writeln('        </dependency>');
-  }
-
-  void addProjectDependency(ResolvedProjectDependency dep) {
-    final group = dep.group.orThrow(() =>
-        _fail('at project dependency "${dep.path}": "group" is mandatory.'));
-    final module = dep.module.orThrow(() =>
-        _fail('at project dependency "${dep.path}": "module" is mandatory.'));
-    final version = dep.version.orThrow(() =>
-        _fail('at project dependency "${dep.path}": "version" is mandatory.'));
-    write('''\
-        <dependency>
-            <groupId>$group</groupId>
-            <artifactId>$module</artifactId>
-            <version>$version</version>
-            <scope>${dep.scope.toMaven()}</scope>
-        </dependency>
-''');
-  }
-
-  void addJarDependency(JarDependency jar) {
-    _fail('jar dependency is not supported when publishing Maven projects.\n'
-        'Replace jar dependency "${jar.path}" with a Maven dependency.');
-  }
-}
-
 extension on DependencyScope {
   String toMaven() {
     return switch (this) {
@@ -129,5 +96,49 @@ extension on DependencyScope {
       DependencyScope.compileOnly => 'provided',
       DependencyScope.runtimeOnly => 'runtime',
     };
+  }
+}
+
+extension on XmlBuilder {
+  void tag(String tagName, String value) {
+    element(tagName, nest: () => text(value));
+  }
+
+  void dependencyOn(
+      String group, String module, String version, DependencySpec dep) {
+    element('dependency', nest: () {
+      tag('groupId', group);
+      tag('artifactId', module);
+      tag('version', version);
+      tag('scope', dep.scope.toMaven());
+      if (!dep.transitive) {
+        element('exclusions', nest: () {
+          element('exclusion', nest: () {
+            tag('groupId', '*');
+            tag('artifactId', '*');
+          });
+        });
+      }
+    });
+  }
+
+  void dependency(String name, DependencySpec dep) {
+    final (group, module, version) = _parseDependency(name);
+    dependencyOn(group, module, version, dep);
+  }
+
+  void projectDependency(ResolvedProjectDependency dep) {
+    final group = dep.group.orThrow(() =>
+        _fail('at project dependency "${dep.path}": "group" is mandatory.'));
+    final module = dep.module.orThrow(() =>
+        _fail('at project dependency "${dep.path}": "module" is mandatory.'));
+    final version = dep.version.orThrow(() =>
+        _fail('at project dependency "${dep.path}": "version" is mandatory.'));
+    dependencyOn(group, module, version, dep.spec);
+  }
+
+  void jarDependency(JarDependency jar) {
+    _fail('jar dependency is not supported when publishing Maven projects.\n'
+        'Replace jar dependency "${jar.path}" with a Maven dependency.');
   }
 }
