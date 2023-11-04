@@ -32,7 +32,7 @@ Never _logAndExit(
     if (exception is DartleException) {
       code = exception.exitCode;
       logger.severe(exception.message);
-      if (logLevel == Level.FINE) {
+      if (logger.isLoggable(Level.FINE)) {
         if (exception is MultipleExceptions) {
           for (final entry in exception.exceptionsAndStackTraces) {
             logger.severe('==========>', entry.exception, entry.stackTrace);
