@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:conveniently/conveniently.dart';
@@ -9,14 +8,10 @@ import 'package:dartle/dartle.dart'
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
+import 'maven_client.dart';
 import 'pom.dart';
 import 'resolved_dependency.dart';
 import 'utils.dart';
-
-// See https://central.sonatype.org/publish/publish-manual/#close-and-drop-or-release-your-staging-repository
-const _mavenCentralUrl = 'https://s01.oss.sonatype.org/service/local';
-
-const _successCodes = {200, 201, 202, 203, 204};
 
 class Publisher {
   static final argsValidator = ArgsCount.range(min: 0, max: 1);
@@ -29,60 +24,64 @@ class Publisher {
   Publisher(this.artifact, this.dependencies, this.localDependencies, this.jar);
 
   Future<void> call(List<String> args) async {
+    final theArtifact = _getArtifact();
     final home = homeDir()
         .orThrow(() => failBuild(reason: 'Cannot find home directory'));
 
     final destination =
         args.isEmpty ? p.join(home, '.m2', 'repository') : args[0];
 
+    final mavenClient = MavenClient(
+        switch (destination) {
+          '-m' => Sonatype.s01Oss,
+          '-n' => Sonatype.oss,
+          _ => CustomMavenRepo(destination),
+        },
+        credentials: _mavenCredentials());
+
     final stopwatch = Stopwatch()..start();
 
     if (destination == '-m') {
-      return await _publishHttp(_mavenCentralUrl, stopwatch);
+      return await _publishHttp(mavenClient, theArtifact, stopwatch);
     }
-
+    if (destination == '-n') {
+      return await _publishHttp(mavenClient, theArtifact, stopwatch);
+    }
     if (destination.startsWith('http://') ||
         destination.startsWith('https://')) {
-      return await _publishHttp(destination, stopwatch);
+      return await _publishHttp(mavenClient, theArtifact, stopwatch);
     }
-    await _publishLocal(destination, stopwatch);
+    await _publishLocal(theArtifact, destination, stopwatch);
   }
 
   Artifact _getArtifact() {
-    final theArtifact = switch (artifact) {
+    return switch (artifact) {
       Ok(value: var a) => a,
       Fail(exception: var e) => throw e,
     };
-    return theArtifact;
   }
 
-  Future<void> _publishLocal(String repoPath, Stopwatch stopwatch) async {
-    final theArtifact = _getArtifact();
-
+  Future<void> _publishLocal(
+      Artifact theArtifact, String repoPath, Stopwatch stopwatch) async {
     final destination = Directory(_pathFor(theArtifact, repoPath));
     logger.info(() => 'Publishing artifacts to ${destination.path}');
     await _publishArtifactToDir(destination, theArtifact, stopwatch);
   }
 
-  Future<void> _publishHttp(String repoUri, Stopwatch stopwatch) async {
-    Uri uri;
-    try {
-      uri = Uri.parse(repoUri);
-    } catch (e) {
-      failBuild(reason: 'Repository URI is invalid: "$repoUri"');
-    }
+  Future<void> _publishHttp(MavenClient mavenClient, Artifact theArtifact,
+      Stopwatch stopwatch) async {
     final destination = tempDir(suffix: '-jb-publish');
-    logger.fine(() => 'Creating publication artifacts at ${destination.path}');
+    logger.info(() => 'Creating publication artifacts at ${destination.path}, '
+        'will publish to ${mavenClient.repo.url}');
     await _publishArtifactToDir(destination, _getArtifact(), stopwatch);
     logger.fine(() => 'Creating bundle.jar with publication artifacts');
     final bundle = await _createBundleJar(destination, stopwatch);
-    stopwatch.reset();
-    logger.log(
-        profile,
-        () => 'Publication bundle created at ${bundle.path} in '
-            '${stopwatch.elapsedMilliseconds} ms');
-    logger.info(() => 'Publishing artifacts to $repoUri');
-    await _httpPost(uri, bundle, _mavenCredentials());
+    logger.info(() => 'Publishing artifacts to ${mavenClient.repo.url}');
+    try {
+      await mavenClient.publish(theArtifact, bundle);
+    } finally {
+      mavenClient.close();
+    }
   }
 
   Future<void> _publishArtifactToDir(
@@ -147,77 +146,17 @@ class Publisher {
             '${stopwatch.elapsedMilliseconds} ms.');
     return bundleJar;
   }
-
-  Future<void> _httpPost(
-      Uri repoUri, File bundle, HttpClientBasicCredentials? credentials) async {
-    final client = HttpClient();
-    if (credentials != null) {
-      await _login(repoUri, client, credentials);
-    }
-    final uploadRequest =
-        await client.postUrl(repoUri.resolve('staging/bundle_upload'));
-    await uploadRequest.addStream(bundle.openRead());
-    final uploadResponse = await uploadRequest.close();
-    await _verifySuccess(uploadResponse,
-        error: 'Failed to upload bundle to Maven repository');
-    final publicationIds = await _parseUploadResponse(uploadResponse);
-    if (publicationIds.isEmpty) {
-      logger.warning(() => 'The Maven repository did not return the staging ID '
-          'so the publication could not be finalized. '
-          'You must manually release from staging!');
-      return;
-    }
-    logger.fine('Closing publication');
-    final promoteRequest =
-        await client.postUrl(repoUri.resolve('staging/bulk/promote'));
-    promoteRequest.add(utf8.encode(jsonEncode({
-      'autoDropAfterRelease': true,
-      'stagedRepositoryIds': publicationIds,
-      'description': 'jbuild publication',
-    })));
-    final promoteResponse = await promoteRequest.close();
-    await _verifySuccess(promoteResponse,
-        error: 'All artifacts published, but failed to finalize publication');
-    logger.info('Successfully published artifact');
-  }
-
-  Future<void> _login(Uri repoUri, HttpClient client,
-      HttpClientBasicCredentials credentials) async {
-    final loginUri = repoUri.resolve('authentication/login');
-    client.addCredentials(
-        loginUri,
-        'Sonatype Nexus Repository Manager API (specialized auth)',
-        credentials);
-    final loginRequest = await client.getUrl(loginUri);
-    final loginResponse = await loginRequest.close();
-    await _verifySuccess(loginResponse,
-        error: 'Could not login to Maven repository');
-    logger.fine('Successfully logged in to Maven repository');
-  }
 }
 
-Future<Iterable<String>> _parseUploadResponse(
-    HttpClientResponse uploadResponse) async {
-  final dynamic result = await uploadResponse
-      .transform(const Utf8Decoder())
-      .transform(json.decoder)
-      .first;
-  logger.fine(() => 'Maven Repository upload response: $result');
-  final Iterable<String> repositoryUris = result['repositoryUris'];
-  return repositoryUris
-      .map((uri) => Uri.parse(uri).pathSegments)
-      .where((path) => path.isNotEmpty)
-      .map((path) => path.last);
-}
-
-HttpClientBasicCredentials? _mavenCredentials() {
+HttpClientCredentials? _mavenCredentials() {
   final mavenUser = Platform.environment['MAVEN_USER'];
   final mavenPassword = Platform.environment['MAVEN_PASSWORD'];
   if (mavenUser != null && mavenPassword != null) {
-    logger.fine('Using MAVEN_USER and MAVEN_PASSWORD for HTTP credentials');
+    logger.info('Using MAVEN_USER and MAVEN_PASSWORD for HTTP credentials');
     return HttpClientBasicCredentials(mavenUser, mavenPassword);
   }
-  logger.fine('No HTTP credentials provided');
+  logger.info('No HTTP credentials provided '
+      '(set MAVEN_USER and MAVEN_PASSWORD to provide it)');
   return null;
 }
 
@@ -233,7 +172,7 @@ bool _gpgExists = true;
 
 Future<File> _signFile(File file) async {
   if (_gpgExists) {
-    logger.finer(() => 'Signing $file');
+    logger.info(() => 'Signing $file');
     try {
       await execProc(Process.start('gpg', [
         '--armor',
@@ -244,9 +183,7 @@ Future<File> _signFile(File file) async {
       ]));
       logger.finer(() => 'Signed $file');
     } catch (e) {
-      logger.info(
-          'Unable to sign artifacts as "gpg" does not seem to be installed.');
-      logger.fine(() => 'GPG failed with: $e');
+      logger.warning('Unable to sign artifacts as "gpg" failed ($e)!');
       _gpgExists = false;
     }
   } else {
@@ -267,16 +204,3 @@ String _pathFor(Artifact artifact, String parent) {
 String _fileFor(Artifact artifact,
         {String qualifier = '', String extension = '.jar'}) =>
     '${artifact.module}-${artifact.version}$qualifier$extension';
-
-Future<void> _verifySuccess(HttpClientResponse response,
-    {required String error}) async {
-  final status = response.statusCode;
-  if (!_successCodes.contains(status)) {
-    logger.fine(() => 'HTTP Request failed with statusCode $status');
-    var body = await response.lines().join('\n');
-    if (body.trim().isEmpty) {
-      body = 'statusCode = $status';
-    }
-    failBuild(reason: '$error: $body');
-  }
-}
