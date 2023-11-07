@@ -22,6 +22,7 @@ const _expectedWithSubProjectPom = '''\
   <groupId>tests</groupId>
   <artifactId>greetings-app</artifactId>
   <version>1.0</version>
+  <name>Greetings App</name>
   <dependencies>
     <dependency>
       <groupId>tests</groupId>

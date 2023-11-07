@@ -137,6 +137,7 @@ class JbExtensionModel {
 class JbConfiguration {
   final String? group;
   final String? module;
+  final String? name;
   final String? version;
   final String? description;
   final String? url;
@@ -173,6 +174,7 @@ class JbConfiguration {
   const JbConfiguration({
     this.group,
     this.module,
+    this.name,
     this.version,
     this.description,
     this.url,
@@ -254,6 +256,7 @@ class JbConfiguration {
     return JbConfiguration(
       group: _optionalStringValue(map, 'group'),
       module: _optionalStringValue(map, 'module'),
+      name: _optionalStringValue(map, 'name'),
       version: _optionalStringValue(map, 'version', allowNumber: true),
       description: _optionalStringValue(map, 'description'),
       url: _optionalStringValue(map, 'url'),
@@ -301,6 +304,7 @@ class JbConfiguration {
     return JbConfiguration(
       group: resolveOptionalString(other.group ?? group, props),
       module: resolveOptionalString(other.module ?? module, props),
+      name: resolveOptionalString(other.name ?? name, props),
       version: resolveOptionalString(other.version ?? version, props),
       description:
           resolveOptionalString(other.description ?? description, props),
@@ -531,6 +535,8 @@ ${color('# Maven artifactId', commentColor)}
 module: ${quote(module)}
 ${color('# Maven version', commentColor)}
 version: ${quote(version)}
+${color('# Project name', commentColor)}
+name: ${quote(name)}
 ${color('# Description for this project', commentColor)}
 description: ${quote(description)}
 ${color('# URL of this project', commentColor)}
@@ -587,7 +593,7 @@ extension-project: ${quote(extensionProject)}
   @override
   String toString() {
     return 'JBuildConfiguration{group: $group, '
-        'module: $module, version: $version, '
+        'module: $module, name: $name, version: $version, '
         'licenses: $licenses, mainClass: $mainClass, '
         'extensionProject: $extensionProject, sourceDirs: $sourceDirs, '
         'output: $output, resourceDirs: $resourceDirs, javacArgs: $javacArgs, '
@@ -606,6 +612,7 @@ void _validateConfigKeys(Map<String, Object?> map) {
   const validKeys = {
     'group',
     'module',
+    'name',
     'version',
     'description',
     'url',

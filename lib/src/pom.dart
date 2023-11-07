@@ -21,6 +21,7 @@ const _pomHeaderAttributes = {
 typedef Artifact = ({
   String group,
   String module,
+  String name,
   String version,
   String? description,
   List<Developer> developers,
@@ -35,6 +36,7 @@ Result<Artifact> createArtifact(JbConfiguration config) {
   return catching$(() => (
         group: config.group.ifBlank(mandatory('group')),
         module: config.module.ifBlank(mandatory('module')),
+        name: config.name.ifBlank(mandatory('name')),
         version: config.version.ifBlank(mandatory('version')),
         description: config.description,
         developers: config.developers,
@@ -59,7 +61,8 @@ String createPom(Artifact artifact, Map<String, DependencySpec> dependencies,
         ..tag('modelVersion', '4.0.0') //
         ..tag('groupId', artifact.group) //
         ..tag('artifactId', artifact.module) //
-        ..tag('version', artifact.version);
+        ..tag('version', artifact.version) //
+        ..tag('name', artifact.name);
       artifact.description.ifNonBlank((d) => xml.tag('description', d));
       artifact.url.ifNonBlank((url) => xml.tag('url', url));
       artifact.scm?.vmap(xml.scm);

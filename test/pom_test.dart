@@ -20,11 +20,13 @@ const emptyLocalDependencies = ResolvedLocalDependencies([], []);
 
 Artifact _artifact(
         {required String group,
+        required String name,
         required String module,
         required String version}) =>
     (
       group: group,
       module: module,
+      name: name,
       version: version,
       description: '',
       developers: const [],
@@ -40,6 +42,7 @@ void main() {
           createPom(
               _artifact(
                 group: 'foo',
+                name: 'Foo',
                 module: 'bar',
                 version: '1.0',
               ),
@@ -50,6 +53,7 @@ $pomHeader
   <groupId>foo</groupId>
   <artifactId>bar</artifactId>
   <version>1.0</version>
+  <name>Foo</name>
 </project>'''));
     });
 
@@ -59,6 +63,7 @@ $pomHeader
                   _artifact(
                     group: 'foo',
                     module: 'bar',
+                    name: 'Bar',
                     version: '1.0',
                   ),
                   {
@@ -72,6 +77,7 @@ $pomHeader
   <groupId>foo</groupId>
   <artifactId>bar</artifactId>
   <version>1.0</version>
+  <name>Bar</name>
   <dependencies>
     <dependency>
       <groupId>org.apache</groupId>
@@ -92,7 +98,8 @@ $pomHeader
     test('POM with configured Maven dependencies', () async {
       expect(
           createPom(
-                  _artifact(group: 'foo', module: 'bar', version: '1.0'),
+                  _artifact(
+                      group: 'foo', module: 'bar', name: 'BAR', version: '1.0'),
                   {
                     'org.apache:json.parser:1.0.0': DependencySpec(
                         scope: DependencyScope.runtimeOnly, transitive: true),
@@ -106,6 +113,7 @@ $pomHeader
   <groupId>foo</groupId>
   <artifactId>bar</artifactId>
   <version>1.0</version>
+  <name>BAR</name>
   <dependencies>
     <dependency>
       <groupId>org.apache</groupId>
@@ -134,7 +142,10 @@ $nonTransitiveDependency
       expect(
           createPom(
               _artifact(
-                  group: 'my.group', module: 'my.module', version: '4.3.2.1'),
+                  group: 'my.group',
+                  module: 'my.module',
+                  name: 'My Module',
+                  version: '4.3.2.1'),
               {
                 'org.apache:json.parser:1.0.0': DependencySpec.defaultSpec,
               },
@@ -154,6 +165,7 @@ $pomHeader
   <groupId>my.group</groupId>
   <artifactId>my.module</artifactId>
   <version>4.3.2.1</version>
+  <name>My Module</name>
   <dependencies>
     <dependency>
       <groupId>org.apache</groupId>
@@ -177,6 +189,7 @@ $pomHeader
             (
               group: 'com.athaydes.jbuild',
               module: 'jb',
+              name: 'JBuild',
               version: '1.0',
               developers: [
                 const Developer(
@@ -206,6 +219,7 @@ $pomHeader
   <groupId>com.athaydes.jbuild</groupId>
   <artifactId>jb</artifactId>
   <version>1.0</version>
+  <name>JBuild</name>
   <description>JBuild - a developer-friendly Java build tool</description>
   <url>https://github.com/renatoathaydes/jbuild</url>
   <scm>

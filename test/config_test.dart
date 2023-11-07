@@ -11,6 +11,7 @@ const _fullConfig = '''
       guava: "1.2.3"
   group: my-group
   module: mod1
+  name: Module 1
   version: '0.1'
   description: A simple module
   url: https://my.mod
@@ -79,6 +80,8 @@ group: \x1B[34m"my-group"\x1B[0m
 module: \x1B[34m"mod1"\x1B[0m
 \x1B[90m# Maven version\x1B[0m
 version: \x1B[34m"0.1"\x1B[0m
+\x1B[90m# Project name\x1B[0m
+name: \x1B[34m"Module 1"\x1B[0m
 \x1B[90m# Description for this project\x1B[0m
 description: \x1B[34m"A simple module"\x1B[0m
 \x1B[90m# URL of this project\x1B[0m
@@ -176,6 +179,8 @@ group: null
 module: "basic"
 # Maven version
 version: null
+# Project name
+name: null
 # Description for this project
 description: null
 # URL of this project

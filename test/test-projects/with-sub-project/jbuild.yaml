@@ -1,6 +1,7 @@
 group: tests
 module: greetings-app
 version: '1.0'
+name: Greetings App
 
 main-class: app.App
 
