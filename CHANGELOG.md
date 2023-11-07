@@ -1,5 +1,9 @@
 ## Next
 
+- added `publish` task for publishing to local and remote Maven repositories, including Maven Central.
+- added `showJbConfiguration` task.
+- improved POM creation task.
+- added config `name`, `description`, `url`, `licenses`, `developers`, `scm` (used by Maven) to project configuration.
 - include jar dependencies in project's libraries directories.
 - list also jar and sub-project dependencies in `dependencies` task.
 

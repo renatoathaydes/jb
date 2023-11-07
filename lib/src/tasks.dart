@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
-import 'package:dartle/dartle_cache.dart';
+import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
@@ -13,6 +13,7 @@ import 'file_tree.dart';
 import 'java_tests.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart';
+import 'optional_arg_validator.dart';
 import 'pom.dart';
 import 'publish.dart';
 import 'requirements.dart';
@@ -381,12 +382,10 @@ Task createGeneratePomTask(
               localDependencies)),
       name: createPomTaskName,
       phase: publishPhase,
-      runCondition: artifact.isError
-          ? CannotRun(artifact.failureOrNull.toString())
-          : const AlwaysRun(),
-      argsValidator: ArgsCount.range(min: 0, max: 1),
-      description: 'Generate Maven POM for publishing the project. '
-          'An optional argument can be used to specify the POM destination.');
+      runCondition: artifact.runCondition(),
+      argsValidator: const OptionalArgValidator(
+          'One argument may be provided: the POM destination'),
+      description: 'Generate Maven POM for publishing the project');
 }
 
 Future<void> _pom(List<String> args, Object pom) async {
@@ -405,14 +404,11 @@ Task createPublishTask(
   return Task(Publisher(artifact, dependencies, localDependencies, outputJar),
       name: publishTaskName,
       dependsOn: const {publicationCompileTaskName},
-      runCondition: artifact.isError
-          ? CannotRun(artifact.failureOrNull.toString())
-          : const AlwaysRun(),
+      runCondition: artifact.runCondition(),
       phase: publishPhase,
       argsValidator: Publisher.argsValidator,
-      description: 'Publish project to a Maven repository (local m2 by '
-          'default). An argument may provide a custom repository '
-          '(use -m for Maven Central).');
+      description: 'Publish project to a Maven repository (Maven local by '
+          'default).');
 }
 
 /// Create the `run` task.
@@ -593,5 +589,15 @@ Future<void> _requirements(
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild requirements command failed', exitCode: exitCode);
+  }
+}
+
+extension on Result<Artifact> {
+  RunCondition runCondition() {
+    return switch (this) {
+      Ok() => const AlwaysRun(),
+      Fail(exception: final err) =>
+        CannotRun(err is DartleException ? err.message : err.toString()),
+    };
   }
 }

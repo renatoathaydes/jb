@@ -15,4 +15,9 @@ class CannotRun with RunCondition {
   bool shouldRun(TaskInvocation invocation) {
     failBuild(reason: because);
   }
+
+  @override
+  String toString() {
+    return 'CannotRun{because: $because}';
+  }
 }

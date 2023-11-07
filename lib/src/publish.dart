@@ -4,17 +4,29 @@ import 'dart:io';
 import 'package:conveniently/conveniently.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dartle/dartle.dart'
-    show ArgsCount, homeDir, failBuild, execProc, profile, tempDir, tempFile;
+    show
+        ArgsValidator,
+        homeDir,
+        failBuild,
+        execProc,
+        profile,
+        tempDir,
+        tempFile;
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
 import 'maven_client.dart';
+import 'optional_arg_validator.dart';
 import 'pom.dart';
 import 'resolved_dependency.dart';
 import 'utils.dart';
 
+/// A Maven repository publisher.
 class Publisher {
-  static final argsValidator = ArgsCount.range(min: 0, max: 1);
+  static final ArgsValidator argsValidator =
+      const OptionalArgValidator('One argument may be provided: '
+          'a local dir, a http(s) URL, or '
+          ':-m (or :-n for the older repo) for Maven Central');
 
   final Result<Artifact> artifact;
   final Map<String, DependencySpec> dependencies;
@@ -23,6 +35,7 @@ class Publisher {
 
   Publisher(this.artifact, this.dependencies, this.localDependencies, this.jar);
 
+  /// The `publish` task action.
   Future<void> call(List<String> args) async {
     final theArtifact = _getArtifact();
     final home = homeDir()
