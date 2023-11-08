@@ -191,7 +191,7 @@ void main() {
           Directory(p.join(exampleExtensionDir, 'build')), [
         'example-extension.jar',
         'compile-libs',
-        p.join('compile-libs', 'jb-api.jar'),
+        p.join('compile-libs', 'jbuild-api-0.8.0.jar'),
       ]);
     });
   });
