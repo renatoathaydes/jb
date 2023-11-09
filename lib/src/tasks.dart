@@ -12,6 +12,7 @@ import 'exec.dart';
 import 'file_tree.dart';
 import 'java_tests.dart';
 import 'jb_files.dart';
+import 'jbuild_update.dart';
 import 'jvm_executor.dart';
 import 'optional_arg_validator.dart';
 import 'pom.dart';
@@ -37,6 +38,7 @@ const requirementsTaskName = 'requirements';
 const createEclipseTaskName = 'createEclipseFiles';
 const createPomTaskName = 'generatePom';
 const publishTaskName = 'publish';
+const updateJBuildTaskName = 'updateJBuild';
 
 const _reasonPublicationCompileCannotRun =
     'Cannot publish project because "output-jar" is not configured. '
@@ -590,6 +592,13 @@ Future<void> _requirements(
     throw DartleException(
         message: 'jbuild requirements command failed', exitCode: exitCode);
   }
+}
+
+Task createUpdateJBuildTask(JBuildSender jBuildSender) {
+  return Task((_) => jbuildUpdate(jBuildSender),
+      phase: TaskPhase.setup,
+      name: updateJBuildTaskName,
+      description: 'Updates the JBuild jar used by jb.');
 }
 
 extension on Result<Artifact> {

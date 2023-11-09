@@ -40,7 +40,8 @@ class JbDartle {
       test,
       showConfig,
       deps,
-      publish;
+      publish,
+      updateJBuild;
 
   /// Get the tasks that are configured as part of a build.
   late final Set<Task> tasks;
@@ -151,6 +152,7 @@ class JbDartle {
         _config.dependencies,
         _config.output.when(dir: (_) => null, jar: (j) => j),
         localDependencies);
+    updateJBuild = createUpdateJBuildTask(javaSender);
 
     final extensionProject = await loadExtensionProject(
         javaSender, _files, _options, _config.extensionProject);
@@ -173,6 +175,7 @@ class JbDartle {
       generateEclipse,
       generatePom,
       publish,
+      updateJBuild,
       if (extensionTasks != null) ...extensionTasks,
     });
 

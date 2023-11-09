@@ -22,6 +22,7 @@ final logger = log.Logger('jb');
 const yamlJbFile = 'jbuild.yaml';
 const jsonJbFile = 'jbuild.json';
 
+const jbuild = 'com.athaydes.jbuild:jbuild';
 const jbApi = 'com.athaydes.jbuild:jbuild-api';
 
 /// Parse the YAML/JSON jbuild file.
