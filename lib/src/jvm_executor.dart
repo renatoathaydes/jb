@@ -101,8 +101,10 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
         className: var className,
         methodName: var methodName,
         args: var args,
+        constructorData: var constructorData,
       ) =>
-        rpc.runJava(taskName, classpath, className, methodName, args),
+        rpc.runJava(
+            taskName, classpath, className, methodName, args, constructorData),
     };
   }
 
@@ -130,9 +132,10 @@ final class RunJava extends JavaCommand {
   final String className;
   final String methodName;
   final List<String> args;
+  final List<Object?> constructorData;
 
   const RunJava(super.taskName, this.classpath, this.className, this.methodName,
-      this.args);
+      this.args, this.constructorData);
 }
 
 /// Create a Java [Actor] which can be used to run JBuild commands and
@@ -197,12 +200,20 @@ class _JBuildRpc {
   ///
   /// The classpath should include the class and its dependencies if it's not
   /// included in the JBuild jar.
-  Future<Object?> runJava(String taskName, String classpath, String className,
-      String methodName, List<String> args) async {
+  Future<Object?> runJava(
+      String taskName,
+      String classpath,
+      String className,
+      String methodName,
+      List<String> args,
+      List<Object?> constructorData) async {
     // This class should run the JBuild RpcMain's run method:
-    //Object run(String classpath, String className, String methodName, String... args)
+    // Object run(String classpath, List<?> constructorData,
+    //            String className, String methodName, String... args)
     try {
-      return await _runJava('run', [classpath, className, methodName, args],
+      return await _runJava(
+          'run',
+          [classpath, constructorData, className, methodName, args],
           _RpcRequestMetadata(_currentMessageIndex++, taskName));
     } on FutureCancelled {
       rpcLogger.fine('Jobs cancelled, forcibly stopping the Java process');

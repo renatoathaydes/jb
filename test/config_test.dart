@@ -309,6 +309,7 @@ void main() {
             properties: {
               'versions': {'guava': '1.2.3'}
             },
+            nonConsumedConfig: {},
           )));
     });
 
@@ -356,7 +357,8 @@ void main() {
               dependencyExclusionPatterns: {'one'},
               compileLibsDir: 'build/compile-libs',
               runtimeLibsDir: 'build/runtime-libs',
-              testReportsDir: 'reports')));
+              testReportsDir: 'reports',
+              nonConsumedConfig: {})));
     });
 
     test('can parse basic string dependencies', () async {

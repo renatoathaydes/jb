@@ -124,6 +124,16 @@ extension SetExtension on Set<String> {
 extension MapExtension<V> on Map<String, V> {
   Map<String, V> union(Map<String, V> other) =>
       Map.fromEntries(entries.followedBy(other.entries));
+
+  Map<String, Map<String, Object?>> ensureValidExtensionConfig() {
+    return map((k, v) {
+      if (v is Map) return MapEntry(k, v as Map<String, Object?>);
+      failBuild(
+          reason: "Invalid configuration value: '$k' is not a known jb "
+              "configuration property. If it is a custom task configuration, "
+              "then it must be a Map.");
+    });
+  }
 }
 
 extension StringMapExtension on Map<String, String> {

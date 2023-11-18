@@ -96,6 +96,39 @@ extension on _Value<Iterable<String>> {
   List<String> toList() => value.toList(growable: false);
 }
 
+enum JavaConfigType {
+  string,
+  boolean,
+  int,
+  float,
+  listOfStrings,
+  arrayOfStrings,
+  jbuildLogger,
+  ;
+
+  static JavaConfigType from(String value) => switch (value) {
+        'STRING' => JavaConfigType.string,
+        'BOOLEAN' => JavaConfigType.boolean,
+        'INT' => JavaConfigType.int,
+        'FLOAT' => JavaConfigType.float,
+        'LIST_OF_STRINGS' => JavaConfigType.listOfStrings,
+        'ARRAY_OF_STRINGS' => JavaConfigType.arrayOfStrings,
+        'JBUILD_LOGGER' => JavaConfigType.jbuildLogger,
+        _ => failBuild(reason: 'Unsupported Java type: $value'),
+      };
+
+  @override
+  String toString() => switch (this) {
+        string => 'String',
+        boolean => 'boolean',
+        int => 'int',
+        float => 'float',
+        listOfStrings => 'List<String>',
+        arrayOfStrings => 'String[]',
+        jbuildLogger => 'jbuild.api.JBuildLogger',
+      };
+}
+
 /// Definition of a jb extension task.
 class ExtensionTask {
   final String name;
@@ -107,6 +140,7 @@ class ExtensionTask {
   final Set<String> dependents;
   final String className;
   final String methodName;
+  final List<Map<String, JavaConfigType>> constructors;
 
   ExtensionTask({
     required this.name,
@@ -118,6 +152,7 @@ class ExtensionTask {
     required this.className,
     required this.methodName,
     required this.dependents,
+    required this.constructors,
   });
 }
 
@@ -171,6 +206,7 @@ class JbConfiguration {
   final String testReportsDir;
   final bool _defaultTestReportsDir;
   final Properties properties;
+  final Map<String, Map<String, Object?>> nonConsumedConfig;
 
   const JbConfiguration({
     this.group,
@@ -207,6 +243,7 @@ class JbConfiguration {
     required this.compileLibsDir,
     required this.runtimeLibsDir,
     required this.testReportsDir,
+    required this.nonConsumedConfig,
     this.properties = const {},
   })  : _defaultSourceDirs = defaultSourceDirs,
         _defaultOutput = defaultOutput,
@@ -225,7 +262,6 @@ class JbConfiguration {
   /// That's expected to already have been done before calling this method.
   static JbConfiguration fromMap(Map<String, Object?> map,
       [Properties properties = const {}]) {
-    _validateConfigKeys(map);
     final sourceDirs = _stringIterableValue(map, 'source-dirs', const {'src'});
     final output = _compileOutputValue(map, 'output-dir', 'output-jar');
     final resourceDirs =
@@ -293,6 +329,7 @@ class JbConfiguration {
       testReportsDir: testReportsDir.value,
       defaultTestReportsDir: testReportsDir.isDefault,
       properties: properties,
+      nonConsumedConfig: map.ensureValidExtensionConfig(),
     );
   }
 
@@ -301,6 +338,10 @@ class JbConfiguration {
   /// Values from the other configuration take precedence.
   JbConfiguration merge(JbConfiguration other) {
     final props = properties.union(other.properties);
+    final allNonConsumedConfig = {
+      ...other.nonConsumedConfig,
+      ...nonConsumedConfig
+    };
 
     return JbConfiguration(
       group: resolveOptionalString(other.group ?? group, props),
@@ -360,6 +401,7 @@ class JbConfiguration {
       defaultTestReportsDir:
           _defaultTestReportsDir && other._defaultTestReportsDir,
       properties: props,
+      nonConsumedConfig: allNonConsumedConfig,
     );
   }
 
@@ -606,48 +648,6 @@ extension-project: ${quote(extensionProject)}
         'processorDependenciesExclusions: $processorDependencyExclusionPatterns, '
         'compileLibsDir: $compileLibsDir, runtimeLibsDir: $runtimeLibsDir, '
         'testReportsDir: $testReportsDir, properties: $properties}';
-  }
-}
-
-void _validateConfigKeys(Map<String, Object?> map) {
-  const validKeys = {
-    'group',
-    'module',
-    'name',
-    'version',
-    'description',
-    'url',
-    'main-class',
-    'extension-project',
-    'source-dirs',
-    'output-dir',
-    'output-jar',
-    'resource-dirs',
-    'javac-args',
-    'licenses',
-    'developers',
-    'scm',
-    'run-java-args',
-    'test-java-args',
-    'javac-env',
-    'run-java-env',
-    'test-java-env',
-    'dependencies',
-    'repositories',
-    'dependency-exclusion-patterns',
-    'processor-dependencies',
-    'processor-dependency-exclusion-patterns',
-    'compile-libs-dir',
-    'runtime-libs-dir',
-    'test-reports-dir',
-  };
-  final keys = map.keys.toSet();
-  keys.removeAll(validKeys);
-  if (keys.isNotEmpty) {
-    throw DartleException(
-        message:
-            'Invalid jbuild configuration: unrecognized field${keys.length == 1 ? '' : 's'}: '
-            '${keys.map((e) => '"$e"').join(', ')}');
   }
 }
 
@@ -906,7 +906,7 @@ bool _boolValue(Map<String, Object?> map, String key, bool defaultValue,
 _Value<String> _stringValue(
     Map<String, Object?> map, String key, String? defaultValue,
     {String? type}) {
-  final value = map[key];
+  final value = map.remove(key);
   String result;
   bool isDefault = false;
   if (value == null && defaultValue != null) {
@@ -925,7 +925,7 @@ _Value<String> _stringValue(
 
 String? _optionalStringValue(Map<String, Object?> map, String key,
     {bool allowNumber = false, String? type}) {
-  final value = map[key];
+  final value = map.remove(key);
   if (value == null) return null;
   if (value is String) {
     return value;
@@ -954,7 +954,7 @@ DependencyScope _scopeValue(
 _Value<Iterable<String>> _stringIterableValue(
     Map<String, Object?> map, String key, Iterable<String> defaultValue,
     {String? type}) {
-  final value = map[key];
+  final value = map.remove(key);
   bool isDefault = false;
   Iterable<String> result;
   if (value == null) {
@@ -983,7 +983,7 @@ _Value<Iterable<String>> _stringIterableValue(
 
 _Value<Map<String, String>> _stringMapValue(
     Map<String, Object?> map, String key, Map<String, String> defaultValue) {
-  final value = map[key];
+  final value = map.remove(key);
   bool isDefault = false;
   Map<String, String> result;
   if (value == null) {
@@ -1008,8 +1008,8 @@ _Value<Map<String, String>> _stringMapValue(
 
 CompileOutput? _compileOutputValue(
     Map<String, Object?> map, String dirKey, String jarKey) {
-  final dir = map[dirKey];
-  final jar = map[jarKey];
+  final dir = map.remove(dirKey);
+  final jar = map.remove(jarKey);
   if (dir == null && jar == null) {
     return null;
   }
@@ -1061,7 +1061,7 @@ Use the following syntax to declare 'developers':
 
 _Value<Map<String, DependencySpec>> _dependencies(Map<String, Object?> map,
     String key, Map<String, DependencySpec> defaultValue) {
-  final value = map[key];
+  final value = map.remove(key);
   Map<String, DependencySpec> result;
   bool isDefault = false;
   if (value == null) {
@@ -1119,7 +1119,7 @@ CompileOutput _defaultOutputValue() {
 }
 
 SourceControlManagement? _scm(Map<String, Object?> map) {
-  final value = map['scm'];
+  final value = map.remove('scm');
   if (value == null) return null;
   if (value is Map<String, Object?>) {
     return _scmFromMap(value);
@@ -1130,7 +1130,7 @@ SourceControlManagement? _scm(Map<String, Object?> map) {
 }
 
 List<Developer> _developers(Map<String, Object?> map) {
-  final value = map['developers'];
+  final value = map.remove('developers');
   if (value == null) return const [];
   if (value is List<Object?>) {
     return value.map((item) {
@@ -1197,7 +1197,8 @@ ExtensionTask _extensionTask(MapEntry<String, Object?> task) {
           .orThrow(() => DartleException(
               message: "declaration of task '${task.key}' is missing mandatory "
                   "'class-name'.\n$taskSyntaxHelp")),
-      methodName: _stringValue(spec, 'method-name', 'run', type: 'Task').value,
+      methodName: 'run',
+      constructors: _taskConstructors(spec['config-constructors']),
     );
   } else {
     throw DartleException(
@@ -1207,38 +1208,49 @@ ExtensionTask _extensionTask(MapEntry<String, Object?> task) {
   }
 }
 
-final _defaultPhaseIndex = TaskPhase.build.index + 10;
-
-const _phaseHelpMessage = '''
-To declare an existing phase or a custom phase that runs after the 'build' phase:
-  phase: phase-name
-Use the following syntax to declare custom phases:
-  phase:
-    # phase name:  phase index
-    my-phase-name: 700
-''';
-
 TaskPhase _taskPhase(Object? phase) {
   if (phase == null) return TaskPhase.build;
-  if (phase is String) {
-    final builtIn = TaskPhase.builtInPhases.where((p) => p.name == phase);
-    if (builtIn.isNotEmpty) return builtIn.first;
-    return TaskPhase.custom(_defaultPhaseIndex, phase);
-  }
   if (phase is Map) {
     if (phase.length != 1) {
       throw DartleException(
-          message: 'invalid custom phase declaration.\n$_phaseHelpMessage');
+          message: 'invalid task phase declaration, not single entry Map.');
     }
-
     final name = phase.keys.first.toString();
     final index = phase.values.first;
     if (index is int) {
+      if (index == -1) {
+        // default value: probably wants a built-in phase
+        final builtInPhase =
+            TaskPhase.builtInPhases.where((p) => p.name == name).firstOrNull;
+        if (builtInPhase != null) return builtInPhase;
+      }
       return TaskPhase.custom(index, name);
     }
-    throw DartleException(
-        message: "phase '$name' has an invalid index.\n$_phaseHelpMessage");
+    throw DartleException(message: "task phase '$name' index is not a number.");
   }
-  throw DartleException(
-      message: 'invalid custom phase declaration.\n$_phaseHelpMessage');
+  throw DartleException(message: 'invalid task phase declaration, not a Map.');
+}
+
+List<Map<String, JavaConfigType>> _taskConstructors(Object? constructors) {
+  if (constructors == null) {
+    failBuild(reason: 'jb manifest missing constructors');
+  }
+  if (constructors is! Iterable) {
+    failBuild(
+        reason:
+            'jb manifest has invalid constructors declaration: $constructors');
+  }
+  return constructors.map((entry) {
+    if (entry is Map) {
+      return entry.map((key, value) {
+        return (key is String && value is String)
+            ? MapEntry(key, JavaConfigType.from(value))
+            : failBuild(
+                reason:
+                    'jb manifest has invalid constructor entry: $key -> $value');
+      });
+    } else {
+      failBuild(reason: 'jb manifest has invalid constructor item: $entry');
+    }
+  }).toList(growable: false);
 }
