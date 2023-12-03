@@ -1,11 +1,8 @@
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart' show failBuild;
+import 'package:jb/jb.dart';
 import 'package:xml/xml.dart' show XmlBuilder;
 
-import 'config.dart';
-import 'maven_metadata.dart';
-import 'path_dependency.dart';
-import 'resolved_dependency.dart';
 import 'utils.dart';
 
 const _errorPrefix = 'Cannot generate POM, ';
@@ -42,7 +39,7 @@ Result<Artifact> createArtifact(JbConfiguration config) {
         developers: config.developers,
         scm: config.scm,
         url: config.url,
-        licenses: config.licenses,
+        licenses: config.licenses.map((id) => allLicenses[id]!).toList(),
       ));
 }
 

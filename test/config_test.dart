@@ -267,7 +267,7 @@ void main() {
             version: '0.1',
             description: 'A simple module',
             url: 'https://my.mod',
-            licenses: [allLicenses['0BSD']!],
+            licenses: ['0BSD'],
             developers: [
               Developer(
                 name: 'Joe',
@@ -281,9 +281,9 @@ void main() {
               developerConnection: 'git-dev',
               url: 'github',
             ),
-            sourceDirs: {'src/main/groovy', 'src/test/kotlin'},
-            output: CompileOutput.dir('target/'),
-            resourceDirs: {'src/resources'},
+            sourceDirs: ['src/main/groovy', 'src/test/kotlin'],
+            outputDir: 'target/',
+            resourceDirs: ['src/resources'],
             mainClass: 'my.Main',
             javacArgs: ['-Xmx2G', '--verbose'],
             runJavaArgs: ['-Xmx1G'],
@@ -291,9 +291,9 @@ void main() {
             javacEnv: {'CLASSPATH': 'foo'},
             runJavaEnv: {'HELLO': 'hi', 'FOO': 'bar'},
             testJavaEnv: {'TESTING': 'true'},
-            repositories: {'https://maven.org', 'ftp://foo.bar'},
+            repositories: ['https://maven.org', 'ftp://foo.bar'],
             dependencies: {
-              'com.google:guava:1.2.3': DependencySpec.defaultSpec,
+              'com.google:guava:1.2.3': defaultSpec,
             },
             processorDependencies: {
               'foo.bar:zort:1.0': DependencySpec(
@@ -301,15 +301,14 @@ void main() {
                   scope: DependencyScope.runtimeOnly,
                   path: 'foo/bar/zort'),
             },
-            processorDependencyExclusionPatterns: {'others'},
-            dependencyExclusionPatterns: {'test.*', '.*other\\d+.*'},
+            processorDependencyExclusionPatterns: ['others'],
+            dependencyExclusionPatterns: ['test.*', '.*other\\d+.*'],
             compileLibsDir: 'libs',
             runtimeLibsDir: 'all-libs',
             testReportsDir: 'reports-dir',
             properties: {
               'versions': {'guava': '1.2.3'}
             },
-            nonConsumedConfig: {},
           )));
     });
 
@@ -341,24 +340,23 @@ void main() {
           equalsConfig(const JbConfiguration(
               licenses: [],
               developers: [],
-              sourceDirs: {'src/java'},
-              output: CompileOutput.dir('out'),
-              resourceDirs: {'resources'},
+              sourceDirs: ['src/java'],
+              outputDir: 'out',
+              resourceDirs: ['resources'],
               javacArgs: ['-X'],
               runJavaArgs: [],
               testJavaArgs: [],
               javacEnv: {},
               runJavaEnv: {},
               testJavaEnv: {},
-              repositories: {'https://maven.org'},
+              repositories: ['https://maven.org'],
               dependencies: {},
               processorDependencies: {},
-              processorDependencyExclusionPatterns: {},
-              dependencyExclusionPatterns: {'one'},
+              processorDependencyExclusionPatterns: [],
+              dependencyExclusionPatterns: ['one'],
               compileLibsDir: 'build/compile-libs',
               runtimeLibsDir: 'build/runtime-libs',
-              testReportsDir: 'reports',
-              nonConsumedConfig: {})));
+              testReportsDir: 'reports')));
     });
 
     test('can parse basic string dependencies', () async {
@@ -371,8 +369,8 @@ void main() {
       expect(
           config.dependencies,
           equals(const {
-            'foo': DependencySpec.defaultSpec,
-            'var': DependencySpec.defaultSpec,
+            'foo': defaultSpec,
+            'var': defaultSpec,
           }));
     });
 
@@ -391,12 +389,12 @@ void main() {
           equals(const {
             'foo:bar:1.0': DependencySpec(
                 transitive: false, scope: DependencyScope.runtimeOnly),
-            'second:dep:0.1': DependencySpec.defaultSpec,
-            'var': DependencySpec.defaultSpec,
+            'second:dep:0.1': defaultSpec,
+            'var': defaultSpec,
           }));
     });
 
-    final config1 = JbConfiguration.fromMap(const {
+    final config1 = JbConfiguration.fromJson(const {
       'group': 'g1',
       'module': 'm1',
       'version': 'v1',
@@ -423,7 +421,7 @@ void main() {
     });
 
     test('can merge two full configurations', () async {
-      final config2 = JbConfiguration.fromMap(const {
+      final config2 = JbConfiguration.fromJson(const {
         'group': 'g2',
         'module': 'm2',
         'version': 'v2',
@@ -451,7 +449,7 @@ void main() {
 
       expect(
           config1.merge(config2),
-          equalsConfig(JbConfiguration.fromMap(const {
+          equalsConfig(JbConfiguration.fromJson(const {
             'group': 'g2',
             'module': 'm2',
             'version': 'v2',
@@ -482,7 +480,7 @@ void main() {
 
       expect(
           config2.merge(config1),
-          equalsConfig(JbConfiguration.fromMap(const {
+          equalsConfig(JbConfiguration.fromJson(const {
             'group': 'g1',
             'module': 'm1',
             'version': 'v1',
@@ -513,7 +511,7 @@ void main() {
     });
 
     test('can merge small config into full configuration and vice-versa', () {
-      final smallConfig = JbConfiguration.fromMap({
+      final smallConfig = JbConfiguration.fromJson({
         'module': 'small',
         'dependencies': [
           {
@@ -524,7 +522,7 @@ void main() {
 
       expect(
           config1.merge(smallConfig),
-          equalsConfig(JbConfiguration.fromMap(const {
+          equalsConfig(JbConfiguration.fromJson(const {
             'group': 'g1',
             'module': 'small',
             'version': 'v1',
@@ -555,7 +553,7 @@ void main() {
 
       expect(
           smallConfig.merge(config1),
-          equalsConfig(JbConfiguration.fromMap(const {
+          equalsConfig(JbConfiguration.fromJson(const {
             'group': 'g1',
             'module': 'm1',
             'version': 'v1',
@@ -586,31 +584,29 @@ void main() {
     });
 
     test('can merge two small configurations using properties', () {
-      final smallConfig1 = JbConfiguration.fromMap({
+      final smallConfig1 = JbConfiguration.fromJson({
         'version': 'v1',
         'dependencies': [
           {
             '{{DEP}}': {'transitive': true}
           }
         ],
-        'test-reports-dir': '{{REPORTS_DIR}}'
-      }, const {
-        'REPORTS_DIR': 'reports'
+        'test-reports-dir': '{{REPORTS_DIR}}',
+        'properties': {'REPORTS_DIR': 'reports'}
       });
-      final smallConfig2 = JbConfiguration.fromMap({
+      final smallConfig2 = JbConfiguration.fromJson({
         'module': 'small',
         'dependencies': [
           {
             'big2': {'transitive': false}
           }
-        ]
-      }, const {
-        'DEP': 'big1'
+        ],
+        'properties': {'DEP': 'big1'}
       });
 
       expect(
           smallConfig1.merge(smallConfig2),
-          equalsConfig(JbConfiguration.fromMap({
+          equalsConfig(JbConfiguration.fromJson({
             'module': 'small',
             'version': 'v1',
             'dependencies': [
@@ -621,15 +617,13 @@ void main() {
                 'big2': {'transitive': false}
               }
             ],
-            'test-reports-dir': 'reports'
-          }, {
-            'DEP': 'big1',
-            'REPORTS_DIR': 'reports'
+            'test-reports-dir': 'reports',
+            'properties': {'DEP': 'big1', 'REPORTS_DIR': 'reports'}
           })));
 
       expect(
           smallConfig2.merge(smallConfig1),
-          equalsConfig(JbConfiguration.fromMap({
+          equalsConfig(JbConfiguration.fromJson({
             'module': 'small',
             'version': 'v1',
             'dependencies': [
@@ -640,10 +634,8 @@ void main() {
                 'big2': {'transitive': false}
               }
             ],
-            'test-reports-dir': 'reports'
-          }, {
-            'DEP': 'big1',
-            'REPORTS_DIR': 'reports'
+            'test-reports-dir': 'reports',
+            'properties': {'DEP': 'big1', 'REPORTS_DIR': 'reports'}
           })));
     });
   });

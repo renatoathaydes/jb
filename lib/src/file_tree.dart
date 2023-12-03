@@ -138,7 +138,7 @@ class FileTree {
     return FileTree._(typeDeps, typeEntries);
   }
 
-  Iterable<String> classFilesOf(Set<String> sourceDirs, String path) {
+  Iterable<String> classFilesOf(List<String> sourceDirs, String path) {
     String? srcDir;
     for (final src in sourceDirs) {
       if (p.isWithin(src, path)) {

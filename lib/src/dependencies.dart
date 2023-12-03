@@ -73,7 +73,7 @@ void _writeDep(IOSink sink, String name, DependencySpec spec) {
     ..write('  - ')
     ..write(name)
     ..write(':\n');
-  if (spec != DependencySpec.defaultSpec) {
+  if (spec != defaultSpec) {
     spec.path?.vmap((path) => sink
       ..write('    path: ')
       ..write(path)
@@ -129,7 +129,7 @@ Future<int> printDependencies(
 }
 
 Future<int> _print(Iterable<String> deps, LocalDependencies localDeps,
-    File jbuildJar, List<String> preArgs, Set<String> exclusionPatterns,
+    File jbuildJar, List<String> preArgs, Iterable<String> exclusionPatterns,
     {required String header}) async {
   logger.info(AnsiMessage([
     AnsiMessagePart.code(ansi.styleItalic),

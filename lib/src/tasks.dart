@@ -169,9 +169,9 @@ Task createWriteDependenciesTask(
 
   // don't send the full config to the Task!
   final deps = config.dependencies;
-  final exclusions = config.dependencyExclusionPatterns;
+  final exclusions = config.dependencyExclusionPatterns.toSet();
   final procDeps = config.processorDependencies;
-  final procExc = config.processorDependencyExclusionPatterns;
+  final procExc = config.processorDependencyExclusionPatterns.toSet();
 
   return Task(
       (_) async => await writeDependencies(

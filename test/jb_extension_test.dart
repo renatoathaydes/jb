@@ -1,21 +1,32 @@
 import 'package:dartle/dartle.dart' show DartleException;
-import 'package:jb/src/config.dart' show JavaConfigType;
-import 'package:jb/src/jb_extension.dart' show resolveConstructor;
+import 'package:jb/src/config.dart'
+    show ConfigType, JbConfiguration, loadConfigString, JavaConstructor;
+import 'package:jb/src/jb_extension.dart' show resolveConstructorData;
 import 'package:test/expect.dart';
 import 'package:test/scaffolding.dart';
 
 void main() {
   group('jb extension', () {
+    late JbConfiguration emptyJbConfig;
+    setUpAll(() async {
+      emptyJbConfig = await loadConfigString('module: test');
+    });
+
     test('can match empty constructor', () {
-      expect(resolveConstructor('task-name', {}, [{}]), equals(const []));
+      expect(resolveConstructorData('task-name', {}, [{}], emptyJbConfig),
+          equals(const []));
     });
 
     test('can match empty constructor when more constructors available', () {
       expect(
-          resolveConstructor('task-name', {}, [
-            {'foo': JavaConfigType.string},
-            {},
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {},
+              [
+                {'foo': (null, ConfigType.string)},
+                {},
+              ],
+              emptyJbConfig),
           equals(const []));
     });
 
@@ -23,112 +34,149 @@ void main() {
         'when both empty and JBuildLog constructor available, prefer the latter',
         () {
       expect(
-          resolveConstructor('task-name', {}, [
-            {'logger': JavaConfigType.jbuildLogger},
-            {},
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {},
+              [
+                {'logger': (null, ConfigType.jbuildLogger)},
+                {},
+              ],
+              emptyJbConfig),
           equals(const [null]));
       expect(
-          resolveConstructor('task-name', {}, [
-            {},
-            {'logger': JavaConfigType.jbuildLogger},
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {},
+              [
+                {},
+                {'logger': (null, ConfigType.jbuildLogger)},
+              ],
+              emptyJbConfig),
           equals(const [null]));
     });
 
     test('can match string parameter with null or string value', () {
       expect(
-          resolveConstructor('task-name', {
-            'foo': null
-          }, [
-            {'foo': JavaConfigType.string},
-            {},
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {'foo': null},
+              [
+                {'foo': (null, ConfigType.string)},
+                {},
+              ],
+              emptyJbConfig),
           equals(const [null]));
       expect(
-          resolveConstructor('task-name', {
-            'foo': 'bar'
-          }, [
-            {'foo': JavaConfigType.string},
-            {},
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {'foo': 'bar'},
+              [
+                {'foo': (null, ConfigType.string)},
+                {},
+              ],
+              emptyJbConfig),
           equals(const ['bar']));
     });
 
     test('can match JBuildLogger parameter with null or missing value', () {
       expect(
-          resolveConstructor('task-name', {
-            'log': null
-          }, [
-            {'log': JavaConfigType.jbuildLogger},
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {'log': null},
+              [
+                {'log': (null, ConfigType.jbuildLogger)},
+              ],
+              emptyJbConfig),
           equals(const [null]));
       expect(
-          resolveConstructor('task-name', const {}, [
-            {'log': JavaConfigType.jbuildLogger},
-          ]),
+          resolveConstructorData(
+              'task-name',
+              const {},
+              [
+                {'log': (null, ConfigType.jbuildLogger)},
+              ],
+              emptyJbConfig),
           equals(const [null]));
     });
 
     test('matches expected constructor when multiple available', () {
       expect(
-          resolveConstructor('task-name', {
-            'integer': 10,
-            'bool': true,
-          }, [
-            {},
-            {'foo': JavaConfigType.string},
-            {'integer': JavaConfigType.int, 'bool': JavaConfigType.boolean},
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {
+                'integer': 10,
+                'bool': true,
+              },
+              [
+                {},
+                {'foo': (null, ConfigType.string)},
+                {
+                  'integer': (null, ConfigType.int),
+                  'bool': (null, ConfigType.boolean)
+                },
+              ],
+              emptyJbConfig),
           equals(const [10, true]));
 
       expect(
-          resolveConstructor('task-name', {
-            'log': null,
-            'bool': true,
-          }, [
-            {
-              'bool': JavaConfigType.boolean,
-              'log': JavaConfigType.jbuildLogger
-            },
-            {'foo': JavaConfigType.string},
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {
+                'log': null,
+                'bool': true,
+              },
+              [
+                {
+                  'bool': (null, ConfigType.boolean),
+                  'log': (null, ConfigType.jbuildLogger)
+                },
+                {'foo': (null, ConfigType.string)},
+              ],
+              emptyJbConfig),
           equals(const [true, null]));
 
       expect(
-          resolveConstructor('task-name', {
-            'bool': true,
-          }, [
-            {
-              'bool': JavaConfigType.boolean,
-              'log': JavaConfigType.jbuildLogger
-            },
-            {'foo': JavaConfigType.string},
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {
+                'bool': true,
+              },
+              [
+                {
+                  'bool': (null, ConfigType.boolean),
+                  'log': (null, ConfigType.jbuildLogger)
+                },
+                {'foo': (null, ConfigType.string)},
+              ],
+              emptyJbConfig),
           equals(const [true, null]));
     });
 
     test('can match parameters of all types', () {
       expect(
-          resolveConstructor('task-name', {
-            'g': ['foo'],
-            'f': ['a', 'b'],
-            'e': 'hi',
-            'd': 3.1415,
-            'c': 2,
-            'b': false,
-            'a': null,
-          }, [
-            {
-              'a': JavaConfigType.jbuildLogger,
-              'b': JavaConfigType.boolean,
-              'c': JavaConfigType.int,
-              'd': JavaConfigType.float,
-              'e': JavaConfigType.string,
-              'f': JavaConfigType.arrayOfStrings,
-              'g': JavaConfigType.listOfStrings,
-            },
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {
+                'g': ['foo'],
+                'f': ['a', 'b'],
+                'e': 'hi',
+                'd': 3.1415,
+                'c': 2,
+                'b': false,
+                'a': null,
+              },
+              [
+                {
+                  'a': (null, ConfigType.jbuildLogger),
+                  'b': (null, ConfigType.boolean),
+                  'c': (null, ConfigType.int),
+                  'd': (null, ConfigType.float),
+                  'e': (null, ConfigType.string),
+                  'f': (null, ConfigType.arrayOfStrings),
+                  'g': (null, ConfigType.listOfStrings),
+                },
+              ],
+              emptyJbConfig),
           equals([
             null,
             false,
@@ -142,21 +190,25 @@ void main() {
 
     test('String arrays match with empty List', () {
       expect(
-          resolveConstructor('task-name', {
-            'array': []
-          }, [
-            {'array': JavaConfigType.arrayOfStrings},
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {'array': []},
+              [
+                {'array': (null, ConfigType.arrayOfStrings)},
+              ],
+              emptyJbConfig),
           equals(const [[]]));
     });
 
     test('String Lists match with empty List', () {
       expect(
-          resolveConstructor('task-name', {
-            'array': []
-          }, [
-            {'array': JavaConfigType.listOfStrings},
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {'array': []},
+              [
+                {'array': (null, ConfigType.listOfStrings)},
+              ],
+              emptyJbConfig),
           equals(const [[]]));
     });
 
@@ -164,15 +216,19 @@ void main() {
       dynamic myList = ['foo'];
       final otherList = <dynamic>['bar'];
       expect(
-          resolveConstructor('task-name', {
-            'l1': myList,
-            'l2': otherList,
-          }, [
-            {
-              'l1': JavaConfigType.listOfStrings,
-              'l2': JavaConfigType.listOfStrings,
-            },
-          ]),
+          resolveConstructorData(
+              'task-name',
+              {
+                'l1': myList,
+                'l2': otherList,
+              },
+              [
+                {
+                  'l1': (null, ConfigType.listOfStrings),
+                  'l2': (null, ConfigType.listOfStrings),
+                },
+              ],
+              emptyJbConfig),
           equals([
             ['foo'],
             ['bar'],
@@ -181,13 +237,20 @@ void main() {
   });
 
   group('jb extension errors', () {
+    late JbConfiguration emptyJbConfig;
+    setUpAll(() async {
+      emptyJbConfig = await loadConfigString('module: test');
+    });
+
     test('cannot provide value for JBuildLogger', () {
       expect(
-          () => resolveConstructor('task', {
-                'foo': Object()
-              }, [
-                {'foo': JavaConfigType.jbuildLogger}
-              ]),
+          () => resolveConstructorData(
+              'task',
+              {'foo': Object()},
+              [
+                {'foo': (null, ConfigType.jbuildLogger)}
+              ],
+              emptyJbConfig),
           throwsA(isA<DartleException>().having(
               (e) => e.message,
               'message',
@@ -196,16 +259,18 @@ void main() {
                   "property of type JBuildLogger cannot be configured"))));
     });
 
-    for (final type in JavaConfigType.values) {
-      if (type == JavaConfigType.jbuildLogger) continue;
-      final value = type == JavaConfigType.string ? 10 : 'bar';
+    for (final type in ConfigType.values) {
+      if (type == ConfigType.jbuildLogger) continue;
+      final value = type == ConfigType.string ? 10 : 'bar';
       test('recognizes type mismatch for $type', () {
         expect(
-            () => resolveConstructor('task', {
-                  'foo': value
-                }, [
-                  {'foo': type}
-                ]),
+            () => resolveConstructorData(
+                'task',
+                {'foo': value},
+                [
+                  {'foo': (null, type)}
+                ],
+                emptyJbConfig),
             throwsA(isA<DartleException>().having(
                 (e) => e.message,
                 'message',
@@ -215,16 +280,20 @@ void main() {
       });
     }
 
-    for (final schema in <Map<String, JavaConfigType>>[
+    for (final schema in <JavaConstructor>[
       {},
-      {'log': JavaConfigType.jbuildLogger},
-      {'l1': JavaConfigType.jbuildLogger, 'l2': JavaConfigType.jbuildLogger},
+      {'log': (null, ConfigType.jbuildLogger)},
+      {
+        'l1': (null, ConfigType.jbuildLogger),
+        'l2': (null, ConfigType.jbuildLogger)
+      },
     ]) {
       test(
           'schemas are displayed properly on type error (no config expected: ${schema.keys})',
           () {
         expect(
-            () => resolveConstructor('task', {'num': 10}, [schema]),
+            () => resolveConstructorData(
+                'task', {'num': 10}, [schema], emptyJbConfig),
             throwsA(isA<DartleException>().having(
                 (e) => e.message,
                 'message',
@@ -236,11 +305,15 @@ void main() {
 
     test('null value is not allowed on non-String', () {
       expect(
-          () => resolveConstructor('task', {
+          () => resolveConstructorData(
+              'task',
+              {
                 'num': null,
-              }, [
-                {'num': JavaConfigType.float}
-              ]),
+              },
+              [
+                {'num': (null, ConfigType.float)}
+              ],
+              emptyJbConfig),
           throwsA(isA<DartleException>().having(
               (e) => e.message,
               'message',
@@ -251,12 +324,16 @@ void main() {
 
     test('schemas are displayed properly on type error (single option)', () {
       expect(
-          () => resolveConstructor('task', {
-                'num': 10,
-                'str': 24
-              }, [
-                {'num': JavaConfigType.float, 'str': JavaConfigType.string}
-              ]),
+          () => resolveConstructorData(
+              'task',
+              {'num': 10, 'str': 24},
+              [
+                {
+                  'num': (null, ConfigType.float),
+                  'str': (null, ConfigType.string)
+                }
+              ],
+              emptyJbConfig),
           throwsA(isA<DartleException>().having(
               (e) => e.message,
               'message',
@@ -268,14 +345,18 @@ void main() {
 
     test('schemas are displayed properly on type error (multiple options)', () {
       expect(
-          () => resolveConstructor('task', {
-                'num': 10,
-                'str': 24
-              }, [
+          () => resolveConstructorData(
+              'task',
+              {'num': 10, 'str': 24},
+              [
                 {},
-                {'num': JavaConfigType.float},
-                {'num': JavaConfigType.float, 'str': JavaConfigType.string},
-              ]),
+                {'num': (null, ConfigType.float)},
+                {
+                  'num': (null, ConfigType.float),
+                  'str': (null, ConfigType.string)
+                },
+              ],
+              emptyJbConfig),
           throwsA(isA<DartleException>().having(
               (e) => e.message,
               'message',

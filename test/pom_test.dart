@@ -67,8 +67,8 @@ $pomHeader
                     version: '1.0',
                   ),
                   {
-                    'org.apache:json.parser:1.0.0': DependencySpec.defaultSpec,
-                    'com.junit.api:junit:4.12': DependencySpec.defaultSpec,
+                    'org.apache:json.parser:1.0.0': defaultSpec,
+                    'com.junit.api:junit:4.12': defaultSpec,
                   },
                   emptyLocalDependencies)
               .toString(),
@@ -147,7 +147,7 @@ $nonTransitiveDependency
                   name: 'My Module',
                   version: '4.3.2.1'),
               {
-                'org.apache:json.parser:1.0.0': DependencySpec.defaultSpec,
+                'org.apache:json.parser:1.0.0': defaultSpec,
               },
               ResolvedLocalDependencies([], [
                 ResolvedProjectDependency(
@@ -208,7 +208,7 @@ $pomHeader
               url: 'https://github.com/renatoathaydes/jbuild',
             ),
             {
-              'org.apache:json.parser:1.0.0': DependencySpec.defaultSpec,
+              'org.apache:json.parser:1.0.0': defaultSpec,
               'junit:junit:4.12': DependencySpec(
                   transitive: true, scope: DependencyScope.compileOnly),
             },

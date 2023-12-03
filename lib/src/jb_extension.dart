@@ -3,18 +3,31 @@ import 'dart:io';
 
 import 'package:actors/actors.dart';
 import 'package:archive/archive_io.dart';
-import 'package:collection/collection.dart';
+import 'package:collection/collection.dart' as col;
 import 'package:conveniently/conveniently.dart';
-import 'package:dartle/dartle.dart';
-import 'package:dartle/dartle_cache.dart';
+import 'package:dartle/dartle.dart'
+    show
+        Task,
+        Options,
+        profile,
+        elapsedTime,
+        AcceptAnyArgs,
+        RunOnChanges,
+        RunCondition,
+        AlwaysRun,
+        failBuild;
+import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:isolate_current_directory/isolate_current_directory.dart';
-import 'package:jb/src/jb_files.dart';
-import 'package:jb/src/jvm_executor.dart';
 import 'package:path/path.dart' as p;
 
-import '../jb.dart';
+import 'config.dart';
+import 'config_source.dart';
+import 'jb_files.dart';
+import 'jvm_executor.dart';
+import 'options.dart';
 import 'patterns.dart';
 import 'runner.dart';
+import 'tasks.dart';
 
 class ExtensionProject {
   final Iterable<Task> tasks;
@@ -38,14 +51,14 @@ Future<ExtensionProject?> loadExtensionProject(
     Sendable<JavaCommand, Object?> jvmExecutor,
     JbFiles files,
     Options options,
-    String? extensionProjectPath,
-    Map<String, Map<String, Object?>> nonConsumedConfig) async {
+    JbConfiguration config) async {
+  final extensionProjectPath = config.extensionProject;
   final stopWatch = Stopwatch()..start();
   final projectDir = Directory(extensionProjectPath ?? jbExtension);
   if (!await projectDir.exists()) {
     if (extensionProjectPath != null) {
-      throw DartleException(
-          message: 'Extension project does not exist: $extensionProjectPath');
+      failBuild(
+          reason: 'Extension project does not exist: $extensionProjectPath');
     }
     logger.finer('No extension project.');
     return null;
@@ -83,8 +96,8 @@ Future<ExtensionProject?> loadExtensionProject(
   final extensionModel = await loadJbExtensionModel(
       jbExtensionConfig.yaml, jbExtensionConfig.yamlUri);
 
-  final tasks = await _createTasks(extensionModel, extensionConfig, jvmExecutor,
-          dir, files, nonConsumedConfig)
+  final tasks = await _createTasks(
+          extensionModel, extensionConfig, jvmExecutor, dir, files, config)
       .toList();
 
   logger.log(profile,
@@ -100,10 +113,9 @@ Future<_JbExtensionConfig> _jbExtensionFromJar(
   try {
     final buffer = ZipDecoder().decodeBuffer(stream);
     final extensionEntry = 'META-INF/jb/$jbExtension.yaml';
-    final archiveFile =
-        buffer.findFile(extensionEntry).orThrow(() => DartleException(
-            message: 'jb extension jar at $jarPath '
-                'is missing metadata file: $extensionEntry'));
+    final archiveFile = buffer.findFile(extensionEntry).orThrow(() => failBuild(
+        reason: 'jb extension jar at $jarPath '
+            'is missing metadata file: $extensionEntry'));
     final content = archiveFile.content as List<int>;
     return _JbExtensionConfig(
         path: '${stream.path}!$extensionEntry',
@@ -126,8 +138,8 @@ void _verify(JbConfiguration config) {
   final hasJbApiDep =
       config.dependencies.keys.any((dep) => dep.startsWith('$jbApi:'));
   if (!hasJbApiDep) {
-    throw DartleException(
-        message: 'Extension project is missing dependency on jbuild-api.\n'
+    failBuild(
+        reason: 'Extension project is missing dependency on jbuild-api.\n'
             "To fix that, add a dependency on '$jbApi:<version>'");
   }
 }
@@ -138,14 +150,19 @@ Stream<Task> _createTasks(
     Sendable<JavaCommand, Object?> jvmExecutor,
     String dir,
     JbFiles files,
-    Map<String, Map<String, Object?>> nonConsumedConfig) async* {
+    JbConfiguration config) async* {
   final cache = DartleCache(p.join(dir, files.jbCache));
   final classpath = await _toClasspath(dir, extensionConfig);
   for (final task in extensionModel.extensionTasks) {
     final name = task.name;
-    final taskConfig = nonConsumedConfig.remove(name);
+    final taskConfig = config.extras[name];
+    if (taskConfig is! Map<String, Object>?) {
+      failBuild(
+          reason: "Cannot create jb extension task '$name' because the "
+              "provided configuration is not an object: $taskConfig");
+    }
     final constructorData =
-        resolveConstructor(name, taskConfig, task.constructors);
+        resolveConstructorData(name, taskConfig, task.constructors, config);
     yield _createTask(
         jvmExecutor, classpath, task, dir, cache, constructorData);
   }
@@ -222,21 +239,28 @@ Future<String> _toClasspath(
   return artifact;
 }
 
-/// Resolve a matching constructor for a given taskConfig.
+/// Resolve a matching constructor for a given taskConfig, resolving the data
+/// that should be used to invoke it.
 ///
 /// The list of constructors contains the available Java constructors and must
 /// not be empty (Java requires at least one constructor to exist).
 /// Values in taskConfig are matched against each constructor parameter by name
 /// and then are type checked.
 ///
-/// A value type checks if its type is identical to a [JavaConfigType] parameter
-/// or in case of [JavaConfigType.string], if it's `null`.
-/// Parameters of type [JavaConfigType.jbuildLogger] must have value `null`,
+/// A value type checks if its type is identical to a [ConfigType] parameter
+/// or in case of [ConfigType.string], if it's `null`.
+/// Parameters of type [ConfigType.jbuildLogger] must have value `null`,
 /// and if not provided this method injects `null` in their place.
-List<Object?> resolveConstructor(String name, Map<String, Object?>? taskConfig,
-    List<Map<String, JavaConfigType>> constructors) {
+///
+/// Parameters that have a jbName are resolved against JBuild's own
+/// configuration.
+List<Object?> resolveConstructorData(
+    String name,
+    Map<String, Object?>? taskConfig,
+    List<JavaConstructor> constructors,
+    JbConfiguration config) {
   if (taskConfig == null || taskConfig.isEmpty) {
-    return _jbuildLoggerConstructorData(constructors) ??
+    return _jbuildConstructorData(name, constructors, config) ??
         constructors.firstWhere((c) => c.isEmpty, orElse: () {
           failBuild(
               reason: "Cannot create jb extension task '$name' because "
@@ -249,7 +273,7 @@ List<Object?> resolveConstructor(String name, Map<String, Object?>? taskConfig,
       constructors.firstWhere((c) => _keysMatch(c, taskConfig), orElse: () {
     if (_requireNoConfiguration(constructors)) {
       failBuild(
-          reason: "Cannot create jb extension task 'task' because "
+          reason: "Cannot create jb extension task '$name' because "
               "configuration was provided for this task when none was "
               "expected. Please remove it from your jb configuration.");
     }
@@ -259,9 +283,19 @@ List<Object?> resolveConstructor(String name, Map<String, Object?>? taskConfig,
             "the acceptable schemas. Please use one of the following schemas:\n"
             "${_constructorsHelp(constructors)}");
   });
+  final configMap = config.toJson();
   return keyMatch.entries.map((entry) {
-    final type = entry.value;
+    final (jbName, type) = entry.value;
     final value = taskConfig[entry.key];
+    if (jbName != null) {
+      if (value != null) {
+        failBuild(
+            reason: "Cannot create jb extension task '$name' because "
+                "its configuration is trying to provide jb property '$jbName'! "
+                "Please remove this property from configuration.");
+      }
+      return _resolveJbConfig(configMap, jbName, type, name);
+    }
     if (switch (value.isOfType(type)) {
       Ok(value: var yes) => yes,
       Fail(exception: var e) => failBuild(
@@ -278,33 +312,39 @@ List<Object?> resolveConstructor(String name, Map<String, Object?>? taskConfig,
   }).toList(growable: false);
 }
 
-bool _keysMatch(
-    Map<String, JavaConfigType> constructor, Map<String, Object?> taskConfig) {
-  // allow parameters of type JBuildLogger to be missing
-  final loggerKeys = constructor.entries
-      .where((e) => e.value == JavaConfigType.jbuildLogger)
+bool _keysMatch(JavaConstructor constructor, Map<String, Object?> taskConfig) {
+  // allow parameters of type JBuildLogger and with jbName to be missing
+  final mayBeMissingKeys = constructor.entries
+      .where((e) {
+        final (jbName, type) = e.value;
+        // will type check later
+        if (jbName != null) return true;
+        return type == ConfigType.jbuildLogger;
+      })
       .map((e) => e.key)
       .toSet();
-  final nonLoggerConfigKeys =
-      taskConfig.keys.where(loggerKeys.contains.not$).toSet();
-  final nonLoggerParams =
-      constructor.keys.where(loggerKeys.contains.not$).toSet();
-  return const SetEquality().equals(nonLoggerConfigKeys, nonLoggerParams);
+  final mandatoryConfigKeys =
+      taskConfig.keys.where(mayBeMissingKeys.contains.not$).toSet();
+  final mandatoryParamKeys =
+      constructor.keys.where(mayBeMissingKeys.contains.not$).toSet();
+  return const col.SetEquality()
+      .equals(mandatoryConfigKeys, mandatoryParamKeys);
 }
 
-bool _requireNoConfiguration(List<Map<String, JavaConfigType>> constructors) {
+bool _requireNoConfiguration(List<JavaConstructor> constructors) {
   return constructors.every((c) =>
-      c.isEmpty || c.values.every((e) => e == JavaConfigType.jbuildLogger));
+      c.isEmpty || c.values.every((e) => e.$2 == ConfigType.jbuildLogger));
 }
 
-String _constructorsHelp(List<Map<String, JavaConfigType>> constructors) {
+String _constructorsHelp(List<JavaConstructor> constructors) {
   final builder = StringBuffer();
   for (final (i, constructor) in constructors.indexed) {
     builder.writeln('  - option${i + 1}:');
     if (constructor.isEmpty) {
       builder.writeln('    <no configuration>');
     } else {
-      constructor.forEach((fieldName, type) {
+      constructor.forEach((fieldName, entry) {
+        final (_, type) = entry;
         builder
           ..write('    ')
           ..write(fieldName)
@@ -316,26 +356,50 @@ String _constructorsHelp(List<Map<String, JavaConfigType>> constructors) {
   return builder.toString();
 }
 
-List<Object?>? _jbuildLoggerConstructorData(
-    List<Map<String, JavaConfigType>> constructors) {
+List<Object?>? _jbuildConstructorData(
+    String name, List<JavaConstructor> constructors, JbConfiguration config) {
+  final configMap = config.toJson();
   return constructors
-      .where((c) => c.values.every((v) => v == JavaConfigType.jbuildLogger))
+      .where((c) => c.values.every((v) {
+            final (jbName, type) = v;
+            return jbName != null || type == ConfigType.jbuildLogger;
+          }))
       .sorted((a, b) => b.keys.length.compareTo(a.keys.length))
-      .map((c) => c.values.map((_) => null).toList(growable: false))
+      .map((c) => c.values.map((v) {
+            final (jbName, type) = v;
+            return (jbName != null)
+                ? _resolveJbConfig(configMap, jbName, type, name)
+                : null;
+          }).toList(growable: false))
       .firstOrNull;
 }
 
+Object? _resolveJbConfig(
+    Map<String, Object?> config, String jbName, ConfigType type, String name) {
+  final value = config[jbName];
+  if (type.isInstance(value)) return value;
+  final details = (!config.containsKey(jbName))
+      ? 'does not exist! Please remove this argument from the '
+          "task's constructor or use another name."
+      : "is not of type $type! Please modify the task's "
+          "constructor property to take the proper type.";
+  failBuild(
+      reason: "Cannot create jb extension task '$name' because "
+          "its configuration is invalid: jb property '$jbName' "
+          "$details");
+}
+
 extension on Object? {
-  Result<bool> isOfType(JavaConfigType type) {
+  Result<bool> isOfType(ConfigType type) {
     final result = switch (type) {
-      JavaConfigType.string => this is String?,
-      JavaConfigType.boolean => this is bool,
-      JavaConfigType.int => this is int,
-      JavaConfigType.float => this is double,
-      JavaConfigType.listOfStrings ||
-      JavaConfigType.arrayOfStrings =>
+      ConfigType.string => this is String?,
+      ConfigType.boolean => this is bool,
+      ConfigType.int => this is int,
+      ConfigType.float => this is double,
+      ConfigType.listOfStrings ||
+      ConfigType.arrayOfStrings =>
         vmap((self) => self is Iterable && self.every((i) => i is String)),
-      JavaConfigType.jbuildLogger => this == null ? true : null,
+      ConfigType.jbuildLogger => this == null ? true : null,
     };
     return result == null
         ? Result.fail(_PropertyCannotBeConfigured(

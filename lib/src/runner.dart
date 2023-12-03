@@ -15,6 +15,7 @@ class JbRunner {
   static Future<JbRunner> create(JbFiles files) async {
     final config = await _createConfig(files.configSource);
     logger.fine(() => 'Parsed jb configuration: $config');
+    config.validate();
     return JbRunner(files, config);
   }
 

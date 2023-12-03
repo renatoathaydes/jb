@@ -36,7 +36,7 @@ class _ConfigMatcher extends Matcher {
           'version should be "${expected.version}" but is "${item.version}"';
       return false;
     }
-    if (!const SetEquality().equals(expected.sourceDirs, item.sourceDirs)) {
+    if (!const ListEquality().equals(expected.sourceDirs, item.sourceDirs)) {
       matchState[#reason] =
           'sourceDirs should be "${expected.sourceDirs}" but is "${item.sourceDirs}"';
       return false;
@@ -46,7 +46,8 @@ class _ConfigMatcher extends Matcher {
           'group should be "${expected.output}" but is "${item.output}"';
       return false;
     }
-    if (!const SetEquality().equals(expected.resourceDirs, item.resourceDirs)) {
+    if (!const ListEquality()
+        .equals(expected.resourceDirs, item.resourceDirs)) {
       matchState[#reason] =
           'resourceDirs should be "${expected.resourceDirs}" but is "${item.resourceDirs}"';
       return false;
@@ -87,7 +88,8 @@ class _ConfigMatcher extends Matcher {
           'testJavaEnv should be "${expected.testJavaEnv}" but is "${item.testJavaEnv}"';
       return false;
     }
-    if (!const SetEquality().equals(expected.repositories, item.repositories)) {
+    if (!const ListEquality()
+        .equals(expected.repositories, item.repositories)) {
       matchState[#reason] =
           'repositories should be "${expected.repositories}" but is "${item.repositories}"';
       return false;
@@ -97,7 +99,7 @@ class _ConfigMatcher extends Matcher {
           'dependencies should be "${expected.dependencies}" but is "${item.dependencies}"';
       return false;
     }
-    if (!const SetEquality().equals(expected.dependencyExclusionPatterns,
+    if (!const ListEquality().equals(expected.dependencyExclusionPatterns,
         item.dependencyExclusionPatterns)) {
       matchState[#reason] =
           'exclusions should be "${expected.dependencyExclusionPatterns}" but is "${item.dependencyExclusionPatterns}"';

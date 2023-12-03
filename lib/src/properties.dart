@@ -17,11 +17,11 @@ MapWithProperties resolvePropertiesFromMap(Map map) {
 
 Map<String, Object?> resolveProperties(Map map, Properties properties) {
   if (properties.isEmpty) {
-    return map.map((dynamic key, dynamic value) {
-      return MapEntry('$key', _resolveValue(value, properties));
+    return map.map((Object? key, Object? value) {
+      return MapEntry('$key', value);
     });
   }
-  return map.map((dynamic key, dynamic value) {
+  return map.map((Object? key, Object? value) {
     return MapEntry(_resolveValue('$key', properties) as String,
         _resolveValue(value, properties));
   });
