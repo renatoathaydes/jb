@@ -1,3 +1,5 @@
+import 'dart:io' show File;
+
 import 'package:schemake/dart_gen.dart';
 import 'package:schemake/schemake.dart';
 
@@ -46,7 +48,8 @@ const _dependency = Objects(
     'DependencySpec',
     {
       'transitive': Property(Bools(), defaultValue: true),
-      'scope': Property(_scope, description: 'Scope of a dependency.'),
+      'scope': Property(_scope,
+          description: 'Scope of a dependency.', defaultValue: 'all'),
       'path': Property(Nullable(Strings())),
     },
     description: 'Specification of a dependency.');
@@ -104,3 +107,18 @@ const jbConfig = Objects(
     },
     unknownPropertiesStrategy: UnknownPropertiesStrategy.keep,
     description: 'jb configuration model.');
+
+void main() async {
+  final writer = File(configFile).openWrite();
+  try {
+    writer.write(generateDartClasses([jbConfig],
+        options: const DartGeneratorOptions(methodGenerators: [
+          ...DartGeneratorOptions.defaultMethodGenerators,
+          DartToJsonMethodGenerator(),
+          DartFromJsonMethodGenerator(),
+        ])));
+  } finally {
+    await writer.flush();
+    await writer.close();
+  }
+}

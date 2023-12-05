@@ -2,13 +2,11 @@
   "repositories": [
     "../test-repo"
   ],
-  "dependencies": [
-    "com.example:lists:1.0",
-    {
-      "minimal-sample": {
-        "path": "minimal-java-project.jar"
-      }
+  "dependencies": {
+    "com.example:lists:1.0": {},
+    "minimal-sample": {
+      "path": "minimal-java-project.jar"
     }
-  ],
+  },
   "main-class": "com.foo.Foo"
 }

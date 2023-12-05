@@ -30,13 +30,13 @@ const _fullConfig = '''
     - src/main/groovy
     - src/test/kotlin
   dependencies:
-    - com.google:guava:{{versions.guava}}
+    com.google:guava:{{versions.guava}}:
   dependency-exclusion-patterns:
     - test.*
     - .*other\\d+.*
   
   processor-dependencies:
-    - foo.bar:zort:1.0:
+    foo.bar:zort:1.0:
         scope: runtime-only
         transitive: false
         path: foo/bar/zort
@@ -129,7 +129,7 @@ test-java-env:
 repositories: [\x1B[34m"https://maven.org"\x1B[0m, \x1B[34m"ftp://foo.bar"\x1B[0m]
 \x1B[90m# Maven dependencies\x1B[0m
 dependencies:
-  - \x1B[34m"com.google:guava:1.2.3"\x1B[0m:
+  \x1B[34m"com.google:guava:1.2.3"\x1B[0m:
     transitive: \x1B[35mtrue\x1B[0m
     scope: \x1B[34m"all"\x1B[0m
     path: \x1B[35mnull\x1B[0m
@@ -139,7 +139,7 @@ dependency-exclusion-patterns:
   - \x1B[34m".*other\\d+.*"\x1B[0m
 \x1B[90m# Annotation processor Maven dependencies\x1B[0m
 processor-dependencies:
-  - \x1B[34m"foo.bar:zort:1.0"\x1B[0m:
+  \x1B[34m"foo.bar:zort:1.0"\x1B[0m:
     transitive: \x1B[35mfalse\x1B[0m
     scope: \x1B[34m"runtime-only"\x1B[0m
     path: \x1B[34m"foo/bar/zort"\x1B[0m
@@ -160,10 +160,10 @@ const _basicConfigWithDependencies = '''
 module: basic
 output-jar: "my.jar"
 dependencies:
- - foo:bar:zort:1.0
- - other-dep:
+ foo:bar:zort:1.0:
+ other-dep:
      path: "../"
- - more-dep:1.0:
+ more-dep:1.0:
      scope: runtime-only
      transitive: false
 ''';
@@ -217,15 +217,15 @@ test-java-env: {}
 repositories: []
 # Maven dependencies
 dependencies:
-  - "foo:bar:zort:1.0":
+  "foo:bar:zort:1.0":
     transitive: true
     scope: "all"
     path: null
-  - "other-dep":
+  "other-dep":
     transitive: true
     scope: "all"
     path: ".."
-  - "more-dep:1.0":
+  "more-dep:1.0":
     transitive: false
     scope: "runtime-only"
     path: null
@@ -362,8 +362,8 @@ void main() {
     test('can parse basic string dependencies', () async {
       final config = await loadConfigString('''
       dependencies:
-        - foo
-        - var
+        foo:
+        var:
       ''');
 
       expect(
@@ -377,11 +377,11 @@ void main() {
     test('can parse map dependencies', () async {
       final config = await loadConfigString('''
       dependencies:
-        - foo:bar:1.0:
+        foo:bar:1.0:
             transitive: false
             scope: runtime-only
-        - second:dep:0.1
-        - var:
+        second:dep:0.1:
+        var:
       ''');
 
       expect(
@@ -409,11 +409,9 @@ void main() {
       'run-java-env': {'C': 'D'},
       'test-java-env': {'E': 'F'},
       'repositories': {'r1', 'r2'},
-      'dependencies': [
-        {
-          'dep1': {'transitive': true}
-        }
-      ],
+      'dependencies': {
+        'dep1': {'transitive': true}
+      },
       'dependency-exclusion-patterns': {'e1'},
       'compile-libs-dir': 'comp',
       'runtime-libs-dir': 'runtime',
@@ -436,11 +434,9 @@ void main() {
         'run-java-env': {'Q': 'R'},
         'test-java-env': {'S': 'T'},
         'repositories': {'r3', 'r4'},
-        'dependencies': [
-          {
-            'dep2': {'transitive': false}
-          }
-        ],
+        'dependencies': {
+          'dep2': {'transitive': false}
+        },
         'dependency-exclusion-patterns': {'e2'},
         'compile-libs-dir': 'comp2',
         'runtime-libs-dir': 'runtime2',
@@ -464,14 +460,10 @@ void main() {
             'run-java-env': {'C': 'D', 'Q': 'R'},
             'test-java-env': {'E': 'F', 'S': 'T'},
             'repositories': {'r1', 'r2', 'r3', 'r4'},
-            'dependencies': [
-              {
-                'dep1': {'transitive': true}
-              },
-              {
-                'dep2': {'transitive': false}
-              },
-            ],
+            'dependencies': {
+              'dep1': {'transitive': true},
+              'dep2': {'transitive': false},
+            },
             'dependency-exclusion-patterns': {'e1', 'e2'},
             'compile-libs-dir': 'comp2',
             'runtime-libs-dir': 'runtime2',
@@ -495,14 +487,10 @@ void main() {
             'run-java-env': {'Q': 'R', 'C': 'D'},
             'test-java-env': {'S': 'T', 'E': 'F'},
             'repositories': {'r3', 'r4', 'r1', 'r2'},
-            'dependencies': [
-              {
-                'dep1': {'transitive': true}
-              },
-              {
-                'dep2': {'transitive': false}
-              }
-            ],
+            'dependencies': {
+              'dep1': {'transitive': true},
+              'dep2': {'transitive': false}
+            },
             'dependency-exclusion-patterns': {'e2', 'e1'},
             'compile-libs-dir': 'comp',
             'runtime-libs-dir': 'runtime',
@@ -513,11 +501,9 @@ void main() {
     test('can merge small config into full configuration and vice-versa', () {
       final smallConfig = JbConfiguration.fromJson({
         'module': 'small',
-        'dependencies': [
-          {
+        'dependencies': {
             'big': {'transitive': true}
           }
-        ]
       });
 
       expect(
@@ -537,14 +523,10 @@ void main() {
             'run-java-env': {'C': 'D'},
             'test-java-env': {'E': 'F'},
             'repositories': {'r1', 'r2'},
-            'dependencies': [
-              {
-                'dep1': {'transitive': true}
+            'dependencies': {
+                'dep1': {'transitive': true},
+                'big': {'transitive': true},
               },
-              {
-                'big': {'transitive': true}
-              }
-            ],
             'dependency-exclusion-patterns': {'e1'},
             'compile-libs-dir': 'comp',
             'runtime-libs-dir': 'runtime',
@@ -568,14 +550,10 @@ void main() {
             'run-java-env': {'C': 'D'},
             'test-java-env': {'E': 'F'},
             'repositories': {'r1', 'r2'},
-            'dependencies': [
-              {
-                'dep1': {'transitive': true}
-              },
-              {
-                'big': {'transitive': true}
-              }
-            ],
+            'dependencies':{
+                'dep1': {'transitive': true},
+                'big': {'transitive': true},
+            },
             'dependency-exclusion-patterns': {'e1'},
             'compile-libs-dir': 'comp',
             'runtime-libs-dir': 'runtime',
@@ -586,21 +564,17 @@ void main() {
     test('can merge two small configurations using properties', () {
       final smallConfig1 = JbConfiguration.fromJson({
         'version': 'v1',
-        'dependencies': [
-          {
+        'dependencies': {
             '{{DEP}}': {'transitive': true}
-          }
-        ],
+          },
         'test-reports-dir': '{{REPORTS_DIR}}',
         'properties': {'REPORTS_DIR': 'reports'}
       });
       final smallConfig2 = JbConfiguration.fromJson({
         'module': 'small',
-        'dependencies': [
-          {
+        'dependencies':{
             'big2': {'transitive': false}
-          }
-        ],
+          },
         'properties': {'DEP': 'big1'}
       });
 
@@ -609,14 +583,10 @@ void main() {
           equalsConfig(JbConfiguration.fromJson({
             'module': 'small',
             'version': 'v1',
-            'dependencies': [
-              {
-                'big1': {'transitive': true}
+            'dependencies':{
+                'big1': {'transitive': true},
+                'big2': {'transitive': false},
               },
-              {
-                'big2': {'transitive': false}
-              }
-            ],
             'test-reports-dir': 'reports',
             'properties': {'DEP': 'big1', 'REPORTS_DIR': 'reports'}
           })));
@@ -626,14 +596,10 @@ void main() {
           equalsConfig(JbConfiguration.fromJson({
             'module': 'small',
             'version': 'v1',
-            'dependencies': [
-              {
-                'big1': {'transitive': true}
+            'dependencies':{
+                'big1': {'transitive': true},
+                'big2': {'transitive': false},
               },
-              {
-                'big2': {'transitive': false}
-              }
-            ],
             'test-reports-dir': 'reports',
             'properties': {'DEP': 'big1', 'REPORTS_DIR': 'reports'}
           })));
@@ -658,8 +624,8 @@ void main() {
     test('cannot parse invalid dependencies', () async {
       createConfig() => loadConfigString('''
       dependencies:
-        foo:
-          transitive: false
+        - foo:
+            transitive: false
       ''');
 
       expect(
@@ -691,7 +657,7 @@ void main() {
       createConfig() => loadConfigString('''
       module: foo
       dependencies:
-        - foo:
+        foo:
           transitive: false
           checked: true
       ''');

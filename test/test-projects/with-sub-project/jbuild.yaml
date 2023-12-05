@@ -12,5 +12,5 @@ runtime-libs-dir: build/runtime
 output-dir: build/out
 
 dependencies:
-  - greetings:
-      path: greeting
+  greetings:
+    path: greeting
