@@ -62,7 +62,7 @@ void main() {
             'with-deps.jar',
             'compile-libs',
             p.join('compile-libs', 'lists-1.0.jar'),
-            p.join('compile-libs', 'minimal-java-project.jar'),
+            p.join('compile-libs', 'build', 'minimal-java-project.jar'),
           ],
           reason: 'Did not create all artifacts.\n\n'
               'Stdout:\n${jbResult.stdout.join('\n')}\n\n'

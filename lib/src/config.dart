@@ -230,7 +230,7 @@ class JbConfigContainer {
       : output = config.outputDir.vmapOr(
             CompileOutput.dir,
             () => CompileOutput.jar(config.outputJar ??
-                '${p.basename(Directory.current.path)}.jar'));
+                '${p.join('build', p.basename(Directory.current.path))}.jar'));
 }
 
 /// jb configuration model.
