@@ -41,9 +41,14 @@ class _ConfigMatcher extends Matcher {
           'sourceDirs should be "${expected.sourceDirs}" but is "${item.sourceDirs}"';
       return false;
     }
-    if (expected.output != item.output) {
+    if (expected.outputJar != item.outputJar) {
       matchState[#reason] =
-          'group should be "${expected.output}" but is "${item.output}"';
+          'outputJar should be "${expected.outputJar}" but is "${item.outputJar}"';
+      return false;
+    }
+    if (expected.outputDir != item.outputDir) {
+      matchState[#reason] =
+          'outputDir should be "${expected.outputDir}" but is "${item.outputDir}"';
       return false;
     }
     if (!const ListEquality()

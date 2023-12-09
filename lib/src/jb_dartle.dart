@@ -55,8 +55,8 @@ class JbDartle {
   JbDartle._(this._files, this._config, this._cache, this._options, this.isRoot,
       Stopwatch stopwatch) {
     final localDeps = Future.wait([
-      _resolveLocalDependencies(_config.dependencies, name: 'main'),
-      _resolveLocalDependencies(_config.processorDependencies,
+      _resolveLocalDependencies(_config.allDependencies, name: 'main'),
+      _resolveLocalDependencies(_config.allProcessorDependencies,
           name: 'annotation processor')
     ]);
     init = localDeps.then((d) => _initialize(d[0], d[1], stopwatch));
@@ -73,9 +73,9 @@ class JbDartle {
   }
 
   Future<ResolvedLocalDependencies> _resolveLocalDependencies(
-      Map<String, DependencySpec> dependencies,
+      Iterable<MapEntry<String, DependencySpec>> dependencies,
       {required String name}) async {
-    final pathDependencies = dependencies.entries
+    final pathDependencies = dependencies
         .map((e) => e.value.toPathDependency())
         .whereNonNull()
         .toStream();
@@ -101,6 +101,7 @@ class JbDartle {
       ResolvedLocalDependencies localDependencies,
       ResolvedLocalDependencies localProcessorDependencies,
       Stopwatch stopwatch) async {
+    final configContainer = JbConfigContainer(_config);
     final unresolvedLocalDeps = localDependencies.unresolved;
     final unresolvedLocalProcessorDeps = localProcessorDependencies.unresolved;
 
@@ -124,9 +125,9 @@ class JbDartle {
 
     final projectTasks = <Task>{};
 
-    compile = createCompileTask(_files, _config, _cache, javaSender);
-    publicationCompile =
-        createPublicationCompileTask(_files, _config, _cache, javaSender);
+    compile = createCompileTask(_files, configContainer, _cache, javaSender);
+    publicationCompile = createPublicationCompileTask(
+        _files, configContainer, _cache, javaSender);
     writeDeps = createWriteDependenciesTask(_files, _config, _cache,
         jbFileInputs, unresolvedLocalDeps, unresolvedLocalProcessorDeps);
     installCompile = createInstallCompileDepsTask(
@@ -135,22 +136,22 @@ class JbDartle {
         _files, _config, javaSender, _cache, localDependencies);
     installProcessor = createInstallProcessorDepsTask(
         _files, _config, javaSender, _cache, localProcessorDependencies);
-    run = createRunTask(_files, _config, _cache);
+    run = createRunTask(_files, configContainer, _cache);
     downloadTestRunner =
         createDownloadTestRunnerTask(_config, javaSender, _cache, jbFileInputs);
     test = createTestTask(
-        _files.jbuildJar, _config, _cache, !_options.colorfulLog);
+        _files.jbuildJar, configContainer, _cache, !_options.colorfulLog);
     deps = createDepsTask(_files.jbuildJar, _config, _cache,
         unresolvedLocalDeps, unresolvedLocalProcessorDeps);
     showConfig = createShowConfigTask(_config, !_options.colorfulLog);
-    requirements = createRequirementsTask(_files.jbuildJar, _config);
+    requirements = createRequirementsTask(_files.jbuildJar, configContainer);
     generateEclipse = createEclipseTask(_config);
     generatePom = createGeneratePomTask(
-        artifact, _config.dependencies, localDependencies);
+        artifact, _config.allDependencies, localDependencies);
     publish = createPublishTask(
         artifact,
-        _config.dependencies,
-        _config.output.when(dir: (_) => null, jar: (j) => j),
+        _config.allDependencies,
+        configContainer.output.when(dir: (_) => null, jar: (j) => j),
         localDependencies);
     updateJBuild = createUpdateJBuildTask(javaSender);
 

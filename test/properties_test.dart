@@ -137,8 +137,14 @@ void main() {
             'map': {
               'k': 'Y',
               'X': 'Z',
-              'list': ['foo', 'ZW']
-            }
+              'list': ['foo', 'ZW'],
+            },
+            'properties': {
+              'a': 'X',
+              'b': 'Y',
+              'c': 'Z',
+              'd': {'e': 'W'}
+            },
           }));
     });
   });

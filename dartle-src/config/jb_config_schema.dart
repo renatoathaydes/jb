@@ -68,16 +68,18 @@ const jbConfig = Objects(
       'source-dirs': Property(Arrays(Strings()), defaultValue: ['src']),
       'output-dir': Property(Nullable(Strings())),
       'output-jar': Property(Nullable(Strings())),
-      'resource-dirs': Property(Arrays(Strings()), defaultValue: ['resources']),
+      'resource-dirs': Property(Arrays(Strings()), defaultValue: []),
       'repositories': Property(Arrays(Strings()), defaultValue: []),
       'dependencies': Property(
-          Maps<Map<String, Object?>, Objects>('Map',
-              valueType: _dependency,
+          Maps<Map<String, Object?>?, Nullable<Map<String, Object?>, Objects>>(
+              'Map',
+              valueType: Nullable(_dependency),
               description: 'Main dependencies of the project.'),
           defaultValue: <String, Object?>{}),
       'processor-dependencies': Property(
-          Maps<Map<String, Object?>, Objects>('Map',
-              valueType: _dependency,
+          Maps<Map<String, Object?>?, Nullable<Map<String, Object?>, Objects>>(
+              'Map',
+              valueType: Nullable(_dependency),
               description:
                   'Java annotation processor dependencies of the project.'),
           defaultValue: <String, Object?>{}),

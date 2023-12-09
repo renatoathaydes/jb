@@ -1,6 +1,6 @@
 processor-dependencies:
-    - com.google.errorprone:error_prone_core:2.16
-    - com.google.errorprone:error_prone_annotations:2.16
+    com.google.errorprone:error_prone_core:2.16:
+    com.google.errorprone:error_prone_annotations:2.16:
 
 processor-dependency-exclusion-patterns:
     - org.checkerframework:.*

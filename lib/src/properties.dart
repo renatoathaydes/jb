@@ -11,14 +11,13 @@ MapWithProperties resolvePropertiesFromMap(Map map) {
   final p = map['properties'];
   Properties properties = p is Map ? resolveProperties(p, const {}) : const {};
   Properties result = resolveProperties(map, properties);
-  result.remove('properties');
   return MapWithProperties(result, properties);
 }
 
 Map<String, Object?> resolveProperties(Map map, Properties properties) {
   if (properties.isEmpty) {
     return map.map((Object? key, Object? value) {
-      return MapEntry('$key', value);
+      return MapEntry('$key', _resolveValue(value, properties));
     });
   }
   return map.map((Object? key, Object? value) {

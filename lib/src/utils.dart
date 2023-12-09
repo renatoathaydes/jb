@@ -68,6 +68,7 @@ extension ListExtension on Iterable<String> {
   List<String> merge(Iterable<String> other, Properties props) =>
       followedBy(other)
           .map((e) => resolveString(e, props))
+          .toSet()
           .toList(growable: false);
 
   bool _javaRuntimeArg(String arg) => arg.startsWith('-J-');
@@ -142,11 +143,11 @@ extension StringMapExtension on Map<String, String> {
           resolveString(e.key, props), resolveString(e.value, props))));
 }
 
-extension DependencyMapExtension on Map<String, DependencySpec> {
-  Map<String, DependencySpec> merge(
-          Map<String, DependencySpec> other, Properties props) =>
+extension DependencyMapExtension on Map<String, DependencySpec?> {
+  Map<String, DependencySpec?> merge(
+          Map<String, DependencySpec?> other, Properties props) =>
       Map.fromEntries(entries.followedBy(other.entries).map((e) => MapEntry(
-          resolveString(e.key, props), e.value.resolveProperties(props))));
+          resolveString(e.key, props), e.value?.resolveProperties(props))));
 }
 
 extension MapEntryIterable<K, V> on Iterable<MapEntry<K, V>> {

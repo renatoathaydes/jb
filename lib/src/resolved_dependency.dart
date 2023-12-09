@@ -15,17 +15,17 @@ import 'tasks.dart';
 final class ResolvedProjectDependency {
   final ProjectDependency projectDependency;
   final String projectDir;
-  final JbConfiguration _config;
+  final JbConfigContainer _config;
 
   DependencySpec get spec => projectDependency.spec;
 
   String get path => projectDependency.path;
 
-  String? get group => _config.group;
+  String? get group => _config.config.group;
 
-  String? get module => _config.module;
+  String? get module => _config.config.module;
 
-  String? get version => _config.version;
+  String? get version => _config.config.version;
 
   DependencyScope get scope => projectDependency.spec.scope;
 
@@ -33,9 +33,9 @@ final class ResolvedProjectDependency {
       dir: (d) => CompileOutput.dir(_relativize(d)),
       jar: (j) => CompileOutput.jar(_relativize(j)));
 
-  String get runtimeLibsDir => _relativize(_config.runtimeLibsDir);
+  String get runtimeLibsDir => _relativize(_config.config.runtimeLibsDir);
 
-  String get compileLibsDir => _relativize(_config.compileLibsDir);
+  String get compileLibsDir => _relativize(_config.config.compileLibsDir);
 
   const ResolvedProjectDependency(
       this.projectDependency, this.projectDir, this._config);
@@ -45,7 +45,7 @@ final class ResolvedProjectDependency {
   }
 
   Future<void> initialize(Options options, JbFiles files) async {
-    final runner = JbRunner(files, _config);
+    final runner = JbRunner(files, _config.config);
     logger.info(() => "Initializing project dependency at '$projectDir'");
     final workingDir = Directory.current.path;
     await withCurrentDirectory(
@@ -93,12 +93,12 @@ extension Resolver on ProjectDependency {
       configSource = FileConfigSource([path]);
       projectDir = p.canonicalize(p.dirname(path));
     }
-    JbConfiguration config;
+    JbConfigContainer config;
     try {
       // the config loader defaults some stuff to the current directory,
       // so we must load it from the right dir.
       config = await withCurrentDirectory(
-          projectDir, () async => await configSource.load());
+          projectDir, () async => JbConfigContainer(await configSource.load()));
     } catch (e) {
       throw DartleException(
           message: 'Error loading project dependency at path: "$path": $e');

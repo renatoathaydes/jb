@@ -69,7 +69,7 @@ $pomHeader
                   {
                     'org.apache:json.parser:1.0.0': defaultSpec,
                     'com.junit.api:junit:4.12': defaultSpec,
-                  },
+                  }.entries,
                   emptyLocalDependencies)
               .toString(),
           equals('''\
@@ -105,7 +105,7 @@ $pomHeader
                         scope: DependencyScope.runtimeOnly, transitive: true),
                     'com.junit.api:junit:4.12': DependencySpec(
                         scope: DependencyScope.compileOnly, transitive: false),
-                  },
+                  }.entries,
                   emptyLocalDependencies)
               .toString(),
           equals('''\
@@ -148,7 +148,7 @@ $nonTransitiveDependency
                   version: '4.3.2.1'),
               {
                 'org.apache:json.parser:1.0.0': defaultSpec,
-              },
+              }.entries,
               ResolvedLocalDependencies([], [
                 ResolvedProjectDependency(
                     ProjectDependency(
@@ -158,7 +158,7 @@ $nonTransitiveDependency
                             path: 'jb-api'),
                         'jb-api'),
                     'jb-api',
-                    jbApiConfig)
+                    JbConfigContainer(jbApiConfig))
               ])).toString(),
           equals('''\
 $pomHeader
@@ -211,7 +211,7 @@ $pomHeader
               'org.apache:json.parser:1.0.0': defaultSpec,
               'junit:junit:4.12': DependencySpec(
                   transitive: true, scope: DependencyScope.compileOnly),
-            },
+            }.entries,
             const ResolvedLocalDependencies([], []),
           ).toString(),
           equals('''\

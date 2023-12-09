@@ -72,6 +72,7 @@ Future<ExtensionProject?> loadExtensionProject(
   });
   _verify(extensionConfig);
 
+  final configContainer = JbConfigContainer(config);
   final runner = JbRunner(files, extensionConfig);
   final workingDir = Directory.current.path;
   await withCurrentDirectory(
@@ -88,7 +89,7 @@ Future<ExtensionProject?> loadExtensionProject(
   // Dartle changes the current dir, so we must restore it here
   Directory.current = workingDir;
 
-  final jbExtensionConfig = await extensionConfig.output.when(
+  final jbExtensionConfig = await configContainer.output.when(
     dir: (d) async => await _jbExtensionFromDir(dir, d),
     jar: (j) async => await _jbExtensionFromJar(dir, j),
   );
@@ -97,7 +98,7 @@ Future<ExtensionProject?> loadExtensionProject(
       jbExtensionConfig.yaml, jbExtensionConfig.yamlUri);
 
   final tasks = await _createTasks(
-          extensionModel, extensionConfig, jvmExecutor, dir, files, config)
+          extensionModel, configContainer, jvmExecutor, dir, files, config)
       .toList();
 
   logger.log(profile,
@@ -146,7 +147,7 @@ void _verify(JbConfiguration config) {
 
 Stream<Task> _createTasks(
     JbExtensionModel extensionModel,
-    JbConfiguration extensionConfig,
+    JbConfigContainer extensionConfig,
     Sendable<JavaCommand, Object?> jvmExecutor,
     String dir,
     JbFiles files,
@@ -223,11 +224,12 @@ RunCondition _runCondition(
 }
 
 Future<String> _toClasspath(
-    String rootDir, JbConfiguration extensionConfig) async {
+    String rootDir, JbConfigContainer extensionConfig) async {
   final absRootDir = p.canonicalize(rootDir);
   final artifact = p.join(absRootDir,
       extensionConfig.output.when(dir: (d) => '$d/', jar: (j) => j));
-  final libsDir = Directory(p.join(absRootDir, extensionConfig.runtimeLibsDir));
+  final libsDir =
+      Directory(p.join(absRootDir, extensionConfig.config.runtimeLibsDir));
   if (await libsDir.exists()) {
     final libs = await libsDir
         .list()

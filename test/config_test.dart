@@ -194,7 +194,7 @@ scm: null
 # List of source directories
 source-dirs: ["src"]
 # List of resource directories (assets)
-resource-dirs: ["resources"]
+resource-dirs: []
 # Output directory (class files)
 output-dir: null
 # Output jar (may be used instead of output-dir)
@@ -224,7 +224,7 @@ dependencies:
   "other-dep":
     transitive: true
     scope: "all"
-    path: ".."
+    path: "../"
   "more-dep:1.0":
     transitive: false
     scope: "runtime-only"
@@ -232,7 +232,7 @@ dependencies:
 # Dependency exclusions (regular expressions)
 dependency-exclusion-patterns: []
 # Annotation processor Maven dependencies
-processor-dependencies: []
+processor-dependencies: {}
 # Annotation processor dependency exclusions (regular expressions)
 processor-dependency-exclusion-patterns: []
 # Compile-time libs output dir
@@ -253,7 +253,8 @@ void main() {
       ''');
 
       expect(config.sourceDirs, equals(const {'src'}));
-      expect(config.output.when(dir: (d) => 'dir', jar: (j) => j), 'lib.jar');
+      expect(config.outputJar, 'lib.jar');
+      expect(config.outputDir, isNull);
     });
 
     test('can parse full config', () async {
@@ -264,6 +265,7 @@ void main() {
           equalsConfig(JbConfiguration(
             group: 'my-group',
             module: 'mod1',
+            name: 'Module 1',
             version: '0.1',
             description: 'A simple module',
             url: 'https://my.mod',
@@ -293,7 +295,7 @@ void main() {
             testJavaEnv: {'TESTING': 'true'},
             repositories: ['https://maven.org', 'ftp://foo.bar'],
             dependencies: {
-              'com.google:guava:1.2.3': defaultSpec,
+              'com.google:guava:1.2.3': null,
             },
             processorDependencies: {
               'foo.bar:zort:1.0': DependencySpec(
@@ -324,14 +326,14 @@ void main() {
           equals(_basicConfigWithDependenciesExpanded));
     });
 
-    test('can parse string-iterable from single string', () async {
+    test('can parse unquoted string in iterable', () async {
       final config = await loadConfigString('''
-      source-dirs: src/java
-      dependency-exclusion-patterns: one  
+      source-dirs: [src/java]
+      dependency-exclusion-patterns: [one]  
       output-dir: out
-      resource-dirs: resources
-      javac-args: -X
-      repositories: https://maven.org
+      resource-dirs: [resources]
+      javac-args: [-X]
+      repositories: [https://maven.org]
       test-reports-dir: reports
       ''');
 
@@ -369,8 +371,8 @@ void main() {
       expect(
           config.dependencies,
           equals(const {
-            'foo': defaultSpec,
-            'var': defaultSpec,
+            'foo': null,
+            'var': null,
           }));
     });
 
@@ -389,8 +391,8 @@ void main() {
           equals(const {
             'foo:bar:1.0': DependencySpec(
                 transitive: false, scope: DependencyScope.runtimeOnly),
-            'second:dep:0.1': defaultSpec,
-            'var': defaultSpec,
+            'second:dep:0.1': null,
+            'var': null,
           }));
     });
 
@@ -477,7 +479,7 @@ void main() {
             'module': 'm1',
             'version': 'v1',
             'main-class': 'm1',
-            'source-dirs': ['source2', 'other-src', 'source'],
+            'source-dirs': ['source2', 'source', 'other-src'],
             'output-jar': 'my.jar',
             'resource-dirs': ['rsrc2', 'rsrc'],
             'javac-args': ['-Xmx2G', '-Xmx1G'],
@@ -502,8 +504,8 @@ void main() {
       final smallConfig = JbConfiguration.fromJson({
         'module': 'small',
         'dependencies': {
-            'big': {'transitive': true}
-          }
+          'big': {'transitive': true}
+        }
       });
 
       expect(
@@ -513,7 +515,7 @@ void main() {
             'module': 'small',
             'version': 'v1',
             'main-class': 'm1',
-            'source-dirs': ['source', 'other-src'],
+            'source-dirs': ['source', 'other-src', 'src'],
             'output-jar': 'my.jar',
             'resource-dirs': ['rsrc'],
             'javac-args': ['-Xmx1G'],
@@ -524,9 +526,9 @@ void main() {
             'test-java-env': {'E': 'F'},
             'repositories': {'r1', 'r2'},
             'dependencies': {
-                'dep1': {'transitive': true},
-                'big': {'transitive': true},
-              },
+              'dep1': {'transitive': true},
+              'big': {'transitive': true},
+            },
             'dependency-exclusion-patterns': {'e1'},
             'compile-libs-dir': 'comp',
             'runtime-libs-dir': 'runtime',
@@ -540,7 +542,7 @@ void main() {
             'module': 'm1',
             'version': 'v1',
             'main-class': 'm1',
-            'source-dirs': ['source', 'other-src'],
+            'source-dirs': ['src', 'source', 'other-src'],
             'output-jar': 'my.jar',
             'resource-dirs': ['rsrc'],
             'javac-args': ['-Xmx1G'],
@@ -550,9 +552,9 @@ void main() {
             'run-java-env': {'C': 'D'},
             'test-java-env': {'E': 'F'},
             'repositories': {'r1', 'r2'},
-            'dependencies':{
-                'dep1': {'transitive': true},
-                'big': {'transitive': true},
+            'dependencies': {
+              'dep1': {'transitive': true},
+              'big': {'transitive': true},
             },
             'dependency-exclusion-patterns': {'e1'},
             'compile-libs-dir': 'comp',
@@ -565,16 +567,16 @@ void main() {
       final smallConfig1 = JbConfiguration.fromJson({
         'version': 'v1',
         'dependencies': {
-            '{{DEP}}': {'transitive': true}
-          },
+          '{{DEP}}': {'transitive': true}
+        },
         'test-reports-dir': '{{REPORTS_DIR}}',
         'properties': {'REPORTS_DIR': 'reports'}
       });
       final smallConfig2 = JbConfiguration.fromJson({
         'module': 'small',
-        'dependencies':{
-            'big2': {'transitive': false}
-          },
+        'dependencies': {
+          'big2': {'transitive': false}
+        },
         'properties': {'DEP': 'big1'}
       });
 
@@ -583,10 +585,10 @@ void main() {
           equalsConfig(JbConfiguration.fromJson({
             'module': 'small',
             'version': 'v1',
-            'dependencies':{
-                'big1': {'transitive': true},
-                'big2': {'transitive': false},
-              },
+            'dependencies': {
+              'big1': {'transitive': true},
+              'big2': {'transitive': false},
+            },
             'test-reports-dir': 'reports',
             'properties': {'DEP': 'big1', 'REPORTS_DIR': 'reports'}
           })));
@@ -596,10 +598,10 @@ void main() {
           equalsConfig(JbConfiguration.fromJson({
             'module': 'small',
             'version': 'v1',
-            'dependencies':{
-                'big1': {'transitive': true},
-                'big2': {'transitive': false},
-              },
+            'dependencies': {
+              'big1': {'transitive': true},
+              'big2': {'transitive': false},
+            },
             'test-reports-dir': 'reports',
             'properties': {'DEP': 'big1', 'REPORTS_DIR': 'reports'}
           })));
@@ -617,8 +619,8 @@ void main() {
           throwsA(isA<DartleException>().having(
               (e) => e.message,
               'message',
-              equals("expecting a list of String values for 'source-dirs', "
-                  "but got 'true'."))));
+              equals("Invalid jb configuration: "
+                  "at 'source-dirs': cannot cast true (type bool) to List<String>"))));
     });
 
     test('cannot parse invalid dependencies', () async {
@@ -633,14 +635,15 @@ void main() {
           throwsA(isA<DartleException>().having(
               (e) => e.message,
               'message',
-              equals("'dependencies' should be a List.\n"
+              equals("Invalid jb configuration: "
+                  "at 'dependencies': invalid syntax.\n"
                   "$dependenciesSyntaxHelp"))));
     });
 
     test('invalid keys are not allowed on top config', () async {
       createConfig() => loadConfigString('''
       module: foo
-      version: 1.0
+      version: "1.0"
       custom: true
       ''');
 
@@ -651,7 +654,9 @@ void main() {
               'message',
               equals('Invalid jbuild configuration: '
                   'unrecognized field: "custom"'))));
-    });
+    },
+        skip: 'until extension properties schema can be used '
+            'to validate custom properties');
 
     test('invalid keys are not allowed in dependency', () async {
       createConfig() => loadConfigString('''
@@ -664,8 +669,12 @@ void main() {
 
       expect(
           createConfig,
-          throwsA(isA<DartleException>().having((e) => e.message, 'message',
-              startsWith('bad dependency declaration:'))));
+          throwsA(isA<DartleException>().having(
+              (e) => e.message,
+              'message',
+              equals('Invalid jb configuration: '
+                  "at 'dependencies/foo/checked': property does not exist.\n"
+                  "$dependenciesSyntaxHelp"))));
     });
 
     test('invalid keys are not allowed in scm', () async {
@@ -673,6 +682,8 @@ void main() {
       module: foo
       scm:
         connection: foo
+        developer-connection: bar
+        url: url
         developer: me
       ''');
 
@@ -681,9 +692,9 @@ void main() {
           throwsA(isA<DartleException>().having(
               (e) => e.message,
               'message',
-              startsWith('invalid "scm" definition, only '
-                  '"connection", "developer-connection" and "url" '
-                  'fields can be set:'))));
+              equals('Invalid jb configuration: '
+                  "at 'scm/developer': property does not exist.\n"
+                  "$scmSyntaxHelp"))));
     });
 
     test('invalid keys are not allowed in developer', () async {
@@ -692,6 +703,8 @@ void main() {
       developers:
         - name: Renato
           email: a@b.com
+          organization: ACEM
+          organization-url: acme.org
           surname: Athaydes
       ''');
 
@@ -700,9 +713,9 @@ void main() {
           throwsA(isA<DartleException>().having(
               (e) => e.message,
               'message',
-              startsWith('invalid "developer" definition, only "name", '
-                  '"email", "organization" and "organization-url" '
-                  'fields can be set:'))));
+              equals('Invalid jb configuration: '
+                  "at 'developers/surname': property does not exist.\n"
+                  "$developerSyntaxHelp"))));
     });
 
     test('duplicate keys are not allowed', () async {

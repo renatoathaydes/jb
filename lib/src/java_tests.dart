@@ -21,14 +21,14 @@ class JUnit {
 }
 
 /// Find JUnit information from a jb project dependencies, if available.
-JUnit? findJUnitSpec(Map<String, DependencySpec> dependencies) {
-  String? junitApiVersion = dependencies.entries
+JUnit? findJUnitSpec(Iterable<MapEntry<String, DependencySpec>> dependencies) {
+  String? junitApiVersion = dependencies
       .where((e) => e.value.scope.includedInCompilation())
       .findVersion(_junitApiPrefix);
 
   if (junitApiVersion == null) return null;
 
-  String? junitConsoleVersion = dependencies.entries
+  String? junitConsoleVersion = dependencies
       .where((e) => e.value.scope.includedAtRuntime())
       .findVersion(_junitConsolePrefix);
 

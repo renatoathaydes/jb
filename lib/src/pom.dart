@@ -48,7 +48,9 @@ Result<Artifact> createArtifact(JbConfiguration config) {
 /// The resulting POM is not meant to be used as a build file with the Maven
 /// tool because it does not contain non-published POM data, such as
 /// source locations, Maven plugins for tests/compilation etc.
-String createPom(Artifact artifact, Map<String, DependencySpec> dependencies,
+String createPom(
+    Artifact artifact,
+    Iterable<MapEntry<String, DependencySpec>> dependencies,
     ResolvedLocalDependencies localDependencies) {
   final xml = XmlBuilder();
   xml
@@ -67,7 +69,7 @@ String createPom(Artifact artifact, Map<String, DependencySpec> dependencies,
       xml.addAll(artifact.developers, 'developers', xml.developer);
       if (dependencies.isNotEmpty) {
         xml.element('dependencies', nest: () {
-          for (final dep in dependencies.entries) {
+          for (final dep in dependencies) {
             final spec = dep.value;
             if (spec.path == null) xml.dependency(dep.key, spec);
           }

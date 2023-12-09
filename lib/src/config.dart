@@ -1,9 +1,12 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+import 'package:collection/collection.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart' show failBuild, DartleException, TaskPhase;
 import 'package:dartle/dartle_cache.dart' show ChangeKind;
 import 'package:logging/logging.dart' as log;
+import 'package:schemake/schemake.dart';
 import 'package:yaml/yaml.dart';
 
 import 'ansi.dart';
@@ -58,13 +61,52 @@ Future<JbConfiguration> loadConfigString(String config) async {
   if (json is Map) {
     final resolvedMap = resolvePropertiesFromMap(json);
     final imports = resolvedMap.map.remove('imports');
-    return await JbConfiguration.fromJson(resolvedMap.map)
-        .applyImports(imports);
+    try {
+      return await JbConfiguration.fromJson(resolvedMap.map)
+          .applyImports(imports);
+    } on PropertyTypeException catch (e) {
+      final help = _helpForProperty(e.propertyPath);
+      if (help.isEmpty) {
+        throw DartleException(
+            message: 'Invalid jb configuration: '
+                "at '${e.propertyPath.join('/')}': ${e.message}");
+      }
+      throw DartleException(
+          message: 'Invalid jb configuration: '
+              "at '${e.propertyPath.join('/')}': invalid syntax.\n$help");
+    } on UnknownPropertyException catch (e) {
+      final help = _helpForProperty(e.propertyPath);
+      throw DartleException(
+          message: 'Invalid jb configuration: '
+              "at '${e.propertyPath.join('/')}': property does not exist."
+              "${help.isEmpty ? '' : '\n$help'}");
+    } on MissingPropertyException catch (e) {
+      final help = _helpForProperty(e.propertyPath);
+      throw DartleException(
+          message: 'Invalid jb configuration: '
+              "at '${e.propertyPath.join('/')}': mandatory property is missing."
+              "${help.isEmpty ? '' : '\n$help'}");
+    }
   } else {
     throw DartleException(
         message: 'Expecting jb configuration to be a Map, '
             'but it is ${json?.runtimeType}');
   }
+}
+
+String _helpForProperty(List<String> propertyPath) {
+  if (propertyPath.isEmpty) return '';
+  final property = propertyPath.first;
+  if (property == 'dependencies' || property == 'processor-dependencies') {
+    return dependenciesSyntaxHelp;
+  }
+  if (propertyPath.first == 'scm') {
+    return scmSyntaxHelp;
+  }
+  if (propertyPath.first == 'developers') {
+    return developerSyntaxHelp;
+  }
+  return '';
 }
 
 /// Parse the YAML/JSON jb extension model.
@@ -180,6 +222,17 @@ class JbExtensionModel {
   }
 }
 
+class JbConfigContainer {
+  final JbConfiguration config;
+  final CompileOutput output;
+
+  JbConfigContainer(this.config)
+      : output = config.outputDir.vmapOr(
+            CompileOutput.dir,
+            () => CompileOutput.jar(config.outputJar ??
+                '${p.basename(Directory.current.path)}.jar'));
+}
+
 /// jb configuration model.
 extension JbConfigExtension on JbConfiguration {
   /// Merge this configuration with another.
@@ -254,8 +307,19 @@ extension JbConfigExtension on JbConfiguration {
     }
   }
 
-  CompileOutput get output => outputDir.vmapOr(CompileOutput.dir,
-      () => CompileOutput.jar(outputDir ?? '${Directory.current.path}.jar'));
+  Iterable<MapEntry<String, DependencySpec>> get allDependencies =>
+      _depsIterable(dependencies);
+
+  Iterable<MapEntry<String, DependencySpec>> get allProcessorDependencies =>
+      _depsIterable(processorDependencies);
+
+  Iterable<MapEntry<String, DependencySpec>> _depsIterable(
+      Map<String, DependencySpec?> deps) sync* {
+    for (final dep in deps.entries) {
+      final value = dep.value;
+      yield MapEntry(dep.key, value ?? defaultSpec);
+    }
+  }
 
   /// Get the list of JBuild global arguments (pre-args)
   /// from this configuration.
@@ -338,7 +402,7 @@ extension JbConfigExtension on JbConfiguration {
 
   /// Get the install arguments for the compile task from this configuration.
   List<String> installArgsForCompilation() {
-    final depsToInstall = dependencies.entries
+    final depsToInstall = allDependencies
         .where((e) =>
             e.value.scope.includedInCompilation() && e.value.path == null)
         .map((e) => e.key)
@@ -358,20 +422,22 @@ extension JbConfigExtension on JbConfiguration {
   /// Get the install arguments for the installRuntime task from this configuration.
   List<String> installArgsForRuntime() {
     return _installArgs(
-        dependencies, dependencyExclusionPatterns.toSet(), runtimeLibsDir);
+        allDependencies, dependencyExclusionPatterns.toSet(), runtimeLibsDir);
   }
 
   /// Get the install arguments for the installProcessor task from this configuration.
   List<String> installArgsForProcessor(String destinationDir) {
-    return _installArgs(processorDependencies,
+    return _installArgs(allProcessorDependencies,
         processorDependencyExclusionPatterns.toSet(), destinationDir);
   }
 
-  static List<String> _installArgs(Map<String, DependencySpec> deps,
-      Set<String> exclusions, String destinationDir) {
+  static List<String> _installArgs(
+      Iterable<MapEntry<String, DependencySpec>> deps,
+      Set<String> exclusions,
+      String destinationDir) {
     if (deps.isEmpty) return const [];
 
-    final depsToInstall = deps.entries
+    final depsToInstall = deps
         .where((e) => e.value.scope.includedAtRuntime() && e.value.path == null)
         .map((e) => e.key)
         .toList(growable: false);
@@ -392,14 +458,20 @@ extension JbConfigExtension on JbConfiguration {
     String quote(String? value) =>
         value == null ? color('null', kwColor) : color('"$value"', strColor);
 
-    String multilineList(Iterable<String> lines) {
-      if (lines.isEmpty) return ' []';
-      return '\n${lines.map((line) => '  - $line').join('\n')}';
+    String multilineList(Iterable<String> lines, {bool isMap = false}) {
+      if (lines.isEmpty) {
+        if (isMap) return ' {}';
+        return ' []';
+      }
+      final dash = isMap ? '' : '- ';
+      return '\n${lines.map((line) => '  $dash$line').join('\n')}';
     }
 
     String depsToYaml(Iterable<MapEntry<String, DependencySpec>> deps) {
-      return multilineList(deps.map(
-          (dep) => '${quote(dep.key)}:\n${dep.value.toYaml(color, '    ')}'));
+      return multilineList(
+          deps.map((dep) =>
+              '${quote(dep.key)}:\n${dep.value.toYaml(color, '    ')}'),
+          isMap: true);
     }
 
     String developersToYaml(Iterable<Developer> developers) {
@@ -466,11 +538,11 @@ test-java-env:${mapToYaml(testJavaEnv)}
 ${color('# Maven repositories (URLs or directories)', commentColor)}
 repositories: [${repositories.map(quote).join(', ')}]
 ${color('# Maven dependencies', commentColor)}
-dependencies:${depsToYaml(dependencies.entries)}
+dependencies:${depsToYaml(allDependencies)}
 ${color('# Dependency exclusions (regular expressions)', commentColor)}
 dependency-exclusion-patterns:${multilineList(dependencyExclusionPatterns.map(quote))}
 ${color('# Annotation processor Maven dependencies', commentColor)}
-processor-dependencies:${depsToYaml(processorDependencies.entries)}
+processor-dependencies:${depsToYaml(allProcessorDependencies)}
 ${color('# Annotation processor dependency exclusions (regular expressions)', commentColor)}
 processor-dependency-exclusion-patterns:${multilineList(processorDependencyExclusionPatterns.map(quote))}
 ${color('# Compile-time libs output dir', commentColor)}
@@ -675,8 +747,8 @@ const dependenciesSyntaxHelp = '''
 Use the following syntax to declare dependencies:
 
   dependencies:
-    - first:dep:1.0
-    - another:dep:2.0:
+    first:dep:1.0:
+    another:dep:2.0:
         transitive: false  # true (at runtime) by default
         scope: runtime-only # or: compile-only, all
         path: "<path to local project or jar>"

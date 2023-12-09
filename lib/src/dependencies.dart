@@ -14,10 +14,10 @@ Future<void> writeDependencies(
     {required File depsFile,
     required LocalDependencies localDeps,
     required LocalDependencies localProcessorDeps,
-    required Map<String, DependencySpec> deps,
+    required Iterable<MapEntry<String, DependencySpec>> deps,
     required Set<String> exclusions,
     required File processorDepsFile,
-    required Map<String, DependencySpec> processorDeps,
+    required Iterable<MapEntry<String, DependencySpec>> processorDeps,
     required Set<String> processorsExclusions}) async {
   await _withFile(depsFile, (handle) async {
     handle.write('dependencies:\n');
@@ -40,9 +40,12 @@ Future<void> _withFile(File file, Future<void> Function(IOSink) action) async {
   }
 }
 
-Future<void> _writeDeps(IOSink sink, Map<String, DependencySpec> deps,
-    Set<String> exclusions, LocalDependencies localDeps) async {
-  final nonLocalDeps = deps.entries
+Future<void> _writeDeps(
+    IOSink sink,
+    Iterable<MapEntry<String, DependencySpec>> deps,
+    Set<String> exclusions,
+    LocalDependencies localDeps) async {
+  final nonLocalDeps = deps
       .where((e) => e.value.path == null)
       .toList(growable: false)
     ..sort((a, b) => a.key.compareTo(b.key));
@@ -95,10 +98,10 @@ Future<int> printDependencies(
     LocalDependencies localDependencies,
     LocalDependencies localProcessorDependencies,
     List<String> args) async {
-  final deps = config.dependencies.entries
+  final deps = config.allDependencies
       .where((dep) => dep.value.path == null)
       .map((dep) => dep.key);
-  final procDeps = config.processorDependencies.entries
+  final procDeps = config.allProcessorDependencies
       .where((dep) => dep.value.path == null)
       .map((dep) => dep.key);
 

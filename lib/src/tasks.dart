@@ -48,8 +48,10 @@ final publishPhase = TaskPhase.custom(TaskPhase.build.index + 1, 'publish');
 
 /// Create run condition for the `compile` task.
 RunOnChanges _createCompileRunCondition(
-    JbConfiguration config, DartleCache cache) {
-  final outputs = config.output.when(dir: (d) => dir(d), jar: (j) => file(j));
+    JbConfigContainer configContainer, DartleCache cache) {
+  final config = configContainer.config;
+  final outputs =
+      configContainer.output.when(dir: (d) => dir(d), jar: (j) => file(j));
   return RunOnChanges(
       inputs: dirs(config.sourceDirs.followedBy(config.resourceDirs)),
       outputs: outputs,
@@ -57,8 +59,9 @@ RunOnChanges _createCompileRunCondition(
 }
 
 RunCondition _createPublicationCompileRunCondition(
-    JbConfiguration config, DartleCache cache) {
-  return config.output.when(
+    JbConfigContainer configContainer, DartleCache cache) {
+  final config = configContainer.config;
+  return configContainer.output.when(
       dir: (d) => const CannotRun(_reasonPublicationCompileCannotRun),
       jar: (jar) => RunOnChanges(
           inputs: dirs(config.sourceDirs.followedBy(config.resourceDirs)),
@@ -71,7 +74,7 @@ RunCondition _createPublicationCompileRunCondition(
 }
 
 /// Create the `compile` task.
-Task createCompileTask(JbFiles jbFiles, JbConfiguration config,
+Task createCompileTask(JbFiles jbFiles, JbConfigContainer config,
     DartleCache cache, JBuildSender jBuildSender) {
   return Task(
       (List<String> args, [ChangeSet? changes]) =>
@@ -87,7 +90,7 @@ Task createCompileTask(JbFiles jbFiles, JbConfiguration config,
 }
 
 /// Create the publicationCompile task.
-Task createPublicationCompileTask(JbFiles jbFiles, JbConfiguration config,
+Task createPublicationCompileTask(JbFiles jbFiles, JbConfigContainer config,
     DartleCache cache, JBuildSender jBuildSender) {
   return Task(
       (List<String> args) =>
@@ -102,7 +105,7 @@ Task createPublicationCompileTask(JbFiles jbFiles, JbConfiguration config,
       description: 'Compile Java source code, javadocs and sources jar.');
 }
 
-Future<void> _publishCompile(JbFiles jbFiles, JbConfiguration config,
+Future<void> _publishCompile(JbFiles jbFiles, JbConfigContainer config,
     List<String> args, DartleCache cache, JBuildSender jBuildSender) async {
   config.output.when(
       dir: (_) => failBuild(reason: _reasonPublicationCompileCannotRun),
@@ -113,12 +116,13 @@ Future<void> _publishCompile(JbFiles jbFiles, JbConfiguration config,
 
 Future<void> _compile(
     JbFiles jbFiles,
-    JbConfiguration config,
+    JbConfigContainer configContainer,
     ChangeSet? changeSet,
     List<String> args,
     DartleCache cache,
     JBuildSender jBuildSender,
     {bool publication = false}) async {
+  final config = configContainer.config;
   final stopwatch = Stopwatch()..start();
   final changes =
       await computeAllChanges(changeSet, jbFiles.javaSrcFileTreeFile);
@@ -144,7 +148,7 @@ Future<void> _compile(
 
   stopwatch.reset();
   logger.fine('Computing Java source tree for incremental builds');
-  final output = config.output.when(dir: (d) => d, jar: (j) => j);
+  final output = configContainer.output.when(dir: (d) => d, jar: (j) => j);
   await storeNewFileTree(compileTaskName, config, jBuildSender, output,
       jbFiles.javaSrcFileTreeFile);
   logger.log(
@@ -168,9 +172,9 @@ Task createWriteDependenciesTask(
       cache: cache);
 
   // don't send the full config to the Task!
-  final deps = config.dependencies;
+  final deps = config.allDependencies.toList();
   final exclusions = config.dependencyExclusionPatterns.toSet();
-  final procDeps = config.processorDependencies;
+  final procDeps = config.allProcessorDependencies.toList();
   final procExc = config.processorDependencyExclusionPatterns.toSet();
 
   return Task(
@@ -370,7 +374,7 @@ Task createEclipseTask(JbConfiguration config) {
 /// Create the generatePom task.
 Task createGeneratePomTask(
     Result<Artifact> artifact,
-    Map<String, DependencySpec> dependencies,
+    Iterable<MapEntry<String, DependencySpec>> dependencies,
     ResolvedLocalDependencies localDependencies) {
   return Task(
       (List<String> args) => _pom(
@@ -400,10 +404,11 @@ Future<void> _pom(List<String> args, Object pom) async {
 /// Create the publish task.
 Task createPublishTask(
     Result<Artifact> artifact,
-    Map<String, DependencySpec> dependencies,
+    Iterable<MapEntry<String, DependencySpec>> dependencies,
     String? outputJar,
     ResolvedLocalDependencies localDependencies) {
-  return Task(Publisher(artifact, dependencies, localDependencies, outputJar),
+  return Task(
+      Publisher(artifact, dependencies.toList(), localDependencies, outputJar),
       name: publishTaskName,
       dependsOn: const {publicationCompileTaskName},
       runCondition: artifact.runCondition(),
@@ -414,7 +419,7 @@ Task createPublishTask(
 }
 
 /// Create the `run` task.
-Task createRunTask(JbFiles files, JbConfiguration config, DartleCache cache) {
+Task createRunTask(JbFiles files, JbConfigContainer config, DartleCache cache) {
   return Task((List<String> args) => _run(files.jbuildJar, config, args),
       dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
       argsValidator: const AcceptAnyArgs(),
@@ -422,8 +427,9 @@ Task createRunTask(JbFiles files, JbConfiguration config, DartleCache cache) {
       description: 'Run Java Main class.');
 }
 
-Future<void> _run(
-    File jbuildJar, JbConfiguration config, List<String> args) async {
+Future<void> _run(File jbuildJar, JbConfigContainer configContainer,
+    List<String> args) async {
+  final config = configContainer.config;
   var mainClass = config.mainClass ?? '';
   if (mainClass.isEmpty) {
     const mainClassArg = '--main-class=';
@@ -442,7 +448,7 @@ Future<void> _run(
   }
 
   final classpath = {
-    config.output.when(dir: (d) => d, jar: (j) => j),
+    configContainer.output.when(dir: (d) => d, jar: (j) => j),
     config.runtimeLibsDir,
     p.join(config.runtimeLibsDir, '*'),
   }.join(classpathSeparator);
@@ -471,7 +477,7 @@ Task createDownloadTestRunnerTask(JbConfiguration config,
 
 /// Create the `test` task.
 Task createTestTask(
-    File jbuildJar, JbConfiguration config, DartleCache cache, bool noColor) {
+    File jbuildJar, JbConfigContainer config, DartleCache cache, bool noColor) {
   return Task(
       (List<String> args) => _test(jbuildJar, config, cache, noColor, args),
       name: testTaskName,
@@ -486,7 +492,7 @@ Task createTestTask(
 
 Future<void> _downloadTestRunner(JBuildSender jBuildSender,
     JbConfiguration config, DartleCache cache) async {
-  final junit = findJUnitSpec(config.dependencies);
+  final junit = findJUnitSpec(config.allDependencies);
   if (junit == null) {
     throw DartleException(
         message: 'cannot run tests as no test libraries have been detected.\n'
@@ -503,11 +509,12 @@ Future<void> _downloadTestRunner(JBuildSender jBuildSender,
   }
 }
 
-Future<void> _test(File jbuildJar, JbConfiguration config, DartleCache cache,
-    bool noColor, List<String> args) async {
+Future<void> _test(File jbuildJar, JbConfigContainer configContainer,
+    DartleCache cache, bool noColor, List<String> args) async {
+  final config = configContainer.config;
   final libs = Directory(config.runtimeLibsDir).list();
   final classpath = {
-    config.output.when(dir: (d) => d, jar: (j) => j),
+    configContainer.output.when(dir: (d) => d, jar: (j) => j),
     config.runtimeLibsDir,
     await for (final lib in libs)
       if (p.extension(lib.path) == '.jar') lib.path,
@@ -528,7 +535,7 @@ Future<void> _test(File jbuildJar, JbConfiguration config, DartleCache cache,
         mainClass,
         '--classpath=$classpath',
         if (!hasCustomSelect)
-          '--scan-classpath=${config.output.when(dir: (d) => d, jar: (j) => j)}',
+          '--scan-classpath=${configContainer.output.when(dir: (d) => d, jar: (j) => j)}',
         '--reports-dir=${config.testReportsDir}',
         '--fail-if-no-tests',
         if (noColor) '--disable-ansi-colors',
@@ -576,7 +583,7 @@ Task createShowConfigTask(JbConfiguration config, bool noColor) {
 }
 
 /// Create the `requirements` task.
-Task createRequirementsTask(File jbuildJar, JbConfiguration config) {
+Task createRequirementsTask(File jbuildJar, JbConfigContainer config) {
   return Task((List<String> args) => _requirements(jbuildJar, config, args),
       name: requirementsTaskName,
       argsValidator: const AcceptAnyArgs(),
@@ -584,10 +591,11 @@ Task createRequirementsTask(File jbuildJar, JbConfiguration config) {
       description: 'Shows information about project requirements.');
 }
 
-Future<void> _requirements(
-    File jbuildJar, JbConfiguration config, List<String> args) async {
-  final out = config.output.when(dir: (dir) => dir, jar: (jar) => jar);
-  final exitCode = await logRequirements(jbuildJar, config, [out, ...args]);
+Future<void> _requirements(File jbuildJar, JbConfigContainer configContainer,
+    List<String> args) async {
+  final out = configContainer.output.when(dir: (dir) => dir, jar: (jar) => jar);
+  final exitCode =
+      await logRequirements(jbuildJar, configContainer.config, [out, ...args]);
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild requirements command failed', exitCode: exitCode);

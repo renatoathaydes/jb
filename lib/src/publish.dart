@@ -29,7 +29,7 @@ class Publisher {
           ':-m (or :-n for the older repo) for Maven Central');
 
   final Result<Artifact> artifact;
-  final Map<String, DependencySpec> dependencies;
+  final Iterable<MapEntry<String, DependencySpec>> dependencies;
   final ResolvedLocalDependencies localDependencies;
   final String? jar;
 
