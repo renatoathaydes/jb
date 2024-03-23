@@ -24,7 +24,7 @@ void main() {
               '<methodCall>'
               '<methodName>Hi.hello</methodName>'
               '<params><param>'
-              '<value><string>joe</string></value>'
+              '<value>joe</value>'
               '</param></params>'
               '</methodCall>'));
     });
@@ -36,8 +36,8 @@ void main() {
               '<methodCall>'
               '<methodName>sayHi</methodName>'
               '<params>'
-              '<param><value><string>joe</string></value></param>'
-              '<param><value><string>mary</string></value></param>'
+              '<param><value>joe</value></param>'
+              '<param><value>mary</value></param>'
               '</params>'
               '</methodCall>'));
     });
@@ -52,8 +52,8 @@ void main() {
               '<methodName>sayHi</methodName>'
               '<params>'
               '<param><value><array><data>'
-              '<value><string>joe</string></value>'
-              '<value><string>mary</string></value>'
+              '<value>joe</value>'
+              '<value>mary</value>'
               '</data></array></value></param>'
               '</params>'
               '</methodCall>'));
