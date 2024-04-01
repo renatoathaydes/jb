@@ -63,8 +63,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
         'java',
         [
           ..._jvmArgs,
-          '-cp',
-          _classpath,
+          if (_classpath.isNotEmpty) ...['-cp', _classpath],
           'jbuild.cli.RpcMain',
           if (logger.isLoggable(Level.FINE)) '-V',
         ],
@@ -241,6 +240,8 @@ class _JBuildRpc {
       throw DartleException(
           message:
               'RPC request failed (code=${resp.statusCode}): ${await resp.text()}');
+    } on DartleException {
+      rethrow;
     } catch (e) {
       throw DartleException(message: 'RPC request failed: $e');
     } finally {

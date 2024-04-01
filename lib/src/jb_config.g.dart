@@ -45,7 +45,7 @@ class JbConfiguration {
     this.url,
     this.mainClass,
     this.extensionProject,
-    this.sourceDirs = const ['src'],
+    this.sourceDirs = const [],
     this.outputDir,
     this.outputJar,
     this.resourceDirs = const [],
@@ -396,8 +396,7 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
       sourceDirs: convertPropertyOrDefault(
           const Arrays<String, Strings>(Strings()),
           'source-dirs',
-          value,
-          const ['src']),
+          value, const []),
       outputDir: convertProperty(
           const Nullable<String, Strings>(Strings()), 'output-dir', value),
       outputJar: convertProperty(

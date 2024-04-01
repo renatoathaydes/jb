@@ -192,7 +192,7 @@ developers: []
 # Source control management
 scm: null
 # List of source directories
-source-dirs: ["src"]
+source-dirs: []
 # List of resource directories (assets)
 resource-dirs: []
 # Output directory (class files)
@@ -252,7 +252,7 @@ void main() {
       output-jar: lib.jar
       ''');
 
-      expect(config.sourceDirs, equals(const {'src'}));
+      expect(config.sourceDirs, equals(const []));
       expect(config.outputJar, 'lib.jar');
       expect(config.outputDir, isNull);
     });
@@ -515,7 +515,7 @@ void main() {
             'module': 'small',
             'version': 'v1',
             'main-class': 'm1',
-            'source-dirs': ['source', 'other-src', 'src'],
+            'source-dirs': ['source', 'other-src'],
             'output-jar': 'my.jar',
             'resource-dirs': ['rsrc'],
             'javac-args': ['-Xmx1G'],
@@ -542,7 +542,7 @@ void main() {
             'module': 'm1',
             'version': 'v1',
             'main-class': 'm1',
-            'source-dirs': ['src', 'source', 'other-src'],
+            'source-dirs': ['source', 'other-src'],
             'output-jar': 'my.jar',
             'resource-dirs': ['rsrc'],
             'javac-args': ['-Xmx1G'],

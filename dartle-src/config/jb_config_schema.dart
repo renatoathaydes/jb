@@ -65,7 +65,7 @@ const jbConfig = Objects(
       'url': Property(Nullable(Strings())),
       'main-class': Property(Nullable(Strings())),
       'extension-project': Property(Nullable(Strings())),
-      'source-dirs': Property(Arrays(Strings()), defaultValue: ['src']),
+      'source-dirs': Property(Arrays(Strings()), defaultValue: []),
       'output-dir': Property(Nullable(Strings())),
       'output-jar': Property(Nullable(Strings())),
       'resource-dirs': Property(Arrays(Strings()), defaultValue: []),

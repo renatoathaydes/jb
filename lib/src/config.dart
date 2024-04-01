@@ -339,7 +339,9 @@ extension JbConfigExtension on JbConfiguration {
   Future<List<String>> compileArgs(String processorLibsDir,
       [TransitiveChanges? changes]) async {
     final result = <String>[];
-    result.addAll(['-cp', compileLibsDir]);
+    if (compileLibsDir.isNotEmpty) {
+      result.addAll(['-cp', compileLibsDir]);
+    }
     outputDir?.vmap((d) => result.addAll(['-d', d]));
     outputJar?.vmap((jar) => result.addAll(['-j', jar]));
     for (final r in resourceDirs.toSet()) {
@@ -394,8 +396,10 @@ extension JbConfigExtension on JbConfiguration {
     }
 
     // previous compilation output must be part of the classpath
-    args.add('-cp');
-    args.add(outputDir ?? outputJar ?? '');
+    (outputDir ?? outputJar ?? '').ifNonBlank((cp) {
+      args.add('-cp');
+      args.add(cp);
+    });
 
     return incremental;
   }
