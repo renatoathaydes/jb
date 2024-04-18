@@ -62,7 +62,7 @@ void main() {
             'with-deps.jar',
             'compile-libs',
             p.join('compile-libs', 'lists-1.0.jar'),
-            p.join('compile-libs', 'build', 'minimal-java-project.jar'),
+            p.join('compile-libs', 'minimal-java-project.jar'),
           ],
           reason: 'Did not create all artifacts.\n\n'
               'Stdout:\n${jbResult.stdout.join('\n')}\n\n'
@@ -191,7 +191,7 @@ void main() {
           Directory(p.join(exampleExtensionDir, 'build')), [
         'example-extension.jar',
         'compile-libs',
-        p.join('compile-libs', 'jbuild-api-0.8.0.jar'),
+        p.join('compile-libs', 'jbuild-api.jar'),
       ]);
     });
   });
@@ -202,6 +202,7 @@ void main() {
         // uses the example extension project
         p.join(exampleExtensionDir, 'build'),
         p.join(exampleExtensionDir, '.jb-cache'),
+        p.join(usesExtensionDir, 'output-resources'),
       ], includeHidden: true));
     });
 
@@ -211,6 +212,28 @@ void main() {
       expectSuccess(jbResult);
       expect(jbResult.stdout.join('\n'),
           contains('Extension task running: SampleTask'));
+    }, timeout: const Timeout(Duration(seconds: 10)));
+
+    test('can run custom task with config defined by extension project',
+        () async {
+      var jbResult = await runJb(
+          Directory(usesExtensionDir), const ['copyFile', '--no-color']);
+      expectSuccess(jbResult);
+      expect(jbResult.stdout.join('\n'),
+          contains('Copying 2 file(s) to output-resources directory'));
+      await assertDirectoryContents(
+          Directory(p.join(usesExtensionDir, 'output-resources')), [
+        'hello.txt',
+        'bye.txt',
+      ]);
+      expect(
+          await File(p.join(usesExtensionDir, 'output-resources', 'hello.txt'))
+              .readAsString(),
+          equals('Hello'));
+      expect(
+          await File(p.join(usesExtensionDir, 'output-resources', 'bye.txt'))
+              .readAsString(),
+          equals('Bye'));
     }, timeout: const Timeout(Duration(seconds: 10)));
   });
 

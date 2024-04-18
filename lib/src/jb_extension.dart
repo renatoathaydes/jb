@@ -72,7 +72,8 @@ Future<ExtensionProject?> loadExtensionProject(
   });
   _verify(extensionConfig);
 
-  final configContainer = JbConfigContainer(config);
+  final configContainer =
+      await withCurrentDirectory(dir, () => JbConfigContainer(config));
   final runner = JbRunner(files, extensionConfig);
   final workingDir = Directory.current.path;
   await withCurrentDirectory(
@@ -149,11 +150,11 @@ Stream<Task> _createTasks(
     JbExtensionModel extensionModel,
     JbConfigContainer extensionConfig,
     Sendable<JavaCommand, Object?> jvmExecutor,
-    String dir,
+    String extensionDir,
     JbFiles files,
     JbConfiguration config) async* {
-  final cache = DartleCache(p.join(dir, files.jbCache));
-  final classpath = await _toClasspath(dir, extensionConfig);
+  final cache = DartleCache(p.join(extensionDir, files.jbCache));
+  final classpath = await _toClasspath(extensionDir, extensionConfig);
   for (final task in extensionModel.extensionTasks) {
     final name = task.name;
     final taskConfig = config.extras[name];
@@ -164,8 +165,7 @@ Stream<Task> _createTasks(
     }
     final constructorData =
         resolveConstructorData(name, taskConfig, task.constructors, config);
-    yield _createTask(
-        jvmExecutor, classpath, task, dir, cache, constructorData);
+    yield _createTask(jvmExecutor, classpath, task, cache, constructorData);
   }
 }
 
@@ -173,12 +173,11 @@ Task _createTask(
     Sendable<JavaCommand, Object?> jvmExecutor,
     String classpath,
     ExtensionTask extensionTask,
-    String path,
     DartleCache cache,
     List<Object?> constructorData) {
-  final runCondition = _runCondition(extensionTask, path, cache);
+  final runCondition = _runCondition(extensionTask, cache);
   return Task(
-      _taskAction(jvmExecutor, classpath, extensionTask, path, constructorData),
+      _taskAction(jvmExecutor, classpath, extensionTask, constructorData),
       name: extensionTask.name,
       argsValidator: const AcceptAnyArgs(),
       description: extensionTask.description,
@@ -191,36 +190,30 @@ Function(List<String> p1) _taskAction(
     Sendable<JavaCommand, Object?> jvmExecutor,
     String classpath,
     ExtensionTask extensionTask,
-    String path,
     List<Object?> constructorData) {
   return (args) async {
     logger.fine(() => 'Requesting JBuild to run classpath=$classpath, '
         'className=${extensionTask.className}, '
         'method=${extensionTask.methodName}, '
         'args=$args');
-    return await withCurrentDirectory(
-        path,
-        () async => await jvmExecutor.send(RunJava(
-            extensionTask.name,
-            classpath,
-            extensionTask.className,
-            extensionTask.methodName,
-            args,
-            constructorData)));
+    return await jvmExecutor.send(RunJava(
+        extensionTask.name,
+        classpath,
+        extensionTask.className,
+        extensionTask.methodName,
+        args,
+        constructorData));
   };
 }
 
-RunCondition _runCondition(
-    ExtensionTask extensionTask, String path, DartleCache cache) {
+RunCondition _runCondition(ExtensionTask extensionTask, DartleCache cache) {
   if (extensionTask.inputs.isEmpty && extensionTask.outputs.isEmpty) {
     return const AlwaysRun();
   }
   return RunOnChanges(
       cache: cache,
-      inputs: patternFileCollection(
-          extensionTask.inputs.map((f) => p.join(path, f))),
-      outputs: patternFileCollection(
-          extensionTask.outputs.map((f) => p.join(path, f))));
+      inputs: patternFileCollection(extensionTask.inputs),
+      outputs: patternFileCollection(extensionTask.outputs));
 }
 
 Future<String> _toClasspath(

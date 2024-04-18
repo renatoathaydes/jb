@@ -26,9 +26,10 @@ String _rpcParams(List<Object> args) {
 String _rpcParam(Object arg) {
   return switch (arg) {
     String s => '<param>${_rpcValue(s)}</param>',
-    List<String> list => '<param><value><array><data>'
-        '${list.map(_rpcValue).join()}'
-        '</data></array></value></param>',
+    List list when (list.every((s) => s is String)) =>
+      '<param><value><array><data>'
+          '${list.map((s) => _rpcValue(s as String)).join()}'
+          '</data></array></value></param>',
     _ => throw DartleException(
         message: 'Unsupported RPC method call parameter: $arg')
   };

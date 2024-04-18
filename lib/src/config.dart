@@ -231,6 +231,11 @@ class JbConfigContainer {
             CompileOutput.dir,
             () => CompileOutput.jar(config.outputJar ??
                 '${p.join('build', p.basename(Directory.current.path))}.jar'));
+
+  @override
+  String toString() {
+    return 'JbConfigContainer{config: $config, output: $output}';
+  }
 }
 
 /// jb configuration model.
