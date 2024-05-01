@@ -506,12 +506,12 @@ ${color('''
 ''', commentColor)}
 ${color('# Maven artifact groupId', commentColor)}
 group: ${quote(group)}
-${color('# Maven artifactId', commentColor)}
+${color('# Module name (Maven artifactId)', commentColor)}
 module: ${quote(module)}
+${color('# Human readable name of this project', commentColor)}
+name: ${quote(name)}
 ${color('# Maven version', commentColor)}
 version: ${quote(version)}
-${color('# Project name', commentColor)}
-name: ${quote(name)}
 ${color('# Description for this project', commentColor)}
 description: ${quote(description)}
 ${color('# URL of this project', commentColor)}

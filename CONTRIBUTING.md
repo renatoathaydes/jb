@@ -118,6 +118,17 @@ To re-generate the list in `[licenses.g.dart](lib/src/licenses.g.dart)`, delete 
 
 The `generateLicenses` Dartle task will download the licenses list and create the file again automatically.
 
+## Updating the configuration model
+
+The `jb` configuration model is defined using [Schemake](https://pub.dev/packages/schemake).
+The definition can be found at [jb_config_schema.dart](dartle-src/config/jb_config_schema.dart).
+
+If you change that file, you will need to re-run the `generateJbConfigModel` task:
+
+```shell
+dartle generateJbConfigModel
+```
+
 ## Publishing
 
 To publish `jb` to [pub.dev](https://pub.dev/):
