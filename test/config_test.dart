@@ -76,12 +76,12 @@ const _fullConfigExpanded = '''
 \x1B[0m
 \x1B[90m# Maven artifact groupId\x1B[0m
 group: \x1B[34m"my-group"\x1B[0m
-\x1B[90m# Maven artifactId\x1B[0m
+\x1B[90m# Module name (Maven artifactId)\x1B[0m
 module: \x1B[34m"mod1"\x1B[0m
+\x1B[90m# Human readable name of this project\x1B[0m
+name: \x1B[34m"Module 1"\x1B[0m
 \x1B[90m# Maven version\x1B[0m
 version: \x1B[34m"0.1"\x1B[0m
-\x1B[90m# Project name\x1B[0m
-name: \x1B[34m"Module 1"\x1B[0m
 \x1B[90m# Description for this project\x1B[0m
 description: \x1B[34m"A simple module"\x1B[0m
 \x1B[90m# URL of this project\x1B[0m
@@ -175,12 +175,12 @@ const _basicConfigWithDependenciesExpanded = '''
 
 # Maven artifact groupId
 group: null
-# Maven artifactId
+# Module name (Maven artifactId)
 module: "basic"
+# Human readable name of this project
+name: null
 # Maven version
 version: null
-# Project name
-name: null
 # Description for this project
 description: null
 # URL of this project

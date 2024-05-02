@@ -150,14 +150,12 @@ void main() {
           '| \'-- AppTest [OK]\n'
           '|   +-- canGetNameFromArgs() [OK]\n'
           '|   \'-- canGetDefaultName() [OK]\n'
-          '+-- JUnit Vintage [OK]\n'
-          '\'-- JUnit Platform Suite [OK]\n';
+          '\'-- JUnit Vintage [OK]\n';
       const unicodeResults = '├─ JUnit Jupiter ✔\n'
           '│  └─ AppTest ✔\n'
           '│     ├─ canGetNameFromArgs() ✔\n'
           '│     └─ canGetDefaultName() ✔\n'
-          '├─ JUnit Vintage ✔\n'
-          '└─ JUnit Platform Suite ✔\n';
+          '└─ JUnit Vintage ✔\n';
 
       expect(jbResult.stdout.join('\n'),
           anyOf(contains(unicodeResults), contains(asciiResults)));
@@ -170,13 +168,11 @@ void main() {
       const asciiResults = '+-- JUnit Jupiter [OK]\n'
           '| \'-- AppTest [OK]\n'
           '|   \'-- canGetDefaultName() [OK]\n'
-          '+-- JUnit Vintage [OK]\n'
-          '\'-- JUnit Platform Suite [OK]\n';
+          '\'-- JUnit Vintage [OK]\n';
       const unicodeResults = '├─ JUnit Jupiter ✔\n'
           '│  └─ AppTest ✔\n'
           '│     └─ canGetDefaultName() ✔\n'
-          '├─ JUnit Vintage ✔\n'
-          '└─ JUnit Platform Suite ✔\n';
+          '└─ JUnit Vintage ✔\n';
 
       expect(jbResult.stdout.join('\n'),
           anyOf(contains(unicodeResults), contains(asciiResults)));
