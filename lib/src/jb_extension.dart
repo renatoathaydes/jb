@@ -255,7 +255,7 @@ List<Object?> resolveConstructorData(
     List<JavaConstructor> constructors,
     JbConfiguration config) {
   if (taskConfig == null || taskConfig.isEmpty) {
-    return _jbuildConstructorData(name, constructors, config) ??
+    return _jbuildNoConfigConstructorData(name, constructors, config) ??
         constructors.firstWhere((c) => c.isEmpty, orElse: () {
           failBuild(
               reason: "Cannot create jb extension task '$name' because "
@@ -278,25 +278,23 @@ List<Object?> resolveConstructorData(
             "the acceptable schemas. Please use one of the following schemas:\n"
             "${_constructorsHelp(constructors)}");
   });
-  final configMap = config.toJson();
   return keyMatch.entries.map((entry) {
-    final (jbName, type) = entry.value;
+    final type = entry.value;
     final value = taskConfig[entry.key];
-    if (jbName != null) {
-      if (value != null) {
-        failBuild(
-            reason: "Cannot create jb extension task '$name' because "
-                "its configuration is trying to provide jb property '$jbName'! "
-                "Please remove this property from configuration.");
-      }
-      return _resolveJbConfig(configMap, jbName, type, name);
-    }
-    if (switch (value.isOfType(type)) {
-      Ok(value: var yes) => yes,
-      Fail(exception: var e) => failBuild(
+    if (value != null && !type.mayBeConfigured()) {
+      failBuild(
           reason: "Cannot create jb extension task '$name' because "
-              "property '${entry.key}' is invalid: $e")
-    }) return value;
+              "its configuration is trying to provide a value for a "
+              "non-configurable property '${entry.key}'! "
+              "Please remove this property from configuration.");
+    }
+    if (type == ConfigType.jbuildLogger) {
+      return null;
+    } else if (type == ConfigType.jbConfig) {
+      return config.toJson();
+    } else if (type.mayBeConfigured() && value.isOfType(type)) {
+      return value;
+    }
     logger.warning("'Configuration of task '$name' did not type check. "
         "Value of '$value' is not of type $type!");
     failBuild(
@@ -308,14 +306,8 @@ List<Object?> resolveConstructorData(
 }
 
 bool _keysMatch(JavaConstructor constructor, Map<String, Object?> taskConfig) {
-  // allow parameters of type JBuildLogger and with jbName to be missing
   final mayBeMissingKeys = constructor.entries
-      .where((e) {
-        final (jbName, type) = e.value;
-        // will type check later
-        if (jbName != null) return true;
-        return type == ConfigType.jbuildLogger;
-      })
+      .where((e) => !e.value.mayBeConfigured())
       .map((e) => e.key)
       .toSet();
   final mandatoryConfigKeys =
@@ -327,66 +319,52 @@ bool _keysMatch(JavaConstructor constructor, Map<String, Object?> taskConfig) {
 }
 
 bool _requireNoConfiguration(List<JavaConstructor> constructors) {
-  return constructors.every((c) =>
-      c.isEmpty || c.values.every((e) => e.$2 == ConfigType.jbuildLogger));
+  return constructors
+      .every((c) => c.isEmpty || c.values.every((e) => !e.mayBeConfigured()));
 }
 
 String _constructorsHelp(List<JavaConstructor> constructors) {
   final builder = StringBuffer();
+  var listedNoConfig = false;
   for (final (i, constructor) in constructors.indexed) {
     builder.writeln('  - option${i + 1}:');
-    if (constructor.isEmpty) {
-      builder.writeln('    <no configuration>');
+    if (constructor.isEmpty ||
+        constructor.values.every((t) => !t.mayBeConfigured())) {
+      if (!listedNoConfig) {
+        builder.writeln('    <no configuration>');
+        listedNoConfig = true;
+      }
     } else {
-      constructor.forEach((fieldName, entry) {
-        final (_, type) = entry;
-        builder
-          ..write('    ')
-          ..write(fieldName)
-          ..write(': ')
-          ..writeln(type);
+      constructor.forEach((fieldName, type) {
+        if (type.mayBeConfigured()) {
+          builder
+            ..write('    ')
+            ..write(fieldName)
+            ..write(': ')
+            ..writeln(type);
+        }
       });
     }
   }
   return builder.toString();
 }
 
-List<Object?>? _jbuildConstructorData(
+/// Try to find a constructor that requires no configuration, considering
+/// longer parameter lists first.
+List<Object?>? _jbuildNoConfigConstructorData(
     String name, List<JavaConstructor> constructors, JbConfiguration config) {
-  final configMap = config.toJson();
   return constructors
-      .where((c) => c.values.every((v) {
-            final (jbName, type) = v;
-            return jbName != null || type == ConfigType.jbuildLogger;
-          }))
+      .where((c) => c.values.every((type) => !type.mayBeConfigured()))
       .sorted((a, b) => b.keys.length.compareTo(a.keys.length))
-      .map((c) => c.values.map((v) {
-            final (jbName, type) = v;
-            return (jbName != null)
-                ? _resolveJbConfig(configMap, jbName, type, name)
-                : null;
+      .map((c) => c.values.map((type) {
+            return (type == ConfigType.jbConfig) ? config.toJson() : null;
           }).toList(growable: false))
       .firstOrNull;
 }
 
-Object? _resolveJbConfig(
-    Map<String, Object?> config, String jbName, ConfigType type, String name) {
-  final value = config[jbName];
-  if (type.isInstance(value)) return value;
-  final details = (!config.containsKey(jbName))
-      ? 'does not exist! Please remove this argument from the '
-          "task's constructor or use another name."
-      : "is not of type $type! Please modify the task's "
-          "constructor property to take the proper type.";
-  failBuild(
-      reason: "Cannot create jb extension task '$name' because "
-          "its configuration is invalid: jb property '$jbName' "
-          "$details");
-}
-
 extension on Object? {
-  Result<bool> isOfType(ConfigType type) {
-    final result = switch (type) {
+  bool isOfType(ConfigType type) {
+    return switch (type) {
       ConfigType.string => this is String?,
       ConfigType.boolean => this is bool,
       ConfigType.int => this is int,
@@ -394,20 +372,7 @@ extension on Object? {
       ConfigType.listOfStrings ||
       ConfigType.arrayOfStrings =>
         vmap((self) => self is Iterable && self.every((i) => i is String)),
-      ConfigType.jbuildLogger => this == null ? true : null,
+      ConfigType.jbuildLogger || ConfigType.jbConfig => false,
     };
-    return result == null
-        ? Result.fail(_PropertyCannotBeConfigured(
-            'property of type JBuildLogger cannot be configured'))
-        : Result.ok(result);
   }
-}
-
-final class _PropertyCannotBeConfigured implements Exception {
-  final String message;
-
-  const _PropertyCannotBeConfigured(this.message);
-
-  @override
-  String toString() => message;
 }

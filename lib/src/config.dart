@@ -1,23 +1,23 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
 import 'package:collection/collection.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart' show failBuild, DartleException, TaskPhase;
 import 'package:dartle/dartle_cache.dart' show ChangeKind;
 import 'package:logging/logging.dart' as log;
+import 'package:path/path.dart' as p;
 import 'package:schemake/schemake.dart';
 import 'package:yaml/yaml.dart';
 
 import 'ansi.dart';
 import 'config_import.dart';
 import 'file_tree.dart';
+import 'jb_config.g.dart';
 import 'licenses.g.dart';
 import 'maven_metadata.dart';
 import 'path_dependency.dart';
 import 'properties.dart';
 import 'utils.dart';
-import 'jb_config.g.dart';
 
 export 'jb_config.g.dart';
 
@@ -143,6 +143,7 @@ enum ConfigType {
   listOfStrings,
   arrayOfStrings,
   jbuildLogger,
+  jbConfig,
   ;
 
   static ConfigType from(String value) => switch (value) {
@@ -153,6 +154,7 @@ enum ConfigType {
         'LIST_OF_STRINGS' => ConfigType.listOfStrings,
         'ARRAY_OF_STRINGS' => ConfigType.arrayOfStrings,
         'JBUILD_LOGGER' => ConfigType.jbuildLogger,
+        'JB_CONFIG' => ConfigType.jbConfig,
         _ => failBuild(reason: 'Unsupported Java type: $value'),
       };
 
@@ -164,7 +166,12 @@ enum ConfigType {
         ConfigType.listOfStrings ||
         ConfigType.arrayOfStrings =>
           object is List<String>,
-        ConfigType.jbuildLogger => false,
+        ConfigType.jbuildLogger || ConfigType.jbConfig => false,
+      };
+
+  bool mayBeConfigured() => switch (this) {
+        ConfigType.jbuildLogger || ConfigType.jbConfig => false,
+        _ => true,
       };
 
   @override
@@ -176,11 +183,12 @@ enum ConfigType {
         listOfStrings => 'List<String>',
         arrayOfStrings => 'String[]',
         jbuildLogger => 'jbuild.api.JBuildLogger',
+        jbConfig => 'jbuild.api.config.JbConfig',
       };
 }
 
 /// Java constructor representation.
-typedef JavaConstructor = Map<String, (String? jbName, ConfigType)>;
+typedef JavaConstructor = Map<String, ConfigType>;
 
 /// Definition of a jb extension task.
 class ExtensionTask {
@@ -801,8 +809,6 @@ tasks:
     class-name: my.java.ClassName           (mandatory)
     description: description of the task    (optional)
     phase: build                            (optional)
-    inputs: [file1.txt, *.java]             (optional)
-    outputs [output-dir/*.class, other.txt] (optional)
   other-task:
     class-name: my.java.OtherClass
 ''';
@@ -810,6 +816,7 @@ tasks:
 ExtensionTask _extensionTask(MapEntry<String, Object?> task) {
   final spec = task.value;
   if (spec is Map<String, Object?>) {
+    // TODO instantiate java class to be able to get metadata
     return ExtensionTask(
       name: task.key,
       description: _stringValue(spec, 'description', '', type: 'Task').value,
@@ -884,17 +891,9 @@ List<JavaConstructor> _taskConstructors(Object? constructors) {
   }).toList(growable: false);
 }
 
-MapEntry<String, (String? jbName, ConfigType)> _constructorEntry(
-    Object? key, Object? value) {
-  if (key is String) {
-    if (value is String) {
-      return MapEntry(key, (null, ConfigType.from(value)));
-    }
-    if (value is Map) {
-      final jbName = value['jb-name'];
-      final type = value['type'];
-      return MapEntry(key, (jbName, ConfigType.from(type)));
-    }
+MapEntry<String, ConfigType> _constructorEntry(Object? key, Object? value) {
+  if (key is String && value is String) {
+    return MapEntry(key, ConfigType.from(value));
   }
   failBuild(
       reason: 'jb manifest has invalid constructor entry: $key -> $value');

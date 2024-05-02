@@ -23,7 +23,7 @@ void main() {
               'task-name',
               {},
               [
-                {'foo': (null, ConfigType.string)},
+                {'foo': ConfigType.string},
                 {},
               ],
               emptyJbConfig),
@@ -38,7 +38,7 @@ void main() {
               'task-name',
               {},
               [
-                {'logger': (null, ConfigType.jbuildLogger)},
+                {'logger': ConfigType.jbuildLogger},
                 {},
               ],
               emptyJbConfig),
@@ -49,7 +49,7 @@ void main() {
               {},
               [
                 {},
-                {'logger': (null, ConfigType.jbuildLogger)},
+                {'logger': ConfigType.jbuildLogger},
               ],
               emptyJbConfig),
           equals(const [null]));
@@ -61,7 +61,7 @@ void main() {
               'task-name',
               {'foo': null},
               [
-                {'foo': (null, ConfigType.string)},
+                {'foo': ConfigType.string},
                 {},
               ],
               emptyJbConfig),
@@ -71,7 +71,7 @@ void main() {
               'task-name',
               {'foo': 'bar'},
               [
-                {'foo': (null, ConfigType.string)},
+                {'foo': ConfigType.string},
                 {},
               ],
               emptyJbConfig),
@@ -84,7 +84,7 @@ void main() {
               'task-name',
               {'log': null},
               [
-                {'log': (null, ConfigType.jbuildLogger)},
+                {'log': ConfigType.jbuildLogger},
               ],
               emptyJbConfig),
           equals(const [null]));
@@ -93,7 +93,7 @@ void main() {
               'task-name',
               const {},
               [
-                {'log': (null, ConfigType.jbuildLogger)},
+                {'log': ConfigType.jbuildLogger},
               ],
               emptyJbConfig),
           equals(const [null]));
@@ -109,11 +109,8 @@ void main() {
               },
               [
                 {},
-                {'foo': (null, ConfigType.string)},
-                {
-                  'integer': (null, ConfigType.int),
-                  'bool': (null, ConfigType.boolean)
-                },
+                {'foo': ConfigType.string},
+                {'integer': ConfigType.int, 'bool': ConfigType.boolean},
               ],
               emptyJbConfig),
           equals(const [10, true]));
@@ -126,11 +123,8 @@ void main() {
                 'bool': true,
               },
               [
-                {
-                  'bool': (null, ConfigType.boolean),
-                  'log': (null, ConfigType.jbuildLogger)
-                },
-                {'foo': (null, ConfigType.string)},
+                {'bool': ConfigType.boolean, 'log': ConfigType.jbuildLogger},
+                {'foo': ConfigType.string},
               ],
               emptyJbConfig),
           equals(const [true, null]));
@@ -142,11 +136,8 @@ void main() {
                 'bool': true,
               },
               [
-                {
-                  'bool': (null, ConfigType.boolean),
-                  'log': (null, ConfigType.jbuildLogger)
-                },
-                {'foo': (null, ConfigType.string)},
+                {'bool': ConfigType.boolean, 'log': ConfigType.jbuildLogger},
+                {'foo': ConfigType.string},
               ],
               emptyJbConfig),
           equals(const [true, null]));
@@ -167,13 +158,13 @@ void main() {
               },
               [
                 {
-                  'a': (null, ConfigType.jbuildLogger),
-                  'b': (null, ConfigType.boolean),
-                  'c': (null, ConfigType.int),
-                  'd': (null, ConfigType.float),
-                  'e': (null, ConfigType.string),
-                  'f': (null, ConfigType.arrayOfStrings),
-                  'g': (null, ConfigType.listOfStrings),
+                  'a': ConfigType.jbuildLogger,
+                  'b': ConfigType.boolean,
+                  'c': ConfigType.int,
+                  'd': ConfigType.float,
+                  'e': ConfigType.string,
+                  'f': ConfigType.arrayOfStrings,
+                  'g': ConfigType.listOfStrings,
                 },
               ],
               emptyJbConfig),
@@ -194,7 +185,7 @@ void main() {
               'task-name',
               {'array': []},
               [
-                {'array': (null, ConfigType.arrayOfStrings)},
+                {'array': ConfigType.arrayOfStrings},
               ],
               emptyJbConfig),
           equals(const [[]]));
@@ -206,7 +197,7 @@ void main() {
               'task-name',
               {'array': []},
               [
-                {'array': (null, ConfigType.listOfStrings)},
+                {'array': ConfigType.listOfStrings},
               ],
               emptyJbConfig),
           equals(const [[]]));
@@ -224,8 +215,8 @@ void main() {
               },
               [
                 {
-                  'l1': (null, ConfigType.listOfStrings),
-                  'l2': (null, ConfigType.listOfStrings),
+                  'l1': ConfigType.listOfStrings,
+                  'l2': ConfigType.listOfStrings,
                 },
               ],
               emptyJbConfig),
@@ -242,25 +233,28 @@ void main() {
       emptyJbConfig = await loadConfigString('module: test');
     });
 
-    test('cannot provide value for JBuildLogger', () {
-      expect(
-          () => resolveConstructorData(
-              'task',
-              {'foo': Object()},
-              [
-                {'foo': (null, ConfigType.jbuildLogger)}
-              ],
-              emptyJbConfig),
-          throwsA(isA<DartleException>().having(
-              (e) => e.message,
-              'message',
-              equals("Cannot create jb extension task 'task' "
-                  "because property 'foo' is invalid: "
-                  "property of type JBuildLogger cannot be configured"))));
+    test('cannot provide value for non-configurable type', () {
+      for (final type in ConfigType.values.where((t) => !t.mayBeConfigured())) {
+        expect(
+            () => resolveConstructorData(
+                'task',
+                {'foo': Object()},
+                [
+                  {'foo': type}
+                ],
+                emptyJbConfig),
+            throwsA(isA<DartleException>().having(
+                (e) => e.message,
+                'message',
+                equals('Cannot create jb extension task \'task\' because '
+                    'its configuration is trying to provide a value for a '
+                    'non-configurable property \'foo\'! Please remove this '
+                    'property from configuration.'))));
+      }
     });
 
     for (final type in ConfigType.values) {
-      if (type == ConfigType.jbuildLogger) continue;
+      if (!type.mayBeConfigured()) continue;
       final value = type == ConfigType.string ? 10 : 'bar';
       test('recognizes type mismatch for $type', () {
         expect(
@@ -268,7 +262,7 @@ void main() {
                 'task',
                 {'foo': value},
                 [
-                  {'foo': (null, type)}
+                  {'foo': type}
                 ],
                 emptyJbConfig),
             throwsA(isA<DartleException>().having(
@@ -282,10 +276,10 @@ void main() {
 
     for (final schema in <JavaConstructor>[
       {},
-      {'log': (null, ConfigType.jbuildLogger)},
+      {'log': ConfigType.jbuildLogger},
       {
-        'l1': (null, ConfigType.jbuildLogger),
-        'l2': (null, ConfigType.jbuildLogger)
+        'l1': ConfigType.jbuildLogger,
+        'l2': ConfigType.jbuildLogger,
       },
     ]) {
       test(
@@ -311,7 +305,7 @@ void main() {
                 'num': null,
               },
               [
-                {'num': (null, ConfigType.float)}
+                {'num': ConfigType.float}
               ],
               emptyJbConfig),
           throwsA(isA<DartleException>().having(
@@ -329,8 +323,8 @@ void main() {
               {'num': 10, 'str': 24},
               [
                 {
-                  'num': (null, ConfigType.float),
-                  'str': (null, ConfigType.string)
+                  'num': ConfigType.float,
+                  'str': ConfigType.string,
                 }
               ],
               emptyJbConfig),
@@ -350,10 +344,10 @@ void main() {
               {'num': 10, 'str': 24},
               [
                 {},
-                {'num': (null, ConfigType.float)},
+                {'num': ConfigType.float},
                 {
-                  'num': (null, ConfigType.float),
-                  'str': (null, ConfigType.string)
+                  'num': ConfigType.float,
+                  'str': ConfigType.string,
                 },
               ],
               emptyJbConfig),
