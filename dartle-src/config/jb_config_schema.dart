@@ -96,7 +96,7 @@ const jbConfig = Objects(
               valueType: Nullable(_dependency)),
           defaultValue: <String, Object?>{},
           description:
-          'Java annotation processor dependencies of the project.'),
+              'Java annotation processor dependencies of the project.'),
       'dependency-exclusion-patterns': Property(Arrays(Strings()),
           defaultValue: [],
           description: 'Transitive dependencies exclusion patterns'),

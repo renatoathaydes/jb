@@ -23,19 +23,22 @@ String _rpcParams(List<Object> args) {
   return args.map(_rpcParam).join();
 }
 
-String _rpcParam(Object arg) {
+String _rpcParam(Object? arg) {
   return switch (arg) {
     String s => '<param>${_rpcValue(s)}</param>',
-    List list when (list.every((s) => s is String)) =>
+    List list when (list.every((s) => s == null || s is String)) =>
       '<param><value><array><data>'
-          '${list.map((s) => _rpcValue(s as String)).join()}'
+          '${list.map((s) => _rpcValue(s as String?)).join()}'
           '</data></array></value></param>',
     _ => throw DartleException(
         message: 'Unsupported RPC method call parameter: $arg')
   };
 }
 
-String _rpcValue(String arg) {
+String _rpcValue(String? arg) {
+  if (arg == null) {
+    return '<value><null /></value>';
+  }
   return '<value>$arg</value>';
 }
 

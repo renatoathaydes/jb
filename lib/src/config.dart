@@ -113,10 +113,11 @@ String _helpForProperty(List<String> propertyPath) {
 ///
 /// Applies defaults and resolves properties and imports.
 Future<JbExtensionModel> loadJbExtensionModel(
-    String config, Uri yamlUri) async {
+    JbConfiguration jbConfig, String config, Uri yamlUri) async {
   final json = loadYaml(config, sourceUrl: yamlUri);
   if (json is Map) {
     final resolvedMap = resolvePropertiesFromMap(json);
+    // TODO pass in the JVM executor
     return JbExtensionModel.fromMap(resolvedMap.map, resolvedMap.properties);
   } else {
     throw DartleException(

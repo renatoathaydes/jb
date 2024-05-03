@@ -96,7 +96,7 @@ Future<ExtensionProject?> loadExtensionProject(
   );
 
   final extensionModel = await loadJbExtensionModel(
-      jbExtensionConfig.yaml, jbExtensionConfig.yamlUri);
+      config, jbExtensionConfig.yaml, jbExtensionConfig.yamlUri);
 
   final tasks = await _createTasks(
           extensionModel, configContainer, jvmExecutor, dir, files, config)
