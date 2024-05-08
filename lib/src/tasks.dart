@@ -408,7 +408,8 @@ Task createPublishTask(
     String? outputJar,
     ResolvedLocalDependencies localDependencies) {
   return Task(
-      Publisher(artifact, dependencies.toList(), localDependencies, outputJar),
+      Publisher(artifact, dependencies.toList(), localDependencies, outputJar)
+          .call,
       name: publishTaskName,
       dependsOn: const {publicationCompileTaskName},
       runCondition: artifact.runCondition(),

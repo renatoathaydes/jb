@@ -54,8 +54,8 @@ Future<int> execJava(String taskName, List<String> args,
       stderrFun.pid = proc.pid;
       return proc;
     }),
-    onStdoutLine: stdoutFun,
-    onStderrLine: stderrFun,
+    onStdoutLine: stdoutFun.call,
+    onStderrLine: stderrFun.call,
   );
 }
 

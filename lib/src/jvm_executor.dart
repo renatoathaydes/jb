@@ -83,8 +83,8 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     final perr = proc.stderr.lines();
     final stdoutLogger = _RpcExecLogger('stdout', proc.pid);
     final stderrLogger = _RpcExecLogger('stderr', proc.pid);
-    pout.listen(stdoutLogger);
-    perr.listen(stderrLogger);
+    pout.listen(stdoutLogger.call);
+    perr.listen(stderrLogger.call);
 
     return _JBuildRpc(_Proc(proc, portNumber, token), stdoutLogger);
   }
