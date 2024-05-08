@@ -111,7 +111,8 @@ Future<ExtensionProject?> loadExtensionProject(
 
 Future<_JbExtensionConfig> _jbExtensionFromJar(
     String rootDir, String jarPath) async {
-  final stream = InputFileStream(p.join(rootDir, jarPath));
+  final path = p.join(rootDir, jarPath);
+  final stream = InputFileStream(path);
   try {
     final buffer = ZipDecoder().decodeBuffer(stream);
     final extensionEntry = 'META-INF/jb/$jbExtension.yaml';
@@ -120,7 +121,7 @@ Future<_JbExtensionConfig> _jbExtensionFromJar(
             'is missing metadata file: $extensionEntry'));
     final content = archiveFile.content as List<int>;
     return _JbExtensionConfig(
-        path: '${stream.path}!$extensionEntry',
+        path: '$path!$extensionEntry',
         yaml: utf8.decode(content),
         scheme: 'jar');
   } finally {

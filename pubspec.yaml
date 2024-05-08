@@ -8,7 +8,7 @@ environment:
 dependencies:
   path: ^1.8.2
   io: ^1.0.4
-  dartle: ^0.26.0
+  dartle: ^0.27.0
   #    path: ../dartle
   args: ^2.3.1
   logging: ^1.0.0
@@ -18,16 +18,16 @@ dependencies:
   isolate_current_directory: ^2.0.0
   archive: ^3.3.4
   xml: ^6.2.2
-  actors: ^0.10.0
+  actors: ^0.11.0
   #    path: ../actors
   conveniently: ^1.2.0
   structured_async: ^0.3.2
   crypto: ^3.0.3
-  schemake: ^0.4.0
+  schemake: ^0.5.0
 
 dev_dependencies:
   build_runner: ^2.2.0
-  lints: ^2.0.0
+  lints: ^3.0.0
   test: ^1.16.0
 
 executables:
