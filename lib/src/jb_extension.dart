@@ -95,8 +95,12 @@ Future<ExtensionProject?> loadExtensionProject(
     jar: (j) async => await _jbExtensionFromJar(dir, j),
   );
 
-  final extensionModel = await loadJbExtensionModel(
+  final taskConfigs = await loadExtensionTaskConfigs(
       config, jbExtensionConfig.yaml, jbExtensionConfig.yamlUri);
+
+  final classpath = await _toClasspath(dir, configContainer);
+  final extensionModel =
+      await _loadExtensionModel(taskConfigs, jvmExecutor, classpath);
 
   final tasks = await _createTasks(
           extensionModel, configContainer, jvmExecutor, dir, files, config)
@@ -107,6 +111,25 @@ Future<ExtensionProject?> loadExtensionProject(
   logger.info('========= jb extension loaded =========');
 
   return ExtensionProject(tasks);
+}
+
+Future<JbExtensionModel> _loadExtensionModel(
+    List<ExtensionTaskConfig> taskConfigs,
+    Sendable<JavaCommand, Object?> jvmExecutor,
+    String classpath) async {
+  final tasks = _loadExtensionTasks(classpath, taskConfigs, jvmExecutor);
+  return JbExtensionModel(classpath, await tasks.toList());
+}
+
+Stream<ExtensionTask> _loadExtensionTasks(String classpath,
+    List<ExtensionTaskConfig> taskConfigs,
+    Sendable<JavaCommand, Object?> jvmExecutor) async* {
+  for (final config in taskConfigs) {
+    // TODO request to run multiple methods at once...
+    final inputs = await jvmExecutor.send(RunJava(
+        '_loadExtension', '', config.className, 'inputs', const [], const []));
+    //yield ExtensionTask.from(config, inputs: inputs, outputs: outputs, dependsOn: dependsOn, dependents: dependents);
+  }
 }
 
 Future<_JbExtensionConfig> _jbExtensionFromJar(
@@ -147,6 +170,12 @@ void _verify(JbConfiguration config) {
   }
 }
 
+class JbExtensionModelBuilder {
+  final Sendable<JavaCommand, Object?> jvmExecutor;
+
+  const JbExtensionModelBuilder(this.jvmExecutor);
+}
+
 Stream<Task> _createTasks(
     JbExtensionModel extensionModel,
     JbConfigContainer extensionConfig,
@@ -155,7 +184,6 @@ Stream<Task> _createTasks(
     JbFiles files,
     JbConfiguration config) async* {
   final cache = DartleCache(p.join(extensionDir, files.jbCache));
-  final classpath = await _toClasspath(extensionDir, extensionConfig);
   for (final task in extensionModel.extensionTasks) {
     final name = task.name;
     final taskConfig = config.extras[name];
@@ -166,7 +194,8 @@ Stream<Task> _createTasks(
     }
     final constructorData =
         resolveConstructorData(name, taskConfig, task.constructors, config);
-    yield _createTask(jvmExecutor, classpath, task, cache, constructorData);
+    yield _createTask(
+        jvmExecutor, extensionModel.classpath, task, cache, constructorData);
   }
 }
 

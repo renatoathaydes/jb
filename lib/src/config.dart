@@ -112,13 +112,12 @@ String _helpForProperty(List<String> propertyPath) {
 /// Parse the YAML/JSON jb extension model.
 ///
 /// Applies defaults and resolves properties and imports.
-Future<JbExtensionModel> loadJbExtensionModel(
+Future<List<ExtensionTaskConfig>> loadExtensionTaskConfigs(
     JbConfiguration jbConfig, String config, Uri yamlUri) async {
   final json = loadYaml(config, sourceUrl: yamlUri);
   if (json is Map) {
     final resolvedMap = resolvePropertiesFromMap(json);
-    // TODO pass in the JVM executor
-    return JbExtensionModel.fromMap(resolvedMap.map, resolvedMap.properties);
+    return _extensionTasks(resolvedMap.map);
   } else {
     throw DartleException(
         message: '$yamlUri: Expecting jb extension to be a Map, '
@@ -191,6 +190,19 @@ enum ConfigType {
 /// Java constructor representation.
 typedef JavaConstructor = Map<String, ConfigType>;
 
+/// Basic definitions of a jb extension task configuration.
+///
+/// Includes only the parts of [ExtensionTask] which do not require
+/// instantiating the Java extension class.
+typedef ExtensionTaskConfig = ({
+  String name,
+  String description,
+  TaskPhase phase,
+  String className,
+  String methodName,
+  List<JavaConstructor> constructors,
+});
+
 /// Definition of a jb extension task.
 class ExtensionTask {
   final String name;
@@ -204,7 +216,7 @@ class ExtensionTask {
   final String methodName;
   final List<JavaConstructor> constructors;
 
-  ExtensionTask({
+  const ExtensionTask({
     required this.name,
     required this.description,
     required this.phase,
@@ -216,19 +228,34 @@ class ExtensionTask {
     required this.dependents,
     required this.constructors,
   });
+
+  factory ExtensionTask.from(
+    ExtensionTaskConfig config, {
+    required Set<String> inputs,
+    required Set<String> outputs,
+    required Set<String> dependsOn,
+    required Set<String> dependents,
+  }) {
+    return ExtensionTask(
+        name: config.name,
+        description: config.description,
+        phase: config.phase,
+        className: config.className,
+        methodName: config.methodName,
+        constructors: config.constructors,
+        inputs: inputs,
+        outputs: outputs,
+        dependsOn: dependsOn,
+        dependents: dependents);
+  }
 }
 
 /// jb extension model.
 class JbExtensionModel {
+  final String classpath;
   final List<ExtensionTask> extensionTasks;
 
-  const JbExtensionModel(this.extensionTasks);
-
-  static JbExtensionModel fromMap(Map<String, Object?> map,
-      [Properties properties = const {}]) {
-    final extensionTasks = _extensionTasks(map);
-    return JbExtensionModel(extensionTasks);
-  }
+  const JbExtensionModel(this.classpath, this.extensionTasks);
 }
 
 class JbConfigContainer {
@@ -731,36 +758,6 @@ String? _optionalStringValue(Map<String, Object?> map, String key,
           "${prefix}expecting a String value for '$key', but got '$value'.");
 }
 
-_Value<Iterable<String>> _stringIterableValue(
-    Map<String, Object?> map, String key, Iterable<String> defaultValue,
-    {String? type}) {
-  final value = map.remove(key);
-  bool isDefault = false;
-  Iterable<String> result;
-  if (value == null) {
-    isDefault = true;
-    result = defaultValue;
-  } else if (value is Iterable) {
-    result = value.map((e) {
-      if (e == null || e is Iterable || e is Map) {
-        final prefix = type == null ? '' : 'on $type: ';
-        throw DartleException(
-            message: "${prefix}expecting a list of String values for '$key', "
-                "but got element '$e'.");
-      }
-      return e.toString();
-    });
-  } else if (value is String) {
-    result = {value};
-  } else {
-    final prefix = type == null ? '' : 'on $type: ';
-    throw DartleException(
-        message: "${prefix}expecting a list of String values for '$key', "
-            "but got '$value'.");
-  }
-  return _Value(isDefault, result);
-}
-
 const dependenciesSyntaxHelp = '''
 Use the following syntax to declare dependencies:
 
@@ -791,7 +788,7 @@ Use the following syntax to declare 'developers':
       organization-url: https://acme.example.org
 ''';
 
-List<ExtensionTask> _extensionTasks(Map<String, Object?> map) {
+List<ExtensionTaskConfig> _extensionTasks(Map<String, Object?> map) {
   final tasks = map['tasks'];
   if (tasks is Map<String, Object?>) {
     return tasks.entries.map(_extensionTask).toList(growable: false);
@@ -814,28 +811,13 @@ tasks:
     class-name: my.java.OtherClass
 ''';
 
-ExtensionTask _extensionTask(MapEntry<String, Object?> task) {
+ExtensionTaskConfig _extensionTask(MapEntry<String, Object?> task) {
   final spec = task.value;
   if (spec is Map<String, Object?>) {
-    // TODO instantiate java class to be able to get metadata
-    return ExtensionTask(
+    return (
       name: task.key,
       description: _stringValue(spec, 'description', '', type: 'Task').value,
       phase: _taskPhase(spec['phase']),
-      inputs: _stringIterableValue(spec, 'inputs', const {}, type: 'Task')
-          .value
-          .toSet(),
-      outputs: _stringIterableValue(spec, 'outputs', const {}, type: 'Task')
-          .value
-          .toSet(),
-      dependsOn:
-          _stringIterableValue(spec, 'depends-on', const {}, type: 'Task')
-              .value
-              .toSet(),
-      dependents:
-          _stringIterableValue(spec, 'dependents', const {}, type: 'Task')
-              .value
-              .toSet(),
       className: _optionalStringValue(spec, 'class-name', type: 'Task')
           .orThrow(() => DartleException(
               message: "declaration of task '${task.key}' is missing mandatory "
