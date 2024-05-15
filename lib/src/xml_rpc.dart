@@ -70,31 +70,47 @@ Future<dynamic> parseRpcResponse(Stream<List<int>> rpcResponse) async {
   final paramList = params.findElements('param').toList(growable: false);
   if (paramList.isEmpty) return null;
   if (paramList.length == 1) {
-    return _value(paramList[0]);
+    final children = paramList[0].childElements;
+    if (children.length != 1 || children.first.localName != 'value') {
+      throw DartleException(
+          message: 'RPC response param should contain a single value, '
+              'but it does not: ${paramList[0].toXmlString(pretty: true)}');
+    }
+    return _value(paramList[0].getElement('value')!);
   }
   throw DartleException(
       message: 'RPC response contains multiple parameters, '
           'which is not supported: ${doc.toXmlString(pretty: true)}');
 }
 
-dynamic _value(XmlElement element) {
-  final value = element.getElement('value');
-  if (value == null) return null;
-  final children = value.children;
+dynamic _value(XmlElement value) {
+  final children = value.childElements;
   if (children.length != 1) {
     throw DartleException(
         message: 'RPC value contains too many children: '
             '${value.toXmlString(pretty: true)}');
   }
-  final child = children.first as XmlElement;
+  final child = children.first;
   return switch (child.localName) {
     'string' => child.innerText,
     'int' || 'i4' => int.parse(child.innerText),
     'double' => double.parse(child.innerText),
     'boolean' => child.innerText == '1',
+    'array' => _arrayValue(child),
     _ => throw DartleException(
-        message: 'RPC value type not supported: ${child.nodeType.name}')
+        message: 'RPC value type not supported: ${child.localName}')
   };
+}
+
+dynamic _arrayValue(XmlElement element) {
+  if (element.childElements.length != 1 ||
+      element.childElements.first.localName != 'data') {
+    throw DartleException(
+        message: 'RPC array value does not contain single "data" child: '
+            '${element.toXmlString(pretty: true)}');
+  }
+  final data = element.childElements.first;
+  return data.childElements.map(_value).toList(growable: false);
 }
 
 Future<Never> _rpcFault(XmlElement fault) async {

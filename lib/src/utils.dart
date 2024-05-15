@@ -185,6 +185,11 @@ extension DirectoryExtension on Directory {
 
 extension StringExtension on String {
   String replaceExtension(String ext) => '${p.withoutExtension(this)}$ext';
+
+  String joinClasspath(String classpath) {
+    if (classpath.isEmpty) return this;
+    return "$this$classpathSeparator$classpath";
+  }
 }
 
 extension NullableStringExtension on String? {

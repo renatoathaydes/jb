@@ -121,14 +121,25 @@ Future<JbExtensionModel> _loadExtensionModel(
   return JbExtensionModel(classpath, await tasks.toList());
 }
 
-Stream<ExtensionTask> _loadExtensionTasks(String classpath,
+Stream<ExtensionTask> _loadExtensionTasks(
+    String classpath,
     List<ExtensionTaskConfig> taskConfigs,
     Sendable<JavaCommand, Object?> jvmExecutor) async* {
   for (final config in taskConfigs) {
-    // TODO request to run multiple methods at once...
-    final inputs = await jvmExecutor.send(RunJava(
-        '_loadExtension', '', config.className, 'inputs', const [], const []));
-    //yield ExtensionTask.from(config, inputs: inputs, outputs: outputs, dependsOn: dependsOn, dependents: dependents);
+    final summary = await jvmExecutor.send(RunJava('_loadExtension', classpath,
+        config.className, 'getSummary', const [], const []));
+    if (summary is List && summary.length == 4) {
+      final [inputs, outputs, dependsOn, dependents] = summary;
+      yield ExtensionTask.from(config,
+          inputs: _ensureStringSet(inputs),
+          outputs: _ensureStringSet(outputs),
+          dependsOn: _ensureStringSet(dependsOn),
+          dependents: _ensureStringSet(dependents));
+    } else {
+      failBuild(
+          reason: 'getSummary should return list with 4 elements, '
+              'but got: $summary');
+    }
   }
 }
 
@@ -253,6 +264,8 @@ Future<String> _toClasspath(
       extensionConfig.output.when(dir: (d) => '$d/', jar: (j) => j));
   final libsDir =
       Directory(p.join(absRootDir, extensionConfig.config.runtimeLibsDir));
+  logger.fine(() => 'Extension artifact: $artifact, '
+      'Extension libs dir: ${libsDir.path}');
   if (await libsDir.exists()) {
     final libs = await libsDir
         .list()
@@ -390,6 +403,15 @@ List<Object?>? _jbuildNoConfigConstructorData(
             return (type == ConfigType.jbConfig) ? config.toJson() : null;
           }).toList(growable: false))
       .firstOrNull;
+}
+
+Set<String> _ensureStringSet(dynamic value) {
+  List list = value.toList();
+  final badValues = list.where((e) => e is! String).toList();
+  if (badValues.isNotEmpty) {
+    failBuild(reason: 'Non-string values found in Set<String>: $badValues');
+  }
+  return list.whereType<String>().toSet();
 }
 
 extension on Object? {

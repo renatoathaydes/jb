@@ -3,7 +3,6 @@ import 'dart:io' hide pid;
 import 'dart:isolate';
 
 import 'package:actors/actors.dart';
-import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:logging/logging.dart';
 import 'package:structured_async/structured_async.dart' show FutureCancelled;
@@ -40,9 +39,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   final Level _level;
   final List<String> _jvmArgs;
   final Map<String, String> _javaEnv;
-
-  // initialized on demand
-  Future<_JBuildRpc>? _rpc;
+  final Map<String, Future<_JBuildRpc>> _rpcByClasspath = {};
 
   _JBuildActor(this._classpath, this._level, this._jvmArgs, this._javaEnv);
 
@@ -51,22 +48,27 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     activateLogging(_level);
   }
 
-  Future<_JBuildRpc> _getRpc() {
-    return _rpc.vmapOr((rpc) => rpc, () => _rpc = _startRpc());
+  Future<_JBuildRpc> _getRpc(String classpath) {
+    return _rpcByClasspath.update(classpath, (v) => v,
+        ifAbsent: () => _startRpc(classpath));
   }
 
-  Future<_JBuildRpc> _startRpc() async {
-    rpcLogger.fine(
-        () => 'Starting JBuild RPC on Isolate ${Isolate.current.debugName}');
+  Future<_JBuildRpc> _startRpc(String classpath) async {
+    final args = [
+      ..._jvmArgs,
+      if (_classpath.isNotEmpty) ...[
+        '-cp',
+        _classpath.joinClasspath(classpath)
+      ],
+      'jbuild.cli.RpcMain',
+      if (logger.isLoggable(Level.FINE)) '-V',
+    ];
 
-    final proc = await Process.start(
-        'java',
-        [
-          ..._jvmArgs,
-          if (_classpath.isNotEmpty) ...['-cp', _classpath],
-          'jbuild.cli.RpcMain',
-          if (logger.isLoggable(Level.FINE)) '-V',
-        ],
+    rpcLogger.fine(
+        () => 'Starting JBuild RPC on Isolate ${Isolate.current.debugName} '
+            'with args: $args');
+
+    final proc = await Process.start('java', args,
         runInShell: true,
         workingDirectory: Directory.current.path,
         environment: _javaEnv);
@@ -91,7 +93,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
 
   @override
   Future<Object?> handle(JavaCommand command) async {
-    final rpc = await _getRpc();
+    final rpc = await _getRpc(command.classpath);
     final taskName = command.taskName;
     return switch (command) {
       RunJBuild jb => rpc.runJBuild(taskName, jb.args, jb.stdoutConsumer),
@@ -109,32 +111,38 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
 
   @override
   Future<void> close() async {
-    await _rpc?.vmap((f) => f.then((rpc) => rpc.stop()));
+    for (final future in _rpcByClasspath.values
+        .map((f) async => (await f).stop())
+        .toList(growable: false)) {
+      await ignoreExceptions(() => future);
+    }
+    _rpcByClasspath.clear();
   }
 }
 
 sealed class JavaCommand {
   final String taskName;
+  final String classpath;
 
-  const JavaCommand(this.taskName);
+  const JavaCommand(this.taskName, this.classpath);
 }
 
 final class RunJBuild extends JavaCommand {
   final List<String> args;
   final Sendable<String, void>? stdoutConsumer;
 
-  const RunJBuild(super.taskName, this.args, [this.stdoutConsumer]);
+  const RunJBuild(String taskName, this.args, [this.stdoutConsumer])
+      : super(taskName, '');
 }
 
 final class RunJava extends JavaCommand {
-  final String classpath;
   final String className;
   final String methodName;
   final List<String> args;
   final List<Object?> constructorData;
 
-  const RunJava(super.taskName, this.classpath, this.className, this.methodName,
-      this.args, this.constructorData);
+  const RunJava(super.taskName, super.classpath, this.className,
+      this.methodName, this.args, this.constructorData);
 }
 
 /// Create a Java [Actor] which can be used to run JBuild commands and

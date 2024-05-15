@@ -122,6 +122,30 @@ void main() {
       });
     });
 
+    test('Empty array value', () async {
+      expect(
+          await parseRpcResponse(
+              _toBytes('<?xml version="1.0" encoding="UTF-8"?>'
+                  '<methodResponse><params>'
+                  '<param><value><array><data/></array></value></param>'
+                  '</params></methodResponse>')),
+          equals([]));
+    });
+
+    test('Array of values', () async {
+      expect(
+          await parseRpcResponse(
+              _toBytes('<?xml version="1.0" encoding="UTF-8"?>'
+                  '<methodResponse><params>'
+                  '<param><value><array><data>'
+                  '<value><boolean>1</boolean></value>'
+                  '<value><int>32</int></value>'
+                  '<value><array><data/></array></value>'
+                  '</data></array></value></param>'
+                  '</params></methodResponse>')),
+          equals([true, 32, []]));
+    });
+
     test('Fault', () {
       expectLater(
           () =>
