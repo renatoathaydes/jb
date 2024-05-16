@@ -17,6 +17,16 @@ void main() {
               '</methodCall>'));
     });
 
+    test('method call with null arg', () {
+      expect(
+          utf8.decode(createRpcMessage('null', [null])),
+          equals('<?xml version="1.0"?>'
+              '<methodCall>'
+              '<methodName>null</methodName>'
+              '<params><param><value></value></param></params>'
+              '</methodCall>'));
+    });
+
     test('method call with string arg', () {
       expect(
           utf8.decode(createRpcMessage('Hi.hello', const ['joe'])),

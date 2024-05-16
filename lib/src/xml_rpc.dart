@@ -9,7 +9,7 @@ import 'utils.dart';
 
 final rpcLogger = Logger('jbuild-rpc');
 
-List<int> createRpcMessage(String methodName, List<Object> args) {
+List<int> createRpcMessage(String methodName, List<Object?> args) {
   final message = '<?xml version="1.0"?>'
       '<methodCall>'
       '<methodName>$methodName</methodName>'
@@ -19,12 +19,13 @@ List<int> createRpcMessage(String methodName, List<Object> args) {
   return utf8.encode(message);
 }
 
-String _rpcParams(List<Object> args) {
+String _rpcParams(List<Object?> args) {
   return args.map(_rpcParam).join();
 }
 
 String _rpcParam(Object? arg) {
   return switch (arg) {
+    null => '<param><value></value></param>',
     String s => '<param>${_rpcValue(s)}</param>',
     List list when (list.every((s) => s == null || s is String)) =>
       '<param><value><array><data>'

@@ -99,8 +99,9 @@ Future<ExtensionProject?> loadExtensionProject(
       config, jbExtensionConfig.yaml, jbExtensionConfig.yamlUri);
 
   final classpath = await _toClasspath(dir, configContainer);
+
   final extensionModel =
-      await _loadExtensionModel(taskConfigs, jvmExecutor, classpath);
+      await _loadExtensionModel(config, taskConfigs, jvmExecutor, classpath);
 
   final tasks = await _createTasks(
           extensionModel, configContainer, jvmExecutor, dir, files, config)
@@ -114,27 +115,45 @@ Future<ExtensionProject?> loadExtensionProject(
 }
 
 Future<JbExtensionModel> _loadExtensionModel(
+    JbConfiguration config,
     List<ExtensionTaskConfig> taskConfigs,
     Sendable<JavaCommand, Object?> jvmExecutor,
     String classpath) async {
-  final tasks = _loadExtensionTasks(classpath, taskConfigs, jvmExecutor);
+  final tasks =
+      _loadExtensionTasks(config, classpath, taskConfigs, jvmExecutor);
   return JbExtensionModel(classpath, await tasks.toList());
 }
 
 Stream<ExtensionTask> _loadExtensionTasks(
+    JbConfiguration config,
     String classpath,
     List<ExtensionTaskConfig> taskConfigs,
     Sendable<JavaCommand, Object?> jvmExecutor) async* {
-  for (final config in taskConfigs) {
+  for (final taskConfig in taskConfigs) {
+    final name = taskConfig.name;
+    final taskConfigData = config.extras[name];
+    if (taskConfigData is! Map<String, Object>?) {
+      failBuild(
+          reason: "Cannot create jb extension task '$name' because the "
+              "provided configuration is not an object: $taskConfigData");
+    }
+
+    final constructorData = resolveConstructorData(
+        taskConfig.name, taskConfigData, taskConfig.constructors, config);
+
+    logger.fine(() => "Resolved data for constructor of extension "
+        "task '$name': $constructorData");
+
     final summary = await jvmExecutor.send(RunJava('_loadExtension', classpath,
-        config.className, 'getSummary', const [], const []));
+        taskConfig.className, 'getSummary', const [], constructorData));
     if (summary is List && summary.length == 4) {
       final [inputs, outputs, dependsOn, dependents] = summary;
-      yield ExtensionTask.from(config,
+      yield ExtensionTask.from(taskConfig,
           inputs: _ensureStringSet(inputs),
           outputs: _ensureStringSet(outputs),
           dependsOn: _ensureStringSet(dependsOn),
-          dependents: _ensureStringSet(dependents));
+          dependents: _ensureStringSet(dependents),
+          constructorData: constructorData);
     } else {
       failBuild(
           reason: 'getSummary should return list with 4 elements, '
@@ -196,29 +215,14 @@ Stream<Task> _createTasks(
     JbConfiguration config) async* {
   final cache = DartleCache(p.join(extensionDir, files.jbCache));
   for (final task in extensionModel.extensionTasks) {
-    final name = task.name;
-    final taskConfig = config.extras[name];
-    if (taskConfig is! Map<String, Object>?) {
-      failBuild(
-          reason: "Cannot create jb extension task '$name' because the "
-              "provided configuration is not an object: $taskConfig");
-    }
-    final constructorData =
-        resolveConstructorData(name, taskConfig, task.constructors, config);
-    yield _createTask(
-        jvmExecutor, extensionModel.classpath, task, cache, constructorData);
+    yield _createTask(jvmExecutor, extensionModel.classpath, task, cache);
   }
 }
 
-Task _createTask(
-    Sendable<JavaCommand, Object?> jvmExecutor,
-    String classpath,
-    ExtensionTask extensionTask,
-    DartleCache cache,
-    List<Object?> constructorData) {
+Task _createTask(Sendable<JavaCommand, Object?> jvmExecutor, String classpath,
+    ExtensionTask extensionTask, DartleCache cache) {
   final runCondition = _runCondition(extensionTask, cache);
-  return Task(
-      _taskAction(jvmExecutor, classpath, extensionTask, constructorData),
+  return Task(_taskAction(jvmExecutor, classpath, extensionTask),
       name: extensionTask.name,
       argsValidator: const AcceptAnyArgs(),
       description: extensionTask.description,
@@ -230,8 +234,7 @@ Task _createTask(
 Function(List<String> p1) _taskAction(
     Sendable<JavaCommand, Object?> jvmExecutor,
     String classpath,
-    ExtensionTask extensionTask,
-    List<Object?> constructorData) {
+    ExtensionTask extensionTask) {
   return (args) async {
     logger.fine(() => 'Requesting JBuild to run classpath=$classpath, '
         'className=${extensionTask.className}, '
@@ -243,7 +246,7 @@ Function(List<String> p1) _taskAction(
         extensionTask.className,
         extensionTask.methodName,
         args,
-        constructorData));
+        extensionTask.constructorData));
   };
 }
 

@@ -215,6 +215,7 @@ class ExtensionTask {
   final String className;
   final String methodName;
   final List<JavaConstructor> constructors;
+  final List<Object?> constructorData;
 
   const ExtensionTask({
     required this.name,
@@ -227,6 +228,7 @@ class ExtensionTask {
     required this.methodName,
     required this.dependents,
     required this.constructors,
+    required this.constructorData,
   });
 
   factory ExtensionTask.from(
@@ -235,6 +237,7 @@ class ExtensionTask {
     required Set<String> outputs,
     required Set<String> dependsOn,
     required Set<String> dependents,
+    required List<Object?> constructorData,
   }) {
     return ExtensionTask(
         name: config.name,
@@ -243,6 +246,7 @@ class ExtensionTask {
         className: config.className,
         methodName: config.methodName,
         constructors: config.constructors,
+        constructorData: constructorData,
         inputs: inputs,
         outputs: outputs,
         dependsOn: dependsOn,
