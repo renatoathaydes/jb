@@ -32,7 +32,7 @@ import 'tasks.dart';
 class ExtensionProject {
   final Iterable<Task> tasks;
 
-  ExtensionProject(this.tasks);
+  const ExtensionProject(this.tasks);
 }
 
 final class _JbExtensionConfig {
@@ -51,7 +51,8 @@ Future<ExtensionProject?> loadExtensionProject(
     Sendable<JavaCommand, Object?> jvmExecutor,
     JbFiles files,
     Options options,
-    JbConfiguration config) async {
+    JbConfiguration config,
+    DartleCache cache) async {
   final extensionProjectPath = config.extensionProject;
   final stopWatch = Stopwatch()..start();
   final projectDir = Directory(extensionProjectPath ?? jbExtension);
@@ -103,8 +104,8 @@ Future<ExtensionProject?> loadExtensionProject(
   final extensionModel =
       await _loadExtensionModel(config, taskConfigs, jvmExecutor, classpath);
 
-  final tasks = await _createTasks(
-          extensionModel, configContainer, jvmExecutor, dir, files, config)
+  final tasks = await _createTasks(extensionModel, configContainer, jvmExecutor,
+          dir, files, config, cache)
       .toList();
 
   logger.log(profile,
@@ -212,8 +213,8 @@ Stream<Task> _createTasks(
     Sendable<JavaCommand, Object?> jvmExecutor,
     String extensionDir,
     JbFiles files,
-    JbConfiguration config) async* {
-  final cache = DartleCache(p.join(extensionDir, files.jbCache));
+    JbConfiguration config,
+    DartleCache cache) async* {
   for (final task in extensionModel.extensionTasks) {
     yield _createTask(jvmExecutor, extensionModel.classpath, task, cache);
   }

@@ -155,8 +155,8 @@ class JbDartle {
         localDependencies);
     updateJBuild = createUpdateJBuildTask(javaSender);
 
-    final extensionProject =
-        await loadExtensionProject(javaSender, _files, _options, _config);
+    final extensionProject = await loadExtensionProject(
+        javaSender, _files, _options, _config, _cache);
 
     final extensionTasks = extensionProject?.tasks;
 
