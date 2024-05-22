@@ -48,12 +48,12 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     activateLogging(_level);
   }
 
-  Future<_JBuildRpc> _getRpc(String classpath) {
+  Future<_JBuildRpc> _getRpc(String classpath, Stopwatch stopwatch) {
     return _rpcByClasspath.update(classpath, (v) => v,
-        ifAbsent: () => _startRpc(classpath));
+        ifAbsent: () => _startRpc(classpath, stopwatch));
   }
 
-  Future<_JBuildRpc> _startRpc(String classpath) async {
+  Future<_JBuildRpc> _startRpc(String classpath, Stopwatch stopwatch) async {
     final args = [
       ..._jvmArgs,
       if (_classpath.isNotEmpty) ...[
@@ -82,6 +82,12 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
               'Expected the port number to be printed, but got: "$port"');
     }
 
+    stopwatch.stop();
+    logger.log(
+        profile,
+        () => 'Initialized JVM in ${elapsedTime(stopwatch)} '
+            '(classpath=$classpath)');
+
     final perr = proc.stderr.lines();
     final stdoutLogger = _RpcExecLogger('stdout', proc.pid);
     final stderrLogger = _RpcExecLogger('stderr', proc.pid);
@@ -93,9 +99,12 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
 
   @override
   Future<Object?> handle(JavaCommand command) async {
-    final rpc = await _getRpc(command.classpath);
+    final stopwatch = Stopwatch()..start();
+    final rpc = await _getRpc(command.classpath, stopwatch);
     final taskName = command.taskName;
-    return switch (command) {
+    stopwatch.reset();
+    stopwatch.start();
+    final result = switch (command) {
       RunJBuild jb => rpc.runJBuild(taskName, jb.args, jb.stdoutConsumer),
       RunJava(
         classpath: var classpath,
@@ -107,6 +116,13 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
         rpc.runJava(
             taskName, classpath, className, methodName, args, constructorData),
     };
+
+    return result.whenComplete(() {
+      logger.log(
+          profile,
+          () =>
+              'Java command completed in ${elapsedTime(stopwatch)}: $command');
+    });
   }
 
   @override
@@ -125,6 +141,11 @@ sealed class JavaCommand {
   final String classpath;
 
   const JavaCommand(this.taskName, this.classpath);
+
+  @override
+  String toString() {
+    return 'JavaCommand{task: $taskName}';
+  }
 }
 
 final class RunJBuild extends JavaCommand {

@@ -145,8 +145,13 @@ Stream<ExtensionTask> _loadExtensionTasks(
     logger.fine(() => "Resolved data for constructor of extension "
         "task '$name': $constructorData");
 
-    final summary = await jvmExecutor.send(RunJava('_loadExtension', classpath,
-        taskConfig.className, 'getSummary', const [], constructorData));
+    final summary = await jvmExecutor.send(RunJava(
+        '_getSummary_${taskConfig.name}',
+        classpath,
+        taskConfig.className,
+        'getSummary',
+        const [],
+        constructorData));
     if (summary is List && summary.length == 4) {
       final [inputs, outputs, dependsOn, dependents] = summary;
       yield ExtensionTask.from(taskConfig,
