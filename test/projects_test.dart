@@ -112,8 +112,8 @@ void main() {
     test('can generate POM', () async {
       final tempPom = tempFile(extension: '.xml');
       await tempPom.delete(); // ensure  that the task can create the file
-      var jbResult = await runJb(
-          Directory(withSubProjectDir), ['generatePom', ':${tempPom.path}']);
+      var jbResult = await runJb(Directory(withSubProjectDir),
+          ['generatePom', ':${tempPom.path}', '--no-color']);
       expectSuccess(jbResult);
       expect(
           jbResult.stdout.join('\n'), contains("Running task 'generatePom'"));
@@ -187,7 +187,7 @@ void main() {
           Directory(p.join(exampleExtensionDir, 'build')), [
         'example-extension.jar',
         'compile-libs',
-        p.join('compile-libs', 'jbuild-api.jar'),
+        p.join('compile-libs', 'jbuild-api-0.9.0.jar'),
       ]);
     });
   });
