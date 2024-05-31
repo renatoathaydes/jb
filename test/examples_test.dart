@@ -87,8 +87,8 @@ Annotation processor dependencies:
     test('can compile simple Java class into a jar', () async {
       final jbResult = await runJb(Directory(minimalProjectDir));
       expectSuccess(jbResult);
-      final jarPath = p.join(minimalProjectDir, 'minimal-java-project.jar');
-      expect(await File(jarPath).exists(), isTrue);
+      final jarPath = p.join(minimalProjectDir, 'build', 'minimal-java-project.jar');
+      expect(await File(jarPath).exists(), isTrue, reason: 'jar should be created');
 
       final jarList = await execRead(Process.start('jar', ['-tf', jarPath]));
       expect(jarList.exitCode, equals(0));
