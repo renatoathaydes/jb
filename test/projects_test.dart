@@ -230,7 +230,9 @@ void main() {
           await File(p.join(usesExtensionDir, 'output-resources', 'bye.txt'))
               .readAsString(),
           equals('Bye'));
-    }, timeout: const Timeout(Duration(seconds: 10)));
+      // skip on Windows because the jar command fails due to the jar being
+      // used by another process.
+    }, timeout: const Timeout(Duration(seconds: 10)), testOn: '!windows');
   });
 
   projectGroup(runEnvProjectDir, 'Run with Env Var project', () {
