@@ -1,7 +1,11 @@
 ## Next
 
-- include jar dependencies in project's libraries directories.
-- list also jar and sub-project dependencies in `dependencies` task.
+## 0.5.0
+
+- Handle jar dependencies.
+- Show dependencies in dependencies task.
+- Experimental support for Java-written extension tasks.
+- New `requirements` task to show project requirements.
 
 ## 0.4.0
 
