@@ -1,11 +1,21 @@
 ## Next
 
+## 0.6.0
+
 - added `publish` task for publishing to local and remote Maven repositories, including Maven Central.
 - added `showJbConfiguration` task.
 - improved POM creation task.
 - added config `name`, `description`, `url`, `licenses`, `developers`, `scm` (used by Maven) to project configuration.
 - include jar dependencies in project's libraries directories.
 - list also jar and sub-project dependencies in `dependencies` task.
+- many improvements to extension tasks.
+
+## 0.5.0
+
+- Handle jar dependencies.
+- Show dependencies in dependencies task.
+- Experimental support for Java-written extension tasks.
+- New `requirements` task to show project requirements.
 
 ## 0.4.0
 
