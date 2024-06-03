@@ -30,9 +30,11 @@ import 'runner.dart';
 import 'tasks.dart';
 
 class ExtensionProject {
+  final String name;
+  final JbExtensionModel model;
   final Iterable<Task> tasks;
 
-  const ExtensionProject(this.tasks);
+  const ExtensionProject(this.name, this.model, this.tasks);
 }
 
 final class _JbExtensionConfig {
@@ -112,7 +114,7 @@ Future<ExtensionProject?> loadExtensionProject(
       () => 'Loaded jb extension project in ${elapsedTime(stopWatch)}');
   logger.info('========= jb extension loaded =========');
 
-  return ExtensionProject(tasks);
+  return ExtensionProject(projectDir.path, extensionModel, tasks);
 }
 
 Future<JbExtensionModel> _loadExtensionModel(
@@ -122,7 +124,7 @@ Future<JbExtensionModel> _loadExtensionModel(
     String classpath) async {
   final tasks =
       _loadExtensionTasks(config, classpath, taskConfigs, jvmExecutor);
-  return JbExtensionModel(classpath, await tasks.toList());
+  return JbExtensionModel(config, classpath, await tasks.toList());
 }
 
 Stream<ExtensionTask> _loadExtensionTasks(

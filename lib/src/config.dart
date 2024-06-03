@@ -256,10 +256,11 @@ class ExtensionTask {
 
 /// jb extension model.
 class JbExtensionModel {
+  final JbConfiguration config;
   final String classpath;
   final List<ExtensionTask> extensionTasks;
 
-  const JbExtensionModel(this.classpath, this.extensionTasks);
+  const JbExtensionModel(this.config, this.classpath, this.extensionTasks);
 }
 
 class JbConfigContainer {

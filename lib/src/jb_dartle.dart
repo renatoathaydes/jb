@@ -1,3 +1,5 @@
+import 'package:collection/collection.dart';
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 import 'package:jb/src/jb_extension.dart';
@@ -186,6 +188,8 @@ class JbDartle {
         description: 'deletes the outputs of all other tasks.');
     projectTasks.add(clean);
 
+    extensionProject?.vmap((p) => _wireupTasks(p, projectTasks));
+
     if (localDependencies.projectDependencies.isNotEmpty) {
       await _initializeProjectDeps(localDependencies.projectDependencies);
       if (isRoot) {
@@ -207,6 +211,26 @@ class JbDartle {
       List<ResolvedProjectDependency> projectDeps) async {
     for (var dep in projectDeps) {
       await dep.initialize(_options, _files);
+    }
+  }
+}
+
+void _wireupTasks(ExtensionProject extensionProject, Set<Task> allTasks) {
+  final taskMap = allTasks.groupFoldBy((t) => t.name, (a, b) => b);
+  for (final exTask in extensionProject.model.extensionTasks) {
+    for (final dep in exTask.dependents) {
+      final dependent = taskMap[dep].orThrow(() => DartleException(
+          message: "Task '${exTask.name}' of extension project"
+              " '${extensionProject.name}' has non-existent task "
+              "dependent '$dep'"));
+      dependent.dependsOn({exTask.name});
+    }
+    for (final dep in exTask.dependsOn) {
+      // no need to add dependencies as they're added when the task is created
+      taskMap[dep].orThrow(() => DartleException(
+          message: "Task '${exTask.name}' of extension project"
+              " '${extensionProject.name}' has non-existent task "
+              "dependency '$dep'"));
     }
   }
 }
