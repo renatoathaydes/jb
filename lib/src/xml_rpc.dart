@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart' show DartleException;
@@ -24,23 +25,24 @@ String _rpcParams(List<Object?> args) {
 }
 
 String _rpcParam(Object? arg) {
-  return switch (arg) {
-    null => '<param><value></value></param>',
-    String s => '<param>${_rpcValue(s)}</param>',
-    List list when (list.every((s) => s == null || s is String)) =>
-      '<param><value><array><data>'
-          '${list.map((s) => _rpcValue(s as String?)).join()}'
-          '</data></array></value></param>',
-    _ => throw DartleException(
-        message: 'Unsupported RPC method call parameter: $arg')
-  };
+  return '<param>${_rpcValue(arg)}</param>';
 }
 
-String _rpcValue(String? arg) {
-  if (arg == null) {
-    return '<value><null /></value>';
-  }
-  return '<value>$arg</value>';
+String _rpcValue(Object? arg) {
+  final value = switch (arg) {
+    null => '<null />',
+    String s => s,
+    int n => '<int>$n</int>',
+    double n => '<double>$n</double>',
+    bool b => '<boolean>${b ? '1' : '0'}</boolean>',
+    Uint8List bin => '<base64>${base64Encode(bin)}</base64>',
+    DateTime time =>
+      '<dateTime.iso8601>${time.toIso8601String()}</dateTime.iso8601>',
+    Iterable iter =>
+      '<array><data>${iter.map(_rpcValue).join()}</data></array>',
+    _ => throw DartleException(message: 'Unsupported RPC method value: $arg')
+  };
+  return '<value>$value</value>';
 }
 
 Future<dynamic> parseRpcResponse(Stream<List<int>> rpcResponse) async {
@@ -49,7 +51,6 @@ Future<dynamic> parseRpcResponse(Stream<List<int>> rpcResponse) async {
   final XmlDocument doc;
   try {
     doc = XmlDocument.parse(message);
-    // await data.transform(ChunkDecoder()).transform(utf8.decoder).first);
   } on XmlException catch (e) {
     throw DartleException(message: 'RPC response could not be parsed: $e');
   }
@@ -96,8 +97,14 @@ dynamic _value(XmlElement value) {
     'string' => child.innerText,
     'int' || 'i4' => int.parse(child.innerText),
     'double' => double.parse(child.innerText),
-    'boolean' => child.innerText == '1',
+    'boolean' when child.innerText == '1' => true,
+    'boolean' when child.innerText == '0' => false,
+    'boolean' => throw DartleException(
+        message: "RPC value invalid for boolean: '${child.innerText}'"),
     'array' => _arrayValue(child),
+    'dateTime.iso8601' => DateTime.parse(child.innerText),
+    'base64' => base64Decode(child.innerText),
+    'null' when child.innerText.isEmpty => null,
     _ => throw DartleException(
         message: 'RPC value type not supported: ${child.localName}')
   };

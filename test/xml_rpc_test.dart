@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
@@ -19,12 +20,49 @@ void main() {
 
     test('method call with null arg', () {
       expect(
-          utf8.decode(createRpcMessage('null', [null])),
+          utf8.decode(createRpcMessage('example', [null])),
           equals('<?xml version="1.0"?>'
               '<methodCall>'
-              '<methodName>null</methodName>'
-              '<params><param><value></value></param></params>'
+              '<methodName>example</methodName>'
+              '<params><param><value><null /></value></param></params>'
               '</methodCall>'));
+    });
+
+    test('method call with boolean arg', () {
+      expect(
+          utf8.decode(createRpcMessage('num', [false, true])),
+          equals('<?xml version="1.0"?>'
+              '<methodCall>'
+              '<methodName>num</methodName>'
+              '<params>'
+              '<param><value><boolean>0</boolean></value></param>'
+              '<param><value><boolean>1</boolean></value></param>'
+              '</params>'
+              '</methodCall>'));
+    });
+
+    test('method call with int arg', () {
+      for (final n in [1, 100, 12345678, 0, -1, -32]) {
+        expect(
+            utf8.decode(createRpcMessage('num', [n])),
+            equals('<?xml version="1.0"?>'
+                '<methodCall>'
+                '<methodName>num</methodName>'
+                '<params><param><value><int>$n</int></value></param></params>'
+                '</methodCall>'));
+      }
+    });
+
+    test('method call with double arg', () {
+      for (final n in [3.1415, 1.0, 0.0, -1.0]) {
+        expect(
+            utf8.decode(createRpcMessage('num', [n])),
+            equals('<?xml version="1.0"?>'
+                '<methodCall>'
+                '<methodName>num</methodName>'
+                '<params><param><value><double>$n</double></value></param></params>'
+                '</methodCall>'));
+      }
     });
 
     test('method call with string arg', () {
@@ -65,6 +103,75 @@ void main() {
               '<value>joe</value>'
               '<value>mary</value>'
               '</data></array></value></param>'
+              '</params>'
+              '</methodCall>'));
+    });
+
+    test('method call with single int array arg', () {
+      expect(
+          utf8.decode(createRpcMessage('numbers', const [
+            [42, 24]
+          ])),
+          equals('<?xml version="1.0"?>'
+              '<methodCall>'
+              '<methodName>numbers</methodName>'
+              '<params>'
+              '<param><value><array><data>'
+              '<value><int>42</int></value>'
+              '<value><int>24</int></value>'
+              '</data></array></value></param>'
+              '</params>'
+              '</methodCall>'));
+    });
+
+    test('method call with array of arrays arg', () {
+      expect(
+          utf8.decode(createRpcMessage('take', const [
+            1,
+            ['hi', true],
+            [],
+          ])),
+          equals('<?xml version="1.0"?>'
+              '<methodCall>'
+              '<methodName>take</methodName>'
+              '<params>'
+              '<param><value><int>1</int></value></param>'
+              '<param><value><array><data>'
+              '<value>hi</value>'
+              '<value><boolean>1</boolean></value>'
+              '</data></array></value></param>'
+              '<param><value><array><data>'
+              '</data></array></value></param>'
+              '</params>'
+              '</methodCall>'));
+    });
+
+    test('method call with DateTime argument', () {
+      final time = DateTime.parse('19980717T14:08:55');
+      expect(
+          utf8.decode(createRpcMessage('time', [time])),
+          equals('<?xml version="1.0"?>'
+              '<methodCall>'
+              '<methodName>time</methodName>'
+              '<params>'
+              '<param><value>'
+              '<dateTime.iso8601>1998-07-17T14:08:55.000</dateTime.iso8601>'
+              '</value></param>'
+              '</params>'
+              '</methodCall>'));
+    });
+
+    test('method call with Uint8List argument', () {
+      final value = Uint8List.fromList([24, 42]);
+      expect(
+          utf8.decode(createRpcMessage('b64', [value])),
+          equals('<?xml version="1.0"?>'
+              '<methodCall>'
+              '<methodName>b64</methodName>'
+              '<params>'
+              '<param><value>'
+              '<base64>GCo=</base64>'
+              '</value></param>'
               '</params>'
               '</methodCall>'));
     });
@@ -117,6 +224,42 @@ void main() {
                     '</params></methodResponse>')),
             equals(number));
       });
+    });
+
+    test('Single null value', () async {
+      expect(
+          await parseRpcResponse(
+              _toBytes('<?xml version="1.0" encoding="UTF-8"?>'
+                  '<methodResponse><params>'
+                  '<param><value><null /></value></param>'
+                  '</params></methodResponse>')),
+          isNull);
+    });
+
+    test('Single DateTime value', () async {
+      final time = DateTime.parse('19980717T14:08:55');
+      expect(
+          await parseRpcResponse(
+              _toBytes('<?xml version="1.0" encoding="UTF-8"?>'
+                  '<methodResponse><params>'
+                  '<param><value>'
+                  '<dateTime.iso8601>1998-07-17T14:08:55.000</dateTime.iso8601>'
+                  '</value></param>'
+                  '</params></methodResponse>')),
+          equals(time));
+    });
+
+    test('Single binary value', () async {
+      final value = Uint8List.fromList([24, 42]);
+      expect(
+          await parseRpcResponse(
+              _toBytes('<?xml version="1.0" encoding="UTF-8"?>'
+                  '<methodResponse><params>'
+                  '<param><value>'
+                  '<base64>GCo=</base64>'
+                  '</value></param>'
+                  '</params></methodResponse>')),
+          equals(value));
     });
 
     test('Single boolean value', () {
