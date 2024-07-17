@@ -40,9 +40,24 @@ String _rpcValue(Object? arg) {
       '<dateTime.iso8601>${time.toIso8601String()}</dateTime.iso8601>',
     Iterable iter =>
       '<array><data>${iter.map(_rpcValue).join()}</data></array>',
+    Map map => _struct(map),
     _ => throw DartleException(message: 'Unsupported RPC method value: $arg')
   };
   return '<value>$value</value>';
+}
+
+String _struct(Map map) {
+  final builder = StringBuffer();
+  builder.write('<struct>');
+  map.forEach((k, v) {
+    builder
+      ..write('<name>')
+      ..write(k)
+      ..write('</name>')
+      ..write(_rpcValue(v));
+  });
+  builder.write('</struct>');
+  return builder.toString();
 }
 
 Future<dynamic> parseRpcResponse(Stream<List<int>> rpcResponse) async {

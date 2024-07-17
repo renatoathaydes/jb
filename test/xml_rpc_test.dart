@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
+import 'package:dartle/dartle_cache.dart';
 import 'package:jb/src/xml_rpc.dart';
+import 'package:jb/src/xml_rpc_structs.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -171,6 +174,46 @@ void main() {
               '<params>'
               '<param><value>'
               '<base64>GCo=</base64>'
+              '</value></param>'
+              '</params>'
+              '</methodCall>'));
+    });
+
+    test('method call with struct argument', () {
+      expect(
+          utf8.decode(createRpcMessage('struct', [
+            ChangeSet([
+              FileChange(File('foo'), ChangeKind.added),
+              FileChange(Directory('bar/zort'), ChangeKind.modified),
+            ], [
+              FileChange(File('output'), ChangeKind.deleted),
+            ]).toMap(),
+          ])),
+          equals('<?xml version="1.0"?>'
+              '<methodCall>'
+              '<methodName>struct</methodName>'
+              '<params>'
+              '<param><value>'
+              '<struct>'
+              '<name>inputChanges</name>'
+              '<value><array><data>'
+              '<value><struct>'
+              '<name>path</name><value>foo</value>'
+              '<name>kind</name><value>added</value>'
+              '</struct></value>'
+              '<value><struct>'
+              '<name>path</name><value>bar/zort</value>'
+              '<name>kind</name><value>modified</value>'
+              '</struct></value>'
+              '</data></array></value>'
+              '<name>outputChanges</name>'
+              '<value><array><data>'
+              '<value><struct>'
+              '<name>path</name><value>output</value>'
+              '<name>kind</name><value>deleted</value>'
+              '</struct></value>'
+              '</data></array></value>'
+              '</struct>'
               '</value></param>'
               '</params>'
               '</methodCall>'));
