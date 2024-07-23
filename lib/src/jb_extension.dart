@@ -14,10 +14,12 @@ import 'package:dartle/dartle.dart'
         AcceptAnyArgs,
         RunOnChanges,
         RunCondition,
+        ChangeSet,
         AlwaysRun,
         failBuild;
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:isolate_current_directory/isolate_current_directory.dart';
+import 'package:jb/src/xml_rpc_structs.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
@@ -239,21 +241,22 @@ Task _createTask(Sendable<JavaCommand, Object?> jvmExecutor, String classpath,
       phase: extensionTask.phase);
 }
 
-Function(List<String> p1) _taskAction(
+Future<void> Function(List<String>, [ChangeSet?]) _taskAction(
     Sendable<JavaCommand, Object?> jvmExecutor,
     String classpath,
     ExtensionTask extensionTask) {
-  return (args) async {
+  return (List<String> taskArgs, [ChangeSet? changes]) async {
     logger.fine(() => 'Requesting JBuild to run classpath=$classpath, '
         'className=${extensionTask.className}, '
         'method=${extensionTask.methodName}, '
-        'args=$args');
-    return await jvmExecutor.send(RunJava(
+        'args=$taskArgs, '
+        'changes=$changes');
+    await jvmExecutor.send(RunJava(
         extensionTask.name,
         classpath,
         extensionTask.className,
         extensionTask.methodName,
-        args,
+        [changes?.toMap(), taskArgs],
         extensionTask.constructorData));
   };
 }

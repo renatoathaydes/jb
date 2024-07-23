@@ -94,3 +94,8 @@ Future<ProcessResult> runProcess(String name, Directory workingDir,
       onStderrLine: stderr.add);
   return ProcessResult(0, exitCode, stdout, stderr);
 }
+
+List<T> lastItems<T>(int count, List<T> list) {
+  assert(list.length >= count);
+  return list.sublist(list.length - count);
+}

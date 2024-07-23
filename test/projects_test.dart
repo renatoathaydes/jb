@@ -194,12 +194,16 @@ void main() {
 
   projectGroup(usesExtensionDir, 'uses extension project', () {
     tearDown(() async {
-      await deleteAll(dirs([
-        // uses the example extension project
-        p.join(exampleExtensionDir, 'build'),
-        p.join(exampleExtensionDir, '.jb-cache'),
-        p.join(usesExtensionDir, 'output-resources'),
-      ], includeHidden: true));
+      await deleteAll(MultiFileCollection([
+        dirs([
+          // uses the example extension project
+          p.join(exampleExtensionDir, 'build'),
+          p.join(exampleExtensionDir, '.jb-cache'),
+          p.join(usesExtensionDir, 'output-resources'),
+        ], includeHidden: true),
+        // this file is created by the test
+        file(p.join(usesExtensionDir, 'input-resources', 'new.txt')),
+      ]));
     });
 
     test('can run custom task defined by extension project', () async {
@@ -212,11 +216,13 @@ void main() {
 
     test('can run custom task with config defined by extension project',
         () async {
-      var jbResult = await runJb(
-          Directory(usesExtensionDir), const ['copyFile', '--no-color']);
+      var jbResult = await runJb(Directory(usesExtensionDir),
+          const ['copyFile', '--no-color', '-l', 'debug']);
       expectSuccess(jbResult);
-      expect(jbResult.stdout.join('\n'),
-          contains('Copying 2 file(s) to output-resources directory'));
+      expect(
+          jbResult.stdout,
+          contains(matches(RegExp(r'^copyFile:stdout \[jvm \d+]: '
+              r'Copying 2 file\(s\) to output-resources directory$'))));
       await assertDirectoryContents(
           Directory(p.join(usesExtensionDir, 'output-resources')), [
         'hello.txt',
@@ -230,6 +236,42 @@ void main() {
           await File(p.join(usesExtensionDir, 'output-resources', 'bye.txt'))
               .readAsString(),
           equals('Bye'));
+
+      // should not run again as the task output is cached
+      jbResult = await runJb(
+          Directory(usesExtensionDir), const ['copyFile', '--no-color']);
+      expectSuccess(jbResult);
+      expect(
+          jbResult.stdout.where(
+              (String line) => line.endsWith('to output-resources directory')),
+          isEmpty);
+      expect(jbResult.stdout, hasLength(greaterThan(2)));
+      expect(lastItems(2, jbResult.stdout), [
+        'Everything is up-to-date!',
+        startsWith('Build succeeded in '),
+      ]);
+
+      // change the inputs and make sure the task runs incrementally
+      await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
+          .writeAsString('hello there');
+
+      jbResult = await runJb(Directory(usesExtensionDir),
+          const ['copyFile', '--no-color', '-l', 'debug']);
+      expectSuccess(jbResult);
+      for (final line in jbResult.stdout) {
+        print('>>>> $line');
+      }
+      expect(
+          jbResult.stdout,
+          contains(matches(RegExp(r'^copyFile:stdout \[jvm \d+]: '
+              r'Copying 1 file\(s\) to output-resources directory$'))));
+      await assertDirectoryContents(
+          Directory(p.join(usesExtensionDir, 'output-resources')), [
+        'hello.txt',
+        'bye.txt',
+        'new.txt',
+      ]);
+
       // skip on Windows because the jar command fails due to the jar being
       // used by another process.
     }, timeout: const Timeout(Duration(seconds: 10)), testOn: '!windows');

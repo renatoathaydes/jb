@@ -74,12 +74,26 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
         environment: _javaEnv);
 
     final pout = proc.stdout.lines().asBroadcastStream();
-    final [port, token] = await pout.take(2).toList();
+    final lines = await pout.take(2).toList();
+    final port = lines.isEmpty ? '' : lines.first;
+    final token = lines.length == 2 ? lines[1] : '';
     final portNumber = int.tryParse(port);
     if (portNumber == null) {
+      // could be that the JVM process failed to start, so have a look
+      final exitCode =
+          await proc.exitCode.timeout(Duration.zero, onTimeout: () => 0);
+      if (exitCode != 0) {
+        throw DartleException(
+            message: 'Failed to start JVM (exit code: $exitCode). Stderr:\n'
+                '${await proc.stderr.lines().join('\n')}');
+      }
       throw DartleException(
           message: 'Could not obtain port from RpcMain JBuild Process. '
               'Expected the port number to be printed, but got: "$port"');
+    }
+    if (token.isEmpty) {
+      throw DartleException(
+          message: 'Could not obtain token from RpcMain JBuild Process');
     }
 
     stopwatch.stop();
@@ -159,7 +173,7 @@ final class RunJBuild extends JavaCommand {
 final class RunJava extends JavaCommand {
   final String className;
   final String methodName;
-  final List<String> args;
+  final List<Object?> args;
   final List<Object?> constructorData;
 
   const RunJava(super.taskName, super.classpath, this.className,
@@ -233,7 +247,7 @@ class _JBuildRpc {
       String classpath,
       String className,
       String methodName,
-      List<String> args,
+      List<Object?> args,
       List<Object?> constructorData) async {
     // This class should run the JBuild RpcMain's run method:
     // Object run(String classpath, List<?> constructorData,
