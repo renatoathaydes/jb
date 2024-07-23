@@ -216,8 +216,8 @@ void main() {
 
     test('can run custom task with config defined by extension project',
         () async {
-      var jbResult = await runJb(Directory(usesExtensionDir),
-          const ['copyFile', '--no-color', '-l', 'debug']);
+      var jbResult = await runJb(
+          Directory(usesExtensionDir), const ['copyFile', '--no-color']);
       expectSuccess(jbResult);
       expect(
           jbResult.stdout,
@@ -255,12 +255,10 @@ void main() {
       await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
           .writeAsString('hello there');
 
-      jbResult = await runJb(Directory(usesExtensionDir),
-          const ['copyFile', '--no-color', '-l', 'debug']);
+      jbResult = await runJb(
+          Directory(usesExtensionDir), const ['copyFile', '--no-color']);
       expectSuccess(jbResult);
-      for (final line in jbResult.stdout) {
-        print('>>>> $line');
-      }
+
       expect(
           jbResult.stdout,
           contains(matches(RegExp(r'^copyFile:stdout \[jvm \d+]: '
@@ -272,9 +270,26 @@ void main() {
         'new.txt',
       ]);
 
+      await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
+          .delete();
+
+      jbResult = await runJb(
+          Directory(usesExtensionDir), const ['copyFile', '--no-color']);
+      expectSuccess(jbResult);
+
+      expect(
+          jbResult.stdout,
+          contains(matches(RegExp(r'^copyFile:stdout \[jvm \d+]: '
+              r'Deleted new.txt$'))));
+      await assertDirectoryContents(
+          Directory(p.join(usesExtensionDir, 'output-resources')), [
+        'hello.txt',
+        'bye.txt',
+      ]);
+
       // skip on Windows because the jar command fails due to the jar being
       // used by another process.
-    }, timeout: const Timeout(Duration(seconds: 10)), testOn: '!windows');
+    }, timeout: const Timeout(Duration(seconds: 20)), testOn: '!windows');
   });
 
   projectGroup(runEnvProjectDir, 'Run with Env Var project', () {

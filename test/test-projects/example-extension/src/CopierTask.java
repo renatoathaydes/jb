@@ -2,7 +2,6 @@ import jbuild.api.*;
 import jbuild.api.change.ChangeSet;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -48,10 +47,8 @@ public final class CopierTask implements JbTask {
     }
 
     private void go( ChangeSet changeSet ) throws IOException {
-        var inputs = getInputs( changeSet );
-        if ( inputs == null ) throw new FileNotFoundException( "input-resources directory does not exist" );
-        if ( inputs.length == 0 ) throw new JBuildException( "No input files found in input-resources directory",
-                JBuildException.ErrorCause.USER_INPUT );
+        var inputs = getChangedAndDeleteRemovedFiles( changeSet );
+        if ( inputs.length == 0 ) return;
         log.println( () -> "Copying " + inputs.length + " file(s) to output-resources directory" );
         var out = new File( "output-resources" );
         if ( !out.isDirectory() && !out.mkdirs() ) {
@@ -62,15 +59,27 @@ public final class CopierTask implements JbTask {
         }
     }
 
-    private File[] getInputs( ChangeSet changeSet ) {
+    private File[] getChangedAndDeleteRemovedFiles( ChangeSet changeSet ) {
         if ( changeSet == null || changeSet.getOutputChanges().iterator().hasNext() ) {
             log.verbosePrintln( "Performing full copy" );
             return new File( "input-resources" ).listFiles();
         }
         var changes = changeSet.getInputChanges();
         var result = new ArrayList<File>();
-        changes.forEach( c -> result.add( new File( c.path ) ) );
-        log.verbosePrintln( () -> "Incrementally copying: " + result );
+        changes.forEach( change -> {
+            File file = new File( change.path );
+            switch ( change.kind ) {
+                case ADDED:
+                case MODIFIED:
+                    if ( !file.isFile() ) return; // only handle files, not dirs/links
+                    result.add( file );
+                    break;
+                case DELETED:
+                    if ( new File( "output-resources", file.getName() ).delete() ) {
+                        log.println( "Deleted " + file.getName() );
+                    }
+            }
+        } );
         return result.toArray( new File[ 0 ] );
     }
 
