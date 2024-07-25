@@ -4,9 +4,8 @@ import 'dart:io';
 
 import 'package:actors/actors.dart';
 import 'package:conveniently/conveniently.dart';
-import 'package:dartle/dartle.dart';
-import 'package:dartle/dartle.dart' show ChangeSet;
-import 'package:dartle/dartle_cache.dart';
+import 'package:dartle/dartle_cache.dart'
+    show ChangeSet, ChangeKind, FileChange;
 import 'package:path/path.dart' as p;
 
 import 'config.dart';

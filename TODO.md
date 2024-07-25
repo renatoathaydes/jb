@@ -8,6 +8,7 @@ Once the project is in good shape, this should be moved to a proper bug tracker.
 
 - fat jar
 - avoid running JVM just to collect task config (cache config)
+- update JBuild jar when re-installed
 
 ## Bugs
 

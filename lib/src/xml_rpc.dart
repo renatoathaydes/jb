@@ -51,8 +51,11 @@ String _struct(Map map) {
   builder.write('<struct>');
   map.forEach((k, v) {
     builder
-      ..write('<member><name>')..write(k)..write('</name>')..write(
-        _rpcValue(v))..write('</member>');
+      ..write('<member><name>')
+      ..write(k)
+      ..write('</name>')
+      ..write(_rpcValue(v))
+      ..write('</member>');
   });
   builder.write('</struct>');
   return builder.toString();

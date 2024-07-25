@@ -30,6 +30,7 @@ import 'options.dart';
 import 'patterns.dart';
 import 'runner.dart';
 import 'tasks.dart';
+import 'utils.dart';
 
 class ExtensionProject {
   final String name;
@@ -274,8 +275,10 @@ RunCondition _runCondition(ExtensionTask extensionTask, DartleCache cache) {
 Future<String> _toClasspath(
     String rootDir, JbConfigContainer extensionConfig) async {
   final absRootDir = p.canonicalize(rootDir);
-  final artifact = p.join(absRootDir,
-      extensionConfig.output.when(dir: (d) => '$d/', jar: (j) => j));
+  final artifact = p.join(
+      absRootDir,
+      extensionConfig.output
+          .when(dir: (d) => '$d${Platform.pathSeparator}', jar: (j) => j));
   final libsDir =
       Directory(p.join(absRootDir, extensionConfig.config.runtimeLibsDir));
   logger.fine(() => 'Extension artifact: $artifact, '
@@ -286,7 +289,7 @@ Future<String> _toClasspath(
         .where((f) => f is File && f.path.endsWith('.jar'))
         .map((f) => f.path)
         .toList();
-    return libs.followedBy([artifact]).join(Platform.isWindows ? ';' : ':');
+    return libs.followedBy([artifact]).join(classpathSeparator);
   }
   return artifact;
 }
