@@ -5,9 +5,11 @@ import 'package:actors/actors.dart';
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart' as col;
 import 'package:conveniently/conveniently.dart';
+import 'package:crypto/crypto.dart';
 import 'package:dartle/dartle.dart'
     show
         Task,
+        TaskStatus,
         Options,
         profile,
         elapsedTime,
@@ -35,7 +37,7 @@ import 'utils.dart';
 class ExtensionProject {
   final String name;
   final JbExtensionModel model;
-  final Iterable<Task> tasks;
+  final List<Task> tasks;
 
   const ExtensionProject(this.name, this.model, this.tasks);
 }
@@ -82,7 +84,7 @@ Future<ExtensionProject?> loadExtensionProject(
       await withCurrentDirectory(dir, () => JbConfigContainer(config));
   final runner = JbRunner(files, extensionConfig);
   final workingDir = Directory.current.path;
-  await withCurrentDirectory(
+  final buildTasks = await withCurrentDirectory(
       dir,
       () async => await runner.run(
           copyDartleOptions(
@@ -90,28 +92,36 @@ Future<ExtensionProject?> loadExtensionProject(
           Stopwatch(),
           isRoot: false));
 
-  logger.fine(() => "Extension project '$dir' initialized,"
-      " moving back to $workingDir");
-
   // Dartle changes the current dir, so we must restore it here
   Directory.current = workingDir;
+
+  logger.fine(() => "Extension project '$dir' initialized,"
+      " moving back to $workingDir");
 
   final jbExtensionConfig = await configContainer.output.when(
     dir: (d) async => await _jbExtensionFromDir(dir, d),
     jar: (j) async => await _jbExtensionFromJar(dir, j),
   );
 
-  final taskConfigs = await loadExtensionTaskConfigs(
-      config, jbExtensionConfig.yaml, jbExtensionConfig.yamlUri);
+  final taskConfigs = _resolveTaskConstructors(
+      config,
+      await loadExtensionTaskConfigs(
+          config, jbExtensionConfig.yaml, jbExtensionConfig.yamlUri));
 
   final classpath = await _toClasspath(dir, configContainer);
 
-  final extensionModel =
-      await _loadExtensionModel(config, taskConfigs, jvmExecutor, classpath);
+  final isUpToDate = buildTasks
+      .expand((phase) => phase.tasks.map((t) => t.status))
+      .every((s) => s == TaskStatus.upToDate);
 
-  final tasks = await _createTasks(extensionModel, configContainer, jvmExecutor,
-          dir, files, config, cache)
-      .toList();
+  final (extensionModel, extensionTasks) = await _createExtensionModel(
+      isUpToDate, config, taskConfigs, cache, dir, classpath, jvmExecutor);
+
+  final tasks = extensionTasks.map((entry) {
+    final (taskConfig, constructorData) = entry;
+    return _createTask(
+        jvmExecutor, classpath, taskConfig, constructorData, cache);
+  }).toList();
 
   logger.log(profile,
       () => 'Loaded jb extension project in ${elapsedTime(stopWatch)}');
@@ -120,21 +130,62 @@ Future<ExtensionProject?> loadExtensionProject(
   return ExtensionProject(projectDir.path, extensionModel, tasks);
 }
 
-Future<JbExtensionModel> _loadExtensionModel(
-    JbConfiguration config,
-    List<ExtensionTaskConfig> taskConfigs,
-    Sendable<JavaCommand, Object?> jvmExecutor,
-    String classpath) async {
-  final tasks =
-      _loadExtensionTasks(config, classpath, taskConfigs, jvmExecutor);
-  return JbExtensionModel(config, classpath, await tasks.toList());
+Future<(JbExtensionModel, List<(ExtensionTask, List<Object?>)>)>
+    _createExtensionModel(
+        bool isUpToDate,
+        JbConfiguration config,
+        Iterable<(BasicExtensionTask, List<Object?>)> taskConfigs,
+        DartleCache cache,
+        String dir,
+        String classpath,
+        Sendable<JavaCommand, Object?> jvmExecutor) async {
+  final stopWatch = Stopwatch()..start();
+  List<(ExtensionTask, List<Object?>)>? tasks;
+  var fromCache = false;
+
+  // if the extension is up-to-date and the model has been cached, we don't
+  // need to instantiate the Java extension to get its full model.
+  if (isUpToDate) {
+    final maybeTasks =
+        await _loadExtensionTasksFromCache(config, taskConfigs, cache, dir);
+    if (maybeTasks != null) {
+      fromCache = true;
+      tasks = maybeTasks.toList();
+      logger.log(
+          profile,
+          () =>
+              'Loaded extension tasks config from cache in ${elapsedTime(stopWatch)}');
+    }
+  }
+  stopWatch.reset();
+
+  // if not loaded from the cache, load it by running the Java extension
+  if (tasks == null) {
+    tasks =
+        await _loadExtensionTasks(config, classpath, taskConfigs, jvmExecutor)
+            .toList();
+    logger.log(
+        profile,
+        () =>
+            'Loaded extension tasks config from Java in ${elapsedTime(stopWatch)}');
+  }
+
+  final extensionModel =
+      JbExtensionModel(config, classpath, tasks.map((t) => t.$1).toList());
+  if (!fromCache) {
+    stopWatch.reset();
+    logger.fine('Caching extension tasks config');
+    await _cacheExtensionTasks(cache, dir, extensionModel.extensionTasks);
+    logger.log(profile,
+        () => 'Cached extension tasks config in ${elapsedTime(stopWatch)}');
+  }
+  return (extensionModel, tasks);
 }
 
-Stream<ExtensionTask> _loadExtensionTasks(
-    JbConfiguration config,
-    String classpath,
-    List<ExtensionTaskConfig> taskConfigs,
-    Sendable<JavaCommand, Object?> jvmExecutor) async* {
+Iterable<(BasicExtensionTask, List<Object?>)> _resolveTaskConstructors(
+  JbConfiguration config,
+  List<BasicExtensionTask> taskConfigs,
+) sync* {
   for (final taskConfig in taskConfigs) {
     final name = taskConfig.name;
     final taskConfigData = config.extras[name];
@@ -150,6 +201,17 @@ Stream<ExtensionTask> _loadExtensionTasks(
     logger.fine(() => "Resolved data for constructor of extension "
         "task '$name': $constructorData");
 
+    yield (taskConfig, constructorData);
+  }
+}
+
+Stream<(ExtensionTask, List<Object?>)> _loadExtensionTasks(
+    JbConfiguration config,
+    String classpath,
+    Iterable<(BasicExtensionTask, List<Object?>)> taskConfigs,
+    Sendable<JavaCommand, Object?> jvmExecutor) async* {
+  logger.fine(() => 'Loading extension tasks data from Java extension');
+  for (final (taskConfig, constructorData) in taskConfigs) {
     final summary = await jvmExecutor.send(RunJava(
         '_getSummary_${taskConfig.name}',
         classpath,
@@ -159,18 +221,63 @@ Stream<ExtensionTask> _loadExtensionTasks(
         constructorData));
     if (summary is List && summary.length == 4) {
       final [inputs, outputs, dependsOn, dependents] = summary;
-      yield ExtensionTask.from(taskConfig,
-          inputs: _ensureStringSet(inputs),
-          outputs: _ensureStringSet(outputs),
-          dependsOn: _ensureStringSet(dependsOn),
-          dependents: _ensureStringSet(dependents),
-          constructorData: constructorData);
+      final task = ExtensionTask(
+          basicConfig: taskConfig,
+          extraConfig: ExtensionTaskExtra(
+              inputs: _ensureStrings(inputs),
+              outputs: _ensureStrings(outputs),
+              dependsOn: _ensureStrings(dependsOn),
+              dependents: _ensureStrings(dependents)));
+      yield (task, constructorData);
     } else {
       failBuild(
           reason: 'getSummary should return list with 4 elements, '
               'but got: $summary');
     }
   }
+}
+
+Future<Iterable<(ExtensionTask, List<Object?>)>?> _loadExtensionTasksFromCache(
+    JbConfiguration config,
+    Iterable<(BasicExtensionTask, List<Object?>)> taskConfigs,
+    DartleCache cache,
+    String dir) async {
+  logger.finer(() => 'Trying to load extension tasks data from cache');
+  final cacheDir = Directory(_hashLocation(cache.rootDir, dir));
+  final file = File(p.join(cacheDir.path, 'model.json'));
+  if (!await file.exists()) {
+    return null;
+  }
+  logger.fine(() => 'Loading extension tasks data from cache');
+  final extras = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+  return taskConfigs.map((entry) {
+    final (taskConfig, constructorData) = entry;
+    final extra = extras[taskConfig.name];
+    if (extra == null) {
+      failBuild(
+          reason:
+              'Task with name "${taskConfig.name}" was not found in serialized extension task cache: $extras');
+    }
+    final task = ExtensionTask(
+        basicConfig: taskConfig,
+        extraConfig: ExtensionTaskExtra.fromJson(extra));
+    return (task, constructorData);
+  });
+}
+
+Future<void> _cacheExtensionTasks(
+    DartleCache cache, String dir, List<ExtensionTask> tasks) async {
+  final cacheDir = await Directory(_hashLocation(cache.rootDir, dir))
+      .create(recursive: true);
+  final file = File(p.join(cacheDir.path, 'model.json'));
+  final toSerialize =
+      tasks.asMap().map((_, task) => MapEntry(task.name, task.extraConfig));
+  await file.writeAsBytes(jsonEncode(toSerialize).codeUnits);
+}
+
+String _hashLocation(String cacheDir, String dir) {
+  final encodedName = base64Encode(sha1.convert(dir.codeUnits).bytes);
+  return p.join(cacheDir, 'jb-extensions', encodedName);
 }
 
 Future<_JbExtensionConfig> _jbExtensionFromJar(
@@ -217,34 +324,27 @@ class JbExtensionModelBuilder {
   const JbExtensionModelBuilder(this.jvmExecutor);
 }
 
-Stream<Task> _createTasks(
-    JbExtensionModel extensionModel,
-    JbConfigContainer extensionConfig,
+Task _createTask(
     Sendable<JavaCommand, Object?> jvmExecutor,
-    String extensionDir,
-    JbFiles files,
-    JbConfiguration config,
-    DartleCache cache) async* {
-  for (final task in extensionModel.extensionTasks) {
-    yield _createTask(jvmExecutor, extensionModel.classpath, task, cache);
-  }
-}
-
-Task _createTask(Sendable<JavaCommand, Object?> jvmExecutor, String classpath,
-    ExtensionTask extensionTask, DartleCache cache) {
+    String classpath,
+    ExtensionTask extensionTask,
+    List<Object?> constructorData,
+    DartleCache cache) {
   final runCondition = _runCondition(extensionTask, cache);
-  return Task(_taskAction(jvmExecutor, classpath, extensionTask),
+  return Task(
+      _taskAction(jvmExecutor, classpath, constructorData, extensionTask),
       name: extensionTask.name,
       argsValidator: const AcceptAnyArgs(),
       description: extensionTask.description,
       runCondition: runCondition,
-      dependsOn: extensionTask.dependsOn,
+      dependsOn: extensionTask.dependsOn.toSet(),
       phase: extensionTask.phase);
 }
 
 Future<void> Function(List<String>, [ChangeSet?]) _taskAction(
     Sendable<JavaCommand, Object?> jvmExecutor,
     String classpath,
+    List<Object?> constructorData,
     ExtensionTask extensionTask) {
   return (List<String> taskArgs, [ChangeSet? changes]) async {
     logger.fine(() => 'Requesting JBuild to run classpath=$classpath, '
@@ -258,7 +358,7 @@ Future<void> Function(List<String>, [ChangeSet?]) _taskAction(
         extensionTask.className,
         extensionTask.methodName,
         [changes?.toMap(), taskArgs],
-        extensionTask.constructorData));
+        constructorData));
   };
 }
 
@@ -422,13 +522,13 @@ List<Object?>? _jbuildNoConfigConstructorData(
       .firstOrNull;
 }
 
-Set<String> _ensureStringSet(dynamic value) {
+List<String> _ensureStrings(dynamic value) {
   List list = value.toList();
   final badValues = list.where((e) => e is! String).toList();
   if (badValues.isNotEmpty) {
     failBuild(reason: 'Non-string values found in Set<String>: $badValues');
   }
-  return list.whereType<String>().toSet();
+  return list.whereType<String>().toList();
 }
 
 extension on Object? {

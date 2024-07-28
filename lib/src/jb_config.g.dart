@@ -286,6 +286,55 @@ class JbConfiguration {
       });
 }
 
+/// The extra config for a jb task obtained by instantiating the Java task and calling getSummary().
+
+class ExtensionTaskExtra {
+  final List<String> inputs;
+  final List<String> outputs;
+  final List<String> dependsOn;
+  final List<String> dependents;
+  const ExtensionTaskExtra({
+    required this.inputs,
+    required this.outputs,
+    required this.dependsOn,
+    required this.dependents,
+  });
+  @override
+  String toString() => 'ExtensionTaskExtra{'
+      'inputs: $inputs, '
+      'outputs: $outputs, '
+      'dependsOn: $dependsOn, '
+      'dependents: $dependents'
+      '}';
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ExtensionTaskExtra &&
+          runtimeType == other.runtimeType &&
+          const ListEquality<String>().equals(inputs, other.inputs) &&
+          const ListEquality<String>().equals(outputs, other.outputs) &&
+          const ListEquality<String>().equals(dependsOn, other.dependsOn) &&
+          const ListEquality<String>().equals(dependents, other.dependents);
+  @override
+  int get hashCode =>
+      const ListEquality<String>().hash(inputs) ^
+      const ListEquality<String>().hash(outputs) ^
+      const ListEquality<String>().hash(dependsOn) ^
+      const ListEquality<String>().hash(dependents);
+  Map<String, Object?> toJson() => {
+        'inputs': inputs,
+        'outputs': outputs,
+        'dependsOn': dependsOn,
+        'dependents': dependents,
+      };
+  static ExtensionTaskExtra fromJson(Object? value) =>
+      const _ExtensionTaskExtraJsonReviver().convert(switch (value) {
+        String() => jsonDecode(value),
+        List<int>() => jsonDecode(utf8.decode(value)),
+        _ => value,
+      });
+}
+
 /// Specification of a dependency.
 
 class DependencySpec {
@@ -674,6 +723,64 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
     }
     return result;
   }
+}
+
+class _ExtensionTaskExtraJsonReviver extends ObjectsBase<ExtensionTaskExtra> {
+  const _ExtensionTaskExtraJsonReviver()
+      : super("ExtensionTaskExtra",
+            unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid);
+
+  @override
+  ExtensionTaskExtra convert(Object? value) {
+    if (value is! Map) throw TypeException(ExtensionTaskExtra, value);
+    final keys = value.keys.map((key) {
+      if (key is! String) {
+        throw TypeException(String, key, "object key is not a String");
+      }
+      return key;
+    }).toSet();
+    checkRequiredProperties(keys);
+    const knownProperties = {'inputs', 'outputs', 'dependsOn', 'dependents'};
+    final unknownKey =
+        keys.where((k) => !knownProperties.contains(k)).firstOrNull;
+    if (unknownKey != null) {
+      throw UnknownPropertyException([unknownKey], ExtensionTaskExtra);
+    }
+    return ExtensionTaskExtra(
+      inputs: convertProperty(
+          const Arrays<String, Strings>(Strings()), 'inputs', value),
+      outputs: convertProperty(
+          const Arrays<String, Strings>(Strings()), 'outputs', value),
+      dependsOn: convertProperty(
+          const Arrays<String, Strings>(Strings()), 'dependsOn', value),
+      dependents: convertProperty(
+          const Arrays<String, Strings>(Strings()), 'dependents', value),
+    );
+  }
+
+  @override
+  Converter<Object?, Object?>? getPropertyConverter(String property) {
+    switch (property) {
+      case 'inputs':
+        return const Arrays<String, Strings>(Strings());
+      case 'outputs':
+        return const Arrays<String, Strings>(Strings());
+      case 'dependsOn':
+        return const Arrays<String, Strings>(Strings());
+      case 'dependents':
+        return const Arrays<String, Strings>(Strings());
+      default:
+        return null;
+    }
+  }
+
+  @override
+  Iterable<String> getRequiredProperties() {
+    return const {'inputs', 'outputs', 'dependsOn', 'dependents'};
+  }
+
+  @override
+  String toString() => 'ExtensionTaskExtra';
 }
 
 enum DependencyScope {

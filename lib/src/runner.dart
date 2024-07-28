@@ -19,7 +19,7 @@ class JbRunner {
     return JbRunner(files, config);
   }
 
-  Future<void> run(Options options, Stopwatch stopWatch,
+  Future<List<ParallelTasks>> run(Options options, Stopwatch stopWatch,
       {bool isRoot = true}) async {
     final cache = DartleCache(files.jbCache);
 
@@ -29,7 +29,7 @@ class JbRunner {
     final closable = await jb.init;
 
     try {
-      await runBasic(jb.tasks, jb.defaultTasks, options, cache);
+      return await runBasic(jb.tasks, jb.defaultTasks, options, cache);
     } finally {
       await closable();
     }

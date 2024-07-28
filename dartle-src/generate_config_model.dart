@@ -5,6 +5,7 @@ import 'package:dartle/dartle_dart.dart' show DartleDart, RunOnChanges, file;
 import 'package:schemake/dart_gen.dart';
 
 import 'config/jb_config_schema.dart';
+import 'config/jb_extension_schema.dart';
 
 const generateJbConfigModelTaskName = 'generateJbConfigModel';
 
@@ -26,7 +27,7 @@ Task generateJbConfigModelTask = Task(
 Future<void> _generateJbConfigModel(File output) async {
   final writer = output.openWrite();
   try {
-    writer.write(generateDartClasses([jbConfig],
+    writer.write(generateDartClasses([jbConfig, extensionTask],
         options: const DartGeneratorOptions(methodGenerators: [
           ...DartGeneratorOptions.defaultMethodGenerators,
           DartToJsonMethodGenerator(),

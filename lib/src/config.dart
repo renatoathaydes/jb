@@ -1,21 +1,15 @@
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart' show failBuild, DartleException, TaskPhase;
 import 'package:dartle/dartle_cache.dart' show ChangeKind;
+import 'package:jb/jb.dart';
 import 'package:logging/logging.dart' as log;
 import 'package:path/path.dart' as p;
 import 'package:schemake/schemake.dart';
 import 'package:yaml/yaml.dart';
 
 import 'ansi.dart';
-import 'config_import.dart';
-import 'file_tree.dart';
-import 'jb_config.g.dart';
-import 'licenses.g.dart';
-import 'maven_metadata.dart';
-import 'path_dependency.dart';
 import 'properties.dart';
 import 'utils.dart';
 
@@ -112,7 +106,7 @@ String _helpForProperty(List<String> propertyPath) {
 /// Parse the YAML/JSON jb extension model.
 ///
 /// Applies defaults and resolves properties and imports.
-Future<List<ExtensionTaskConfig>> loadExtensionTaskConfigs(
+Future<List<BasicExtensionTask>> loadExtensionTaskConfigs(
     JbConfiguration jbConfig, String config, Uri yamlUri) async {
   final json = loadYaml(config, sourceUrl: yamlUri);
   if (json is Map) {
@@ -194,7 +188,7 @@ typedef JavaConstructor = Map<String, ConfigType>;
 ///
 /// Includes only the parts of [ExtensionTask] which do not require
 /// instantiating the Java extension class.
-typedef ExtensionTaskConfig = ({
+typedef BasicExtensionTask = ({
   String name,
   String description,
   TaskPhase phase,
@@ -205,53 +199,33 @@ typedef ExtensionTaskConfig = ({
 
 /// Definition of a jb extension task.
 class ExtensionTask {
-  final String name;
-  final String description;
-  final TaskPhase phase;
-  final Set<String> inputs;
-  final Set<String> outputs;
-  final Set<String> dependsOn;
-  final Set<String> dependents;
-  final String className;
-  final String methodName;
-  final List<JavaConstructor> constructors;
-  final List<Object?> constructorData;
+  final BasicExtensionTask basicConfig;
+  final ExtensionTaskExtra extraConfig;
 
   const ExtensionTask({
-    required this.name,
-    required this.description,
-    required this.phase,
-    required this.inputs,
-    required this.outputs,
-    required this.dependsOn,
-    required this.className,
-    required this.methodName,
-    required this.dependents,
-    required this.constructors,
-    required this.constructorData,
+    required this.basicConfig,
+    required this.extraConfig,
   });
 
-  factory ExtensionTask.from(
-    ExtensionTaskConfig config, {
-    required Set<String> inputs,
-    required Set<String> outputs,
-    required Set<String> dependsOn,
-    required Set<String> dependents,
-    required List<Object?> constructorData,
-  }) {
-    return ExtensionTask(
-        name: config.name,
-        description: config.description,
-        phase: config.phase,
-        className: config.className,
-        methodName: config.methodName,
-        constructors: config.constructors,
-        constructorData: constructorData,
-        inputs: inputs,
-        outputs: outputs,
-        dependsOn: dependsOn,
-        dependents: dependents);
-  }
+  String get name => basicConfig.name;
+
+  String get description => basicConfig.description;
+
+  TaskPhase get phase => basicConfig.phase;
+
+  String get className => basicConfig.className;
+
+  String get methodName => basicConfig.methodName;
+
+  List<JavaConstructor> get constructors => basicConfig.constructors;
+
+  List<String> get inputs => extraConfig.inputs;
+
+  List<String> get outputs => extraConfig.outputs;
+
+  List<String> get dependsOn => extraConfig.dependsOn;
+
+  List<String> get dependents => extraConfig.dependents;
 }
 
 /// jb extension model.
@@ -793,7 +767,7 @@ Use the following syntax to declare 'developers':
       organization-url: https://acme.example.org
 ''';
 
-List<ExtensionTaskConfig> _extensionTasks(Map<String, Object?> map) {
+List<BasicExtensionTask> _extensionTasks(Map<String, Object?> map) {
   final tasks = map['tasks'];
   if (tasks is Map<String, Object?>) {
     return tasks.entries.map(_extensionTask).toList(growable: false);
@@ -816,7 +790,7 @@ tasks:
     class-name: my.java.OtherClass
 ''';
 
-ExtensionTaskConfig _extensionTask(MapEntry<String, Object?> task) {
+BasicExtensionTask _extensionTask(MapEntry<String, Object?> task) {
   final spec = task.value;
   if (spec is Map<String, Object?>) {
     return (
@@ -846,13 +820,20 @@ TaskPhase _taskPhase(Object? phase) {
           message: 'invalid task phase declaration, not single entry Map.');
     }
     final name = phase.keys.first.toString();
-    final index = phase.values.first;
+    var index = phase.values.first;
     if (index is int) {
       if (index == -1) {
         // default value: probably wants a built-in phase
         final builtInPhase =
             TaskPhase.builtInPhases.where((p) => p.name == name).firstOrNull;
-        if (builtInPhase != null) return builtInPhase;
+        if (builtInPhase != null) {
+          index = builtInPhase.index;
+        } else {
+          final builtInIndexes = TaskPhase.builtInPhases.join(', ');
+          throw DartleException(
+              message: 'Custom Task phase "$name" must provide an index. '
+                  'Builtin phase indexes are: $builtInIndexes');
+        }
       }
       return TaskPhase.custom(index, name);
     }

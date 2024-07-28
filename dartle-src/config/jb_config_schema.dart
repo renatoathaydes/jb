@@ -3,6 +3,8 @@ import 'dart:io' show File;
 import 'package:schemake/dart_gen.dart';
 import 'package:schemake/schemake.dart';
 
+import 'jb_extension_schema.dart';
+
 const configFile = 'lib/src/jb_config.g.dart';
 
 const _anyMap = Maps<String, Strings>('Map', valueType: Strings());
@@ -153,7 +155,7 @@ const jbConfig = Objects(
 void main() async {
   final writer = File(configFile).openWrite();
   try {
-    writer.write(generateDartClasses([jbConfig],
+    writer.write(generateDartClasses([jbConfig, extensionTask],
         options: const DartGeneratorOptions(methodGenerators: [
           ...DartGeneratorOptions.defaultMethodGenerators,
           DartToJsonMethodGenerator(),

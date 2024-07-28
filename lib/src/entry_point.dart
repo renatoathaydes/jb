@@ -65,5 +65,5 @@ Future<void> _runJb(JbCliOptions options, Options dartleOptions,
     jbuildJar,
     configSource: configSource ?? defaultJbConfigSource,
   ));
-  return runner.run(dartleOptions, stopwatch);
+  await runner.run(dartleOptions, stopwatch);
 }
