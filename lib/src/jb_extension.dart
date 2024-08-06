@@ -189,10 +189,11 @@ Iterable<(BasicExtensionTask, List<Object?>)> _resolveTaskConstructors(
   for (final taskConfig in taskConfigs) {
     final name = taskConfig.name;
     final taskConfigData = config.extras[name];
-    if (taskConfigData is! Map<String, Object>?) {
+    if (taskConfigData is! Map<String, Object?>?) {
       failBuild(
           reason: "Cannot create jb extension task '$name' because the "
-              "provided configuration is not an object: $taskConfigData");
+              "provided configuration is not an object "
+              "(type is ${taskConfigData.runtimeType}): $taskConfigData");
     }
 
     final constructorData = resolveConstructorData(
@@ -474,6 +475,8 @@ bool _keysMatch(JavaConstructor constructor, Map<String, Object?> taskConfig) {
       taskConfig.keys.where(mayBeMissingKeys.contains.not$).toSet();
   final mandatoryParamKeys =
       constructor.keys.where(mayBeMissingKeys.contains.not$).toSet();
+  logger.finer(() => 'Constructor parameters: $mandatoryParamKeys, '
+      'config: $mandatoryConfigKeys');
   return const col.SetEquality()
       .equals(mandatoryConfigKeys, mandatoryParamKeys);
 }

@@ -16,19 +16,25 @@ import static jbuild.api.JBuildException.ErrorCause.ACTION_ERROR;
         phase = @TaskPhase( name = "setup" ) )
 public final class CopierTask implements JbTask {
     private final JBuildLogger log;
+    private final List<String> extensions;
 
-    public CopierTask( JBuildLogger log ) {
+    public CopierTask( JBuildLogger log, String... extensions ) {
         this.log = log;
+        this.extensions = List.of( extensions );
     }
 
     @Override
     public List<String> inputs() {
-        return List.of( "input-resources/*" );
+        return extensions.stream()
+                .map( ext -> "input-resources/" + ext )
+                .toList();
     }
 
     @Override
     public List<String> outputs() {
-        return List.of( "output-resources/*" );
+        return extensions.stream()
+                .map( ext -> "output-resources/" + ext )
+                .toList();
     }
 
     @Override
