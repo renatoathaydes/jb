@@ -83,7 +83,6 @@ Future<ExtensionProject?> loadExtensionProject(
   final configContainer =
       await withCurrentDirectory(dir, () => JbConfigContainer(config));
   final runner = JbRunner(files, extensionConfig);
-  final workingDir = Directory.current.path;
   final buildTasks = await withCurrentDirectory(
       dir,
       () async => await runner.run(
@@ -92,11 +91,7 @@ Future<ExtensionProject?> loadExtensionProject(
           Stopwatch(),
           isRoot: false));
 
-  // Dartle changes the current dir, so we must restore it here
-  Directory.current = workingDir;
-
-  logger.fine(() => "Extension project '$dir' initialized,"
-      " moving back to $workingDir");
+  logger.fine(() => "Extension project '$dir' initialized");
 
   final jbExtensionConfig = await configContainer.output.when(
     dir: (d) async => await _jbExtensionFromDir(dir, d),

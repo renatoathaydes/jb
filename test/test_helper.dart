@@ -52,6 +52,8 @@ Future<void> _createFile(Directory rootDir, String path, String text) async {
 
 Future<void> assertDirectoryContents(Directory rootDir, List<String> paths,
     {String reason = '', bool checkLength = true}) async {
+  expect(await rootDir.exists(), isTrue,
+      reason: 'Directory does not exist: ${rootDir.path}');
   final dirContents =
       await rootDir.list(recursive: true).map((f) => f.path).toList();
   expect(

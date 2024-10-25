@@ -47,7 +47,6 @@ final class ResolvedProjectDependency {
   Future<void> initialize(Options options, JbFiles files) async {
     final runner = JbRunner(files, _config.config);
     logger.info(() => "Initializing project dependency at '$projectDir'");
-    final workingDir = Directory.current.path;
     await withCurrentDirectory(
         projectDir,
         () async => await runner.run(
@@ -56,11 +55,7 @@ final class ResolvedProjectDependency {
             Stopwatch(),
             isRoot: false));
 
-    logger.fine(() => "Project dependency '$projectDir' initialized,"
-        " moving back to $workingDir");
-
-    // Dartle changes the current dir, so we must restore it here
-    Directory.current = workingDir;
+    logger.fine(() => "Project dependency '$projectDir' initialized");
   }
 }
 

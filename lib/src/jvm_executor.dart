@@ -4,6 +4,7 @@ import 'dart:isolate';
 
 import 'package:actors/actors.dart';
 import 'package:dartle/dartle.dart';
+import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:logging/logging.dart';
 import 'package:structured_async/structured_async.dart' show FutureCancelled;
 
@@ -115,21 +116,10 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   Future<Object?> handle(JavaCommand command) async {
     final stopwatch = Stopwatch()..start();
     final rpc = await _getRpc(command.classpath, stopwatch);
-    final taskName = command.taskName;
     stopwatch.reset();
     stopwatch.start();
-    final result = switch (command) {
-      RunJBuild jb => rpc.runJBuild(taskName, jb.args, jb.stdoutConsumer),
-      RunJava(
-        classpath: var classpath,
-        className: var className,
-        methodName: var methodName,
-        args: var args,
-        constructorData: var constructorData,
-      ) =>
-        rpc.runJava(
-            taskName, classpath, className, methodName, args, constructorData),
-    };
+    final Future<Object?> result =
+        withCurrentDirectory(command.workingDir, () => _run(command, rpc));
 
     return result.whenComplete(() {
       logger.log(
@@ -148,13 +138,30 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     }
     _rpcByClasspath.clear();
   }
+
+  Future<Object?> _run(JavaCommand command, _JBuildRpc rpc) {
+    final taskName = command.taskName;
+    return switch (command) {
+      RunJBuild jb => rpc.runJBuild(taskName, jb.args, jb.stdoutConsumer),
+      RunJava(
+        classpath: var classpath,
+        className: var className,
+        methodName: var methodName,
+        args: var args,
+        constructorData: var constructorData,
+      ) =>
+        rpc.runJava(
+            taskName, classpath, className, methodName, args, constructorData),
+    };
+  }
 }
 
 sealed class JavaCommand {
   final String taskName;
   final String classpath;
+  final String workingDir = Directory.current.path;
 
-  const JavaCommand(this.taskName, this.classpath);
+  JavaCommand(this.taskName, this.classpath);
 
   @override
   String toString() {
@@ -166,7 +173,7 @@ final class RunJBuild extends JavaCommand {
   final List<String> args;
   final Sendable<String, void>? stdoutConsumer;
 
-  const RunJBuild(String taskName, this.args, [this.stdoutConsumer])
+  RunJBuild(String taskName, this.args, [this.stdoutConsumer])
       : super(taskName, '');
 }
 
@@ -176,8 +183,8 @@ final class RunJava extends JavaCommand {
   final List<Object?> args;
   final List<Object?> constructorData;
 
-  const RunJava(super.taskName, super.classpath, this.className,
-      this.methodName, this.args, this.constructorData);
+  RunJava(super.taskName, super.classpath, this.className, this.methodName,
+      this.args, this.constructorData);
 }
 
 /// Create a Java [Actor] which can be used to run JBuild commands and
@@ -270,6 +277,7 @@ class _JBuildRpc {
     req.headers
       ..add('Content-Type', 'text/xml; charset=utf-8')
       ..add('Authorization', proc.authorizationHeader)
+      ..add('Working-Dir', Directory.current.path)
       ..add('Track-Id', requestMetadata.id);
 
     req.add(createRpcMessage(methodName, args));
