@@ -280,14 +280,19 @@ Future<TransitiveChanges?> computeAllChanges(
   return null;
 }
 
-Future<void> storeNewFileTree(String taskName, JbConfiguration config,
-    JBuildSender jBuildSender, String buildOutput, File fileTreeFile) async {
+Future<void> storeNewFileTree(
+    String taskName,
+    JbConfiguration config,
+    String workingDir,
+    JBuildSender jBuildSender,
+    String buildOutput,
+    File fileTreeFile) async {
   final fileTreePath = fileTreeFile.absolute.path;
   final outputConsumer = Actor.create(() => _FileOutput(fileTreePath));
   try {
     await jBuildSender.send(RunJBuild(
         'requirements',
-        [...config.preArgs(), 'requirements', '-c', buildOutput],
+        [...config.preArgs(workingDir), 'requirements', '-c', buildOutput],
         await outputConsumer.toSendable()));
   } finally {
     await outputConsumer.close();

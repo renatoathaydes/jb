@@ -76,9 +76,10 @@ RunCondition _createPublicationCompileRunCondition(
 /// Create the `compile` task.
 Task createCompileTask(JbFiles jbFiles, JbConfigContainer config,
     DartleCache cache, JBuildSender jBuildSender) {
+  final workingDir = Directory.current.path;
   return Task(
-      (List<String> args, [ChangeSet? changes]) =>
-          _compile(jbFiles, config, changes, args, cache, jBuildSender),
+      (List<String> args, [ChangeSet? changes]) => _compile(
+          jbFiles, config, workingDir, changes, args, cache, jBuildSender),
       runCondition: _createCompileRunCondition(config, cache),
       name: compileTaskName,
       argsValidator: const AcceptAnyArgs(),
@@ -92,9 +93,10 @@ Task createCompileTask(JbFiles jbFiles, JbConfigContainer config,
 /// Create the publicationCompile task.
 Task createPublicationCompileTask(JbFiles jbFiles, JbConfigContainer config,
     DartleCache cache, JBuildSender jBuildSender) {
+  final workingDir = Directory.current.path;
   return Task(
-      (List<String> args) =>
-          _publishCompile(jbFiles, config, args, cache, jBuildSender),
+      (List<String> args) => _publishCompile(
+          jbFiles, config, workingDir, args, cache, jBuildSender),
       runCondition: _createPublicationCompileRunCondition(config, cache),
       name: publicationCompileTaskName,
       argsValidator: const AcceptAnyArgs(),
@@ -105,18 +107,24 @@ Task createPublicationCompileTask(JbFiles jbFiles, JbConfigContainer config,
       description: 'Compile Java source code, javadocs and sources jar.');
 }
 
-Future<void> _publishCompile(JbFiles jbFiles, JbConfigContainer config,
-    List<String> args, DartleCache cache, JBuildSender jBuildSender) async {
+Future<void> _publishCompile(
+    JbFiles jbFiles,
+    JbConfigContainer config,
+    String workingDir,
+    List<String> args,
+    DartleCache cache,
+    JBuildSender jBuildSender) async {
   config.output.when(
       dir: (_) => failBuild(reason: _reasonPublicationCompileCannotRun),
       jar: (_) => null);
-  await _compile(jbFiles, config, null, args, cache, jBuildSender,
+  await _compile(jbFiles, config, workingDir, null, args, cache, jBuildSender,
       publication: true);
 }
 
 Future<void> _compile(
     JbFiles jbFiles,
     JbConfigContainer configContainer,
+    String workingDir,
     ChangeSet? changeSet,
     List<String> args,
     DartleCache cache,
@@ -136,7 +144,7 @@ Future<void> _compile(
     ...args,
   ];
   await jBuildSender.send(RunJBuild('compile', [
-    ...config.preArgs(),
+    ...config.preArgs(workingDir),
     'compile',
     if (publication) ...const ['-sj', '-dj'],
     // the Java compiler runtime args are sent when starting the JVM
@@ -149,8 +157,8 @@ Future<void> _compile(
   stopwatch.reset();
   logger.fine('Computing Java source tree for incremental builds');
   final output = configContainer.output.when(dir: (d) => d, jar: (j) => j);
-  await storeNewFileTree(compileTaskName, config, jBuildSender, output,
-      jbFiles.javaSrcFileTreeFile);
+  await storeNewFileTree(compileTaskName, config, workingDir, jBuildSender,
+      output, jbFiles.javaSrcFileTreeFile);
   logger.log(
       profile, () => 'Computed Java source tree in ${elapsedTime(stopwatch)}');
 }
@@ -207,9 +215,10 @@ Task createInstallCompileDepsTask(
       .where((j) => j.spec.scope.includedInCompilation())
       .map((j) => j.path)
       .toList(growable: false);
-  final preArgs = config.preArgs();
+  final preArgs = config.preArgs(Directory.current.path);
   final args = config.installArgsForCompilation();
   final libsDir = config.compileLibsDir;
+
   // can only use Sendable objects inside action
   Future<void> action(_) async {
     await _install(installCompileDepsTaskName, jBuildSender, preArgs, args);
@@ -242,11 +251,13 @@ Task createInstallRuntimeDepsTask(
       .where((j) => j.spec.scope.includedAtRuntime())
       .map((j) => j.path)
       .toList(growable: false);
+  final preArgs = config.preArgs(Directory.current.path);
+  final args = config.installArgsForRuntime();
+  final runtimeLibsDir = config.runtimeLibsDir;
   Future<void> action(_) async {
-    await _install(installRuntimeDepsTaskName, jBuildSender, config.preArgs(),
-        config.installArgsForRuntime());
-    await _copy(projectDeps, config.runtimeLibsDir, runtime: true);
-    await _copyFiles(jarDeps, config.runtimeLibsDir);
+    await _install(installRuntimeDepsTaskName, jBuildSender, preArgs, args);
+    await _copy(projectDeps, runtimeLibsDir, runtime: true);
+    await _copyFiles(jarDeps, runtimeLibsDir);
   }
 
   return _createInstallDepsTask(
@@ -274,9 +285,10 @@ Task createInstallProcessorDepsTask(
       .where((j) => j.spec.scope.includedAtRuntime())
       .map((j) => j.path)
       .toList(growable: false);
+  final preArgs = config.preArgs(Directory.current.path);
+  final args = config.installArgsForProcessor(files.processorLibsDir);
   Future<void> action(_) async {
-    await _install(installProcessorDepsTaskName, jBuildSender, config.preArgs(),
-        config.installArgsForProcessor(files.processorLibsDir));
+    await _install(installProcessorDepsTaskName, jBuildSender, preArgs, args);
     await _copy(projectDeps, files.processorLibsDir, runtime: true);
     await _copyFiles(jarDeps, files.processorLibsDir);
   }
@@ -466,7 +478,9 @@ Future<void> _run(File jbuildJar, JbConfigContainer configContainer,
 /// Create the `downloadTestRunner` task.
 Task createDownloadTestRunnerTask(JbConfiguration config,
     JBuildSender jBuildSender, DartleCache cache, FileCollection jbFileInputs) {
-  return Task((_) => _downloadTestRunner(jBuildSender, config, cache),
+  final workingDir = Directory.current.path;
+  return Task(
+      (_) => _downloadTestRunner(jBuildSender, config, workingDir, cache),
       runCondition: RunOnChanges(
           inputs: jbFileInputs,
           outputs: dir(p.join(cache.rootDir, junitRunnerLibsDir)),
@@ -492,7 +506,7 @@ Task createTestTask(
 }
 
 Future<void> _downloadTestRunner(JBuildSender jBuildSender,
-    JbConfiguration config, DartleCache cache) async {
+    JbConfiguration config, String workingDir, DartleCache cache) async {
   final junit = findJUnitSpec(config.allDependencies);
   if (junit == null) {
     throw DartleException(
@@ -505,7 +519,10 @@ Future<void> _downloadTestRunner(JBuildSender jBuildSender,
   if (junit.runtimeIncludesJUnitConsole) {
     await File(p.join(outDir.path, '.no-dependencies')).create();
   } else {
-    await _install(downloadTestRunnerTaskName, jBuildSender, config.preArgs(),
+    await _install(
+        downloadTestRunnerTaskName,
+        jBuildSender,
+        config.preArgs(workingDir),
         ['-d', outDir.path, '-m', junitConsoleLib(junit.consoleVersion)]);
   }
 }
@@ -552,9 +569,10 @@ Future<void> _test(File jbuildJar, JbConfigContainer configContainer,
 /// Create the `dependencies` task.
 Task createDepsTask(File jbuildJar, JbConfiguration config, DartleCache cache,
     LocalDependencies localDependencies, LocalDependencies localProcessorDeps) {
+  final workingDir = Directory.current.path;
   return Task(
-      (List<String> args) => _deps(jbuildJar, config, cache, localDependencies,
-          localProcessorDeps, args),
+      (List<String> args) => _deps(jbuildJar, config, workingDir, cache,
+          localDependencies, localProcessorDeps, args),
       name: depsTaskName,
       argsValidator: const AcceptAnyArgs(),
       phase: TaskPhase.setup,
@@ -564,11 +582,12 @@ Task createDepsTask(File jbuildJar, JbConfiguration config, DartleCache cache,
 Future<void> _deps(
     File jbuildJar,
     JbConfiguration config,
+    String workingDir,
     DartleCache cache,
     LocalDependencies localDependencies,
     LocalDependencies localProcessorDependencies,
     List<String> args) async {
-  final exitCode = await printDependencies(jbuildJar, config, cache,
+  final exitCode = await printDependencies(jbuildJar, config, workingDir, cache,
       localDependencies, localProcessorDependencies, args);
   if (exitCode != 0) {
     throw DartleException(
@@ -585,7 +604,9 @@ Task createShowConfigTask(JbConfiguration config, bool noColor) {
 
 /// Create the `requirements` task.
 Task createRequirementsTask(File jbuildJar, JbConfigContainer config) {
-  return Task((List<String> args) => _requirements(jbuildJar, config, args),
+  final workingDir = Directory.current.path;
+  return Task(
+      (List<String> args) => _requirements(jbuildJar, config, workingDir, args),
       name: requirementsTaskName,
       argsValidator: const AcceptAnyArgs(),
       dependsOn: const {compileTaskName},
@@ -593,10 +614,10 @@ Task createRequirementsTask(File jbuildJar, JbConfigContainer config) {
 }
 
 Future<void> _requirements(File jbuildJar, JbConfigContainer configContainer,
-    List<String> args) async {
+    String workingDir, List<String> args) async {
   final out = configContainer.output.when(dir: (dir) => dir, jar: (jar) => jar);
-  final exitCode =
-      await logRequirements(jbuildJar, configContainer.config, [out, ...args]);
+  final exitCode = await logRequirements(
+      jbuildJar, configContainer.config, workingDir, [out, ...args]);
   if (exitCode != 0) {
     throw DartleException(
         message: 'jbuild requirements command failed', exitCode: exitCode);
@@ -604,7 +625,8 @@ Future<void> _requirements(File jbuildJar, JbConfigContainer configContainer,
 }
 
 Task createUpdateJBuildTask(JBuildSender jBuildSender) {
-  return Task((_) => jbuildUpdate(jBuildSender),
+  final workingDir = Directory.current.path;
+  return Task((_) => jbuildUpdate(jBuildSender, workingDir),
       phase: TaskPhase.setup,
       name: updateJBuildTaskName,
       description: 'Updates the JBuild jar used by jb.');

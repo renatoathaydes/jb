@@ -343,8 +343,8 @@ extension JbConfigExtension on JbConfiguration {
 
   /// Get the list of JBuild global arguments (pre-args)
   /// from this configuration.
-  List<String> preArgs() {
-    final result = <String>['-w', Directory.current.path, '-q'];
+  List<String> preArgs(String workingDir) {
+    final result = <String>['-w', workingDir, '-q'];
     if (logger.isLoggable(log.Level.FINE)) {
       result.add('-V');
     }

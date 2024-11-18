@@ -4,7 +4,6 @@ import 'dart:isolate';
 
 import 'package:actors/actors.dart';
 import 'package:dartle/dartle.dart';
-import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:logging/logging.dart';
 import 'package:structured_async/structured_async.dart' show FutureCancelled;
 
@@ -118,8 +117,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     final rpc = await _getRpc(command.classpath, stopwatch);
     stopwatch.reset();
     stopwatch.start();
-    final Future<Object?> result =
-        withCurrentDirectory(command.workingDir, () => _run(command, rpc));
+    final Future<Object?> result = _run(command, rpc);
 
     return result.whenComplete(() {
       logger.log(
@@ -159,7 +157,6 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
 sealed class JavaCommand {
   final String taskName;
   final String classpath;
-  final String workingDir = Directory.current.path;
 
   JavaCommand(this.taskName, this.classpath);
 
@@ -277,7 +274,6 @@ class _JBuildRpc {
     req.headers
       ..add('Content-Type', 'text/xml; charset=utf-8')
       ..add('Authorization', proc.authorizationHeader)
-      ..add('Working-Dir', Directory.current.path)
       ..add('Track-Id', requestMetadata.id);
 
     req.add(createRpcMessage(methodName, args));

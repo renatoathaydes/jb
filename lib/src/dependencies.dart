@@ -94,6 +94,7 @@ void _writeDep(IOSink sink, String name, DependencySpec spec) {
 Future<int> printDependencies(
     File jbuildJar,
     JbConfiguration config,
+    String workingDir,
     DartleCache cache,
     LocalDependencies localDependencies,
     LocalDependencies localProcessorDependencies,
@@ -114,7 +115,7 @@ Future<int> printDependencies(
     return 0;
   }
 
-  final preArgs = config.preArgs();
+  final preArgs = config.preArgs(workingDir);
   var result = 0;
   if (deps.isNotEmpty || localDependencies.isNotEmpty) {
     result = await _print(deps, localDependencies, jbuildJar, preArgs,

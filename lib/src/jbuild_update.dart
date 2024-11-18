@@ -11,11 +11,12 @@ import 'tasks.dart' show updateJBuildTaskName;
 
 final _versionPattern = RegExp(r'^\d+.\d+.\d+(.\d+)?$');
 
-Future<void> jbuildUpdate(JBuildSender jBuildSender) async {
+Future<void> jbuildUpdate(JBuildSender jBuildSender, String workingDir) async {
   final localVersionOutput = _Lines();
   final latestVersionOutput = _Lines();
   try {
-    await _update(jBuildSender, localVersionOutput, latestVersionOutput);
+    await _update(
+        jBuildSender, workingDir, localVersionOutput, latestVersionOutput);
   } catch (e) {
     localVersionOutput.lines.vmap((lines) => _print('jbuild --version', lines));
     latestVersionOutput.lines.vmap((lines) => _print('jbuild versions', lines));
@@ -23,11 +24,11 @@ Future<void> jbuildUpdate(JBuildSender jBuildSender) async {
   }
 }
 
-Future<void> _update(JBuildSender jBuildSender, _Lines localVersionOutput,
-    _Lines latestVersionOutput) async {
+Future<void> _update(JBuildSender jBuildSender, String workingDir,
+    _Lines localVersionOutput, _Lines latestVersionOutput) async {
   await jBuildSender.send(RunJBuild(
     updateJBuildTaskName,
-    const ['-q', 'version'],
+    ['-q', '-w', workingDir, 'version'],
     localVersionOutput,
   ));
   final currentVersion = localVersionOutput.lines
@@ -40,7 +41,7 @@ Future<void> _update(JBuildSender jBuildSender, _Lines localVersionOutput,
   }
   logger.fine(() => 'JBuild current version: $currentVersion');
   await jBuildSender.send(RunJBuild(updateJBuildTaskName,
-      const ['-q', 'versions', jbuild], latestVersionOutput));
+      ['-q', '-w', workingDir, 'versions', jbuild], latestVersionOutput));
   final latestVersion = latestVersionOutput.lines
       .where((it) => it.startsWith('  * Latest: '))
       .map((it) => it.substring('  * Latest: '.length))
@@ -57,8 +58,14 @@ Future<void> _update(JBuildSender jBuildSender, _Lines localVersionOutput,
   logger.fine('Fetching latest JBuild jar');
   final jarFile = File(jbuildJarPath());
   final jarDir = jarFile.parent;
-  await jBuildSender.send(
-      RunJBuild('fetch', ['-d', jarDir.path, '$jbuild:$latestVersion:jar']));
+  await jBuildSender.send(RunJBuild('fetch', [
+    '-w',
+    workingDir,
+    'fetch',
+    '-d',
+    jarDir.path,
+    '$jbuild:$latestVersion:jar'
+  ]));
   await File('jbuild-$latestVersion.jar').rename(jarFile.path);
   logger.info(() => 'Updated JBuild to version $latestVersion');
 }

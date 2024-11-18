@@ -6,10 +6,10 @@ import 'package:jb/jb.dart';
 
 import 'output_consumer.dart';
 
-Future<int> logRequirements(
-    File jbuildJar, JbConfiguration config, List<String> args) async {
-  return await execJBuild(
-      'requirements', jbuildJar, config.preArgs(), 'requirements', args,
+Future<int> logRequirements(File jbuildJar, JbConfiguration config,
+    String workingDir, List<String> args) async {
+  return await execJBuild('requirements', jbuildJar, config.preArgs(workingDir),
+      'requirements', args,
       onStdout: _RequirementsPrinter());
 }
 
