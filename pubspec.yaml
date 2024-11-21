@@ -8,14 +8,13 @@ environment:
 dependencies:
   path: ^1.8.2
   io: ^1.0.4
-  dartle: ^0.28.1
-  #    path: ../dartle
+  dartle: ^0.29.0
   args: ^2.3.1
   logging: ^1.0.0
   collection: ^1.19.0
   yaml: ^3.1.1
   file: ^7.0.0
-  isolate_current_directory: ^2.0.0
+  isolate_current_directory: ^2.1.0
   archive: ^3.3.4
   xml: ^6.2.2
   actors: ^0.11.0
