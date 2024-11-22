@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static jbuild.api.JBuildException.ErrorCause.ACTION_ERROR;
@@ -27,14 +28,14 @@ public final class CopierTask implements JbTask {
     public List<String> inputs() {
         return extensions.stream()
                 .map( ext -> "input-resources/" + ext )
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<String> outputs() {
         return extensions.stream()
                 .map( ext -> "output-resources/" + ext )
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Override
