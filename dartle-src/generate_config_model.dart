@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:dartle/dartle.dart' show Task, TaskPhase;
+import 'package:dartle/dartle.dart' show Task, TaskPhase, exec, failBuild;
 import 'package:dartle/dartle_dart.dart' show DartleDart, RunOnChanges, file;
 import 'package:schemake/dart_gen.dart';
 
@@ -36,5 +36,12 @@ Future<void> _generateJbConfigModel(File output) async {
   } finally {
     await writer.flush();
     await writer.close();
+  }
+
+  // format the generated code to avoid making the 'analyse' task to run
+  final formatExitCode =
+      await exec(Process.start('dart', const ['format', outputFile]));
+  if (formatExitCode != 0) {
+    failBuild(reason: 'Could not format generated model source file');
   }
 }
