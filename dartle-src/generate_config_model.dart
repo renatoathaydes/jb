@@ -6,6 +6,7 @@ import 'package:schemake/dart_gen.dart';
 
 import 'config/jb_config_schema.dart';
 import 'config/jb_extension_schema.dart';
+import 'format.dart';
 
 const generateJbConfigModelTaskName = 'generateJbConfigModel';
 
@@ -39,9 +40,5 @@ Future<void> _generateJbConfigModel(File output) async {
   }
 
   // format the generated code to avoid making the 'analyse' task to run
-  final formatExitCode =
-      await exec(Process.start('dart', const ['format', outputFile]));
-  if (formatExitCode != 0) {
-    failBuild(reason: 'Could not format generated model source file');
-  }
+  await formatDart(outputFile);
 }
