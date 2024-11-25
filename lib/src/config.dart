@@ -237,14 +237,17 @@ class JbExtensionModel {
   const JbExtensionModel(this.config, this.classpath, this.extensionTasks);
 }
 
+/// A container holding an instance of the generated type [JbConfiguration]
+/// as well as a computed [CompileOutput].
 class JbConfigContainer {
   final JbConfiguration config;
   final CompileOutput output;
 
-  JbConfigContainer(this.config)
-      : output = config.outputDir.vmapOr(
-            CompileOutput.dir,
-            () => CompileOutput.jar(config.outputJar ??
+  JbConfigContainer(JbConfiguration config)
+      : config = _processPaths(config),
+        output = config.outputDir.vmapOr(
+            (d) => CompileOutput.dir(_processPath(d)),
+            () => CompileOutput.jar(config.outputJar?.vmap(_processPath) ??
                 '${p.join('build', p.basename(Directory.current.path))}.jar'));
 
   @override
@@ -866,4 +869,24 @@ MapEntry<String, ConfigType> _constructorEntry(Object? key, Object? value) {
   }
   failBuild(
       reason: 'jb manifest has invalid constructor entry: $key -> $value');
+}
+
+/// Normalize and ensure paths use the OS-specific path separator.
+JbConfiguration _processPaths(JbConfiguration config) {
+  return config.copyWith(
+    compileLibsDir: _processPath(config.compileLibsDir),
+    outputDir: config.outputDir?.vmap(_processPath),
+    runtimeLibsDir: _processPath(config.runtimeLibsDir),
+    testReportsDir: _processPath(config.testReportsDir),
+    sourceDirs: config.sourceDirs.map(_processPath).toList(growable: false),
+    resourceDirs: config.resourceDirs.map(_processPath).toList(growable: false),
+  );
+}
+
+String _processPath(String text) {
+  var result = text;
+  if (Platform.isWindows) {
+    result = text.replaceAll('/', '\\');
+  }
+  return p.normalize(result);
 }

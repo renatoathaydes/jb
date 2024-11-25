@@ -244,6 +244,91 @@ class JbConfiguration {
       const ListEquality<String>().hash(licenses) ^
       const MapEquality<String, Object?>().hash(properties) ^
       const MapEquality<String, Object?>().hash(extras);
+  JbConfiguration copyWith({
+    String? group = null,
+    String? module = null,
+    String? name = null,
+    String? version = null,
+    String? description = null,
+    String? url = null,
+    String? mainClass = null,
+    String? extensionProject = null,
+    List<String>? sourceDirs = null,
+    String? outputDir = null,
+    String? outputJar = null,
+    List<String>? resourceDirs = null,
+    List<String>? repositories = null,
+    Map<String, DependencySpec?>? dependencies = null,
+    Map<String, DependencySpec?>? processorDependencies = null,
+    List<String>? dependencyExclusionPatterns = null,
+    List<String>? processorDependencyExclusionPatterns = null,
+    String? compileLibsDir = null,
+    String? runtimeLibsDir = null,
+    String? testReportsDir = null,
+    List<String>? javacArgs = null,
+    List<String>? runJavaArgs = null,
+    List<String>? testJavaArgs = null,
+    Map<String, String>? javacEnv = null,
+    Map<String, String>? runJavaEnv = null,
+    Map<String, String>? testJavaEnv = null,
+    SourceControlManagement? scm = null,
+    List<Developer>? developers = null,
+    List<String>? licenses = null,
+    Map<String, Object?>? properties = null,
+    Map<String, Object?>? extras = null,
+    bool unsetGroup = false,
+    bool unsetModule = false,
+    bool unsetName = false,
+    bool unsetVersion = false,
+    bool unsetDescription = false,
+    bool unsetUrl = false,
+    bool unsetMainClass = false,
+    bool unsetExtensionProject = false,
+    bool unsetOutputDir = false,
+    bool unsetOutputJar = false,
+    bool unsetScm = false,
+  }) {
+    return JbConfiguration(
+      group: unsetGroup ? null : group ?? this.group,
+      module: unsetModule ? null : module ?? this.module,
+      name: unsetName ? null : name ?? this.name,
+      version: unsetVersion ? null : version ?? this.version,
+      description: unsetDescription ? null : description ?? this.description,
+      url: unsetUrl ? null : url ?? this.url,
+      mainClass: unsetMainClass ? null : mainClass ?? this.mainClass,
+      extensionProject: unsetExtensionProject
+          ? null
+          : extensionProject ?? this.extensionProject,
+      sourceDirs: sourceDirs ?? [...this.sourceDirs],
+      outputDir: unsetOutputDir ? null : outputDir ?? this.outputDir,
+      outputJar: unsetOutputJar ? null : outputJar ?? this.outputJar,
+      resourceDirs: resourceDirs ?? [...this.resourceDirs],
+      repositories: repositories ?? [...this.repositories],
+      dependencies: dependencies ?? {...this.dependencies},
+      processorDependencies:
+          processorDependencies ?? {...this.processorDependencies},
+      dependencyExclusionPatterns:
+          dependencyExclusionPatterns ?? [...this.dependencyExclusionPatterns],
+      processorDependencyExclusionPatterns:
+          processorDependencyExclusionPatterns ??
+              [...this.processorDependencyExclusionPatterns],
+      compileLibsDir: compileLibsDir ?? this.compileLibsDir,
+      runtimeLibsDir: runtimeLibsDir ?? this.runtimeLibsDir,
+      testReportsDir: testReportsDir ?? this.testReportsDir,
+      javacArgs: javacArgs ?? [...this.javacArgs],
+      runJavaArgs: runJavaArgs ?? [...this.runJavaArgs],
+      testJavaArgs: testJavaArgs ?? [...this.testJavaArgs],
+      javacEnv: javacEnv ?? {...this.javacEnv},
+      runJavaEnv: runJavaEnv ?? {...this.runJavaEnv},
+      testJavaEnv: testJavaEnv ?? {...this.testJavaEnv},
+      scm: unsetScm ? null : scm ?? this.scm?.copyWith(),
+      developers: developers ?? [...this.developers],
+      licenses: licenses ?? [...this.licenses],
+      properties: properties ?? {...this.properties},
+      extras: extras ?? {...this.extras},
+    );
+  }
+
   Map<String, Object?> toJson() => {
         if (group != null) 'group': group,
         if (module != null) 'module': module,
@@ -321,6 +406,20 @@ class ExtensionTaskExtra {
       const ListEquality<String>().hash(outputs) ^
       const ListEquality<String>().hash(dependsOn) ^
       const ListEquality<String>().hash(dependents);
+  ExtensionTaskExtra copyWith({
+    List<String>? inputs = null,
+    List<String>? outputs = null,
+    List<String>? dependsOn = null,
+    List<String>? dependents = null,
+  }) {
+    return ExtensionTaskExtra(
+      inputs: inputs ?? [...this.inputs],
+      outputs: outputs ?? [...this.outputs],
+      dependsOn: dependsOn ?? [...this.dependsOn],
+      dependents: dependents ?? [...this.dependents],
+    );
+  }
+
   Map<String, Object?> toJson() => {
         'inputs': inputs,
         'outputs': outputs,
@@ -364,6 +463,19 @@ class DependencySpec {
           path == other.path;
   @override
   int get hashCode => transitive.hashCode ^ scope.hashCode ^ path.hashCode;
+  DependencySpec copyWith({
+    bool? transitive = null,
+    DependencyScope? scope = null,
+    String? path = null,
+    bool unsetPath = false,
+  }) {
+    return DependencySpec(
+      transitive: transitive ?? this.transitive,
+      scope: scope ?? this.scope,
+      path: unsetPath ? null : path ?? this.path,
+    );
+  }
+
   Map<String, Object?> toJson() => {
         'transitive': transitive,
         'scope': scope,
@@ -405,6 +517,18 @@ class SourceControlManagement {
   @override
   int get hashCode =>
       connection.hashCode ^ developerConnection.hashCode ^ url.hashCode;
+  SourceControlManagement copyWith({
+    String? connection = null,
+    String? developerConnection = null,
+    String? url = null,
+  }) {
+    return SourceControlManagement(
+      connection: connection ?? this.connection,
+      developerConnection: developerConnection ?? this.developerConnection,
+      url: url ?? this.url,
+    );
+  }
+
   Map<String, Object?> toJson() => {
         'connection': connection,
         'developer-connection': developerConnection,
@@ -453,6 +577,20 @@ class Developer {
       email.hashCode ^
       organization.hashCode ^
       organizationUrl.hashCode;
+  Developer copyWith({
+    String? name = null,
+    String? email = null,
+    String? organization = null,
+    String? organizationUrl = null,
+  }) {
+    return Developer(
+      name: name ?? this.name,
+      email: email ?? this.email,
+      organization: organization ?? this.organization,
+      organizationUrl: organizationUrl ?? this.organizationUrl,
+    );
+  }
+
   Map<String, Object?> toJson() => {
         'name': name,
         'email': email,

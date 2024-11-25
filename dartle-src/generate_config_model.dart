@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:dartle/dartle.dart' show Task, TaskPhase, exec, failBuild;
+import 'package:dartle/dartle.dart' show Task, TaskPhase;
 import 'package:dartle/dartle_dart.dart' show DartleDart, RunOnChanges, file;
 import 'package:schemake/dart_gen.dart';
 

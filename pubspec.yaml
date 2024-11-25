@@ -22,8 +22,7 @@ dependencies:
   conveniently: ^1.2.0
   structured_async: ^0.3.2
   crypto: ^3.0.3
-  schemake: ^0.5.0
-
+  schemake: ^0.6.1
 dev_dependencies:
   build_runner: ^2.4.11
   lints: ^4.0.0
