@@ -162,6 +162,15 @@ void main() {
     });
 
     test('can run single Java test', () async {
+      // install compile dependencies and check they are installed
+      final jbInstallResult = await runJb(Directory(testsProjectDir),
+          const ['installCompileDependencies', '--no-color']);
+      expectSuccess(jbInstallResult);
+      await assertDirectoryContents(
+          Directory(p.join(testsProjectDir, 'build', 'comp')),
+          ['app', p.join('app', 'App.class')],
+          checkLength: false);
+      // run the test
       final jbResult = await runJb(Directory(testsProjectDir),
           const ['test', ':--include-tag', ':t1', '--no-color']);
       expectSuccess(jbResult);
