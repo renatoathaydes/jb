@@ -190,6 +190,16 @@ extension StringExtension on String {
     if (classpath.isEmpty) return this;
     return "$this$classpathSeparator$classpath";
   }
+
+  String asDirPath() {
+    if (Platform.isWindows && endsWith('/')) {
+      return "${substring(0, length - 1)}\\";
+    }
+    if (endsWith(Platform.pathSeparator)) {
+      return this;
+    }
+    return "$this${Platform.pathSeparator}";
+  }
 }
 
 extension NullableStringExtension on String? {

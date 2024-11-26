@@ -363,12 +363,12 @@ extension JbConfigExtension on JbConfiguration {
       [TransitiveChanges? changes]) async {
     final result = <String>[];
     if (compileLibsDir.isNotEmpty) {
-      result.addAll(['-cp', compileLibsDir]);
+      result.addAll(['-cp', compileLibsDir.asDirPath()]);
     }
-    outputDir?.vmap((d) => result.addAll(['-d', d]));
+    outputDir?.vmap((d) => result.addAll(['-d', d.asDirPath()]));
     outputJar?.vmap((jar) => result.addAll(['-j', jar]));
     for (final r in resourceDirs.toSet()) {
-      result.addAll(['-r', r]);
+      result.addAll(['-r', r.asDirPath()]);
     }
     final main = mainClass;
     if (main != null && main.isNotEmpty) {

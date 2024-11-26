@@ -371,10 +371,8 @@ RunCondition _runCondition(ExtensionTask extensionTask, DartleCache cache) {
 Future<String> _toClasspath(
     String rootDir, JbConfigContainer extensionConfig) async {
   final absRootDir = p.canonicalize(rootDir);
-  final artifact = p.join(
-      absRootDir,
-      extensionConfig.output
-          .when(dir: (d) => '$d${Platform.pathSeparator}', jar: (j) => j));
+  final artifact = p.join(absRootDir,
+      extensionConfig.output.when(dir: (d) => d.asDirPath(), jar: (j) => j));
   final libsDir =
       Directory(p.join(absRootDir, extensionConfig.config.runtimeLibsDir));
   logger.fine(() => 'Extension artifact: $artifact, '

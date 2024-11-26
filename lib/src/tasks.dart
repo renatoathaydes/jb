@@ -461,8 +461,7 @@ Future<void> _run(File jbuildJar, JbConfigContainer configContainer,
   }
 
   final classpath = {
-    configContainer.output
-        .when(dir: (d) => '$d${Platform.pathSeparator}', jar: (j) => j),
+    configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j),
     config.runtimeLibsDir,
     p.join(config.runtimeLibsDir, '*'),
   }.join(classpathSeparator);
@@ -533,7 +532,7 @@ Future<void> _test(File jbuildJar, JbConfigContainer configContainer,
   final config = configContainer.config;
   final libs = Directory(config.runtimeLibsDir).list();
   final classpath = {
-    configContainer.output.when(dir: (d) => d, jar: (j) => j),
+    configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j),
     config.runtimeLibsDir,
     await for (final lib in libs)
       if (p.extension(lib.path) == '.jar') lib.path,
@@ -554,7 +553,7 @@ Future<void> _test(File jbuildJar, JbConfigContainer configContainer,
         mainClass,
         '--classpath=$classpath',
         if (!hasCustomSelect)
-          '--scan-classpath=${configContainer.output.when(dir: (d) => d, jar: (j) => j)}',
+          '--scan-classpath=${configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j)}',
         '--reports-dir=${config.testReportsDir}',
         '--fail-if-no-tests',
         if (noColor) '--disable-ansi-colors',
