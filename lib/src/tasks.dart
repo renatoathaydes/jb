@@ -461,7 +461,8 @@ Future<void> _run(File jbuildJar, JbConfigContainer configContainer,
   }
 
   final classpath = {
-    configContainer.output.when(dir: (d) => d, jar: (j) => j),
+    configContainer.output
+        .when(dir: (d) => '$d${Platform.pathSeparator}', jar: (j) => j),
     config.runtimeLibsDir,
     p.join(config.runtimeLibsDir, '*'),
   }.join(classpathSeparator);
