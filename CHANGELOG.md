@@ -1,5 +1,12 @@
 ## Next
 
+## 0.7.0
+
+- support for "structs" (Java classes) in jb extension config.
+- allow custom jb tasks to perform incremental execution.
+- improved jb extensions so JVM does not need to run just to load config.
+- fixed several caching issues related to sub-projects.
+- updated SPDX licenses.
 - fixed JVM Executor: only start up one per build.
 - fixed JVM Executor: ensure it's killed after the build completes.
 
