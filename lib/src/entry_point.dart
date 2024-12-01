@@ -71,7 +71,9 @@ Future<void> _runJb(JbCliOptions options, Options dartleOptions,
       ),
       await jvmExecutor.toSendable());
 
-  await runner.run(dartleOptions, stopwatch);
-
-  await jvmExecutor.close();
+  try {
+    await runner.run(dartleOptions, stopwatch);
+  } finally {
+    await jvmExecutor.close();
+  }
 }
