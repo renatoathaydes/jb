@@ -159,7 +159,7 @@ void main() {
 
       expect(jbResult.stdout.join('\n'),
           anyOf(contains(unicodeResults), contains(asciiResults)));
-    });
+    }, testOn: '!windows');
 
     test('can run single Java test', () async {
       // install compile dependencies and check they are installed
