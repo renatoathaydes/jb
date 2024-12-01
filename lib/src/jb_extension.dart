@@ -82,7 +82,7 @@ Future<ExtensionProject?> loadExtensionProject(
 
   final configContainer =
       await withCurrentDirectory(dir, () => JbConfigContainer(config));
-  final runner = JbRunner(files, extensionConfig);
+  final runner = JbRunner(files, extensionConfig, jvmExecutor);
   final buildTasks = await withCurrentDirectory(
       dir,
       () async => await runner.run(

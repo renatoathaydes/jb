@@ -9,6 +9,7 @@ import 'config_source.dart';
 import 'create/create.dart';
 import 'help.dart';
 import 'jb_files.dart';
+import 'jvm_executor.dart';
 import 'options.dart';
 import 'runner.dart';
 import 'utils.dart';
@@ -61,9 +62,16 @@ Future<void> _runJb(JbCliOptions options, Options dartleOptions,
   if (createOptions != null) {
     return createNewProject(createOptions.arguments);
   }
-  final runner = await JbRunner.create(JbFiles(
-    jbuildJar,
-    configSource: configSource ?? defaultJbConfigSource,
-  ));
+  final jvmExecutor = createJavaActor(dartleOptions.logLevel, jbuildJar.path);
+
+  final runner = await JbRunner.create(
+      JbFiles(
+        jbuildJar,
+        configSource: configSource ?? defaultJbConfigSource,
+      ),
+      await jvmExecutor.toSendable());
+
   await runner.run(dartleOptions, stopwatch);
+
+  await jvmExecutor.close();
 }

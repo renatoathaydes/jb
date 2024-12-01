@@ -35,31 +35,23 @@ class _Proc {
 }
 
 final class _JBuildActor implements Handler<JavaCommand, Object?> {
-  final String _classpath;
   final Level _level;
-  final List<String> _jvmArgs;
-  final Map<String, String> _javaEnv;
-  final Map<String, Future<_JBuildRpc>> _rpcByClasspath = {};
+  final String jbuildJar;
+  Future<_JBuildRpc>? _rpc;
+  bool _started = false;
 
-  _JBuildActor(this._classpath, this._level, this._jvmArgs, this._javaEnv);
+  _JBuildActor(this._level, this.jbuildJar);
 
   @override
   void init() {
     activateLogging(_level);
   }
 
-  Future<_JBuildRpc> _getRpc(String classpath, Stopwatch stopwatch) {
-    return _rpcByClasspath.update(classpath, (v) => v,
-        ifAbsent: () => _startRpc(classpath, stopwatch));
-  }
-
-  Future<_JBuildRpc> _startRpc(String classpath, Stopwatch stopwatch) async {
+  static Future<_JBuildRpc> _startRpc(String jbuildJar) async {
+    final stopwatch = Stopwatch();
     final args = [
-      ..._jvmArgs,
-      if (_classpath.isNotEmpty) ...[
-        '-cp',
-        _classpath.joinClasspath(classpath)
-      ],
+      '-cp',
+      jbuildJar,
       'jbuild.cli.RpcMain',
       if (logger.isLoggable(Level.FINE)) '-V',
     ];
@@ -69,9 +61,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
             'with args: $args');
 
     final proc = await Process.start('java', args,
-        runInShell: true,
-        workingDirectory: Directory.current.path,
-        environment: _javaEnv);
+        runInShell: true, workingDirectory: Directory.current.path);
 
     final pout = proc.stdout.lines().asBroadcastStream();
     final lines = await pout.take(2).toList();
@@ -97,10 +87,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     }
 
     stopwatch.stop();
-    logger.log(
-        profile,
-        () => 'Initialized JVM in ${elapsedTime(stopwatch)} '
-            '(classpath=$classpath)');
+    logger.log(profile, () => 'Initialized JVM in ${elapsedTime(stopwatch)}');
 
     final perr = proc.stderr.lines();
     final stdoutLogger = _RpcExecLogger('stdout', proc.pid);
@@ -111,12 +98,18 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     return _JBuildRpc(_Proc(proc, portNumber, token), stdoutLogger);
   }
 
+  Future<_JBuildRpc> _getOrStartRpc() async {
+    if (!_started) {
+      _started = true;
+      _rpc = _startRpc(jbuildJar);
+    }
+    return _rpc!;
+  }
+
   @override
   Future<Object?> handle(JavaCommand command) async {
+    final rpc = await _getOrStartRpc();
     final stopwatch = Stopwatch()..start();
-    final rpc = await _getRpc(command.classpath, stopwatch);
-    stopwatch.reset();
-    stopwatch.start();
     final Future<Object?> result = _run(command, rpc);
 
     return result.whenComplete(() {
@@ -129,29 +122,39 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
 
   @override
   Future<void> close() async {
-    for (final future in _rpcByClasspath.values
-        .map((f) async => (await f).stop())
-        .toList(growable: false)) {
-      await ignoreExceptions(() => future);
+    if (!_started) {
+      logger
+          .finest('JBuild Actor did not use JVM Executor, no need to stop it');
+      return;
     }
-    _rpcByClasspath.clear();
-  }
 
-  Future<Object?> _run(JavaCommand command, _JBuildRpc rpc) {
-    final taskName = command.taskName;
-    return switch (command) {
-      RunJBuild jb => rpc.runJBuild(taskName, jb.args, jb.stdoutConsumer),
-      RunJava(
-        classpath: var classpath,
-        className: var className,
-        methodName: var methodName,
-        args: var args,
-        constructorData: var constructorData,
-      ) =>
-        rpc.runJava(
-            taskName, classpath, className, methodName, args, constructorData),
-    };
+    logger.fine('Stopping JVM Executor');
+
+    final rpc = await _rpc;
+
+    try {
+      await rpc!.stop();
+      logger.fine('JVM Executor stopped');
+    } catch (e) {
+      logger.warning(() => 'Error closing JVM Executor: $e');
+    }
   }
+}
+
+Future<Object?> _run(JavaCommand command, _JBuildRpc rpc) {
+  final taskName = command.taskName;
+  return switch (command) {
+    RunJBuild jb => rpc.runJBuild(taskName, jb.args, jb.stdoutConsumer),
+    RunJava(
+      classpath: var classpath,
+      className: var className,
+      methodName: var methodName,
+      args: var args,
+      constructorData: var constructorData,
+    ) =>
+      rpc.runJava(
+          taskName, classpath, className, methodName, args, constructorData),
+  };
 }
 
 sealed class JavaCommand {
@@ -188,10 +191,8 @@ final class RunJava extends JavaCommand {
 /// arbitrary Java methods (for jb extensions).
 ///
 /// The Actor sender returns whatever the Java method returned.
-Actor<JavaCommand, Object?> createJavaActor(String classpath, Level level,
-    List<String> javaCompilerArgs, Map<String, String> javaEnv) {
-  return Actor.create(
-      () => _JBuildActor(classpath, level, javaCompilerArgs, javaEnv));
+Actor<JavaCommand, Object?> createJavaActor(Level level, String jbuildJar) {
+  return Actor.create(() => _JBuildActor(level, jbuildJar));
 }
 
 class _RpcRequestMetadata {

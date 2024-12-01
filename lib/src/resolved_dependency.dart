@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'config.dart';
 import 'config_source.dart';
 import 'jb_files.dart';
+import 'jvm_executor.dart';
 import 'options.dart';
 import 'path_dependency.dart';
 import 'runner.dart';
@@ -44,8 +45,9 @@ final class ResolvedProjectDependency {
     return p.join(projectDir, path);
   }
 
-  Future<void> initialize(Options options, JbFiles files) async {
-    final runner = JbRunner(files, _config.config);
+  Future<void> initialize(
+      Options options, JbFiles files, JBuildSender jvmExecutor) async {
+    final runner = JbRunner(files, _config.config, jvmExecutor);
     logger.info(() => "Initializing project dependency at '$projectDir'");
     await withCurrentDirectory(
         projectDir,
