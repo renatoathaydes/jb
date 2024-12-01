@@ -48,7 +48,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   }
 
   static Future<_JBuildRpc> _startRpc(String jbuildJar) async {
-    final stopwatch = Stopwatch();
+    final stopwatch = Stopwatch()..start();
     final args = [
       '-cp',
       jbuildJar,
