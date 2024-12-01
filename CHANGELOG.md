@@ -1,5 +1,8 @@
 ## Next
 
+- fixed JVM Executor: only start up one per build.
+- fixed JVM Executor: ensure it's killed after the build completes.
+
 ## 0.6.0
 
 - added `publish` task for publishing to local and remote Maven repositories, including Maven Central.
