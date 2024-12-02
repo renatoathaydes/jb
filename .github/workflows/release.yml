@@ -31,7 +31,34 @@ jobs:
           asset_name: jb-${{ steps.get_version.outputs.VERSION }}-linux.tar.gz
           asset_content_type: application/gzip
 
-  build-mac:
+  build-mac-x86:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: dart-lang/setup-dart@v1
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Build executable
+        run: dart dartle.dart distribution
+
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+        shell: bash
+
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: build/jb.tar.gz
+          asset_name: jb-${{ steps.get_version.outputs.VERSION }}-macos-x86.tar.gz
+          asset_content_type: application/gzip
+
+  build-mac-arm64:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -55,7 +82,7 @@ jobs:
         with:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: build/jb.tar.gz
-          asset_name: jb-${{ steps.get_version.outputs.VERSION }}-macos.tar.gz
+          asset_name: jb-${{ steps.get_version.outputs.VERSION }}-macos-arm64.tar.gz
           asset_content_type: application/gzip
 
   build-win:
