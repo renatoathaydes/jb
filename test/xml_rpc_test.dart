@@ -218,6 +218,24 @@ void main() {
               '</params>'
               '</methodCall>'));
     });
+
+    test('method call with any Object implementing toJson', () {
+      final serializable =
+          SerializesToMap({'foo': 'bar', 'zort': true, 'n': 42});
+      expect(
+          utf8.decode(createRpcMessage('objects', [serializable])),
+          equals('<?xml version="1.0"?>'
+              '<methodCall>'
+              '<methodName>objects</methodName>'
+              '<params>'
+              '<param><value><struct>'
+              '<member><name>foo</name><value>bar</value></member>'
+              '<member><name>zort</name><value><boolean>1</boolean></value></member>'
+              '<member><name>n</name><value><int>42</int></value></member>'
+              '</struct></value></param>'
+              '</params>'
+              '</methodCall>'));
+    });
   });
 
   group('XML-RPC Response', () {
@@ -368,4 +386,12 @@ void main() {
 
 Stream<List<int>> _toBytes(String message) {
   return Stream.fromIterable([utf8.encode(message)]);
+}
+
+class SerializesToMap {
+  final Map<String, Object> map;
+
+  SerializesToMap(this.map);
+
+  Map<String, Object> toJson() => map;
 }
