@@ -41,7 +41,7 @@ String _rpcValue(Object? arg) {
     Iterable iter =>
       '<array><data>${iter.map(_rpcValue).join()}</data></array>',
     Map map => _struct(map),
-    _ => throw DartleException(message: 'Unsupported RPC method value: $arg')
+    _ => _rpcValue((arg as dynamic).toJson())
   };
   return '<value>$value</value>';
 }
