@@ -359,12 +359,19 @@ Future<void> Function(List<String>, [ChangeSet?]) _taskAction(
 }
 
 RunCondition _runCondition(ExtensionTask extensionTask, DartleCache cache) {
-  if (extensionTask.inputs.isEmpty && extensionTask.outputs.isEmpty) {
+  final dependsOnJbConfig = extensionTask.basicConfig.constructors
+      .any((c) => c.values.any((v) => v == ConfigType.jbConfig));
+
+  if (!dependsOnJbConfig &&
+      extensionTask.inputs.isEmpty &&
+      extensionTask.outputs.isEmpty) {
     return const AlwaysRun();
   }
   return RunOnChanges(
       cache: cache,
-      inputs: patternFileCollection(extensionTask.inputs),
+      inputs: patternFileCollection(extensionTask.inputs.followedBy([
+        if (dependsOnJbConfig) yamlJbFile // TODO or the JSON file :/
+      ])),
       outputs: patternFileCollection(extensionTask.outputs));
 }
 
