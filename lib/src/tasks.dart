@@ -143,7 +143,7 @@ Future<void> _compile(
     ...await config.compileArgs(jbFiles.processorLibsDir, changes),
     ...args,
   ];
-  await jBuildSender.send(RunJBuild('compile', [
+  await jBuildSender.send(RunJBuild(compileTaskName, [
     ...config.preArgs(workingDir),
     'compile',
     if (publication) ...const ['-sj', '-dj'],
