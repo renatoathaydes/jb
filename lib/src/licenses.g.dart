@@ -2959,6 +2959,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "MIPS": License(
+    licenseId: "MIPS",
+    name: "MIPS License",
+    uri: "https://spdx.org/licenses/MIPS.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "MirOS": License(
     licenseId: "MirOS",
     name: "The MirOS Licence",
@@ -4321,6 +4328,13 @@ const allLicenses = <String, License>{
     licenseId: "TGPPL-1.0",
     name: "Transitive Grace Period Public Licence 1.0",
     uri: "https://spdx.org/licenses/TGPPL-1.0.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "ThirdEye": License(
+    licenseId: "ThirdEye",
+    name: "ThirdEye License",
+    uri: "https://spdx.org/licenses/ThirdEye.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
