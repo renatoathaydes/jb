@@ -51,6 +51,7 @@ const _fullConfig = '''
   test-reports-dir: reports-dir
 
   main-class: my.Main
+  manifest: src/MANIFEST.txt
 
   javac-args:
     - -Xmx2G
@@ -109,6 +110,8 @@ output-dir: \x1B[34m"target/"\x1B[0m
 output-jar: \x1B[35mnull\x1B[0m
 \x1B[90m# Java Main class name\x1B[0m
 main-class: \x1B[34m"my.Main"\x1B[0m
+\x1B[90m# Manifest file to include in the jar\x1B[0m
+manifest: \x1B[34m"src/MANIFEST.txt"\x1B[0m
 \x1B[90m# Java Compiler arguments\x1B[0m
 javac-args: [\x1B[34m"-Xmx2G"\x1B[0m, \x1B[34m"--verbose"\x1B[0m]
 \x1B[90m# Java Compiler environment variables\x1B[0m
@@ -201,6 +204,8 @@ output-dir: null
 output-jar: "my.jar"
 # Java Main class name
 main-class: null
+# Manifest file to include in the jar
+manifest: null
 # Java Compiler arguments
 javac-args: []
 # Java Compiler environment variables
@@ -287,6 +292,7 @@ void main() {
             outputDir: 'target/',
             resourceDirs: ['src/resources'],
             mainClass: 'my.Main',
+            manifest: 'src/MANIFEST.txt',
             javacArgs: ['-Xmx2G', '--verbose'],
             runJavaArgs: ['-Xmx1G'],
             testJavaArgs: ['-Xmx2G', '-Xms512m'],
