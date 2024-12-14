@@ -5,4 +5,3 @@ resource-dirs: [ resources ]
 # extension tasks
 copyFile:
   extensions: ["*.txt"]
-

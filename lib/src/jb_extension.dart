@@ -369,9 +369,8 @@ RunCondition _runCondition(ExtensionTask extensionTask, DartleCache cache) {
   }
   return RunOnChanges(
       cache: cache,
-      inputs: patternFileCollection(extensionTask.inputs.followedBy([
-        if (dependsOnJbConfig) yamlJbFile // TODO or the JSON file :/
-      ])),
+      inputs: patternFileCollection(
+          extensionTask.inputs.followedBy([yamlJbFile, jsonJbFile])),
       outputs: patternFileCollection(extensionTask.outputs));
 }
 
