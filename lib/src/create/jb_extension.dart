@@ -12,7 +12,7 @@ source-dirs: [ src ]
 resource-dirs: [ resources ]
 
 dependencies:
-  - com.athaydes.jbuild:jbuild-api:0.1.0:
+  - com.athaydes.jbuild:jbuild-api:0.10.0:
       scope: compile-only
 ''';
 
