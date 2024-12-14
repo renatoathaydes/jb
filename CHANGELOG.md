@@ -1,5 +1,12 @@
 ## Next
 
+## 0.8.0
+
+- updated jbuild-api version to `0.10.0`.
+- support using full `JbConfig` in jb extensions. 
+- added `manifest` to config to support custom manifest file.
+- made all jb extension builds depend on the jb config.
+
 ## 0.7.0
 
 - support for "structs" (Java classes) in jb extension config.
