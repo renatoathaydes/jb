@@ -273,6 +273,7 @@ extension JbConfigExtension on JbConfiguration {
           resolveOptionalString(other.description ?? description, props),
       url: resolveOptionalString(other.url ?? url, props),
       mainClass: resolveOptionalString(other.mainClass ?? mainClass, props),
+      manifest: resolveOptionalString(other.manifest ?? manifest, props),
       extensionProject: resolveOptionalString(
           other.extensionProject ?? extensionProject, props),
       sourceDirs: sourceDirs.merge(other.sourceDirs, props),
@@ -373,6 +374,10 @@ extension JbConfigExtension on JbConfiguration {
     final main = mainClass;
     if (main != null && main.isNotEmpty) {
       result.addAll(['-m', main]);
+    }
+    final manifestFile = manifest;
+    if (manifestFile != null && manifestFile.isNotEmpty) {
+      result.addAll(['-mf', manifestFile]);
     }
     if (dependencies.keys.any((d) => d.startsWith(jbApi))) {
       result.add('--jb-extension');
@@ -550,6 +555,8 @@ ${color('# Output jar (may be used instead of output-dir)', commentColor)}
 output-jar: ${quote(outputJar)}
 ${color('# Java Main class name', commentColor)}
 main-class: ${quote(mainClass)}
+${color('# Manifest file to include in the jar', commentColor)}
+manifest: ${quote(manifest)}
 ${color('# Java Compiler arguments', commentColor)}
 javac-args: [${javacArgs.map(quote).join(', ')}]
 ${color('# Java Compiler environment variables', commentColor)}

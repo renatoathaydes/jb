@@ -26,6 +26,9 @@ class JbConfiguration {
   /// Main Java class qualified name
   final String? mainClass;
 
+  /// Manifest file to pass to the jar tool. Use "-" to generate no manifest
+  final String? manifest;
+
   /// Path to a jb extension
   final String? extensionProject;
 
@@ -103,6 +106,7 @@ class JbConfiguration {
     this.description,
     this.url,
     this.mainClass,
+    this.manifest,
     this.extensionProject,
     this.sourceDirs = const [],
     this.outputDir,
@@ -130,17 +134,18 @@ class JbConfiguration {
   });
   @override
   String toString() => 'JbConfiguration{'
-      'group: "$group", '
-      'module: "$module", '
-      'name: "$name", '
-      'version: "$version", '
-      'description: "$description", '
-      'url: "$url", '
-      'mainClass: "$mainClass", '
-      'extensionProject: "$extensionProject", '
+      'group: ${group == null ? "null" : '"$group"'}, '
+      'module: ${module == null ? "null" : '"$module"'}, '
+      'name: ${name == null ? "null" : '"$name"'}, '
+      'version: ${version == null ? "null" : '"$version"'}, '
+      'description: ${description == null ? "null" : '"$description"'}, '
+      'url: ${url == null ? "null" : '"$url"'}, '
+      'mainClass: ${mainClass == null ? "null" : '"$mainClass"'}, '
+      'manifest: ${manifest == null ? "null" : '"$manifest"'}, '
+      'extensionProject: ${extensionProject == null ? "null" : '"$extensionProject"'}, '
       'sourceDirs: $sourceDirs, '
-      'outputDir: "$outputDir", '
-      'outputJar: "$outputJar", '
+      'outputDir: ${outputDir == null ? "null" : '"$outputDir"'}, '
+      'outputJar: ${outputJar == null ? "null" : '"$outputJar"'}, '
       'resourceDirs: $resourceDirs, '
       'repositories: $repositories, '
       'dependencies: $dependencies, '
@@ -174,6 +179,7 @@ class JbConfiguration {
           description == other.description &&
           url == other.url &&
           mainClass == other.mainClass &&
+          manifest == other.manifest &&
           extensionProject == other.extensionProject &&
           const ListEquality<String>().equals(sourceDirs, other.sourceDirs) &&
           outputDir == other.outputDir &&
@@ -220,6 +226,7 @@ class JbConfiguration {
       description.hashCode ^
       url.hashCode ^
       mainClass.hashCode ^
+      manifest.hashCode ^
       extensionProject.hashCode ^
       const ListEquality<String>().hash(sourceDirs) ^
       outputDir.hashCode ^
@@ -252,6 +259,7 @@ class JbConfiguration {
     String? description = null,
     String? url = null,
     String? mainClass = null,
+    String? manifest = null,
     String? extensionProject = null,
     List<String>? sourceDirs = null,
     String? outputDir = null,
@@ -283,6 +291,7 @@ class JbConfiguration {
     bool unsetDescription = false,
     bool unsetUrl = false,
     bool unsetMainClass = false,
+    bool unsetManifest = false,
     bool unsetExtensionProject = false,
     bool unsetOutputDir = false,
     bool unsetOutputJar = false,
@@ -296,6 +305,7 @@ class JbConfiguration {
       description: unsetDescription ? null : description ?? this.description,
       url: unsetUrl ? null : url ?? this.url,
       mainClass: unsetMainClass ? null : mainClass ?? this.mainClass,
+      manifest: unsetManifest ? null : manifest ?? this.manifest,
       extensionProject: unsetExtensionProject
           ? null
           : extensionProject ?? this.extensionProject,
@@ -337,6 +347,7 @@ class JbConfiguration {
         if (description != null) 'description': description,
         if (url != null) 'url': url,
         if (mainClass != null) 'main-class': mainClass,
+        if (manifest != null) 'manifest': manifest,
         if (extensionProject != null) 'extension-project': extensionProject,
         'source-dirs': sourceDirs,
         if (outputDir != null) 'output-dir': outputDir,
@@ -451,7 +462,7 @@ class DependencySpec {
   String toString() => 'DependencySpec{'
       'transitive: $transitive, '
       'scope: $scope, '
-      'path: "$path"'
+      'path: ${path == null ? "null" : '"$path"'}'
       '}';
   @override
   bool operator ==(Object other) =>
@@ -635,6 +646,8 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
           const Nullable<String, Strings>(Strings()), 'url', value),
       mainClass: convertProperty(
           const Nullable<String, Strings>(Strings()), 'main-class', value),
+      manifest: convertProperty(
+          const Nullable<String, Strings>(Strings()), 'manifest', value),
       extensionProject: convertProperty(
           const Nullable<String, Strings>(Strings()),
           'extension-project',
@@ -750,6 +763,8 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
         return const Nullable<String, Strings>(Strings());
       case 'main-class':
         return const Nullable<String, Strings>(Strings());
+      case 'manifest':
+        return const Nullable<String, Strings>(Strings());
       case 'extension-project':
         return const Nullable<String, Strings>(Strings());
       case 'source-dirs':
@@ -826,6 +841,7 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
       'description',
       'url',
       'main-class',
+      'manifest',
       'extension-project',
       'source-dirs',
       'output-dir',

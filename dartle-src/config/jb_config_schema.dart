@@ -72,6 +72,9 @@ const jbConfig = Objects(
       'url': Property(Nullable(Strings()), description: 'Project URL'),
       'main-class': Property(Nullable(Strings()),
           description: 'Main Java class qualified name'),
+      'manifest': Property(Nullable(Strings()),
+          description: 'Manifest file to pass to the jar tool. '
+              'Use "-" to generate no manifest'),
       'extension-project':
           Property(Nullable(Strings()), description: 'Path to a jb extension'),
       'source-dirs': Property(Arrays(Strings()),
