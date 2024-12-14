@@ -3,11 +3,13 @@ import jbuild.api.change.ChangeSet;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static jbuild.api.JBuildException.ErrorCause.ACTION_ERROR;
@@ -17,25 +19,31 @@ import static jbuild.api.JBuildException.ErrorCause.ACTION_ERROR;
         phase = @TaskPhase( name = "setup" ) )
 public final class CopierTask implements JbTask {
     private final JBuildLogger log;
-    private final List<String> extensions;
+    private final boolean overwrite;
+    private final String[] extensions;
 
-    public CopierTask( JBuildLogger log, String... extensions ) {
+    public CopierTask( JBuildLogger log, String[] extensions ) {
+        this( log, extensions, true );
+    }
+
+    public CopierTask( JBuildLogger log, String[] extensions, boolean overwrite ) {
         this.log = log;
-        this.extensions = List.of( extensions );
+        this.extensions = extensions;
+        this.overwrite = overwrite;
     }
 
     @Override
     public List<String> inputs() {
-        return extensions.stream()
+        return Stream.of( extensions )
                 .map( ext -> "input-resources/" + ext )
-                .collect(Collectors.toList());
+                .collect( Collectors.toList() );
     }
 
     @Override
     public List<String> outputs() {
-        return extensions.stream()
+        return Stream.of( extensions )
                 .map( ext -> "output-resources/" + ext )
-                .collect(Collectors.toList());
+                .collect( Collectors.toList() );
     }
 
     @Override
@@ -61,8 +69,11 @@ public final class CopierTask implements JbTask {
         if ( !out.isDirectory() && !out.mkdirs() ) {
             throw new JBuildException( "Cannot create output directory " + out, ACTION_ERROR );
         }
+        var copyOptions = overwrite
+                ? new CopyOption[]{ REPLACE_EXISTING }
+                : new CopyOption[ 0 ];
         for ( var input : inputs ) {
-            Files.copy( input.toPath(), Paths.get( "output-resources", input.getName() ), REPLACE_EXISTING );
+            Files.copy( input.toPath(), Paths.get( "output-resources", input.getName() ), copyOptions );
         }
     }
 

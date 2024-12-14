@@ -1,5 +1,8 @@
 extension-project: ../example-extension
 source-dirs: [ src ]
 resource-dirs: [ resources ]
+
+# extension tasks
 copyFile:
   extensions: ["*.txt"]
+
