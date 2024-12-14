@@ -1,11 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:io/ansi.dart' as ansi;
-import 'package:jb/jb.dart';
 import 'package:logging/logging.dart';
 
-import 'output_consumer.dart';
+import '../jb.dart';
 import 'version.g.dart';
 
 void printHelp() {
@@ -41,18 +43,28 @@ Options:''');
 
 Future<void> printVersion(File jbuildJar) async {
   print('jb version: $jbVersion');
-  await execJBuild('version', jbuildJar, const [], 'version', const [],
-      onStdout: const _Printer());
+  print('JBuild version: ${await _getJBuildVersion(jbuildJar)}');
 }
 
-class _Printer with ProcessOutputConsumer {
-  const _Printer();
+Future<String> _getJBuildVersion(File jbuildJar) async {
+  const implVersionPrefix = 'Implementation-Version: ';
+  final stream = InputFileStream(jbuildJar.path);
+  try {
+    final buffer = ZipDecoder().decodeBuffer(stream);
+    final manifestEntry = 'META-INF/MANIFEST.MF';
+    final archiveFile = buffer.findFile(manifestEntry).orThrow(() => failBuild(
+        reason: 'JBuild jar at ${jbuildJar.path} '
+            'is missing Manifest file: $manifestEntry'));
 
-  @override
-  void call(String line) => print('JBuild version: $line');
-
-  @override
-  set pid(int pid) {
-    // ignore
+    final versionLines = await Stream.value((archiveFile.content as List<int>))
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .where((line) => line.startsWith(implVersionPrefix))
+        .map((ver) => ver.substring(implVersionPrefix.length))
+        .take(1)
+        .toList();
+    return versionLines.firstOrNull ?? 'unknown';
+  } finally {
+    await stream.close();
   }
 }
