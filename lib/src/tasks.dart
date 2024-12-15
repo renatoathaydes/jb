@@ -551,6 +551,7 @@ Future<void> _test(File jbuildJar, JbConfigContainer configContainer,
         '-cp',
         '${cache.rootDir}/$junitRunnerLibsDir/*',
         mainClass,
+        'execute',
         '--classpath=$classpath',
         if (!hasCustomSelect)
           '--scan-classpath=${configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j)}',
