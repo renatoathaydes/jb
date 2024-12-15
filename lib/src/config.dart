@@ -327,7 +327,7 @@ extension JbConfigExtension on JbConfiguration {
     final invalidLicenses =
         licenses.where(allLicenses.containsKey.not$).toSet();
     if (invalidLicenses.isNotEmpty) {
-      throw _invalidLicense(invalidLicenses);
+      throw invalidLicense(invalidLicenses);
     }
   }
 
@@ -591,10 +591,10 @@ extension-project: ${quote(extensionProject)}
   }
 }
 
-Exception _invalidLicense(Iterable<String> ids) {
+Exception invalidLicense(Iterable<String> ids) {
   final prefix = ids.length == 1 ? 'License is' : 'Licenses are';
   return DartleException(
-      message: '$prefix not recognized: $ids. '
+      message: '$prefix not recognized: ${ids.join(', ')}. '
           'See https://spdx.org/licenses/ for valid licenses.\n'
           'Currently known license IDs: ${allLicenses.keys.join(', ')}');
 }

@@ -39,7 +39,9 @@ Result<Artifact> createArtifact(JbConfiguration config) {
         developers: config.developers,
         scm: config.scm,
         url: config.url,
-        licenses: config.licenses.map((id) => allLicenses[id]!).toList(),
+        licenses: config.licenses
+            .map((id) => allLicenses[id].orThrow(() => invalidLicense([id])))
+            .toList(),
       ));
 }
 
