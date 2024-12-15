@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:jb/src/version.g.dart';
 import 'package:path/path.dart' as path;
 
 final _jbuildHome = Platform.environment['JB_HOME'];
@@ -27,5 +28,5 @@ String jbuildCliHome() {
 /// The `jbuild.jar` path. This jar is created, if necessary, from the
 /// embedded jar in `jb`, but may be updated.
 String jbuildJarPath() {
-  return path.join(jbuildCliHome(), 'jbuild.jar');
+  return path.join(jbuildCliHome(), 'jb-$jbVersion', 'jbuild.jar');
 }
