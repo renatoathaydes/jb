@@ -1,5 +1,10 @@
 ## Next
 
+## 0.9.0
+
+- fixed Java test runner classpath on Windows.
+- updated JBuild jar.
+
 ## 0.8.0
 
 - updated jbuild-api version to `0.10.0`.
