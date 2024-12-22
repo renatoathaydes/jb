@@ -1,18 +1,16 @@
 import 'dart:io';
 
+import 'package:conveniently/conveniently.dart';
+import 'package:dartle/dartle.dart';
 import 'package:path/path.dart' as p;
 
-import '../config.dart' show yamlJbFile;
+import '../config.dart';
+import '../exec.dart';
+import '../output_consumer.dart';
+import '../paths.dart';
 import 'helpers.dart';
 
 const _testArtifactId = 'tests';
-
-const _testDependencies = '''\
-  org.junit.jupiter:junit-jupiter-api:5.8.2:
-  org.assertj:assertj-core:3.22.0:
-  core-module:
-    path: ../
-''';
 
 String _jbuildYaml(String groupId, String artifactId, String? mainClass,
         String dependencies) =>
@@ -91,10 +89,10 @@ List<FileCreator> getBasicFileCreators(File jbuildFile,
             '$package.$mainClass',
             '    # Examples:\n'
                 '    #   org.slf4j:slf4j-api:2.0.16:\n'
-                '    #   com.google.guava:guava:33.4.0-jre:'
+                '    #   com.google.guava:guava:33.4.0-jre:\n'
                 '    #     transitive: false\n'
                 '    #     scope: compile\n'
-                '    {}'))),
+                '    {}\n'))),
     createJavaFile(package, mainClass, 'src', _mainJava(package)),
     if (createTestModule) ..._createTestModule(groupId, package),
   ];
@@ -106,7 +104,58 @@ List<FileCreator> _createTestModule(String groupId, String package) {
   final buildFile = File(p.join('test', yamlJbFile));
   final buildFileCreator = FileCreator(
       buildFile,
-      () => buildFile.writeAsString(
-          _jbuildYaml(groupId, _testArtifactId, null, _testDependencies)));
+      () async => buildFile.writeAsString(_jbuildYaml(
+          groupId, _testArtifactId, null, await _computeTestDependencies())));
   return [javaTestCreator, buildFileCreator];
+}
+
+const junitJupiterApi = 'org.junit.jupiter:junit-jupiter-api';
+const assertjCore = 'org.assertj:assertj-core';
+
+Future<String> _computeTestDependencies() async {
+  logger.fine(
+      () => 'Fetching latest versions of $junitJupiterApi and $assertjCore');
+  final versionsParser = _VersionsParser();
+  final exitCode = await execJBuild('create-test-project',
+      File(jbuildJarPath()), ['-q'], 'versions', [junitJupiterApi, assertjCore],
+      onStdout: versionsParser);
+  if (exitCode != 0) {
+    failBuild(reason: 'jbuild versions command failed', exitCode: exitCode);
+  }
+  logger
+      .fine(() => 'Latest versions obtained: ${versionsParser.latestVersions}');
+  final latestJUnitVersion = versionsParser.latestVersions[junitJupiterApi]
+      .orThrow(() => failBuild(reason: 'Cannot find JUnit API latest version'));
+  final latestAssertjVersion = versionsParser.latestVersions[assertjCore]
+      .orThrow(() => failBuild(reason: 'Cannot find Assertj latest version'));
+  return '''\
+  $junitJupiterApi:$latestJUnitVersion:
+  $assertjCore:$latestAssertjVersion:
+  core-module:
+    path: ../
+''';
+}
+
+class _VersionsParser with ProcessOutputConsumer {
+  String? _currentArtifact;
+  final Map<String, String> latestVersions = {};
+
+  @override
+  void call(String line) {
+    if (line.startsWith('Versions of ') && line.endsWith(':')) {
+      _currentArtifact = line.substring('Versions of '.length, line.length - 1);
+    }
+    final currentArtifact = _currentArtifact ?? '';
+    if (currentArtifact.isEmpty) return;
+    if (line.startsWith('  * Latest: ')) {
+      final latestVersion = line.substring('  * Latest: '.length).trim();
+      latestVersions[currentArtifact] = latestVersion;
+      _currentArtifact = null;
+    }
+  }
+
+  @override
+  set pid(int pid) {
+    // ignore
+  }
 }
