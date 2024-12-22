@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Jb Docs</title>
+    <meta name="description" content="Jb Documentation">
+    <meta name="author" content="Renato Athaydes">
+    <link rel="icon" type="image/png" href="/jb-logo-small.png">
+    <link rel="stylesheet" href="/styles/style.css">
+</head>
+<body><nav><div class="center" style="display: flex; justify-content: space-around;">
+      <a href="/">jb Documentation</a>
+</div></nav>
+<p><img src="jb-logo.png" alt="jb Logo" class="center" style="width: 20em"></img></p>
+<main>
+<div class="space-up"></div>
+
+<p><code>jb</code> is a build tool that aims to bring Java build tools to the state-of-the-art as of the 2020&rsquo;s.</p>
+
+<p>It is fast, easy to use and extensible via a simple Java API.</p>
+
+<ul>
+
+<li><a href="/pages/get-started.html">Getting Started</a></li>
+
+<li><a href="/pages/config.html">Configuring jb</a></li>
+
+<li><a href="/pages/extensions.html">Extending jb</a></li>
+
+<li><a href="/pages/dependency-management.html">Dependency Management</a></li>
+
+<li><a href="/pages/gui.html">Desktop App</a></li>
+
+</ul>
+
+<h2>Download jb</h2>
+
+<p><a href="https://github.com/renatoathaydes/jb/releases" style="font-size: 1.3em;">⬇️ Download from GitHub Releases</a></p>
+
+<p>Pre-built binaries are available for Windows, Linux and MacOS (x86 and ARM).</p>
+
+<div style="display: flex; justify-content: space-around; max-width: 80%;">
+    <img src="/windows-logo.svg" alt="Windows Logo" style="width: 5em;">
+    <img src="/linux-logo.svg" alt="Linux Logo" style="width: 5em;">
+    <img src="/macos-logo.svg" alt="Mac OS Logo" style="width: 5em;">
+</div>
+
+<h2>Why jb</h2>
+
+<p>Java build systems like <a href="https://ant.apache.org/">Ant</a>, <a href="https://maven.apache.org/">Maven</a>
+and <a href="https://gradle.org/">Gradle</a> feel quite antiquated, heavy and difficult to use when compared with
+more modern alternatives like <a href="https://doc.rust-lang.org/cargo/">Cargo</a>.</p>
+
+<p><code>jb</code> is an attempt at bringing what&rsquo;s best in contemporary build systems to Java, while respecting the Java
+way of doing things.</p>
+
+<h2>Features</h2>
+
+<ul>
+<li>easy configuration via YAML or JSON.</li>
+<li>very fast (it doesn&rsquo;t need a daemon).</li>
+<li>distributed as single, small binary (~ 4MB).</li>
+<li>trivial dependency management (you decide how to handle conflicts).</li>
+<li>publish artifacts to any Maven repository.</li>
+<li>supports any Java version from 11 (built to be forward-compatible with newer Java versions).</li>
+<li>tasks run in parallel with full isolation.</li>
+<li>task results are cached, nothing runs unless actually required.</li>
+<li>extensions/plugins written in Java or any JVM language.</li>
+<li>great support for build profiling and introspection.</li>
+<li>runs <a href="https://junit.org/junit5/">JUnit5</a> tests.</li>
+</ul>
+
+</main>
+<footer>
+    <div>jb is a project by Renato Athaydes.</div>
+    <div>Source code on <a href="https://github.com/renatoathaydes/jb">GitHub</a></div>
+</footer>
+</body>
+</html>

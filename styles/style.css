@@ -1,0 +1,89 @@
+@font-face {
+  font-family: 'Lora';
+  src: url('/Lora/static/Lora-Regular.ttf');
+}
+
+body {
+  margin: 0;
+  background: #1C82AD;
+  color: #FFFECB;;
+  font-family: "Lora", "PT Sans", serif;
+  font-size: 1.2em;
+}
+
+main {
+  margin: auto;
+  max-width: 60em;  
+}
+
+nav {
+  padding: 0.25em;
+}
+
+footer {
+  background: #144272;
+  color: #FFFECB;
+  margin: 0;
+  padding: 1.5em 0.4em 1.5em 0.4em;
+  text-align: center;
+}
+
+h1 {
+  color: #F5F4B3;
+  margin: 0;
+  text-align: center;
+  padding: 1.5em 0.4em 1.5em 0.4em;
+}
+
+h2, h3, h4, h5, h6 {
+  color: #F5F4B3;
+  margin: 0;
+  padding: 0.5em 0.4em 0.4em 0.4em;
+  border-bottom: solid 1px;
+}
+
+pre {
+  margin: 0;
+  padding: 0 1em 0 1em;
+  border: solid gray;
+  overflow: scroll;
+}
+
+pre > code {
+  background: none;
+}
+
+p {
+  margin: 1em 0 1em 0;
+}
+
+code {
+  background: #205295;
+  padding: 0.1em 0.1em 0.1em 0.1em;
+}
+
+a {
+  color: #F2F7A1;
+}
+
+a:visited {
+  color: #46C2CB;
+}
+
+blockquote {
+  font-style: italic;
+  border-left: solid 2px;
+  margin: 0;
+  padding-left: 1em;
+}
+
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+
+.space-up {
+  margin-top: 2em;
+}

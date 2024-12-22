@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title></title>
+    <meta name="description" content="Jb Documentation">
+    <meta name="author" content="Renato Athaydes">
+    <link rel="icon" type="image/png" href="/jb-logo-small.png">
+    <link rel="stylesheet" href="/styles/style.css">
+</head>
+<body><nav><div class="center" style="display: flex; justify-content: space-around;">
+      <a href="/">jb Documentation</a>
+</div></nav>
+<main>
+<div class="space-up"></div>
+
+<h1>Configuring jb</h1>
+
+<blockquote>
+<p>The <code>jb</code> configuration model is defined in <a href="https://github.com/renatoathaydes/jb/blob/main/dartle-src/config/jb_config_schema.dart">this file</a>.</p>
+</blockquote>
+
+<p>To display the full configuration model of a <code>jb</code> project, run the <code>show</code> task.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic">######################## Full jb configuration ########################</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic">### For more information, visit https://github.com/renatoathaydes/jb</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Maven artifact groupId</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">group</span>: <span style="color:#63c381">&#34;com.athaydes&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Module name (Maven artifactId)</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">module</span>: <span style="color:#63c381">&#34;example&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Human readable name of this project</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">name</span>: <span style="color:#b756ff;font-weight:bold">null</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Maven version</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">version</span>: <span style="color:#63c381">&#34;0.0.0&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Description for this project</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">description</span>: <span style="color:#b756ff;font-weight:bold">null</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># URL of this project</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">url</span>: <span style="color:#b756ff;font-weight:bold">null</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Licenses this project uses</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">licenses</span>: []
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Developers who have contributed to this project</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">developers</span>: []
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Source control management</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">scm</span>: <span style="color:#b756ff;font-weight:bold">null</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># List of source directories</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">source-dirs</span>: [<span style="color:#63c381">&#34;src&#34;</span>]
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># List of resource directories (assets)</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">resource-dirs</span>: [<span style="color:#63c381">&#34;resources&#34;</span>]
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Output directory (class files)</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">output-dir</span>: <span style="color:#b756ff;font-weight:bold">null</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Output jar (may be used instead of output-dir)</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">output-jar</span>: <span style="color:#63c381">&#34;build/example.jar&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Java Main class name</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">main-class</span>: <span style="color:#63c381">&#34;com.athaydes.example.Main&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Manifest file to include in the jar</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">manifest</span>: <span style="color:#b756ff;font-weight:bold">null</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Java Compiler arguments</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">javac-args</span>: []
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Java Compiler environment variables</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">javac-env</span>: {}
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Java Runtime arguments</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">run-java-args</span>: []
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Java Runtime environment variables</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">run-java-env</span>: {}
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Java Test run arguments</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">test-java-args</span>: []
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Java Test environment variables</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">test-java-env</span>: {}
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Maven repositories (URLs or directories)</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">repositories</span>: []
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Maven dependencies</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">dependencies</span>: {}
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Dependency exclusions (regular expressions)</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">dependency-exclusion-patterns</span>: []
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Annotation processor Maven dependencies</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">processor-dependencies</span>: {}
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Annotation processor dependency exclusions (regular expressions)</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">processor-dependency-exclusion-patterns</span>: []
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Compile-time libs output dir</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">compile-libs-dir</span>: <span style="color:#63c381">&#34;build/compile-libs&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Runtime libs output dir</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">runtime-libs-dir</span>: <span style="color:#63c381">&#34;build/runtime-libs&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># Test reports output dir</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">test-reports-dir</span>: <span style="color:#63c381">&#34;build/test-reports&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># jb extension project path (for custom tasks)</span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">extension-project</span>: <span style="color:#b756ff;font-weight:bold">null</span>
+</span></span></code></pre>
+<p>This page explains what each property means and shows examples of acceptable values.</p>
+
+<p><a id="group" href="#group">group</a></p>
+
+<p>A project group ID. This is normally used to group associated projects together and for the published artifact metadata.</p>
+
+<blockquote>
+<p>Refer to the <a href="https://maven.apache.org/guides/mini/guide-naming-conventions.html">Maven Documentation</a> for the expected conventions
+regarding Maven repositories metadata.</p>
+</blockquote>
+
+<p>Example: <code>com.athaydes.jbuild</code>.</p>
+
+<p><a id="module" href="#module">module</a></p>
+
+<p>The artifact ID. This is the main identifier of a published artifact.</p>
+
+<p>Example: <code>jbuild</code>.</p>
+
+<p><a id="name" href="#name">name</a></p>
+
+<p>Human-readable name of the project.</p>
+
+<p>Example: <code>JBuild</code>.</p>
+
+<p><a id="version" href="#version">version</a></p>
+
+<p>The version of this artifact. It is advisable that <a href="https://semver.org/">Semantic Versioning</a> should be used.</p>
+
+<p>As a project evolves, new versions of it may be published on a repository and then used by other projects as dependencies.</p>
+
+<p>Example: <code>1.2.3</code></p>
+
+<p><a id="description" href="#description">description</a></p>
+
+<p>A brief description of what the artifact does.</p>
+
+<p>Example: <code>Java CLI and Library for building and analysing Java projects.</code>.</p>
+
+<p><a id="url" href="#url">url</a></p>
+
+<p>Project URL. Normally the Documentation Website.</p>
+
+<p>Example: <a href="https://renatoathaydes.github.io/dartle-website/">https://renatoathaydes.github.io/dartle-website/</a></p>
+
+<p><a id="licenses" href="#licenses">licenses</a></p>
+
+<p>List of licenses this artifact is published under.
+Each string in the list must be a license identifier from <a href="https://spdx.org/licenses/">SPDX</a>.</p>
+
+<p>The allowed license identifiers are updated from the SPDX API on every release.</p>
+
+<p>Example: <code>[&quot;Apache-2.0&quot;, &quot;CC0-1.0&quot;]</code></p>
+
+<p><a id="developers" href="#developers">developers</a></p>
+
+<p>List of Developer objects including the main developers working on the project.</p>
+
+<blockquote>
+<p>Only used by jb to include it in generated Maven POMs.</p>
+</blockquote>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">developers</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#e06c75">name</span>: <span style="color:#98c379">Joe Doe</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#e06c75">email</span>: <span style="color:#98c379">joe.doe@example.org</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#e06c75">organization</span>: <span style="color:#98c379">ACME Co.</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#e06c75">organization-url</span>: <span style="color:#98c379">https://example.org</span>
+</span></span></code></pre>
+<p><a id="scm" href="#scm">scm</a></p>
+
+<p>Source Control Management specification.</p>
+
+<blockquote>
+<p>Only used by jb to include it in generated Maven POMs.</p>
+</blockquote>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">scm</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">connection</span>: <span style="color:#98c379">https://github.com/renatoathaydes/jb.git</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">developer-connection</span>: <span style="color:#98c379">https://github.com/renatoathaydes/jb.git</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">url</span>: <span style="color:#98c379">https://github.com/renatoathaydes/jb</span>
+</span></span></code></pre>
+<p><a id="source-dirs" href="#source-dirs">source-dirs</a></p>
+
+<p>The directories where source files can be found.</p>
+
+<p>Defaults to <code>[&quot;src&quot;]</code>.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">source-dirs</span>: [<span style="color:#63c381">&#34;src/main/java&#34;</span>, <span style="color:#63c381">&#34;src/test/java&#34;</span>]
+</span></span></code></pre>
+<p><a id="resource-dirs" href="#resource-dirs">resource-dirs</a></p>
+
+<p>The directories where files that should be included in the jar, but are not source files, can be found.</p>
+
+<p>Defaults to <code>[resources]</code>.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">resourde-dirs</span>: [<span style="color:#63c381">&#34;src/main/resources&#34;</span>]
+</span></span></code></pre>
+<p><a id="output-dir" href="#output-dir">output-dir</a></p>
+
+<p>The directory where the build output (usually the compiled class files) should be written to.</p>
+
+<blockquote>
+<p>This option is mutually exclusive with <code>output-jar</code>. If this option is used, no jar will be produced.</p>
+</blockquote>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">output-dir</span>: <span style="color:#98c379">build</span>
+</span></span></code></pre>
+<p><a id="output-jar" href="#output-jar">output-jar</a></p>
+
+<p>The path to the jar to be produced by the build.</p>
+
+<blockquote>
+<p>This option is mutually exclusive with <code>output-dir</code>. If this option is used, class files will be first written
+to a temporary directory, and then archived in the jar.</p>
+</blockquote>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">output-jar</span>: <span style="color:#98c379">build/lib.jar</span>
+</span></span></code></pre>
+<p><a id="main-class" href="#main-class">main-class</a></p>
+
+<p>The name of the main class in this project.</p>
+
+<p>The main class is the class that can be run with the <code>java</code> command.
+<code>jb</code> will include <code>Main-Class</code> in the generated MANIFEST.MF file, which means that the produced jar will be runnable,
+for example with this command:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span>java -cp <span style="color:#63c381">&#34;build/runtime-libs/*&#34;</span> -jar build/lib.jar
+</span></span></code></pre>
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">main-class</span>: <span style="color:#98c379">org.example.Main</span>
+</span></span></code></pre>
+<p><a id="manifest" href="#manifest">manifest</a></p>
+
+<p>The location of a MANIFEST text file to be passed to the <code>jar</code> command when creating a jar.
+The file may contain any directives allowed by the <a href="https://docs.oracle.com/javase/tutorial/deployment/jar/manifestindex.html">Java Manifest Format</a>.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">manifest</span>: <span style="color:#98c379">meta/manifest.txt</span>
+</span></span></code></pre>
+<p><a id="javac-args" href="#javac-args">javac-args</a></p>
+
+<p>Java compiler arguments.</p>
+
+<p><code>jb</code> passes various arguments to <code>javac</code> based on the configuration of the project. However, you may want to pass further arguments
+as necessary.</p>
+
+<p>To see which options <code>jb</code> is already including, run <code>jb compile -l debug</code>.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">javac-args</span>: [<span style="color:#63c381">&#34;--release=11&#34;</span>]
+</span></span></code></pre>
+<p><a id="javac-env" href="#javac-env">javac-env</a></p>
+
+<p>Deprecated.</p>
+
+<p><a id="run-java-args" href="#run-java-args">run-java-args</a></p>
+
+<p>Java runtime arguments.</p>
+
+<p>Used by the <code>run</code> task only.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">run-java-args</span>: [<span style="color:#63c381">&#34;-Xmx128m&#34;</span>]
+</span></span></code></pre>
+<p><a id="run-java-env" href="#run-java-env">run-java-env</a></p>
+
+<p>Deprecated.</p>
+
+<p><a id="test-java-args" href="#test-java-args">test-java-args</a></p>
+
+<p>Arguments to be passed to the <code>java</code> command when executing tests with the <code>test</code> task.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#98c379">test-java-args</span>
+</span></span><span style="display:flex;"><span>  - <span style="color:#63c381">&#34;-Dtests.repo.dir=resources/jbuild/commands/repo&#34;</span>
+</span></span></code></pre>
+<p><a id="test-java-env" href="#test-java-env">test-java-env</a></p>
+
+<p>Deprecated.</p>
+
+<p><a id="repositories" href="#repositories">repositories</a></p>
+
+<p>The repositories to use when resolving dependencies.</p>
+
+<p>By default, Maven Central and Maven Local (<code>~/.mvn/repository</code>) are used.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">repositories</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#98c379">https://maven.repository.redhat.com/ga/</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#98c379">https://repo1.maven.org/maven2/</span>
+</span></span></code></pre>
+<p><a id="dependencies" href="#dependencies">dependencies</a></p>
+
+<p>The artifact dependencies of the project.</p>
+
+<p>Dependencies use the notation <code>&lt;group&gt;:&lt;module&gt;:&lt;version&gt;</code> and may have the following attributes:</p>
+
+<ul>
+<li><code>transitive</code>: <code>true</code> or <code>false</code> - whether to include transitive dependencies or only the single artifact.</li>
+<li><code>scope</code>: one of:
+
+<ul>
+<li><code>all</code> - the default, include dependency both at compile time and at runtime.</li>
+<li><code>compile-only</code> - only include the depenency when compiling.</li>
+<li><code>runtime-only</code> - only include the dependency at runtime.</li>
+</ul></li>
+<li><code>path</code>: path to a local jar or another <code>jb</code> project. This is recommended only for local development.</li>
+</ul>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">dependencies</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">org.slf4j:slf4j-api:2.0.16</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">com.google.guava:guava:33.4.0-jre</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">transitive</span>: <span style="color:#b756ff;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">scope</span>: <span style="color:#98c379">all</span>
+</span></span></code></pre>
+<p><a id="dependency-exclusion-patterns" href="#dependency-exclusion-patterns">dependency-exclusion-patterns</a></p>
+
+<p>Regular expressions for excluding specific transitive dependencies from the classpath.</p>
+
+<p>The patterns should match against dependencies specifications, not file names.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">dependency-exclusion-patterns</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#98c379">com.google.errorprone.*</span>
+</span></span></code></pre>
+<p><a id="processor-dependencies" href="#processor-dependencies">processor-dependencies</a></p>
+
+<p>Dependencies for Java annotation processors.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">processor-dependencies</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">com.google.errorprone:error_prone_core:2.16</span>:
+</span></span></code></pre>
+<p><a id="processor-dependency-exclusion-patterns" href="#processor-dependency-exclusion-patterns">processor-dependency-exclusion-patterns</a></p>
+
+<p>Similar to <code>dependency-exclusion-patterns</code> above, but for annotation processor dependencies.</p>
+
+<p><a id="compile-libs-dir" href="#compile-libs-dir">compile-libs-dir</a></p>
+
+<p>The directory to use for compile-time dependencies.</p>
+
+<p>Defaults to <code>build/compile-libs</code>.</p>
+
+<p>Example: <code>target/libs</code>.</p>
+
+<p><a id="runtime-libs-dir" href="#runtime-libs-dir">runtime-libs-dir</a></p>
+
+<p>The directory to use for compile-time dependencies.</p>
+
+<p>Defaults to <code>build/runtime-libs</code>.</p>
+
+<p>Example: <code>target/runtime</code>.</p>
+
+<p><a id="test-reports-dir" href="#test-reports-dir">test-reports-dir</a></p>
+
+<p>The directory to use for testing framework&rsquo;s reports.</p>
+
+<p>Defaults to <code>build/test-reports</code>.</p>
+
+<p>Example: <code>target/test-reports</code>.</p>
+
+<p><a id="extension-project" href="#extension-project">extension-project</a></p>
+
+<p>The path to a jar containing a <code>jb</code> extension, or to a local directory containing a <code>jb</code> project which is a <code>jb</code> extension.</p>
+
+<p>See <a href="/pages/extensions.html">Extending jb</a>.</p>
+
+<blockquote>
+<p>WARNING: this may be changed to become an array in the future.</p>
+</blockquote>
+
+<p>Example: <code>jb-extensions/my-extension</code>.</p>
+
+</main>
+<footer>
+    <div>jb is a project by Renato Athaydes.</div>
+    <div>Source code on <a href="https://github.com/renatoathaydes/jb">GitHub</a></div>
+</footer>
+</body>
+</html>
