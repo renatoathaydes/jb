@@ -5,11 +5,11 @@
     <title></title>
     <meta name="description" content="Jb Documentation">
     <meta name="author" content="Renato Athaydes">
-    <link rel="icon" type="image/png" href="/jb-logo-small.png">
-    <link rel="stylesheet" href="/styles/style.css">
+    <link rel="icon" type="image/icon" href="/jb/jb-22-12-2024.ico">
+    <link rel="stylesheet" href="/jb/styles/style.css">
 </head>
 <body><nav><div class="center" style="display: flex; justify-content: space-around;">
-      <a href="/">jb Documentation</a>
+      <a href="/jb/index.html">jb Documentation</a>
 </div></nav>
 <main>
 <div class="space-up"></div>
@@ -25,7 +25,7 @@ You can also easily build <code>jb</code> on any platform, check <a href="https:
 
 <p>Create a directory for your project and then just run <code>jb create</code>, which will start an interactive CLI:</p>
 
-<iframe src="/jb-create.html" style="width: 100%;height: 20em;"></iframe>
+<iframe src="/jb/jb-create.html" style="width: 100%;height: 20em;"></iframe>
 
 <p>That&rsquo;s it! The project structure looks like this (given the answers above):</p>
 <pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span>├── jbuild.yaml
@@ -97,16 +97,16 @@ You can remove most of its contents as it is mostly using defaults, and you&rsqu
 <p>If you run the <code>jb</code> command without any options, the <code>compile</code> task is executed, which means that the main project
 will be built and all class files and resources archived in a jar:</p>
 
-<iframe src="/jb.html" style="width: 100%;height: 9em;"></iframe>
+<iframe src="/jb/jb.html" style="width: 100%;height: 9em;"></iframe>
 
 <p>To run the tests, which are in the <code>test/</code> directory, you can either switch to that directory and run <code>jb test</code> from it,
 or use the <code>-p</code> switch, which changes the project directory, to run the <code>test</code> task from the <code>test/</code> project as shown below:</p>
 
-<iframe src="/jb-test.html" style="width: 100%;height: 43em;"></iframe>
+<iframe src="/jb/jb-test.html" style="width: 100%;height: 43em;"></iframe>
 
 <p>Because the main project declares a <code>main-class</code>, you can ask <code>jb</code> to run that with the <code>run</code> task:</p>
 
-<iframe src="/jb-run.html" style="width: 100%;height: 7em;"></iframe>
+<iframe src="/jb/jb-run.html" style="width: 100%;height: 7em;"></iframe>
 
 <blockquote>
 <p>The full runtime classpath is always stored in the location given by <code>runtime-libs-dir</code> which defaults to <code>build/runtime-libs</code>.
@@ -119,7 +119,7 @@ If you modified a source file and then ran <code>jb run</code> again, the projec
 
 <p>You can see the task graph by passing the <code>-g</code> option to <code>jb</code>:</p>
 
-<iframe src="/jb-task-graph.html" style="width: 100%;height: 47em;"></iframe>
+<iframe src="/jb/jb-task-graph.html" style="width: 100%;height: 47em;"></iframe>
 
 <p>To show a description of each task, use the <code>-s</code> flag.</p>
 
@@ -134,19 +134,19 @@ If you modified a source file and then ran <code>jb run</code> again, the projec
 
 
 
-<li><a href="/pages/config.html">Configuring jb</a></li>
+<li><a href="/jb/pages/config.html">Configuring jb</a></li>
 
 
 
-<li><a href="/pages/extensions.html">Extending jb</a></li>
+<li><a href="/jb/pages/extensions.html">Extending jb</a></li>
 
 
 
-<li><a href="/pages/dependency-management.html">Dependency Management</a></li>
+<li><a href="/jb/pages/dependency-management.html">Dependency Management</a></li>
 
 
 
-<li><a href="/pages/gui.html">Desktop App</a></li>
+<li><a href="/jb/pages/gui.html">Desktop App</a></li>
 
 
 </ul>
