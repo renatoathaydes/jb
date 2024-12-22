@@ -91,7 +91,7 @@ List<FileCreator> getBasicFileCreators(File jbuildFile,
                 '    #   org.slf4j:slf4j-api:2.0.16:\n'
                 '    #   com.google.guava:guava:33.4.0-jre:\n'
                 '    #     transitive: false\n'
-                '    #     scope: compile\n'
+                '    #     scope: all\n'
                 '    {}\n'))),
     createJavaFile(package, mainClass, 'src', _mainJava(package)),
     if (createTestModule) ..._createTestModule(groupId, package),
