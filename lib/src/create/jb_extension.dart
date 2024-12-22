@@ -1,9 +1,10 @@
 import 'dart:io';
 
+import '../help.dart';
+import '../paths.dart';
 import 'helpers.dart';
 
-// TODO update the jb-api version to be that of the JBuild jar used.
-String _jbuildYaml(String groupId, String artifactId) => '''
+String _jbuildYaml(String groupId, String artifactId, jbuildVersion) => '''
 group: $groupId
 module: $artifactId
 version: '0.0.0'
@@ -12,8 +13,8 @@ source-dirs: [ src ]
 resource-dirs: [ resources ]
 
 dependencies:
-  - com.athaydes.jbuild:jbuild-api:0.10.0:
-      scope: compile-only
+  com.athaydes.jbuild:jbuild-api:$jbuildVersion:
+    scope: compile-only
 ''';
 
 String _mainJava(String package) => '''
@@ -40,8 +41,10 @@ List<FileCreator> getJbExtensionFileCreators(File jbuildFile,
     required String package,
     required bool createTestModule}) {
   return [
-    FileCreator(jbuildFile,
-        () => jbuildFile.writeAsString(_jbuildYaml(groupId, artifactId))),
+    FileCreator(
+        jbuildFile,
+        () async => jbuildFile.writeAsString(_jbuildYaml(groupId, artifactId,
+            await getJBuildVersion(File(jbuildJarPath()))))),
     createJavaFile(package, 'ExampleTask', 'src', _mainJava(package)),
   ];
 }

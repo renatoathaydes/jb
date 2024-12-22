@@ -43,10 +43,10 @@ Options:''');
 
 Future<void> printVersion(File jbuildJar) async {
   print('jb version: $jbVersion');
-  print('JBuild version: ${await _getJBuildVersion(jbuildJar)}');
+  print('JBuild version: ${await getJBuildVersion(jbuildJar)}');
 }
 
-Future<String> _getJBuildVersion(File jbuildJar) async {
+Future<String> getJBuildVersion(File jbuildJar) async {
   const implVersionPrefix = 'Implementation-Version: ';
   final stream = InputFileStream(jbuildJar.path);
   try {
