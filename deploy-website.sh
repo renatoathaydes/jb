@@ -24,7 +24,7 @@ echo "Removing existing website files"
 rm -rf $TARGET/*
 
 echo "Generating website"
-magnanimous -style doom-one website
+magnanimous -style doom-one -globalctx _global_context_jb website
 
 echo "Updating gh-pages branch"
 cd $TARGET && git add --all && git commit -m "Publishing website" && git push

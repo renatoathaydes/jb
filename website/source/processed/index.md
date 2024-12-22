@@ -23,9 +23,9 @@ It is fast, easy to use and extensible via a simple Java API.
 Pre-built binaries are available for Windows, Linux and MacOS (x86 and ARM).
 
 <div style="display: flex; justify-content: space-around; max-width: 80%;">
-    <img src="/windows-logo.svg" alt="Windows Logo" style="width: 5em;">
-    <img src="/linux-logo.svg" alt="Linux Logo" style="width: 5em;">
-    <img src="/macos-logo.svg" alt="Mac OS Logo" style="width: 5em;">
+    <img src="{{ eval basePath }}/windows-logo.svg" alt="Windows Logo" style="width: 5em;">
+    <img src="{{ eval basePath }}/linux-logo.svg" alt="Linux Logo" style="width: 5em;">
+    <img src="{{ eval basePath }}/macos-logo.svg" alt="Mac OS Logo" style="width: 5em;">
 </div>
 
 

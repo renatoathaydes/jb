@@ -14,7 +14,7 @@ To get started with `jb`, download the correct binary for your platform from [Gi
 
 Create a directory for your project and then just run `jb create`, which will start an interactive CLI:
 
-<iframe src="/jb-create.html" style="width: 100%;height: 20em;"></iframe>
+<iframe src="{{ eval basePath }}/jb-create.html" style="width: 100%;height: 20em;"></iframe>
 
 That's it! The project structure looks like this (given the answers above):
 
@@ -93,16 +93,16 @@ main-class: com.athaydes.example.Main
 If you run the `jb` command without any options, the `compile` task is executed, which means that the main project
 will be built and all class files and resources archived in a jar:
 
-<iframe src="/jb.html" style="width: 100%;height: 9em;"></iframe>
+<iframe src="{{ eval basePath }}/jb.html" style="width: 100%;height: 9em;"></iframe>
 
 To run the tests, which are in the `test/` directory, you can either switch to that directory and run `jb test` from it,
 or use the `-p` switch, which changes the project directory, to run the `test` task from the `test/` project as shown below:
 
-<iframe src="/jb-test.html" style="width: 100%;height: 43em;"></iframe>
+<iframe src="{{ eval basePath }}/jb-test.html" style="width: 100%;height: 43em;"></iframe>
 
 Because the main project declares a `main-class`, you can ask `jb` to run that with the `run` task:
 
-<iframe src="/jb-run.html" style="width: 100%;height: 7em;"></iframe>
+<iframe src="{{ eval basePath }}/jb-run.html" style="width: 100%;height: 7em;"></iframe>
 
 > The full runtime classpath is always stored in the location given by `runtime-libs-dir` which defaults to `build/runtime-libs`.
 > This means that you can easily run the jar also with the java command directly:
@@ -115,7 +115,7 @@ If you modified a source file and then ran `jb run` again, the project would fir
 
 You can see the task graph by passing the `-g` option to `jb`:
 
-<iframe src="/jb-task-graph.html" style="width: 100%;height: 47em;"></iframe>
+<iframe src="{{ eval basePath }}/jb-task-graph.html" style="width: 100%;height: 47em;"></iframe>
 
 To show a description of each task, use the `-s` flag.
 
