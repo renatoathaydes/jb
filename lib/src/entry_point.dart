@@ -60,7 +60,8 @@ Future<void> _runJb(JbCliOptions options, Options dartleOptions,
       () => 'Initialized CLI and parsed options in ${elapsedTime(stopwatch)}');
   final createOptions = options.createOptions;
   if (createOptions != null) {
-    return createNewProject(createOptions.arguments);
+    return createNewProject(createOptions.arguments,
+        colors: dartleOptions.colorfulLog);
   }
   final jvmExecutor = createJavaActor(dartleOptions.logLevel, jbuildJar.path);
 

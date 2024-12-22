@@ -81,6 +81,11 @@ Future<ProcessResult> runJb(Directory workingDir,
   return runProcess(jbuildExecutable, workingDir, args);
 }
 
+Future<Process> startJb(Directory workingDir, [List<String> args = const []]) {
+  return Process.start(jbuildExecutable, args,
+      workingDirectory: workingDir.path);
+}
+
 Future<ProcessResult> runJava(Directory workingDir,
     [List<String> args = const []]) {
   return runProcess('java', workingDir, args);

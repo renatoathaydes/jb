@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
@@ -7,13 +8,15 @@ import 'package:test/test.dart';
 
 import 'test_helper.dart';
 
-const helloProjectDir = 'test/test-projects/hello';
-const withDepsProjectDir = 'test/test-projects/with-deps';
-const withSubProjectDir = 'test/test-projects/with-sub-project';
-const exampleExtensionDir = 'test/test-projects/example-extension';
-const usesExtensionDir = 'test/test-projects/uses-extension';
-const testsProjectDir = 'test/test-projects/tests';
-const runEnvProjectDir = 'test/test-projects/run-env';
+const projectsDir = 'test/test-projects';
+const helloProjectDir = '$projectsDir/hello';
+const emptyProjectDir = '$projectsDir/empty';
+const withDepsProjectDir = '$projectsDir/with-deps';
+const withSubProjectDir = '$projectsDir/with-sub-project';
+const exampleExtensionDir = '$projectsDir/example-extension';
+const usesExtensionDir = '$projectsDir/uses-extension';
+const testsProjectDir = '$projectsDir/tests';
+const runEnvProjectDir = '$projectsDir/run-env';
 
 const _expectedWithSubProjectPom = '''\
 <?xml version="1.0" encoding="UTF-8"?>
@@ -307,5 +310,85 @@ void main() {
       expectSuccess(jbResult);
       expect(jbResult.stdout.join('\n'), contains("MY_VAR is 'hello jbuild'"));
     }, timeout: const Timeout(Duration(seconds: 10)));
+  });
+
+  Future<void> cleanupEmptyProjectDir() async {
+    await for (final entity in Directory(emptyProjectDir).list()) {
+      if (entity.path.endsWith('.gitkeep')) continue;
+      await entity.delete(recursive: true);
+    }
+  }
+
+  projectGroup(emptyProjectDir, 'jb create', () {
+    test('can create and run a jb project', () async {
+      final jbProc = await startJb(
+          Directory(emptyProjectDir), const ['create', '--no-color']);
+      addTearDown(jbProc.kill);
+      addTearDown(cleanupEmptyProjectDir);
+      final out = jbProc.stdout.transform(utf8.decoder).asBroadcastStream();
+      expect(await out.first, equals('Please enter a project group ID: '));
+      jbProc.stdin.writeln('testing.foo');
+      expect(
+          await out.first, equals('\nEnter the artifact ID of this project: '));
+      jbProc.stdin.writeln();
+      expect(await out.first,
+          equals('\nEnter the root package [testing.foo.my_app]: '));
+      jbProc.stdin.writeln('testing.foo');
+      expect(await out.first,
+          equals('\nWould you like to create a test module [Y/n]? '));
+      jbProc.stdin.writeln('n');
+      expect(
+          await out.first,
+          equals('\nSelect a project type:\n'
+              '  1. basic project.\n'
+              '  2. jb extension.\n'
+              'Choose [1]: '));
+      jbProc.stdin.writeln();
+      expect(await out.first, startsWith('\njb project created at '));
+      expect(await jbProc.exitCode, isZero);
+
+      await assertDirectoryContents(Directory(emptyProjectDir), [
+        '.gitkeep',
+        'jbuild.yaml',
+        'src',
+        p.join('src', 'testing'),
+        p.join('src', 'testing', 'foo'),
+        p.join('src', 'testing', 'foo', 'Main.java')
+      ]);
+
+      // ensure everything is valid by running a build
+      final runResult = await runJb(Directory(emptyProjectDir), const ['run']);
+      expectSuccess(runResult);
+      expect(runResult.stdout.join('\n'), contains('Hello world!'));
+    }, timeout: const Timeout(Duration(seconds: 15)));
+
+    test('can create and test a jb project', () async {
+      final jbProc = await startJb(
+          Directory(emptyProjectDir), const ['create', '--no-color']);
+      addTearDown(jbProc.kill);
+      addTearDown(cleanupEmptyProjectDir);
+
+      // group ID
+      jbProc.stdin.writeln('testing.foo');
+      // artifact ID
+      jbProc.stdin.writeln();
+      // root package
+      jbProc.stdin.writeln('testing.foo');
+      // test module?
+      jbProc.stdin.writeln('y');
+      // 1. basic, 2. jb-extension
+      jbProc.stdin.writeln('1');
+      // done
+      expect(await jbProc.exitCode, isZero);
+
+      // ensure everything is valid by running a build
+      final runResult =
+          await runJb(Directory(emptyProjectDir), const ['-p', 'test', 'test']);
+      expectSuccess(runResult);
+      final allOutput = runResult.stdout.join('\n');
+      expect(allOutput, contains('Test run finished after '));
+      expect(allOutput, contains(' 1 tests found '));
+      expect(allOutput, contains(' 1 tests successful '));
+    }, timeout: const Timeout(Duration(seconds: 15)));
   });
 }

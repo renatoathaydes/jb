@@ -8,10 +8,10 @@ import 'helpers.dart';
 const _testArtifactId = 'tests';
 
 const _testDependencies = '''\
-  - org.junit.jupiter:junit-jupiter-api:5.8.2
-  - org.assertj:assertj-core:3.22.0
-  - core-module:
-      path: ../
+  org.junit.jupiter:junit-jupiter-api:5.8.2:
+  org.assertj:assertj-core:3.22.0:
+  core-module:
+    path: ../
 ''';
 
 String _jbuildYaml(String groupId, String artifactId, String? mainClass,
@@ -85,8 +85,16 @@ List<FileCreator> getBasicFileCreators(File jbuildFile,
   return [
     FileCreator(
         jbuildFile,
-        () => jbuildFile.writeAsString(
-            _jbuildYaml(groupId, artifactId, '$package.$mainClass', ''))),
+        () => jbuildFile.writeAsString(_jbuildYaml(
+            groupId,
+            artifactId,
+            '$package.$mainClass',
+            '    # Examples:\n'
+                '    #   org.slf4j:slf4j-api:2.0.16:\n'
+                '    #   com.google.guava:guava:33.4.0-jre:'
+                '    #     transitive: false\n'
+                '    #     scope: compile\n'
+                '    {}'))),
     createJavaFile(package, mainClass, 'src', _mainJava(package)),
     if (createTestModule) ..._createTestModule(groupId, package),
   ];

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
+import 'package:io/ansi.dart' as ansi;
 
 import '../config.dart' show logger, yamlJbFile;
 import 'basic.dart';
@@ -10,27 +11,34 @@ import 'jb_extension.dart';
 enum _ProjectType { basic, jbExtension }
 
 /// Create a new jb project.
-Future<void> createNewProject(List<String> arguments) async {
+Future<void> createNewProject(List<String> arguments,
+    {bool colors = true}) async {
   if (arguments.length > 1) {
     throw DartleException(
         message: 'create command does not accept any arguments');
   }
   final jbuildFile = File(yamlJbFile);
   await FileCreator(jbuildFile).check();
-  await _create(jbuildFile);
+  await _create(jbuildFile, colors: colors);
 }
 
-Future<void> _create(File jbuildFile) async {
-  stdout.write('Please enter a project group ID: ');
+Future<void> _create(File jbuildFile, {required bool colors}) async {
+  stdout.write(ansi.styleItalic
+      .wrap('Please enter a project group ID: ', forScript: !colors));
   final groupId = stdin.readLineSync().or('my-group');
-  stdout.write('\nEnter the artifact ID of this project: ');
+  stdout.write(ansi.styleItalic
+      .wrap('\nEnter the artifact ID of this project: ', forScript: !colors));
   final artifactId = stdin.readLineSync().or('my-app');
   final defaultPackage = '${groupId.toJavaId()}.${artifactId.toJavaId()}';
-  stdout.write('\nEnter the root package [$defaultPackage]: ');
+  stdout.write(ansi.styleItalic.wrap(
+      '\nEnter the root package [$defaultPackage]: ',
+      forScript: !colors));
   final package = stdin.readLineSync().or(defaultPackage).validateJavaPackage();
-  stdout.write('\nWould you like to create a test module [Y/n]? ');
+  stdout.write(ansi.styleItalic.wrap(
+      '\nWould you like to create a test module [Y/n]? ',
+      forScript: !colors));
   final createTestModule = stdin.readLineSync().or('yes').yesOrNo();
-  final projectType = stdin.chooseProjectType();
+  final projectType = stdin.chooseProjectType(colors: colors);
 
   List<FileCreator> fileCreators;
 
@@ -53,8 +61,8 @@ Future<void> _create(File jbuildFile) async {
 
   await _createAll(fileCreators);
 
-  logger.info(() =>
-      PlainMessage('\nJBuild project created at ${Directory.current.path}'));
+  logger.info(
+      () => PlainMessage('\njb project created at ${Directory.current.path}'));
 }
 
 Future<void> _createAll(List<FileCreator> fileCreators) async {
@@ -67,11 +75,13 @@ Future<void> _createAll(List<FileCreator> fileCreators) async {
 }
 
 extension on Stdin {
-  _ProjectType chooseProjectType() {
-    stdout.write('\nSelect a project type:\n'
-        '  1. basic project.\n'
-        '  2. jb extension.\n'
-        'Choose [1]: ');
+  _ProjectType chooseProjectType({required bool colors}) {
+    stdout.write(ansi.styleItalic.wrap(
+        '\nSelect a project type:\n'
+        '  ${ansi.green.wrap('1', forScript: !colors)}. basic project.\n'
+        '  ${ansi.green.wrap('2', forScript: !colors)}. jb extension.\n'
+        'Choose [1]: ',
+        forScript: !colors));
 
     while (true) {
       final answer = readLineSync()?.trim();
@@ -84,7 +94,7 @@ extension on Stdin {
         case null:
           throw DartleException(message: 'Aborted!');
         default:
-          stdout.writeln('ERROR: Please enter a valid option.');
+          stdout.writeln(ansi.red.wrap('ERROR: Please enter a valid option.'));
       }
     }
   }
