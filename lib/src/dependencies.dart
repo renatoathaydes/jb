@@ -10,6 +10,15 @@ import 'exec.dart';
 import 'output_consumer.dart';
 import 'tasks.dart' show depsTaskName;
 
+final class _Dependency {
+  final String name;
+  final String localSuffix;
+
+  bool get isLocal => localSuffix.isNotEmpty;
+
+  const _Dependency(this.name, [this.localSuffix = '']);
+}
+
 Future<void> writeDependencies(
     {required File depsFile,
     required LocalDependencies localDeps,
@@ -99,17 +108,23 @@ Future<int> printDependencies(
     LocalDependencies localDependencies,
     LocalDependencies localProcessorDependencies,
     List<String> args) async {
-  final deps = config.allDependencies
-      .where((dep) => dep.value.path == null)
-      .map((dep) => dep.key);
-  final procDeps = config.allProcessorDependencies
-      .where((dep) => dep.value.path == null)
-      .map((dep) => dep.key);
+  final mainDeps = _computeDependencies(
+      localDependencies, config.allDependencies,
+      runtimeOnly: false);
+  final processorDeps = _computeDependencies(
+      localProcessorDependencies, config.allProcessorDependencies,
+      runtimeOnly: false);
+  final mainRuntimeDeps = _computeDependencies(
+      localDependencies, config.allDependencies,
+      runtimeOnly: true);
+  final processorRuntimeDeps = _computeDependencies(
+      localProcessorDependencies, config.allProcessorDependencies,
+      runtimeOnly: true);
 
-  if (deps.isEmpty &&
-      procDeps.isEmpty &&
-      localDependencies.isEmpty &&
-      localProcessorDependencies.isEmpty) {
+  if (mainDeps.isEmpty &&
+      processorDeps.isEmpty &&
+      mainRuntimeDeps.isEmpty &&
+      processorRuntimeDeps.isEmpty) {
     logger.info(
         const PlainMessage('This project does not have any dependencies!'));
     return 0;
@@ -117,33 +132,64 @@ Future<int> printDependencies(
 
   final preArgs = config.preArgs(workingDir);
   var result = 0;
-  if (deps.isNotEmpty || localDependencies.isNotEmpty) {
-    result = await _print(deps, localDependencies, jbuildJar, preArgs,
-        config.dependencyExclusionPatterns,
-        header: 'This project has the following dependencies:');
+  if (mainDeps.isNotEmpty) {
+    result = await _print(
+        mainDeps, jbuildJar, preArgs, config.dependencyExclusionPatterns,
+        header: 'This project has the following compile-time dependencies:',
+        runtimeOnly: false);
   }
-  if (result == 0 &&
-      (procDeps.isNotEmpty || localProcessorDependencies.isNotEmpty)) {
-    result = await _print(procDeps, localProcessorDependencies, jbuildJar,
-        preArgs, config.processorDependencyExclusionPatterns,
-        header: 'Annotation processor dependencies:');
+  if (result == 0 && mainRuntimeDeps.isNotEmpty) {
+    result = await _print(
+        mainRuntimeDeps, jbuildJar, preArgs, config.dependencyExclusionPatterns,
+        header: 'Runtime-only dependencies:', runtimeOnly: true);
+  }
+  if (result == 0 && processorDeps.isNotEmpty) {
+    result = await _print(processorDeps, jbuildJar, preArgs,
+        config.processorDependencyExclusionPatterns,
+        header: 'Annotation processor dependencies:', runtimeOnly: false);
+  }
+  if (result == 0 && processorRuntimeDeps.isNotEmpty) {
+    result = await _print(processorRuntimeDeps, jbuildJar, preArgs,
+        config.processorDependencyExclusionPatterns,
+        header: 'Annotation processor runtime-only dependencies:',
+        runtimeOnly: true);
   }
 
   return result;
 }
 
-Future<int> _print(Iterable<String> deps, LocalDependencies localDeps,
-    File jbuildJar, List<String> preArgs, Iterable<String> exclusionPatterns,
-    {required String header}) async {
+Iterable<_Dependency> _computeDependencies(LocalDependencies localDependencies,
+    Iterable<MapEntry<String, DependencySpec>> dependencies,
+    {required bool runtimeOnly}) {
+  final bool Function(DependencyScope) scopeFilter = runtimeOnly
+      ? (s) => s == DependencyScope.runtimeOnly
+      : (s) => s != DependencyScope.runtimeOnly;
+  return localDependencies.jars
+      .where((j) => scopeFilter(j.spec.scope))
+      .map((j) => _Dependency(j.path, ' (local jar)'))
+      .followedBy(localDependencies.projectDependencies
+          .where((d) => scopeFilter(d.spec.scope))
+          .map((d) => _Dependency(d.path, ' (local project)')))
+      .followedBy(dependencies
+          .where(
+              (dep) => dep.value.path == null && scopeFilter(dep.value.scope))
+          .map((dep) => _Dependency(dep.key)));
+}
+
+Future<int> _print(Iterable<_Dependency> deps, File jbuildJar,
+    List<String> preArgs, Iterable<String> exclusionPatterns,
+    {required String header, required bool runtimeOnly}) async {
   logger.info(AnsiMessage([
     AnsiMessagePart.code(ansi.styleItalic),
     AnsiMessagePart.code(ansi.styleBold),
     AnsiMessagePart.text(header)
   ]));
 
-  _printLocalDependencies(localDeps);
+  _printLocalDependencies(deps.where((d) => d.isLocal));
 
-  if (deps.isNotEmpty) {
+  final nonLocalDeps = deps.where((d) => !d.isLocal);
+
+  if (nonLocalDeps.isNotEmpty) {
     return await execJBuild(
         depsTaskName,
         jbuildJar,
@@ -152,20 +198,17 @@ Future<int> _print(Iterable<String> deps, LocalDependencies localDeps,
         [
           '-t',
           '-s',
-          'compile',
+          runtimeOnly ? 'runtime' : 'compile',
           ...exclusionPatterns.expand((ex) => ['-x', ex]),
-          ...deps
+          ...nonLocalDeps.map((d) => d.name)
         ],
         onStdout: _JBuildDepsPrinter());
   }
   return 0;
 }
 
-void _printLocalDependencies(LocalDependencies localDependencies) {
-  for (var dep in localDependencies.jars
-      .map((j) => '* ${j.path} [${j.spec.scope.name}] (local jar)')
-      .followedBy(localDependencies.projectDependencies
-          .map((s) => '* ${s.path} [${s.spec.scope.name}] (sub-project)'))) {
+void _printLocalDependencies(Iterable<_Dependency> deps) {
+  for (var dep in deps.map((s) => '* ${s.name} ${s.localSuffix}')) {
     logger.info(ColoredLogMessage(dep, LogColor.magenta));
   }
 }
