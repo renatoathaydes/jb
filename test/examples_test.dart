@@ -42,10 +42,10 @@ void main() {
       expect(
           weirdLine,
           startsWith(
-              '            * org.eclipse.jgit:org.eclipse.jgit:4.4.1.201607150455-r [compile]'));
+              '                * org.eclipse.jgit:org.eclipse.jgit:4.4.1.201607150455-r [compile]'));
 
       final endIndex = lines.indexWhere(
-          (line) => line.endsWith("17 compile dependencies listed"));
+          (line) => line.endsWith("18 compile dependencies listed"));
       expect(endIndex, greaterThan(runningTaskIndex));
 
       // exclusions:
@@ -53,33 +53,32 @@ void main() {
       //     - com.google.*error_prone_annotations.*
       expect(
           lines.sublist(runningTaskIndex + 1, endIndex).join('\n'), equals('''
-Annotation processor dependencies:
-* com.google.errorprone:error_prone_annotations:2.16 (incl. transitive):
-  * no dependencies
-* com.google.errorprone:error_prone_core:2.16 (incl. transitive):
+Annotation processor runtime dependencies:
+* jb.example:error-prone:0.0.0 (incl. transitive):
   - scope compile
-    * com.google.auto.service:auto-service-annotations:1.0.1 [compile]
-    * com.google.auto.value:auto-value-annotations:1.9 [compile]
-    * com.google.auto:auto-common:1.2.1 [compile]
-        * com.google.guava:guava:31.0.1-jre [compile]
-            * com.google.code.findbugs:jsr305:3.0.2 [compile]
-            * com.google.guava:failureaccess:1.0.1 [compile]
-            * com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava [compile]
-            * com.google.j2objc:j2objc-annotations:1.3 [compile]
-    * com.google.code.findbugs:jsr305:3.0.2 [compile] (-)
-    * com.google.errorprone:error_prone_annotation:2.16 [compile]
-        * com.google.guava:guava:31.0.1-jre [compile] (-)
-    * com.google.errorprone:error_prone_check_api:2.16 [compile]
-        * com.github.ben-manes.caffeine:caffeine:3.0.5 [compile]
-        * com.github.kevinstern:software-and-algorithms:1.0 [compile]
-        * com.google.auto.value:auto-value-annotations:1.9 [compile] (-)
+    * com.google.errorprone:error_prone_core:2.16 [compile]
+        * com.google.auto.service:auto-service-annotations:1.0.1 [compile]
+        * com.google.auto.value:auto-value-annotations:1.9 [compile]
+        * com.google.auto:auto-common:1.2.1 [compile]
+            * com.google.guava:guava:31.0.1-jre [compile]
+                * com.google.code.findbugs:jsr305:3.0.2 [compile]
+                * com.google.guava:failureaccess:1.0.1 [compile]
+                * com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava [compile]
+                * com.google.j2objc:j2objc-annotations:1.3 [compile]
         * com.google.code.findbugs:jsr305:3.0.2 [compile] (-)
-        * com.google.errorprone:error_prone_annotation:2.16 [compile] (-)
-        * io.github.java-diff-utils:java-diff-utils:4.0 [compile]
-    * com.google.errorprone:error_prone_type_annotations:2.16 [compile]
-    * com.google.guava:guava:31.0.1-jre [compile] (-)
-    * com.google.protobuf:protobuf-java:3.19.2 [compile]
-    * org.pcollections:pcollections:3.1.4 [compile]'''));
+        * com.google.errorprone:error_prone_annotation:2.16 [compile]
+            * com.google.guava:guava:31.0.1-jre [compile] (-)
+        * com.google.errorprone:error_prone_check_api:2.16 [compile]
+            * com.github.ben-manes.caffeine:caffeine:3.0.5 [compile]
+            * com.github.kevinstern:software-and-algorithms:1.0 [compile]
+            * com.google.auto.value:auto-value-annotations:1.9 [compile] (-)
+            * com.google.code.findbugs:jsr305:3.0.2 [compile] (-)
+            * com.google.errorprone:error_prone_annotation:2.16 [compile] (-)
+            * io.github.java-diff-utils:java-diff-utils:4.0 [compile]
+        * com.google.errorprone:error_prone_type_annotations:2.16 [compile]
+        * com.google.guava:guava:31.0.1-jre [compile] (-)
+        * com.google.protobuf:protobuf-java:3.19.2 [compile]
+        * org.pcollections:pcollections:3.1.4 [compile]'''));
     });
   });
 
