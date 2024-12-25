@@ -1,5 +1,7 @@
 ## Next
 
+- improved `dependencies` task output.
+
 ## 0.10.0
 
 - colorize prompts when running `jb create`.

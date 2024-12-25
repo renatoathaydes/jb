@@ -575,7 +575,7 @@ Task createDepsTask(File jbuildJar, JbConfiguration config, DartleCache cache,
       (List<String> args) => _deps(jbuildJar, config, workingDir, cache,
           localDependencies, localProcessorDeps, args),
       name: depsTaskName,
-      argsValidator: const AcceptAnyArgs(),
+      argsValidator: DepsArgValidator.instance,
       phase: TaskPhase.setup,
       description: 'Shows information about project dependencies.');
 }
