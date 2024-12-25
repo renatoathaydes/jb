@@ -419,7 +419,7 @@ Dependencies use the notation `<group>:<module>:<version>` and may have the foll
 - `transitive`: `true` or `false` - whether to include transitive dependencies or only the single artifact.
 - `scope`: one of:
   * `all` - the default, include dependency both at compile time and at runtime.
-  * `compile-only` - only include the depenency when compiling.
+  * `compile-only` - only include the dependency when compiling.
   * `runtime-only` - only include the dependency at runtime.
 - `path`: path to a local jar or another `jb` project. This is recommended only for local development.
 

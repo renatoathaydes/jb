@@ -22,12 +22,12 @@ dependencies:
 Notice that each entry in `dependencies` needs to end with a colon (`:`), because the entry may declare optional attributes:
 
 * `path` - for a local dependency, the path to a jar or directory containing another `jb` project.
-* `transitive` - whether to incude transitive dependencies of the artifact.
+* `transitive` - whether to include transitive dependencies of the artifact.
 * `scope` - one of `compile-only`, `runtime-only` or `all` (which is the default).
 
 As an example of using dependency attributes, consider configuring `slf4j` and a logging provider, say `log4j`.
 
-The depdendencies may look like this:
+The dependencies may look like this:
 
 ```yaml
 dependencies:
