@@ -1,6 +1,9 @@
 ## Next
 
+## 0.11.0
+
 - improved `dependencies` task output.
+- added options to `dependencies` task to show compile-time or runtime deps and to show licenses.
 
 ## 0.10.0
 
