@@ -23,27 +23,32 @@ final class _Dependency {
 }
 
 class DepsArgValidator extends ArgsCount {
-  static const flag = '--compile-scope';
+  static const compileScopeFlag = 'compile-scope';
+  static const licensesFlag = 'show-licenses';
   static const instance = DepsArgValidator._();
 
-  const DepsArgValidator._() : super.range(min: 0, max: 1);
+  const DepsArgValidator._() : super.range(min: 0, max: 2);
 
-  bool isCompileScope(List<String> args) {
-    final arg = args.firstOrNull;
-    return arg != null && arg == flag;
-  }
+  bool isCompileScope(List<String> args) => args.contains(compileScopeFlag);
+
+  bool isLicenseOn(List<String> args) => args.contains(licensesFlag);
 
   @override
   bool validate(List<String> args) {
     final superResult = super.validate(args);
     if (!superResult) return false;
-    final arg = args.firstOrNull;
-    return arg == null || arg == flag;
+    for (final arg in args) {
+      if (arg != compileScopeFlag && arg != licensesFlag) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @override
   String helpMessage() => 'Acceptable flags:\n'
-      '        * $flag: show only compile-time dependencies.';
+      '        * $compileScopeFlag: show only compile-time dependencies.\n'
+      '        * $licensesFlag: show dependencies\' licenses.';
 }
 
 Future<void> writeDependencies(
@@ -136,6 +141,7 @@ Future<int> printDependencies(
     LocalDependencies localProcessorDependencies,
     List<String> args) async {
   final compileScope = DepsArgValidator.instance.isCompileScope(args);
+  final licenseOn = DepsArgValidator.instance.isLicenseOn(args);
   final scopeString = compileScope ? 'compile-time' : 'runtime';
   final mainDeps = _computeDependencies(
           localDependencies, config.allDependencies,
@@ -159,13 +165,15 @@ Future<int> printDependencies(
     result = await _print(config, mainDeps, jbuildJar, preArgs,
         config.dependencyExclusionPatterns,
         header: 'This project has the following $scopeString dependencies:',
-        compileTimeScope: compileScope);
+        compileTimeScope: compileScope,
+        licenseOn: licenseOn);
   }
   if (result == 0 && processorDeps.isNotEmpty) {
     result = await _print(config, processorDeps, jbuildJar, preArgs,
         config.processorDependencyExclusionPatterns,
         header: 'Annotation processor $scopeString dependencies:',
-        compileTimeScope: compileScope);
+        compileTimeScope: compileScope,
+        licenseOn: licenseOn);
   }
 
   return result;
@@ -205,7 +213,9 @@ Artifact _createSimpleArtifact(JbConfiguration config) {
 
 Future<int> _print(JbConfiguration config, Iterable<_Dependency> deps,
     File jbuildJar, List<String> preArgs, Iterable<String> exclusionPatterns,
-    {required String header, required bool compileTimeScope}) async {
+    {required String header,
+    required bool compileTimeScope,
+    required bool licenseOn}) async {
   logger.info(AnsiMessage([
     AnsiMessagePart.code(ansi.styleItalic),
     AnsiMessagePart.code(ansi.styleBold),
@@ -235,6 +245,7 @@ Future<int> _print(JbConfiguration config, Iterable<_Dependency> deps,
           ...exclusionPatterns.expand((ex) => ['-x', ex]),
           '-p',
           pomFile.path,
+          if (licenseOn) '-l',
         ],
         onStdout: _JBuildDepsPrinter());
   }
