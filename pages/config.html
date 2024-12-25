@@ -16,10 +16,35 @@
 
 <h1>Configuring jb</h1>
 
+<h2>Table of Contents</h2>
+
+<ul>
+<li><a href="#imports">Imports</a></li>
+<li><a href="#properties">Properties</a></li>
+<li><a href="#publishing">Publishing to a Maven Repository</a></li>
+<li><a href="#reference">Configuration Reference</a></li>
+</ul>
+
+<h2>Introduction</h2>
+
+<p>For a directory to contain a <code>jb</code> project, a YAML or JSON file called <code>jbuild.yaml</code> or <code>jbuild.json</code> must exist in it.</p>
+
+<p>This file defines the configuration for the project.</p>
+
 <blockquote>
-<p>The <code>jb</code> configuration model is defined in <a href="https://github.com/renatoathaydes/jb/blob/main/dartle-src/config/jb_config_schema.dart">this file</a>.</p>
+<p>The <code>jb</code> configuration model is defined in <a href="https://github.com/renatoathaydes/jb/blob/main/dartle-src/config/jb_config_schema.dart">this file</a>. A JSON Schema can be generated from the model (TODO).</p>
 </blockquote>
 
+<p>The minimal configuration file looks like this:</p>
+
+<h3>YAML</h3>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">module</span>: <span style="color:#98c379">my-module</span>
+</span></span></code></pre>
+<h3>JSON</h3>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">&#34;module&#34;</span>: <span style="color:#63c381">&#34;my-module&#34;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre>
 <p>To display the full configuration model of a <code>jb</code> project, run the <code>show</code> task.</p>
 
 <p>Example:</p>
@@ -88,7 +113,76 @@
 </span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># jb extension project path (for custom tasks)</span>
 </span></span><span style="display:flex;"><span><span style="color:#e06c75">extension-project</span>: <span style="color:#b756ff;font-weight:bold">null</span>
 </span></span></code></pre>
-<p>This page explains what each property means and shows examples of acceptable values.</p>
+<p>The <a href="#reference">Configuration Reference</a> section below explains in more detail what each of these fields mean and how to use them.</p>
+
+<div id="properties"></div>
+
+<h2>Properties</h2>
+
+<p>The <code>properties</code> value is a Map which can be used for declaring properties.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">properties</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">versions</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">jbuild</span>: <span style="color:#d19a66">0.10</span><span style="color:#d19a66">.1</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">java</span>: <span style="color:#d19a66">11</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">junit</span>: <span style="color:#d19a66">5.9</span><span style="color:#d19a66">.1</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">assertj</span>: <span style="color:#d19a66">3.23</span><span style="color:#d19a66">.1</span>
+</span></span></code></pre>
+<p>Properties can be used anywhere in a config file using double-curly-braces to refer to them.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">javac-args</span>: [ <span style="color:#63c381">&#34;--release={{versions.java}}&#34;</span> ]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">dependencies</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#63c381">&#34;org.junit.jupiter:junit-jupiter-api:{{versions.junit}}&#34;</span><span style="color:#e06c75"></span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#63c381">&#34;org.junit.jupiter:junit-jupiter-params:{{versions.junit}}&#34;</span><span style="color:#e06c75"></span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#63c381">&#34;org.assertj:assertj-core:{{versions.assertj}}&#34;</span><span style="color:#e06c75"></span>:
+</span></span></code></pre>
+<div id="imports"></div>
+
+<h2>Imports</h2>
+
+<p>The <code>imports</code> value is a list of other YAML or JSON files to be imported into the current one.</p>
+
+<p>When a config file is imported, it gets <em>merged</em> with it, and <code>jb</code> sees only the result of that merge.</p>
+
+<p>Example:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">imports</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#63c381">&#34;../../build_properties.yaml&#34;</span>
+</span></span></code></pre>
+<p>A common usage of imports is to allow declaring all dependencies versions used across various sub-projects in a single place.</p>
+
+<p>Check the <a href="https://github.com/renatoathaydes/jbuild/blob/master/src/test/jbuild.yaml">JBuild Tests</a> config for a real example.</p>
+
+<div id="publishing"></div>
+
+<h2>Publishing to a Maven Repository</h2>
+
+<p>To be able to publish to a Maven Repository, the following fields must be configured properly:</p>
+
+<ul>
+<li><a href="#group">group</a></li>
+<li><a href="#module">module</a></li>
+<li><a href="#name">name</a></li>
+<li><a href="#version">version</a></li>
+<li><a href="#description">description</a></li>
+<li><a href="#developers">developers</a></li>
+<li><a href="#scm">scm</a></li>
+<li><a href="#licenses">licenses</a></li>
+<li><a href="#url">url</a></li>
+</ul>
+
+<p>Once all of the above fields have proper values, you can publish with <code>jb publish :-m</code> (Sonatype Maven Central)
+or <code>jb publish :-n</code> (Sonatype Legacy Repository, use this if your domain was registered before the transition to the newer repo).</p>
+
+<p>Running <code>jb publish</code> without any argument publishes to Maven Local at <code>~/.m2/repository</code>.</p>
+
+<p>Any other argument is treated as a destination directory or a http(s) URL.</p>
+
+<div id="reference"></div>
+
+<h2>Configuration Reference</h2>
 
 <p><a id="group" href="#group">group</a></p>
 

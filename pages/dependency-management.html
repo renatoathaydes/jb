@@ -11,9 +11,165 @@
 <body><nav><div class="center" style="display: flex; justify-content: space-around;">
       <a href="/jb/index.html">jb Documentation</a>
 </div></nav>
+<main>
+<p><div class="space-up"></div></p>
+
 <h1>Dependency Management</h1>
 
-<p>TODO</p>
+<p>Dependency management is very simple in <code>jb</code>. This page explains how to manage dependencies in a <code>jb</code> project.</p>
+
+<h2>Adding a dependency</h2>
+
+<p>To add a dependency to your project, add an entry in the <a href="config.html#dependencies"><code>dependencies</code></a> configuration section.</p>
+
+<p>For example, to use Google Guava:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">dependencies</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">com.google.guava:guava:33.4.0-jre</span>:
+</span></span></code></pre>
+<p>Notice that each entry in <code>dependencies</code> needs to end with a colon (<code>:</code>), because the entry may declare optional attributes:</p>
+
+<ul>
+<li><code>path</code> - for a local dependency, the path to a jar or directory containing another <code>jb</code> project.</li>
+<li><code>transitive</code> - whether to incude transitive dependencies of the artifact.</li>
+<li><code>scope</code> - one of <code>compile-only</code>, <code>runtime-only</code> or <code>all</code> (which is the default).</li>
+</ul>
+
+<p>As an example of using dependency attributes, consider configuring <code>slf4j</code> and a logging provider, say <code>log4j</code>.</p>
+
+<p>The depdendencies may look like this:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">dependencies</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#8a93a5;font-style:italic"># SFL4J Logging API</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">org.slf4j:slf4j-api:2.0.16</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#8a93a5;font-style:italic"># Use the Log4j2 Provider for SLF4J</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">scope</span>: <span style="color:#98c379">runtime-only</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">org.apache.logging.log4j:log4j-core:2.24.3</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">scope</span>: <span style="color:#98c379">runtime-only</span>
+</span></span></code></pre>
+<p>Conflicts are not automatically resolved, but it&rsquo;s easy to find and fix one when it happens.</p>
+
+<h3>Resolving conflicts</h3>
+
+<p>With the example above, there&rsquo;s already a few dependency version conflicts, as you can see by running <code>jb dep</code>:</p>
+
+<iframe src="/jb/jb-deps.html" style="width: 100%;height: 27em;"></iframe>
+
+<p>As you can see, <code>log4j2-core</code> (all modules are the latest versions as of writing) depends on <code>log4j2-api</code> version <code>2.24.3</code>,
+but the latest version of <code>log4j-slf4j2-impl</code> still depends on version <code>2.19.0</code>.</p>
+
+<p>Similarly, while the project wants to use <code>slf4j-api</code> version <code>2.0.16</code>, <code>log4j-slf4j2-impl</code> requires that module with version <code>2.0.0</code>.</p>
+
+<p>The problem is clearly that <code>log4j-slf4j2-impl</code> is not kept up-to-date. We can fix that in a couple of ways.</p>
+
+<p>First, you can just make <code>log4j-slf4j2-impl</code> a non-transitive dependency:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">dependencies</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#8a93a5;font-style:italic"># SFL4J Logging API</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">org.slf4j:slf4j-api:2.0.16</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#8a93a5;font-style:italic"># Use the Log4j2 Provider for SLF4J</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">scope</span>: <span style="color:#98c379">runtime-only</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">transitive</span>: <span style="color:#b756ff;font-weight:bold">false</span> <span style="color:#8a93a5;font-style:italic"># &lt;&lt;-------</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">org.apache.logging.log4j:log4j-core:2.24.3</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">scope</span>: <span style="color:#98c379">runtime-only</span>
+</span></span></code></pre>
+<p>This works, and running <code>jb dep</code> again shows that there&rsquo;s no more conflicts:</p>
+
+<iframe src="/jb/jb-deps-fixed.html" style="width: 100%;height: 20em;"></iframe>
+
+<p>In this case, this may be the best approach. But there are cases where doing this would be less maintainable.
+On every update, you could run into problems if the non-transitive dependency added new dependencies (which may be a good thing
+as that would <em>alert</em> you that your project also has a new dependency).</p>
+
+<p>If that&rsquo;s not desirable, you can try to exclude the exact transitive dependencies that are problematic:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">dependencies</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#8a93a5;font-style:italic"># SFL4J Logging API</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">org.slf4j:slf4j-api:2.0.16</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#8a93a5;font-style:italic"># Use the Log4j2 Provider for SLF4J</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">scope</span>: <span style="color:#98c379">runtime-only</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">org.apache.logging.log4j:log4j-core:2.24.3</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">scope</span>: <span style="color:#98c379">runtime-only</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#e06c75">dependency-exclusion-patterns</span>:
+</span></span><span style="display:flex;"><span>  - <span style="color:#98c379">.*:log4j-api:2.19.0</span>
+</span></span><span style="display:flex;"><span>  - <span style="color:#98c379">.*:slf4j-api:2.0.0</span>
+</span></span></code></pre>
+<p>This has the same effect as before. The downside is that you need to re-calculate the exclusion patterns every time you update
+your dependencies. However, doing so as shown above shouldn&rsquo;t take more than a few minutes.</p>
+
+<h2>Annotation Processor dependencies</h2>
+
+<p>Besides <code>dependencies</code>, <code>jb</code> also has <code>processor-dependencies</code>, which is where you declare dependencies for annotation processors
+you may run at compile-time.</p>
+
+<p>Similarly, there&rsquo;s also <code>processor-dependency-exclusion-patterns</code> for excluding transitive dependencies from the annotation processor&rsquo;s
+classpath.</p>
+
+<p>The <code>jb</code> repository has <a href="https://github.com/renatoathaydes/jb/tree/main/example/error-prone-java-project">an example</a>
+configuring the <a href="https://errorprone.info/">ErrorProne</a> annotation processor.</p>
+
+<h2>Local dependencies</h2>
+
+<p>Normally, dependencies are downloaded from a Maven repository (see <a href="config.html#repositories">repositories</a>).
+But <code>jb</code> also supports depending on a local jar or on another <code>jb</code> project.</p>
+
+<p>In either case, all you have to do is specify the <code>path</code> attribute of the dependency, as shown below:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">dependencies</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#e06c75">main-project</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#e06c75">path</span>: <span style="color:#98c379">../main</span>
+</span></span></code></pre>
+<p>This is very common, for example, in test projects, which depend on the <em>main project</em>.</p>
+
+<blockquote>
+<p>Notice that if the <code>path</code> points to a directory, the directory is expected to be a <code>jb</code> project.
+If it&rsquo;s a file, then it&rsquo;s assumed to be a jar.</p>
+</blockquote>
+
+<p>See the <a href="https://github.com/renatoathaydes/jbuild/blob/master/src/test/jbuild.yaml">JBuild unit test config</a> itself for a good example.</p>
+
+<h2>Test Dependencies</h2>
+
+<p>In <code>jb</code>, there are no test dependencies, only test projects. Test projects are simply <code>jb</code> projects that depend on one of the supported Testing Frameworks.</p>
+
+<p>For example, a project depending on <code>org.junit.jupiter:junit-jupiter-api</code> directly is assumed to be a JUnit Test module,
+and the <code>test</code> task will execute any tests found by the JUnit5 engine.</p>
+
+<p>A common pattern is to have the main project at the <em>root directory</em>, and the test project at <code>test/</code>:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span>├── jbuild.yaml
+</span></span><span style="display:flex;"><span>├── src
+</span></span><span style="display:flex;"><span>│   └── com
+</span></span><span style="display:flex;"><span>│       └── athaydes
+</span></span><span style="display:flex;"><span>│           └── example
+</span></span><span style="display:flex;"><span>│               └── Main.java
+</span></span><span style="display:flex;"><span>└── test
+</span></span><span style="display:flex;"><span>    ├── jbuild.yaml
+</span></span><span style="display:flex;"><span>    └── src
+</span></span><span style="display:flex;"><span>        └── com
+</span></span><span style="display:flex;"><span>            └── athaydes
+</span></span><span style="display:flex;"><span>                └── example
+</span></span><span style="display:flex;"><span>                    └── MainTest.java
+</span></span></code></pre>
+<blockquote>
+<p>Notice how there&rsquo;s a <code>jbuild.yaml</code> file at <code>./</code> and <code>./test/</code>.</p>
+</blockquote>
+
+<p>This allows compiling and running tests very easily:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># compile the main project</span>
+</span></span><span style="display:flex;"><span>$ jb
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># run the tests</span>
+</span></span><span style="display:flex;"><span>$ jb -p <span style="color:#ef8383">test</span> <span style="color:#ef8383">test</span>
+</span></span></code></pre>
+<p>You can have several test directories for different kinds of tests, for example, <code>int-test</code>, <code>ext-test</code> and so on.</p>
+
+<p>Then, running them becomes very easy:</p>
+<pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># run unit tests</span>
+</span></span><span style="display:flex;"><span>$ jb -p <span style="color:#ef8383">test</span> <span style="color:#ef8383">test</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#8a93a5;font-style:italic"># run integration tests</span>
+</span></span><span style="display:flex;"><span>$ jb -p int-test <span style="color:#ef8383">test</span>
+</span></span></code></pre>
+</main>
 <footer>
     <div>jb is a project by Renato Athaydes.</div>
     <div>Source code on <a href="https://github.com/renatoathaydes/jb">GitHub</a></div>
