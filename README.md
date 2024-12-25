@@ -8,6 +8,8 @@
 It aims to simplify Java project management and provide an excellent developer experience by being much simpler
 than Maven or Gradle, while still providing enough flexibility for most projects to achieve complex workflows.
 
+[📚 jb Documentation](https://renatoathaydes.github.io/jb/)
+
 ## Using `jb`
 
 To create a new Java project, run:
