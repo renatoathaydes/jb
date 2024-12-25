@@ -30,13 +30,13 @@
 
 <ul>
 <li><code>path</code> - for a local dependency, the path to a jar or directory containing another <code>jb</code> project.</li>
-<li><code>transitive</code> - whether to incude transitive dependencies of the artifact.</li>
+<li><code>transitive</code> - whether to include transitive dependencies of the artifact.</li>
 <li><code>scope</code> - one of <code>compile-only</code>, <code>runtime-only</code> or <code>all</code> (which is the default).</li>
 </ul>
 
 <p>As an example of using dependency attributes, consider configuring <code>slf4j</code> and a logging provider, say <code>log4j</code>.</p>
 
-<p>The depdendencies may look like this:</p>
+<p>The dependencies may look like this:</p>
 <pre tabindex="0" style="color:#b0c4de;background-color:#282c34;"><code><span style="display:flex;"><span><span style="color:#e06c75">dependencies</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#8a93a5;font-style:italic"># SFL4J Logging API</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#e06c75">org.slf4j:slf4j-api:2.0.16</span>:
