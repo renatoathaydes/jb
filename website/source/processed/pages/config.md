@@ -7,7 +7,36 @@
 
 # Configuring jb
 
-> The `jb` configuration model is defined in [this file](https://github.com/renatoathaydes/jb/blob/main/dartle-src/config/jb_config_schema.dart).
+## Table of Contents
+
+* [Imports](#imports)
+* [Properties](#properties)
+* [Publishing to a Maven Repository](#publishing)
+* [Configuration Reference](#reference)
+
+## Introduction
+
+For a directory to contain a `jb` project, a YAML or JSON file called `jbuild.yaml` or `jbuild.json` must exist in it.
+
+This file defines the configuration for the project.
+
+> The `jb` configuration model is defined in [this file](https://github.com/renatoathaydes/jb/blob/main/dartle-src/config/jb_config_schema.dart). A JSON Schema can be generated from the model (TODO).
+
+The minimal configuration file looks like this:
+
+### YAML
+
+```yaml
+module: my-module
+```
+
+### JSON
+
+```json
+{
+    "module": "my-module"
+}
+```
 
 To display the full configuration model of a `jb` project, run the `show` task.
 
@@ -80,7 +109,83 @@ test-reports-dir: "build/test-reports"
 extension-project: null
 ```
 
-This page explains what each property means and shows examples of acceptable values.
+The [Configuration Reference](#reference) section below explains in more detail what each of these fields mean and how to use them.
+
+<div id="properties"></div>
+
+## Properties
+
+The `properties` value is a Map which can be used for declaring properties.
+
+Example:
+
+```yaml
+properties:
+    versions:
+        jbuild: 0.10.1
+        java: 11
+        junit: 5.9.1
+        assertj: 3.23.1
+```
+
+Properties can be used anywhere in a config file using double-curly-braces to refer to them.
+
+Example:
+
+```yaml
+javac-args: [ "--release={{versions.java}}" ]
+
+dependencies:
+  "org.junit.jupiter:junit-jupiter-api:{{versions.junit}}":
+  "org.junit.jupiter:junit-jupiter-params:{{versions.junit}}":
+  "org.assertj:assertj-core:{{versions.assertj}}":
+```
+
+<div id="imports"></div>
+
+## Imports
+
+The `imports` value is a list of other YAML or JSON files to be imported into the current one.
+
+When a config file is imported, it gets _merged_ with it, and `jb` sees only the result of that merge.
+
+Example:
+
+```yaml
+imports:
+    - "../../build_properties.yaml"
+```
+
+A common usage of imports is to allow declaring all dependencies versions used across various sub-projects in a single place.
+
+Check the [JBuild Tests](https://github.com/renatoathaydes/jbuild/blob/master/src/test/jbuild.yaml) config for a real example.
+
+<div id="publishing"></div>
+
+## Publishing to a Maven Repository
+
+To be able to publish to a Maven Repository, the following fields must be configured properly:
+
+* [group](#group)
+* [module](#module)
+* [name](#name)
+* [version](#version)
+* [description](#description)
+* [developers](#developers)
+* [scm](#scm)
+* [licenses](#licenses)
+* [url](#url)
+
+Once all of the above fields have proper values, you can publish with `jb publish :-m` (Sonatype Maven Central)
+or `jb publish :-n` (Sonatype Legacy Repository, use this if your domain was registered before the transition to the newer repo).
+
+Running `jb publish` without any argument publishes to Maven Local at `~/.m2/repository`.
+
+Any other argument is treated as a destination directory or a http(s) URL.
+
+<div id="reference"></div>
+
+## Configuration Reference
 
 <a id="group" href="#group">group</a>
 
