@@ -1,5 +1,7 @@
 ## Next
 
+- fixed handling of `-J-` `javacArgs` - must be passed to `java` when starting the JVM executor.
+
 ## 0.11.0
 
 - improved `dependencies` task output.

@@ -63,18 +63,35 @@ Future<void> _runJb(JbCliOptions options, Options dartleOptions,
     return createNewProject(createOptions.arguments,
         colors: dartleOptions.colorfulLog);
   }
-  final jvmExecutor = createJavaActor(dartleOptions.logLevel, jbuildJar.path);
+
+  final config = await _createConfig(configSource ?? defaultJbConfigSource);
+
+  final jvmExecutor = createJavaActor(dartleOptions.logLevel, jbuildJar.path,
+      config.javacArgs.javaRuntimeArgs().toList(growable: false));
 
   final runner = await JbRunner.create(
       JbFiles(
         jbuildJar,
         configSource: configSource ?? defaultJbConfigSource,
       ),
+      config,
       await jvmExecutor.toSendable());
 
   try {
     await runner.run(dartleOptions, stopwatch);
   } finally {
     await jvmExecutor.close();
+  }
+}
+
+Future<JbConfiguration> _createConfig(ConfigSource configSource) async {
+  try {
+    return await configSource.load();
+  } on DartleException {
+    rethrow;
+  } catch (e) {
+    throw DartleException(
+        message: 'Unable to load jb config due to: $e.'
+            '\nRun with the --help option to see usage.');
   }
 }

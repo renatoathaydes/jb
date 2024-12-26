@@ -37,19 +37,22 @@ class _Proc {
 final class _JBuildActor implements Handler<JavaCommand, Object?> {
   final Level _level;
   final String jbuildJar;
+  final List<String> _javaRuntimeArgs;
   Future<_JBuildRpc>? _rpc;
   bool _started = false;
 
-  _JBuildActor(this._level, this.jbuildJar);
+  _JBuildActor(this._level, this.jbuildJar, this._javaRuntimeArgs);
 
   @override
   void init() {
     activateLogging(_level);
   }
 
-  static Future<_JBuildRpc> _startRpc(String jbuildJar) async {
+  static Future<_JBuildRpc> _startRpc(
+      String jbuildJar, List<String> javaRuntimeArgs) async {
     final stopwatch = Stopwatch()..start();
     final args = [
+      ...javaRuntimeArgs,
       '-cp',
       jbuildJar,
       'jbuild.cli.RpcMain',
@@ -101,7 +104,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   Future<_JBuildRpc> _getOrStartRpc() async {
     if (!_started) {
       _started = true;
-      _rpc = _startRpc(jbuildJar);
+      _rpc = _startRpc(jbuildJar, _javaRuntimeArgs);
     }
     return _rpc!;
   }
@@ -191,8 +194,9 @@ final class RunJava extends JavaCommand {
 /// arbitrary Java methods (for jb extensions).
 ///
 /// The Actor sender returns whatever the Java method returned.
-Actor<JavaCommand, Object?> createJavaActor(Level level, String jbuildJar) {
-  return Actor.create(() => _JBuildActor(level, jbuildJar));
+Actor<JavaCommand, Object?> createJavaActor(
+    Level level, String jbuildJar, List<String> javaRuntimeArgs) {
+  return Actor.create(() => _JBuildActor(level, jbuildJar, javaRuntimeArgs));
 }
 
 class _RpcRequestMetadata {
