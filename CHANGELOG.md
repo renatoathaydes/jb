@@ -1,6 +1,7 @@
 ## Next
 
 - fixed handling of `-J-` `javacArgs` - must be passed to `java` when starting the JVM executor.
+- use Java CDS (Class Data Sharing) to slightly improve Java commands performance.
 
 ## 0.11.0
 
