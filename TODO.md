@@ -7,8 +7,7 @@ Once the project is in good shape, this should be moved to a proper bug tracker.
 ## Missing features
 
 - fat jar
-- avoid running JVM just to collect task config (cache config)
-- update JBuild jar when re-installed
+- run Spock tests
 
 ## Bugs
 

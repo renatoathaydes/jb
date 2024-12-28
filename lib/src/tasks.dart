@@ -5,6 +5,7 @@ import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:path/path.dart' as p;
 
+import 'compile/compile.dart';
 import 'config.dart';
 import 'dependencies.dart';
 import 'eclipse.dart';
@@ -139,17 +140,8 @@ Future<void> _compile(
         () => 'Computed transitive changes in ${elapsedTime(stopwatch)}');
   }
   stopwatch.reset();
-  final commandArgs = [
-    ...await config.compileArgs(jbFiles.processorLibsDir, changes),
-    ...args,
-  ];
-  await jBuildSender.send(RunJBuild(compileTaskName, [
-    ...config.preArgs(workingDir),
-    'compile',
-    if (publication) ...const ['-sj', '-dj'],
-    // the Java compiler runtime args are sent when starting the JVM
-    ...commandArgs.notJavaRuntimeArgs(),
-  ]));
+  await jBuildSender.send(await compileCommand(
+      jbFiles, config, workingDir, publication, changes, args));
 
   logger.log(
       profile, () => 'Java compilation completed in ${elapsedTime(stopwatch)}');

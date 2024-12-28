@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart' show failBuild, DartleException, TaskPhase;
-import 'package:dartle/dartle_cache.dart' show ChangeKind;
 import 'package:jb/jb.dart';
 import 'package:logging/logging.dart' as log;
 import 'package:path/path.dart' as p;
@@ -22,6 +21,9 @@ const jsonJbFile = 'jbuild.json';
 
 const jbuild = 'com.athaydes.jbuild:jbuild';
 const jbApi = 'com.athaydes.jbuild:jbuild-api';
+const groovy3 = 'org.codehaus.groovy:groovy';
+const groovy4 = 'org.apache.groovy:groovy';
+const spockCore = 'org.spockframework:spock-core';
 
 /// Parse the YAML/JSON jbuild file.
 ///
@@ -357,79 +359,6 @@ extension JbConfigExtension on JbConfiguration {
       result.add(repo);
     }
     return result;
-  }
-
-  /// Get the compile task arguments from this configuration.
-  Future<List<String>> compileArgs(String processorLibsDir,
-      [TransitiveChanges? changes]) async {
-    final result = <String>[];
-    if (compileLibsDir.isNotEmpty) {
-      result.addAll(['-cp', compileLibsDir.asDirPath()]);
-    }
-    outputDir?.vmap((d) => result.addAll(['-d', d.asDirPath()]));
-    outputJar?.vmap((jar) => result.addAll(['-j', jar]));
-    for (final r in resourceDirs.toSet()) {
-      result.addAll(['-r', r.asDirPath()]);
-    }
-    final main = mainClass;
-    if (main != null && main.isNotEmpty) {
-      result.addAll(['-m', main]);
-    }
-    final manifestFile = manifest;
-    if (manifestFile != null && manifestFile.isNotEmpty) {
-      result.addAll(['-mf', manifestFile]);
-    }
-    if (dependencies.keys.any((d) => d.startsWith(jbApi))) {
-      result.add('--jb-extension');
-    }
-    if (changes == null || !_addIncrementalCompileArgs(result, changes)) {
-      result.addAll(sourceDirs);
-    }
-    if (javacArgs.isNotEmpty || processorDependencies.isNotEmpty) {
-      result.add('--');
-      result.addAll(javacArgs);
-      if (processorDependencies.isNotEmpty) {
-        result.add('-processorpath');
-        (await Directory(processorLibsDir).toClasspath())?.vmap(result.add);
-      }
-    }
-    return result;
-  }
-
-  /// Add the incremental compilation args if applicable.
-  ///
-  /// Return true if added, false otherwise.
-  bool _addIncrementalCompileArgs(
-      List<String> args, TransitiveChanges changes) {
-    var incremental = false;
-    for (final change in changes.fileChanges) {
-      if (change.entity is! File) continue;
-      incremental = true;
-      if (change.kind == ChangeKind.deleted) {
-        final path = change.entity.path;
-        if (path.endsWith('.java')) {
-          for (final classFile in changes.fileTree
-              .classFilesOf(sourceDirs, change.entity.path)) {
-            args.add('--deleted');
-            args.add(classFile);
-          }
-        } else {
-          args.add('--deleted');
-          args.add(change.entity.path);
-        }
-      } else {
-        args.add('--added');
-        args.add(change.entity.path);
-      }
-    }
-
-    // previous compilation output must be part of the classpath
-    (outputDir ?? outputJar ?? '').ifNonBlank((cp) {
-      args.add('-cp');
-      args.add(cp);
-    });
-
-    return incremental;
   }
 
   /// Get the install arguments for the compile task from this configuration.
