@@ -8,6 +8,7 @@ import 'test_helper.dart';
 
 const errorProneProjectDir = 'example/error-prone-java-project';
 const minimalProjectDir = 'example/minimal-java-project';
+const groovyProjectDir = 'example/groovy-example';
 
 void main() {
   projectGroup(errorProneProjectDir, 'error-prone example', () {
@@ -102,6 +103,27 @@ Annotation processor runtime dependencies:
             'minimal/sample/',
             'minimal/sample/Sample.class',
           ]));
+    });
+
+    projectGroup(groovyProjectDir, 'Groovy example', () {
+      test('can compile simple Groovy class into a jar', () async {
+        final jbResult = await runJb(Directory(groovyProjectDir));
+        expectSuccess(jbResult);
+        final jarPath = p.join(groovyProjectDir, 'build', 'groovy-example.jar');
+        expect(await File(jarPath).exists(), isTrue,
+            reason: 'jar should be created');
+
+        final jarList = await execRead(Process.start('jar', ['-tf', jarPath]));
+        expect(jarList.exitCode, equals(0));
+        expect(
+            jarList.stdout,
+            containsAllInOrder([
+              'META-INF/',
+              'META-INF/MANIFEST.MF',
+              'example/',
+              'example/Main.class',
+            ]));
+      });
     });
   });
 }

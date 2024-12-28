@@ -11,10 +11,16 @@ Future<JavaCommand> compileCommand(
     String workingDir,
     bool publication,
     TransitiveChanges? changes,
-    List<String> args) {
+    List<String> args) async {
+  List<String> allArgs;
   if (hasGroovyDependency(config)) {
-    return groovyCommand(config, workingDir, args);
+    logger.fine('Project has Groovy dependencies. Using Groovy compiler.');
+    final groovyJar = await findGroovyJar(config);
+    allArgs = ['-g', groovyJar, ...args];
+  } else {
+    logger.finer('No Groovy dependencies found. Using javac compiler.');
+    allArgs = args;
   }
   return jbuildCompileCommand(
-      jbFiles, config, workingDir, publication, changes, args);
+      jbFiles, config, workingDir, publication, changes, allArgs);
 }
