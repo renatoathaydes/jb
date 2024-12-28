@@ -57,10 +57,11 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
 
     final args = [
       // See https://docs.oracle.com/en/java/javase/17/docs/specs/man/java.html#application-class-data-sharing
-      if (await File(jvmCdsFile).exists())
-        '-XX:SharedArchiveFile=$jvmCdsFile'
-      else
-        '-XX:ArchiveClassesAtExit=$jvmCdsFile',
+      // FIXME only use this if Java version is 12+
+      // if (await File(jvmCdsFile).exists())
+      //   '-XX:SharedArchiveFile=$jvmCdsFile'
+      // else
+      //   '-XX:ArchiveClassesAtExit=$jvmCdsFile',
       ...javaRuntimeArgs,
       '-cp',
       jbuildJar,
