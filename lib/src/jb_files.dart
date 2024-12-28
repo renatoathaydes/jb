@@ -21,6 +21,8 @@ class JbFiles {
   File get processorDependenciesFile =>
       File(p.join(jbCache, 'processor-dependencies.txt'));
 
+  File get jvmCdsFile => File(p.join(jbCache, 'jvm.cds'));
+
   JbFiles(this.jbuildJar,
       {required this.configSource, this.jbCache = '.jb-cache'})
       : processorLibsDir = p.join(jbCache, 'processor-dependencies');

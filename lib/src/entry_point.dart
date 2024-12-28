@@ -65,17 +65,19 @@ Future<void> _runJb(JbCliOptions options, Options dartleOptions,
   }
 
   final config = await _createConfig(configSource ?? defaultJbConfigSource);
+  final jbFiles = JbFiles(
+    jbuildJar,
+    configSource: configSource ?? defaultJbConfigSource,
+  );
 
-  final jvmExecutor = createJavaActor(dartleOptions.logLevel, jbuildJar.path,
+  final jvmExecutor = createJavaActor(
+      dartleOptions.logLevel,
+      jbuildJar.path,
+      jbFiles.jvmCdsFile.absolute.path,
       config.javacArgs.javaRuntimeArgs().toList(growable: false));
 
-  final runner = await JbRunner.create(
-      JbFiles(
-        jbuildJar,
-        configSource: configSource ?? defaultJbConfigSource,
-      ),
-      config,
-      await jvmExecutor.toSendable());
+  final runner =
+      await JbRunner.create(jbFiles, config, await jvmExecutor.toSendable());
 
   try {
     await runner.run(dartleOptions, stopwatch);

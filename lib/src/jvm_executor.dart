@@ -5,7 +5,8 @@ import 'dart:isolate';
 import 'package:actors/actors.dart';
 import 'package:dartle/dartle.dart';
 import 'package:logging/logging.dart';
-import 'package:structured_async/structured_async.dart' show FutureCancelled;
+import 'package:structured_async/structured_async.dart'
+    show FutureCancelled, CancellableFuture;
 
 import 'config.dart' show logger;
 import 'output_consumer.dart';
@@ -37,11 +38,13 @@ class _Proc {
 final class _JBuildActor implements Handler<JavaCommand, Object?> {
   final Level _level;
   final String jbuildJar;
+  final String jvmCdsFile;
   final List<String> _javaRuntimeArgs;
   Future<_JBuildRpc>? _rpc;
   bool _started = false;
 
-  _JBuildActor(this._level, this.jbuildJar, this._javaRuntimeArgs);
+  _JBuildActor(
+      this._level, this.jbuildJar, this.jvmCdsFile, this._javaRuntimeArgs);
 
   @override
   void init() {
@@ -49,9 +52,15 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   }
 
   static Future<_JBuildRpc> _startRpc(
-      String jbuildJar, List<String> javaRuntimeArgs) async {
+      String jbuildJar, String jvmCdsFile, List<String> javaRuntimeArgs) async {
     final stopwatch = Stopwatch()..start();
+
     final args = [
+      // See https://docs.oracle.com/en/java/javase/17/docs/specs/man/java.html#application-class-data-sharing
+      if (await File(jvmCdsFile).exists())
+        '-XX:SharedArchiveFile=$jvmCdsFile'
+      else
+        '-XX:ArchiveClassesAtExit=$jvmCdsFile',
       ...javaRuntimeArgs,
       '-cp',
       jbuildJar,
@@ -104,7 +113,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   Future<_JBuildRpc> _getOrStartRpc() async {
     if (!_started) {
       _started = true;
-      _rpc = _startRpc(jbuildJar, _javaRuntimeArgs);
+      _rpc = _startRpc(jbuildJar, jvmCdsFile, _javaRuntimeArgs);
     }
     return _rpc!;
   }
@@ -194,9 +203,10 @@ final class RunJava extends JavaCommand {
 /// arbitrary Java methods (for jb extensions).
 ///
 /// The Actor sender returns whatever the Java method returned.
-Actor<JavaCommand, Object?> createJavaActor(
-    Level level, String jbuildJar, List<String> javaRuntimeArgs) {
-  return Actor.create(() => _JBuildActor(level, jbuildJar, javaRuntimeArgs));
+Actor<JavaCommand, Object?> createJavaActor(Level level, String jbuildJar,
+    String jvmCdsFile, List<String> javaRuntimeArgs) {
+  return Actor.create(
+      () => _JBuildActor(level, jbuildJar, jvmCdsFile, javaRuntimeArgs));
 }
 
 class _RpcRequestMetadata {
@@ -302,8 +312,20 @@ class _JBuildRpc {
   }
 
   Future<void> stop() async {
-    await _sendStopMessage();
-    proc.destroy();
+    await CancellableFuture.ctx((ctx) async {
+      final stopFuture = _sendStopMessage();
+
+      // wait a few milliseconds before destroying the process as
+      // it should die naturally after receiving the stop message.
+      unawaited(Future.delayed(Duration(seconds: 2), () {
+        if (ctx.isComputationCancelled()) return;
+        rpcLogger.warning('JVM Process did not die after sending stop message, '
+            'destroying it forcibly');
+        proc.destroy();
+      }));
+
+      await stopFuture;
+    });
   }
 
   Future<void> _sendStopMessage() async {
