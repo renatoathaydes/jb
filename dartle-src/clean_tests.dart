@@ -35,6 +35,10 @@ Stream<Directory> _deletables(
   ])) {
     if (entity is Directory) {
       yield* _deletablesIn(entity);
+      final tests = Directory(p.join(entity.path, 'test'));
+      if (await tests.exists()) {
+        yield* _deletablesIn(tests);
+      }
     }
   }
 }
@@ -48,10 +52,6 @@ Stream<Directory> _deletablesIn(Directory entity) async* {
       yield projectDir;
       if (name == 'with-sub-project') {
         yield* _deletablesIn(projectDir);
-      }
-      final tests = Directory(p.join(entity.path, 'test'));
-      if (await tests.exists()) {
-        yield* _deletablesIn(tests);
       }
     }
   }
@@ -85,7 +85,6 @@ Future<void> cleanTests(_) async {
 
 Future<void> cleanExamples(_) async {
   await _exampleDirs.dirs();
-  print(_exampleDirs);
   for (final entity in await _exampleDirs.dirs()) {
     await ignoreExceptions(() async => await entity.delete(recursive: true));
   }
