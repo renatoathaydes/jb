@@ -8,7 +8,10 @@ Once the project is in good shape, this should be moved to a proper bug tracker.
 
 - fat jar
 - run Spock tests
+- add *Spec and *Specification to test patterns when Spock is detected.
+- detect Java version from environment and recompile if changed.
 
 ## Bugs
 
+- investigate why adding a dep with scope runtime-only and transitive: false does not honour transitive option.
 - extension task inputs/outputs not tracked properly
