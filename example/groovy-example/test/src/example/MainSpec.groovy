@@ -8,7 +8,7 @@ class Hi {
     boolean isTrue
 }
 
-class MainTest extends Specification {
+class MainSpec extends Specification {
 
     def 'hello spock'() {
         given: 'The Hello object'

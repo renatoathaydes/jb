@@ -11,8 +11,3 @@ dependencies:
 
   # Use the Spock Framework
   org.spockframework:spock-core:2.4-M4-groovy-4.0:
-
-  # Even when using Spock, we need to have a dependency on
-  # JUnit API so that jb knows which engine to use to run tests.
-  org.junit.jupiter:junit-jupiter-api:5.11.4:
-    transitive: false
