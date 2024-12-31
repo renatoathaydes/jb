@@ -7,8 +7,6 @@ Once the project is in good shape, this should be moved to a proper bug tracker.
 ## Missing features
 
 - fat jar
-- run Spock tests
-- add *Spec and *Specification to test patterns when Spock is detected.
 - detect Java version from environment and recompile if changed.
 
 ## Bugs
