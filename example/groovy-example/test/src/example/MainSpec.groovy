@@ -29,7 +29,7 @@ class MainSpec extends Specification {
         hi.isTrue = false
 
         then: 'An error occurs'
-        thrown Exception        
+        thrown ReadOnlyPropertyException        
     }
     
 }

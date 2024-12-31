@@ -76,11 +76,11 @@ RunCondition _createPublicationCompileRunCondition(
 
 /// Create the `compile` task.
 Task createCompileTask(JbFiles jbFiles, JbConfigContainer config,
-    DartleCache cache, JBuildSender jBuildSender) {
+    TestConfig testConfig, DartleCache cache, JBuildSender jBuildSender) {
   final workingDir = Directory.current.path;
   return Task(
-      (List<String> args, [ChangeSet? changes]) => _compile(
-          jbFiles, config, workingDir, changes, args, cache, jBuildSender),
+      (List<String> args, [ChangeSet? changes]) => _compile(jbFiles, config,
+          workingDir, testConfig, changes, args, cache, jBuildSender),
       runCondition: _createCompileRunCondition(config, cache),
       name: compileTaskName,
       argsValidator: const AcceptAnyArgs(),
@@ -93,11 +93,11 @@ Task createCompileTask(JbFiles jbFiles, JbConfigContainer config,
 
 /// Create the publicationCompile task.
 Task createPublicationCompileTask(JbFiles jbFiles, JbConfigContainer config,
-    DartleCache cache, JBuildSender jBuildSender) {
+    TestConfig testConfig, DartleCache cache, JBuildSender jBuildSender) {
   final workingDir = Directory.current.path;
   return Task(
       (List<String> args) => _publishCompile(
-          jbFiles, config, workingDir, args, cache, jBuildSender),
+          jbFiles, config, testConfig, workingDir, args, cache, jBuildSender),
       runCondition: _createPublicationCompileRunCondition(config, cache),
       name: publicationCompileTaskName,
       argsValidator: const AcceptAnyArgs(),
@@ -111,6 +111,7 @@ Task createPublicationCompileTask(JbFiles jbFiles, JbConfigContainer config,
 Future<void> _publishCompile(
     JbFiles jbFiles,
     JbConfigContainer config,
+    TestConfig testConfig,
     String workingDir,
     List<String> args,
     DartleCache cache,
@@ -118,7 +119,8 @@ Future<void> _publishCompile(
   config.output.when(
       dir: (_) => failBuild(reason: _reasonPublicationCompileCannotRun),
       jar: (_) => null);
-  await _compile(jbFiles, config, workingDir, null, args, cache, jBuildSender,
+  await _compile(
+      jbFiles, config, workingDir, testConfig, null, args, cache, jBuildSender,
       publication: true);
 }
 
@@ -126,6 +128,7 @@ Future<void> _compile(
     JbFiles jbFiles,
     JbConfigContainer configContainer,
     String workingDir,
+    TestConfig testConfig,
     ChangeSet? changeSet,
     List<String> args,
     DartleCache cache,
@@ -141,7 +144,7 @@ Future<void> _compile(
   }
   stopwatch.reset();
   await jBuildSender.send(await compileCommand(
-      jbFiles, config, workingDir, publication, changes, args));
+      jbFiles, config, testConfig, workingDir, publication, changes, args));
 
   logger.log(
       profile, () => 'Java compilation completed in ${elapsedTime(stopwatch)}');
