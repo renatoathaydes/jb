@@ -814,7 +814,10 @@ JbConfiguration _processPaths(JbConfiguration config) {
     outputDir: config.outputDir?.vmap(_processPath),
     runtimeLibsDir: _processPath(config.runtimeLibsDir),
     testReportsDir: _processPath(config.testReportsDir),
-    sourceDirs: config.sourceDirs.map(_processPath).toList(growable: false),
+    sourceDirs: config.sourceDirs
+        .map(_processPath)
+        .toList(growable: false)
+        .useSourceDirsDefaultIfEmpty(),
     resourceDirs: config.resourceDirs.map(_processPath).toList(growable: false),
   );
 }
@@ -825,4 +828,16 @@ String _processPath(String text) {
     result = text.replaceAll('/', '\\');
   }
   return p.normalize(result);
+}
+
+extension on List<String> {
+  List<String> useSourceDirsDefaultIfEmpty() {
+    if (isNotEmpty) return this;
+
+    // use same logic as JBuild:
+    //   - if src/main/java exists, use that
+    //   - otherwise, use src
+    final useSrcMainJava = Directory('src/main/java').existsSync();
+    return useSrcMainJava ? ['src/main/java'] : ['src'];
+  }
 }
