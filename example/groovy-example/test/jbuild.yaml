@@ -1,0 +1,13 @@
+group: com.athaydes.jb.examples
+module: jb-groovy-example-test
+
+# Avoid creating a jar for the tests by explicitly setting output-dir
+output-dir: build/classes
+
+dependencies:
+  # Dependency on the project to be tested
+  groovy-example:
+    path: ../
+
+  # Use the Spock Framework
+  org.spockframework:spock-core:2.4-M4-groovy-4.0:

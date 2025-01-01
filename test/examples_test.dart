@@ -125,5 +125,26 @@ Annotation processor runtime dependencies:
             ]));
       });
     });
+
+    projectGroup(groovyProjectDir, 'Spock', () {
+      test('can run Spock tests', () async {
+        final jbResult = await runJb(
+            Directory(p.join(groovyProjectDir, 'test')),
+            const ['test', '--no-color']);
+        expectSuccess(jbResult);
+        const unicodeResults = ''
+            '└─ Spock ✔\n'
+            '   └─ MainSpec ✔\n'
+            '      ├─ hello spock ✔\n'
+            '      └─ Immutable test ✔\n';
+        const asciiResults = '\n'
+            '\'-- Spock [OK]\n'
+            '  \'-- MainSpec [OK]\n'
+            '    +-- hello spock [OK]\n'
+            '    \'-- Immutable test [OK]\n';
+        expect(jbResult.stdout.join('\n'),
+            anyOf(contains(unicodeResults), contains(asciiResults)));
+      });
+    });
   });
 }

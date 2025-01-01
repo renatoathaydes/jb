@@ -127,6 +127,9 @@ extension on XmlBuilder {
             tag('artifactId', '*');
           });
         });
+      } else if (dep.exclusions.isNotEmpty) {
+        // TODO resolve the transitive dependencies, then exclude anything
+        // that matches the exclusion patterns.
       }
     });
   }

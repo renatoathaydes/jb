@@ -39,16 +39,23 @@ Future<int> execJava(String taskName, List<String> args,
   logger.fine(() => '\n====> Task $taskName executing command at $workingDir\n'
       'java ${args.join(' ')}\n<=============================');
 
+  // on Windows, the shell may interpret the command line arguments in weird ways
+  final runInShell = !Platform.isWindows;
+
   // the test task must print to stdout/err directly
   if (taskName == testTaskName) {
     return exec(Process.start('java', args,
-        environment: env, runInShell: true, workingDirectory: workingDir));
+        environment: env,
+        runInShell: runInShell,
+        workingDirectory: workingDir));
   }
   final stdoutFun = onStdout ?? _TaskExecLogger('-out>', taskName, pid);
   final stderrFun = onStderr ?? _TaskExecLogger('-err>', taskName, pid);
   return exec(
     Process.start('java', args,
-            runInShell: true, environment: env, workingDirectory: workingDir)
+            runInShell: runInShell,
+            environment: env,
+            workingDirectory: workingDir)
         .then((proc) {
       stdoutFun.pid = proc.pid;
       stderrFun.pid = proc.pid;

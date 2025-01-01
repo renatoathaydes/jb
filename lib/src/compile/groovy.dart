@@ -24,7 +24,7 @@ Future<String> findGroovyJar(JbConfiguration config) async {
           groovyJarPattern.matchAsPrefix(p.basename(f.path)) != null,
       orElse: () => failBuild(
           reason:
-              'Project has a Groovy dependency but Groovy jar was not found in '
+              'Project has a Groovy or Spock dependency but Groovy jar was not found in '
               '${config.compileLibsDir}'));
   return jar.path;
 }

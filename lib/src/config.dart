@@ -366,33 +366,28 @@ extension JbConfigExtension on JbConfiguration {
     final depsToInstall = allDependencies
         .where((e) =>
             e.value.scope.includedInCompilation() && e.value.path == null)
-        .map((e) => e.key)
         .toList(growable: false);
 
     if (depsToInstall.isEmpty) return const [];
 
     final result = ['-s', 'compile', '-m', '-d', compileLibsDir];
-    for (final exclude in dependencyExclusionPatterns.toSet()) {
-      result.add('--exclusion');
-      result.add(exclude);
-    }
-    result.addAll(depsToInstall);
+    result.addDepsWithExclusions(depsToInstall, dependencyExclusionPatterns);
     return result;
   }
 
   /// Get the install arguments for the installRuntime task from this configuration.
   List<String> installArgsForRuntime() {
-    return _installArgs(
+    return _installRuntimeArgs(
         allDependencies, dependencyExclusionPatterns.toSet(), runtimeLibsDir);
   }
 
   /// Get the install arguments for the installProcessor task from this configuration.
   List<String> installArgsForProcessor(String destinationDir) {
-    return _installArgs(allProcessorDependencies,
+    return _installRuntimeArgs(allProcessorDependencies,
         processorDependencyExclusionPatterns.toSet(), destinationDir);
   }
 
-  static List<String> _installArgs(
+  static List<String> _installRuntimeArgs(
       Iterable<MapEntry<String, DependencySpec>> deps,
       Set<String> exclusions,
       String destinationDir) {
@@ -400,17 +395,12 @@ extension JbConfigExtension on JbConfiguration {
 
     final depsToInstall = deps
         .where((e) => e.value.scope.includedAtRuntime() && e.value.path == null)
-        .map((e) => e.key)
         .toList(growable: false);
 
     if (depsToInstall.isEmpty) return const [];
 
     final result = ['-s', 'runtime', '-m', '-d', destinationDir];
-    for (final exclude in exclusions.toSet()) {
-      result.add('--exclusion');
-      result.add(exclude);
-    }
-    result.addAll(depsToInstall);
+    result.addDepsWithExclusions(depsToInstall, exclusions);
     return result;
   }
 
@@ -620,13 +610,16 @@ extension DependencySpecExtension on DependencySpec {
         : PathDependency.jbuildProject(this, thisPath));
   }
 
-  DependencySpec resolveProperties(Properties properties) {
+  DependencySpec resolveProperties(Properties props) {
     final p = path;
-    if (p != null && p.contains('{')) {
+    if ((p != null && p.contains('{')) || exclusions.isNotEmpty) {
       return DependencySpec(
           transitive: transitive,
           scope: scope,
-          path: resolveString(p, properties));
+          path: resolveOptionalString(p, props),
+          exclusions: exclusions
+              .map((e) => resolveString(e, props))
+              .toList(growable: false));
     }
     return this;
   }
@@ -636,7 +629,8 @@ extension DependencySpecExtension on DependencySpec {
         path == null ? color('null', kwColor) : color('"$path"', strColor);
     return '${ident}transitive: ${color('$transitive', kwColor)}\n'
         '${ident}scope: ${scope.toYaml(color)}\n'
-        '${ident}path: $colorPath';
+        '${ident}path: $colorPath\n'
+        '${ident}exclusions: [${exclusions.map((e) => color('"$e"', strColor)).join(', ')}]';
   }
 }
 
@@ -814,7 +808,10 @@ JbConfiguration _processPaths(JbConfiguration config) {
     outputDir: config.outputDir?.vmap(_processPath),
     runtimeLibsDir: _processPath(config.runtimeLibsDir),
     testReportsDir: _processPath(config.testReportsDir),
-    sourceDirs: config.sourceDirs.map(_processPath).toList(growable: false),
+    sourceDirs: config.sourceDirs
+        .map(_processPath)
+        .toList(growable: false)
+        .useSourceDirsDefaultIfEmpty(),
     resourceDirs: config.resourceDirs.map(_processPath).toList(growable: false),
   );
 }
@@ -825,4 +822,37 @@ String _processPath(String text) {
     result = text.replaceAll('/', '\\');
   }
   return p.normalize(result);
+}
+
+extension on List<String> {
+  List<String> useSourceDirsDefaultIfEmpty() {
+    if (isNotEmpty) return this;
+
+    // use same logic as JBuild:
+    //   - if src/main/java exists, use that
+    //   - otherwise, use src
+    final useSrcMainJava = Directory('src/main/java').existsSync();
+    return useSrcMainJava ? ['src/main/java'] : ['src'];
+  }
+
+  void addDepsWithExclusions(
+      List<MapEntry<String, DependencySpec>> depsToInstall,
+      Iterable<String> exclusions) {
+    for (final exclude in exclusions.toSet()) {
+      add('--exclusion');
+      add(exclude);
+    }
+    for (final dep in depsToInstall) {
+      add(dep.key);
+      if (dep.value.transitive) {
+        for (final String exclusion in dep.value.exclusions) {
+          add('-x');
+          add(exclusion);
+        }
+      } else {
+        add('-x');
+        add('.*');
+      }
+    }
+  }
 }

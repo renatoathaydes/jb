@@ -6,6 +6,7 @@ import 'package:dartle/dartle_cache.dart';
 
 import 'config.dart';
 import 'config_source.dart';
+import 'java_tests.dart';
 import 'jb_extension.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart' show JavaCommand;
@@ -119,12 +120,14 @@ class JbDartle {
       jbFileInputs = FileCollection.empty;
     }
     final artifact = createArtifact(_config);
+    final testConfig = createTestConfig(_config.allDependencies);
 
     final projectTasks = <Task>{};
 
-    compile = createCompileTask(_files, configContainer, _cache, _jvmExecutor);
+    compile = createCompileTask(
+        _files, configContainer, testConfig, _cache, _jvmExecutor);
     publicationCompile = createPublicationCompileTask(
-        _files, configContainer, _cache, _jvmExecutor);
+        _files, configContainer, testConfig, _cache, _jvmExecutor);
     writeDeps = createWriteDependenciesTask(_files, _config, _cache,
         jbFileInputs, unresolvedLocalDeps, unresolvedLocalProcessorDeps);
     installCompile = createInstallCompileDepsTask(
@@ -135,9 +138,9 @@ class JbDartle {
         _files, _config, _jvmExecutor, _cache, localProcessorDependencies);
     run = createRunTask(_files, configContainer, _cache);
     downloadTestRunner = createDownloadTestRunnerTask(
-        _config, _jvmExecutor, _cache, jbFileInputs);
-    test = createTestTask(
-        _files.jbuildJar, configContainer, _cache, !_options.colorfulLog);
+        _config, testConfig, _jvmExecutor, _cache, jbFileInputs);
+    test = createTestTask(_files.jbuildJar, configContainer, testConfig, _cache,
+        !_options.colorfulLog);
     deps = createDepsTask(_files.jbuildJar, _config, _cache,
         unresolvedLocalDeps, unresolvedLocalProcessorDeps);
     showConfig = createShowConfigTask(_config, !_options.colorfulLog);

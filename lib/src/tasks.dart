@@ -76,11 +76,11 @@ RunCondition _createPublicationCompileRunCondition(
 
 /// Create the `compile` task.
 Task createCompileTask(JbFiles jbFiles, JbConfigContainer config,
-    DartleCache cache, JBuildSender jBuildSender) {
+    TestConfig testConfig, DartleCache cache, JBuildSender jBuildSender) {
   final workingDir = Directory.current.path;
   return Task(
-      (List<String> args, [ChangeSet? changes]) => _compile(
-          jbFiles, config, workingDir, changes, args, cache, jBuildSender),
+      (List<String> args, [ChangeSet? changes]) => _compile(jbFiles, config,
+          workingDir, testConfig, changes, args, cache, jBuildSender),
       runCondition: _createCompileRunCondition(config, cache),
       name: compileTaskName,
       argsValidator: const AcceptAnyArgs(),
@@ -93,11 +93,11 @@ Task createCompileTask(JbFiles jbFiles, JbConfigContainer config,
 
 /// Create the publicationCompile task.
 Task createPublicationCompileTask(JbFiles jbFiles, JbConfigContainer config,
-    DartleCache cache, JBuildSender jBuildSender) {
+    TestConfig testConfig, DartleCache cache, JBuildSender jBuildSender) {
   final workingDir = Directory.current.path;
   return Task(
       (List<String> args) => _publishCompile(
-          jbFiles, config, workingDir, args, cache, jBuildSender),
+          jbFiles, config, testConfig, workingDir, args, cache, jBuildSender),
       runCondition: _createPublicationCompileRunCondition(config, cache),
       name: publicationCompileTaskName,
       argsValidator: const AcceptAnyArgs(),
@@ -111,6 +111,7 @@ Task createPublicationCompileTask(JbFiles jbFiles, JbConfigContainer config,
 Future<void> _publishCompile(
     JbFiles jbFiles,
     JbConfigContainer config,
+    TestConfig testConfig,
     String workingDir,
     List<String> args,
     DartleCache cache,
@@ -118,7 +119,8 @@ Future<void> _publishCompile(
   config.output.when(
       dir: (_) => failBuild(reason: _reasonPublicationCompileCannotRun),
       jar: (_) => null);
-  await _compile(jbFiles, config, workingDir, null, args, cache, jBuildSender,
+  await _compile(
+      jbFiles, config, workingDir, testConfig, null, args, cache, jBuildSender,
       publication: true);
 }
 
@@ -126,6 +128,7 @@ Future<void> _compile(
     JbFiles jbFiles,
     JbConfigContainer configContainer,
     String workingDir,
+    TestConfig testConfig,
     ChangeSet? changeSet,
     List<String> args,
     DartleCache cache,
@@ -141,7 +144,7 @@ Future<void> _compile(
   }
   stopwatch.reset();
   await jBuildSender.send(await compileCommand(
-      jbFiles, config, workingDir, publication, changes, args));
+      jbFiles, config, testConfig, workingDir, publication, changes, args));
 
   logger.log(
       profile, () => 'Java compilation completed in ${elapsedTime(stopwatch)}');
@@ -468,11 +471,12 @@ Future<void> _run(File jbuildJar, JbConfigContainer configContainer,
 }
 
 /// Create the `downloadTestRunner` task.
-Task createDownloadTestRunnerTask(JbConfiguration config,
+Task createDownloadTestRunnerTask(JbConfiguration config, TestConfig testConfig,
     JBuildSender jBuildSender, DartleCache cache, FileCollection jbFileInputs) {
   final workingDir = Directory.current.path;
   return Task(
-      (_) => _downloadTestRunner(jBuildSender, config, workingDir, cache),
+      (_) => _downloadTestRunner(
+          jBuildSender, config, testConfig, workingDir, cache),
       runCondition: RunOnChanges(
           inputs: jbFileInputs,
           outputs: dir(p.join(cache.rootDir, junitRunnerLibsDir)),
@@ -483,10 +487,11 @@ Task createDownloadTestRunnerTask(JbConfiguration config,
 }
 
 /// Create the `test` task.
-Task createTestTask(
-    File jbuildJar, JbConfigContainer config, DartleCache cache, bool noColor) {
+Task createTestTask(File jbuildJar, JbConfigContainer config,
+    TestConfig testConfig, DartleCache cache, bool noColor) {
   return Task(
-      (List<String> args) => _test(jbuildJar, config, cache, noColor, args),
+      (List<String> args) =>
+          _test(jbuildJar, config, testConfig, cache, noColor, args),
       name: testTaskName,
       argsValidator: const AcceptAnyArgs(),
       dependsOn: const {
@@ -494,33 +499,39 @@ Task createTestTask(
         downloadTestRunnerTaskName,
         installRuntimeDepsTaskName,
       },
-      description: 'Run tests. JBuild automatically detects JUnit5.');
+      description: 'Run tests. JBuild automatically detects JUnit5 and Spock.');
 }
 
-Future<void> _downloadTestRunner(JBuildSender jBuildSender,
-    JbConfiguration config, String workingDir, DartleCache cache) async {
-  final junit = findJUnitSpec(config.allDependencies);
-  if (junit == null) {
-    throw DartleException(
-        message: 'cannot run tests as no test libraries have been detected.\n'
-            'To use JUnit, for example, add the JUnit API as a dependency:\n'
-            '    - "org.junit.jupiter:junit-jupiter-api"');
-  }
+Future<void> _downloadTestRunner(
+    JBuildSender jBuildSender,
+    JbConfiguration config,
+    TestConfig testConfig,
+    String workingDir,
+    DartleCache cache) async {
+  validateTestConfig(testConfig);
   final outDir = Directory(p.join(cache.rootDir, junitRunnerLibsDir));
   await outDir.create();
-  if (junit.runtimeIncludesJUnitConsole) {
-    await File(p.join(outDir.path, '.no-dependencies')).create();
-  } else {
-    await _install(
+  await testConfig.consoleVersion.apply((version) {
+    if (version != null) {
+      // the JUnit Console Runner is part of the runtime libs, no need to install it
+      return File(p.join(outDir.path, '.no-dependencies')).create();
+    }
+    logger.fine('Installing the latest version of JUnit5 Console Runner');
+    return _install(
         downloadTestRunnerTaskName,
         jBuildSender,
         config.preArgs(workingDir),
-        ['-d', outDir.path, '-m', junitConsoleLib(junit.consoleVersion)]);
-  }
+        ['-d', outDir.path, '-m', junitConsoleLib()]);
+  });
 }
 
-Future<void> _test(File jbuildJar, JbConfigContainer configContainer,
-    DartleCache cache, bool noColor, List<String> args) async {
+Future<void> _test(
+    File jbuildJar,
+    JbConfigContainer configContainer,
+    TestConfig testConfig,
+    DartleCache cache,
+    bool noColor,
+    List<String> args) async {
   final config = configContainer.config;
   final libs = Directory(config.runtimeLibsDir).list();
   final classpath = {
@@ -535,6 +546,13 @@ Future<void> _test(File jbuildJar, JbConfigContainer configContainer,
   final hasCustomSelect = args.any((arg) =>
       arg.startsWith('--select') || arg.startsWith('--scan-classpath'));
 
+  final isSpockConfigured = testConfig.spockVersion != null;
+  final hasCustomName =
+      args.any((arg) => arg == '-n' || arg.startsWith('--include-classname'));
+  final customTestNames = (hasCustomName || !isSpockConfigured)
+      ? null
+      : '.*Spec|.*Specification|.*Specifications|.*Test|.*Tests|.*TestSuite|.*TestCase';
+
   final exitCode = await execJava(
       testTaskName,
       [
@@ -547,6 +565,7 @@ Future<void> _test(File jbuildJar, JbConfigContainer configContainer,
         '--classpath=$classpath',
         if (!hasCustomSelect)
           '--scan-classpath=${configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j)}',
+        if (customTestNames != null) ...['-n', customTestNames],
         '--reports-dir=${config.testReportsDir}',
         '--fail-if-no-tests',
         if (noColor) '--disable-ansi-colors',

@@ -6,7 +6,7 @@ version: 0.0.0
 # Groovy or Spock. Notice that Java files will also be found and compiled
 # along with Groovy files.
 dependencies:
-  org.apache.groovy:groovy:4.0.24:
+  org.apache.groovy:groovy:4.0.20:
 
 # This allows running the Main class with "jb run"
 main-class: example.Main

@@ -453,16 +453,19 @@ class DependencySpec {
   /// Scope of a dependency.
   final DependencyScope scope;
   final String? path;
+  final List<String> exclusions;
   const DependencySpec({
     this.transitive = true,
     this.scope = DependencyScope.all,
     this.path,
+    this.exclusions = const [],
   });
   @override
   String toString() => 'DependencySpec{'
       'transitive: $transitive, '
       'scope: $scope, '
-      'path: ${path == null ? "null" : '"$path"'}'
+      'path: ${path == null ? "null" : '"$path"'}, '
+      'exclusions: $exclusions'
       '}';
   @override
   bool operator ==(Object other) =>
@@ -471,19 +474,26 @@ class DependencySpec {
           runtimeType == other.runtimeType &&
           transitive == other.transitive &&
           scope == other.scope &&
-          path == other.path;
+          path == other.path &&
+          const ListEquality<String>().equals(exclusions, other.exclusions);
   @override
-  int get hashCode => transitive.hashCode ^ scope.hashCode ^ path.hashCode;
+  int get hashCode =>
+      transitive.hashCode ^
+      scope.hashCode ^
+      path.hashCode ^
+      const ListEquality<String>().hash(exclusions);
   DependencySpec copyWith({
     bool? transitive = null,
     DependencyScope? scope = null,
     String? path = null,
+    List<String>? exclusions = null,
     bool unsetPath = false,
   }) {
     return DependencySpec(
       transitive: transitive ?? this.transitive,
       scope: scope ?? this.scope,
       path: unsetPath ? null : path ?? this.path,
+      exclusions: exclusions ?? [...this.exclusions],
     );
   }
 
@@ -491,6 +501,7 @@ class DependencySpec {
         'transitive': transitive,
         'scope': scope,
         if (path != null) 'path': path,
+        'exclusions': exclusions,
       };
   static DependencySpec fromJson(Object? value) =>
       const _DependencySpecJsonReviver().convert(switch (value) {
@@ -981,7 +992,7 @@ class _DependencySpecJsonReviver extends ObjectsBase<DependencySpec> {
       return key;
     }).toSet();
     checkRequiredProperties(keys);
-    const knownProperties = {'transitive', 'scope', 'path'};
+    const knownProperties = {'transitive', 'scope', 'path', 'exclusions'};
     final unknownKey =
         keys.where((k) => !knownProperties.contains(k)).firstOrNull;
     if (unknownKey != null) {
@@ -994,6 +1005,10 @@ class _DependencySpecJsonReviver extends ObjectsBase<DependencySpec> {
           'scope', value, DependencyScope.all),
       path: convertProperty(
           const Nullable<String, Strings>(Strings()), 'path', value),
+      exclusions: convertPropertyOrDefault(
+          const Arrays<String, Strings>(Strings()),
+          'exclusions',
+          value, const []),
     );
   }
 
@@ -1006,6 +1021,8 @@ class _DependencySpecJsonReviver extends ObjectsBase<DependencySpec> {
         return const _DependencyScopeConverter();
       case 'path':
         return const Nullable<String, Strings>(Strings());
+      case 'exclusions':
+        return const Arrays<String, Strings>(Strings());
       default:
         return null;
     }
