@@ -371,33 +371,23 @@ extension JbConfigExtension on JbConfiguration {
     if (depsToInstall.isEmpty) return const [];
 
     final result = ['-s', 'compile', '-m', '-d', compileLibsDir];
-    for (final exclude in dependencyExclusionPatterns.toSet()) {
-      result.add('--exclusion');
-      result.add(exclude);
-    }
-    for (final dep in depsToInstall) {
-      result.add(dep.key);
-      for (final exclusion in dep.value.exclusions) {
-        result.add('-x');
-        result.add(exclusion);
-      }
-    }
+    result.addDepsWithExclusions(depsToInstall, dependencyExclusionPatterns);
     return result;
   }
 
   /// Get the install arguments for the installRuntime task from this configuration.
   List<String> installArgsForRuntime() {
-    return _installArgs(
+    return _installRuntimeArgs(
         allDependencies, dependencyExclusionPatterns.toSet(), runtimeLibsDir);
   }
 
   /// Get the install arguments for the installProcessor task from this configuration.
   List<String> installArgsForProcessor(String destinationDir) {
-    return _installArgs(allProcessorDependencies,
+    return _installRuntimeArgs(allProcessorDependencies,
         processorDependencyExclusionPatterns.toSet(), destinationDir);
   }
 
-  static List<String> _installArgs(
+  static List<String> _installRuntimeArgs(
       Iterable<MapEntry<String, DependencySpec>> deps,
       Set<String> exclusions,
       String destinationDir) {
@@ -405,17 +395,12 @@ extension JbConfigExtension on JbConfiguration {
 
     final depsToInstall = deps
         .where((e) => e.value.scope.includedAtRuntime() && e.value.path == null)
-        .map((e) => e.key)
         .toList(growable: false);
 
     if (depsToInstall.isEmpty) return const [];
 
     final result = ['-s', 'runtime', '-m', '-d', destinationDir];
-    for (final exclude in exclusions.toSet()) {
-      result.add('--exclusion');
-      result.add(exclude);
-    }
-    result.addAll(depsToInstall);
+    result.addDepsWithExclusions(depsToInstall, exclusions);
     return result;
   }
 
@@ -848,5 +833,26 @@ extension on List<String> {
     //   - otherwise, use src
     final useSrcMainJava = Directory('src/main/java').existsSync();
     return useSrcMainJava ? ['src/main/java'] : ['src'];
+  }
+
+  void addDepsWithExclusions(
+      List<MapEntry<String, DependencySpec>> depsToInstall,
+      Iterable<String> exclusions) {
+    for (final exclude in exclusions.toSet()) {
+      add('--exclusion');
+      add(exclude);
+    }
+    for (final dep in depsToInstall) {
+      add(dep.key);
+      if (dep.value.transitive) {
+        for (final String exclusion in dep.value.exclusions) {
+          add('-x');
+          add(exclusion);
+        }
+      } else {
+        add('-x');
+        add('.*');
+      }
+    }
   }
 }
