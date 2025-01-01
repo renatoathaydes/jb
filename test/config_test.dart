@@ -40,6 +40,7 @@ const _fullConfig = '''
         scope: runtime-only
         transitive: false
         path: foo/bar/zort
+        exclusions: [foo, bar]
   processor-dependency-exclusion-patterns:
     - others
   output-dir: target/
@@ -136,6 +137,7 @@ dependencies:
     transitive: \x1B[35mtrue\x1B[0m
     scope: \x1B[34m"all"\x1B[0m
     path: \x1B[35mnull\x1B[0m
+    exclusions: []
 \x1B[90m# Dependency exclusions (regular expressions)\x1B[0m
 dependency-exclusion-patterns:
   - \x1B[34m"test.*"\x1B[0m
@@ -146,6 +148,7 @@ processor-dependencies:
     transitive: \x1B[35mfalse\x1B[0m
     scope: \x1B[34m"runtime-only"\x1B[0m
     path: \x1B[34m"foo/bar/zort"\x1B[0m
+    exclusions: [\x1B[34m"foo"\x1B[0m, \x1B[34m"bar"\x1B[0m]
 \x1B[90m# Annotation processor dependency exclusions (regular expressions)\x1B[0m
 processor-dependency-exclusion-patterns:
   - \x1B[34m"others"\x1B[0m
@@ -226,14 +229,17 @@ dependencies:
     transitive: true
     scope: "all"
     path: null
+    exclusions: []
   "other-dep":
     transitive: true
     scope: "all"
     path: "../"
+    exclusions: []
   "more-dep:1.0":
     transitive: false
     scope: "runtime-only"
     path: null
+    exclusions: []
 # Dependency exclusions (regular expressions)
 dependency-exclusion-patterns: []
 # Annotation processor Maven dependencies
@@ -306,6 +312,7 @@ void main() {
             processorDependencies: {
               'foo.bar:zort:1.0': DependencySpec(
                   transitive: true,
+                  exclusions: ['foo', 'bar'],
                   scope: DependencyScope.runtimeOnly,
                   path: 'foo/bar/zort'),
             },
@@ -424,6 +431,19 @@ void main() {
       'compile-libs-dir': 'comp',
       'runtime-libs-dir': 'runtime',
       'test-reports-dir': 'reports'
+    });
+
+    test('invalid keys are allowed on top config', () async {
+      final config = await loadConfigString('''
+      module: foo
+      version: "1.0"
+      custom: true
+      ''');
+
+      expect(
+          config,
+          equals(JbConfiguration(
+              module: 'foo', version: '1.0', extras: {'custom': true})));
     });
 
     test('can merge two full configurations', () async {
@@ -645,24 +665,6 @@ void main() {
                   "at 'dependencies': invalid syntax.\n"
                   "$dependenciesSyntaxHelp"))));
     });
-
-    test('invalid keys are not allowed on top config', () async {
-      createConfig() => loadConfigString('''
-      module: foo
-      version: "1.0"
-      custom: true
-      ''');
-
-      expect(
-          createConfig,
-          throwsA(isA<DartleException>().having(
-              (e) => e.message,
-              'message',
-              equals('Invalid jbuild configuration: '
-                  'unrecognized field: "custom"'))));
-    },
-        skip: 'until extension properties schema can be used '
-            'to validate custom properties');
 
     test('invalid keys are not allowed in dependency', () async {
       createConfig() => loadConfigString('''

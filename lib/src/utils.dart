@@ -145,14 +145,56 @@ extension StringMapExtension on Map<String, String> {
 
 extension DependencyMapExtension on Map<String, DependencySpec?> {
   Map<String, DependencySpec?> merge(
-          Map<String, DependencySpec?> other, Properties props) =>
-      Map.fromEntries(entries.followedBy(other.entries).map((e) => MapEntry(
-          resolveString(e.key, props), e.value?.resolveProperties(props))));
+      Map<String, DependencySpec?> other, Properties props) {
+    if (isEmpty) {
+      if (other.isEmpty) return this;
+      return other.entries.resolve(props);
+    }
+    if (other.isEmpty) {
+      return entries.resolve(props);
+    }
+    final result = <String, DependencySpec?>{};
+    // first, we visit the entries in this Map without resolving the values,
+    // just resolve keys because we may need to merge the values anyway
+    // in the next step.
+    for (final entry in entries) {
+      final key = resolveString(entry.key, props);
+      result[key] = entry.value;
+    }
+    // then we visit the other Map, merging the entries with the same key
+    final visitedInOther = <String>{};
+    for (final entry in other.entries) {
+      final key = resolveString(entry.key, props);
+      result[key] = result[key].merge(entry.value, props);
+      visitedInOther.add(key);
+    }
+    // finally, we need to resolve the values of the keys which were only
+    // present in this Map (not visited in the previous step)
+    for (final entry
+        in result.entries.where((e) => !visitedInOther.contains(e.key))) {
+      result[entry.key] = entry.value?.resolveProperties(props);
+    }
+    return result;
+  }
 }
 
-extension MapEntryIterable<K, V> on Iterable<MapEntry<K, V>> {
-  Map<K, V> toMap() {
-    return {for (final entry in this) entry.key: entry.value};
+extension MapEntryIterable on Iterable<MapEntry<String, DependencySpec?>> {
+  Map<String, DependencySpec?> resolve(Map<String, Object?> props) {
+    return Map.fromEntries(
+        map((e) => MapEntry(e.key, e.value?.resolveProperties(props))));
+  }
+}
+
+extension on DependencySpec? {
+  DependencySpec? merge(DependencySpec? other, Map<String, Object?> props) {
+    final self = this;
+    if (self == null) return other?.resolveProperties(props);
+    if (other == null) return self.resolveProperties(props);
+    return DependencySpec(
+        transitive: self.transitive || other.transitive,
+        scope: self.scope.index < other.scope.index ? self.scope : other.scope,
+        path: resolveOptionalString(other.path, props),
+        exclusions: self.exclusions.merge(other.exclusions, props));
   }
 }
 

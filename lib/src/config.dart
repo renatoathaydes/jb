@@ -366,7 +366,6 @@ extension JbConfigExtension on JbConfiguration {
     final depsToInstall = allDependencies
         .where((e) =>
             e.value.scope.includedInCompilation() && e.value.path == null)
-        .map((e) => e.key)
         .toList(growable: false);
 
     if (depsToInstall.isEmpty) return const [];
@@ -376,7 +375,13 @@ extension JbConfigExtension on JbConfiguration {
       result.add('--exclusion');
       result.add(exclude);
     }
-    result.addAll(depsToInstall);
+    for (final dep in depsToInstall) {
+      result.add(dep.key);
+      for (final exclusion in dep.value.exclusions) {
+        result.add('-x');
+        result.add(exclusion);
+      }
+    }
     return result;
   }
 
@@ -620,13 +625,16 @@ extension DependencySpecExtension on DependencySpec {
         : PathDependency.jbuildProject(this, thisPath));
   }
 
-  DependencySpec resolveProperties(Properties properties) {
+  DependencySpec resolveProperties(Properties props) {
     final p = path;
-    if (p != null && p.contains('{')) {
+    if ((p != null && p.contains('{')) || exclusions.isNotEmpty) {
       return DependencySpec(
           transitive: transitive,
           scope: scope,
-          path: resolveString(p, properties));
+          path: resolveOptionalString(p, props),
+          exclusions: exclusions
+              .map((e) => resolveString(e, props))
+              .toList(growable: false));
     }
     return this;
   }
@@ -636,7 +644,8 @@ extension DependencySpecExtension on DependencySpec {
         path == null ? color('null', kwColor) : color('"$path"', strColor);
     return '${ident}transitive: ${color('$transitive', kwColor)}\n'
         '${ident}scope: ${scope.toYaml(color)}\n'
-        '${ident}path: $colorPath';
+        '${ident}path: $colorPath\n'
+        '${ident}exclusions: [${exclusions.map((e) => color('"$e"', strColor)).join(', ')}]';
   }
 }
 

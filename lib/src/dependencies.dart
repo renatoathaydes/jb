@@ -128,7 +128,9 @@ void _writeDep(IOSink sink, String name, DependencySpec spec) {
       ..write('\n')
       ..write('    transitive: ')
       ..write(spec.transitive)
-      ..write('\n');
+      ..write('\n')
+      ..write('    exclusions:\n')
+      ..write(spec.exclusions.map((e) => '      - $e\n').join());
   }
 }
 

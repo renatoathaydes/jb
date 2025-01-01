@@ -53,6 +53,7 @@ const _dependency = Objects(
       'scope': Property(_scope,
           description: 'Scope of a dependency.', defaultValue: 'all'),
       'path': Property(Nullable(Strings())),
+      'exclusions': Property(Arrays(Strings()), defaultValue: []),
     },
     description: 'Specification of a dependency.');
 
