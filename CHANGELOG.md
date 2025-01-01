@@ -1,10 +1,13 @@
 ## Next
 
+## 0.12.0
+
 - fixed handling of `-J-` `javacArgs` - must be passed to `java` when starting the JVM executor.
 - use Java CDS (Class Data Sharing) to slightly improve Java commands performance.
 - support for compiling Groovy projects.
 - support for testing using the Spock Framework.
 - fixed detection of source directories when not specified so that the same logic as JBuild is used.
+- support for per-dependency transitive dependency exclusions.
 
 ## 0.11.0
 
