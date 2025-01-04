@@ -6,6 +6,7 @@ import 'package:schemake/dart_gen.dart';
 
 import 'config/jb_config_schema.dart';
 import 'config/jb_extension_schema.dart';
+import 'config/resolved_dependencies.dart';
 import 'format.dart';
 
 const generateJbConfigModelTaskName = 'generateJbConfigModel';
@@ -28,8 +29,9 @@ Task generateJbConfigModelTask = Task(
 Future<void> _generateJbConfigModel(File output) async {
   final writer = output.openWrite();
   try {
-    writer.write(generateDartClasses([jbConfig, extensionTask],
-        options: const DartGeneratorOptions(methodGenerators: [
+    writer.write(
+        generateDartClasses([jbConfig, extensionTask, resolvedDependencies],
+            options: const DartGeneratorOptions(methodGenerators: [
           ...DartGeneratorOptions.defaultMethodGenerators,
           DartToJsonMethodGenerator(),
           DartFromJsonMethodGenerator(),

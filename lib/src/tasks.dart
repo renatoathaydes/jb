@@ -193,7 +193,7 @@ Task createWriteDependenciesTask(
           ),
       runCondition: runCondition,
       name: writeDepsTaskName,
-      description: 'Write files with dependencies information.');
+      description: 'Write a file with the resolved dependencies.');
 }
 
 /// Create the `installCompileDependencies` task.

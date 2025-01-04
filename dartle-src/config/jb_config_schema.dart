@@ -38,7 +38,7 @@ String _enumComments(String name) => switch (name) {
       _ => throw StateError('unknown scope: "$name"'),
     };
 
-const _scope = Enums(EnumValidator('DependencyScope', {
+const scope = Enums(EnumValidator('DependencyScope', {
   'all',
   'compile-only',
   'runtime-only'
@@ -46,11 +46,11 @@ const _scope = Enums(EnumValidator('DependencyScope', {
   DartEnumGeneratorOptions(insertBeforeEnumVariant: _enumComments)
 ]));
 
-const _dependency = Objects(
+const dependency = Objects(
     'DependencySpec',
     {
       'transitive': Property(Bools(), defaultValue: true),
-      'scope': Property(_scope,
+      'scope': Property(scope,
           description: 'Scope of a dependency.', defaultValue: 'all'),
       'path': Property(Nullable(Strings())),
       'exclusions': Property(Arrays(Strings()), defaultValue: []),
@@ -93,13 +93,13 @@ const jbConfig = Objects(
       'dependencies': Property(
           Maps<Map<String, Object?>?, Nullable<Map<String, Object?>, Objects>>(
               'Map',
-              valueType: Nullable(_dependency)),
+              valueType: Nullable(dependency)),
           defaultValue: <String, Object?>{},
           description: 'Main dependencies of the project.'),
       'processor-dependencies': Property(
           Maps<Map<String, Object?>?, Nullable<Map<String, Object?>, Objects>>(
               'Map',
-              valueType: Nullable(_dependency)),
+              valueType: Nullable(dependency)),
           defaultValue: <String, Object?>{},
           description:
               'Java annotation processor dependencies of the project.'),
