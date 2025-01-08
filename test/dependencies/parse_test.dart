@@ -1,10 +1,10 @@
 import 'package:jb/jb.dart';
-import 'package:jb/src/dependency.dart';
+import 'package:jb/src/dependencies/parse.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('can parse JBuilde dependency tree', () {
-    final results = parse([
+  test('can parse JBuild dependency tree', () {
+    final results = parseDependencyTree([
       '* my-group:my-app:1.0.0 (incl. transitive):',
       '  - scope compile',
       '    * org.slf4j:slf4j-api:2.0.16 [compile]',

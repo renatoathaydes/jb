@@ -1,16 +1,15 @@
 import 'dart:io';
 
-import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
-import 'package:dartle/dartle_cache.dart';
+import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:io/ansi.dart' as ansi;
 
-import 'config.dart';
-import 'exec.dart';
-import 'output_consumer.dart';
-import 'pom.dart';
-import 'resolved_dependency.dart';
-import 'tasks.dart' show depsTaskName;
+import '../config.dart';
+import '../exec.dart';
+import '../output_consumer.dart';
+import '../pom.dart';
+import '../resolved_dependency.dart';
+import '../tasks.dart' show depsTaskName;
 
 final class _Dependency {
   final String name;
@@ -49,89 +48,6 @@ class DepsArgValidator extends ArgsCount {
   String helpMessage() => 'Acceptable flags:\n'
       '        * $compileScopeFlag: show only compile-time dependencies.\n'
       '        * $licensesFlag: show dependencies\' licenses.';
-}
-
-Future<void> writeDependencies(
-    {required File depsFile,
-    required LocalDependencies localDeps,
-    required LocalDependencies localProcessorDeps,
-    required Iterable<MapEntry<String, DependencySpec>> deps,
-    required Set<String> exclusions,
-    required File processorDepsFile,
-    required Iterable<MapEntry<String, DependencySpec>> processorDeps,
-    required Set<String> processorsExclusions}) async {
-  await _withFile(depsFile, (handle) async {
-    handle.write('dependencies:\n');
-    await _writeDeps(handle, deps, exclusions, localDeps);
-  });
-  await _withFile(processorDepsFile, (handle) async {
-    handle.write('processor-dependencies:\n');
-    await _writeDeps(
-        handle, processorDeps, processorsExclusions, localProcessorDeps);
-  });
-}
-
-Future<void> _withFile(File file, Future<void> Function(IOSink) action) async {
-  final handle = file.openWrite();
-  try {
-    await action(handle);
-  } finally {
-    await handle.flush();
-    await handle.close();
-  }
-}
-
-Future<void> _writeDeps(
-    IOSink sink,
-    Iterable<MapEntry<String, DependencySpec>> deps,
-    Set<String> exclusions,
-    LocalDependencies localDeps) async {
-  final nonLocalDeps = deps
-      .where((e) => e.value.path == null)
-      .toList(growable: false)
-    ..sort((a, b) => a.key.compareTo(b.key));
-  for (final entry in nonLocalDeps) {
-    _writeDep(sink, entry.key, entry.value);
-  }
-  for (final jarDep in [...localDeps.jars]
-    ..sort((a, b) => a.path.compareTo(b.path))) {
-    _writeDep(sink, "${jarDep.path} (jar)", jarDep.spec);
-  }
-  for (final subProject in [...localDeps.projectDependencies]
-    ..sort((a, b) => a.path.compareTo(b.path))) {
-    _writeDep(sink, "${subProject.path} (sub-project)", subProject.spec);
-  }
-  if (exclusions.isNotEmpty) {
-    sink.write('exclusions:\n');
-    for (final exclusion in [...exclusions]..sort()) {
-      sink
-        ..write('  - ')
-        ..write(exclusion)
-        ..write('\n');
-    }
-  }
-}
-
-void _writeDep(IOSink sink, String name, DependencySpec spec) {
-  sink
-    ..write('  - ')
-    ..write(name)
-    ..write(':\n');
-  if (spec != defaultSpec) {
-    spec.path?.vmap((path) => sink
-      ..write('    path: ')
-      ..write(path)
-      ..write('\n'));
-    sink
-      ..write('    scope: ')
-      ..write(spec.scope.name)
-      ..write('\n')
-      ..write('    transitive: ')
-      ..write(spec.transitive)
-      ..write('\n')
-      ..write('    exclusions:\n')
-      ..write(spec.exclusions.map((e) => '      - $e\n').join());
-  }
 }
 
 Future<int> printDependencies(
@@ -199,20 +115,6 @@ Iterable<_Dependency> _computeDependencies(LocalDependencies localDependencies,
           .map((dep) => _Dependency(dep.key, dep.value)));
 }
 
-Artifact _createSimpleArtifact(JbConfiguration config) {
-  return (
-    group: config.group ?? 'group',
-    module: config.module ?? 'module',
-    name: config.name ?? 'name',
-    version: config.version ?? '0.0.0',
-    description: config.description,
-    developers: config.developers,
-    scm: config.scm,
-    url: config.url,
-    licenses: const [],
-  );
-}
-
 Future<int> _print(JbConfiguration config, Iterable<_Dependency> deps,
     File jbuildJar, List<String> preArgs, Iterable<String> exclusionPatterns,
     {required String header,
@@ -258,6 +160,20 @@ void _printLocalDependencies(Iterable<_Dependency> deps) {
   for (var dep in deps.map((s) => '* ${s.name} ${s.localSuffix}')) {
     logger.info(ColoredLogMessage(dep, LogColor.magenta));
   }
+}
+
+Artifact _createSimpleArtifact(JbConfiguration config) {
+  return (
+    group: config.group ?? 'group',
+    module: config.module ?? 'module',
+    name: config.name ?? 'name',
+    version: config.version ?? '0.0.0',
+    description: config.description,
+    developers: config.developers,
+    scm: config.scm,
+    url: config.url,
+    licenses: const [],
+  );
 }
 
 class _JBuildDepsPrinter implements ProcessOutputConsumer {

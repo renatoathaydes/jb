@@ -449,18 +449,15 @@ class ExtensionTaskExtra {
 class ResolvedDependencies {
   final List<ResolvedDependency> dependencies;
   final String instant;
-
   const ResolvedDependencies({
     required this.dependencies,
     required this.instant,
   });
-
   @override
   String toString() => 'ResolvedDependencies{'
       'dependencies: $dependencies, '
       'instant: "$instant"'
       '}';
-
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -469,12 +466,10 @@ class ResolvedDependencies {
           const ListEquality<ResolvedDependency>()
               .equals(dependencies, other.dependencies) &&
           instant == other.instant;
-
   @override
   int get hashCode =>
       const ListEquality<ResolvedDependency>().hash(dependencies) ^
       instant.hashCode;
-
   ResolvedDependencies copyWith({
     List<ResolvedDependency>? dependencies = null,
     String? instant = null,
@@ -489,7 +484,6 @@ class ResolvedDependencies {
         'dependencies': dependencies,
         'instant': instant,
       };
-
   static ResolvedDependencies fromJson(Object? value) =>
       const _ResolvedDependenciesJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
@@ -1008,7 +1002,6 @@ class ResolvedDependency {
   final DependencyKind kind;
   final bool isDirect;
   final List<String> dependencies;
-
   const ResolvedDependency({
     required this.artifact,
     required this.spec,
@@ -1017,7 +1010,6 @@ class ResolvedDependency {
     required this.isDirect,
     required this.dependencies,
   });
-
   @override
   String toString() => 'ResolvedDependency{'
       'artifact: "$artifact", '
@@ -1027,7 +1019,6 @@ class ResolvedDependency {
       'isDirect: $isDirect, '
       'dependencies: $dependencies'
       '}';
-
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1039,7 +1030,6 @@ class ResolvedDependency {
           kind == other.kind &&
           isDirect == other.isDirect &&
           const ListEquality<String>().equals(dependencies, other.dependencies);
-
   @override
   int get hashCode =>
       artifact.hashCode ^
@@ -1048,7 +1038,6 @@ class ResolvedDependency {
       kind.hashCode ^
       isDirect.hashCode ^
       const ListEquality<String>().hash(dependencies);
-
   ResolvedDependency copyWith({
     String? artifact = null,
     DependencySpec? spec = null,
@@ -1075,7 +1064,6 @@ class ResolvedDependency {
         'isDirect': isDirect,
         'dependencies': dependencies,
       };
-
   static ResolvedDependency fromJson(Object? value) =>
       const _ResolvedDependencyJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
@@ -1358,7 +1346,6 @@ enum DependencyKind {
 
 class _DependencyKindConverter extends Converter<Object?, DependencyKind> {
   const _DependencyKindConverter();
-
   @override
   DependencyKind convert(Object? input) {
     return DependencyKind.from(const Strings().convert(input));

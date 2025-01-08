@@ -7,7 +7,8 @@ import 'package:path/path.dart' as p;
 
 import 'compile/compile.dart';
 import 'config.dart';
-import 'dependencies.dart';
+import 'dependencies/printer.dart';
+import 'dependencies/writer.dart';
 import 'eclipse.dart';
 import 'exec.dart';
 import 'file_tree.dart';
@@ -164,32 +165,40 @@ Task createWriteDependenciesTask(
     JbConfiguration config,
     DartleCache cache,
     FileCollection jbFileInputs,
+    JBuildSender jbuildSender,
     LocalDependencies localDependencies,
     LocalDependencies localProcessorDeps) {
   final depsFile = jbFiles.dependenciesFile;
   final procDepsFile = jbFiles.processorDependenciesFile;
-
+  final deps = config.allDependencies
+      .where((d) => d.value.path == null)
+      .map((d) => d.key)
+      .toSet();
+  final procDeps = config.allProcessorDependencies
+      .where((d) => d.value.path == null)
+      .map((d) => d.key)
+      .toSet();
+  final preArgs = config.preArgs(Directory.current.path);
+  final exclusions = config.dependencyExclusionPatterns.toSet();
+  final procExclusions = config.processorDependencyExclusionPatterns.toSet();
   final runCondition = RunOnChanges(
       inputs: jbFileInputs,
       outputs: files([depsFile.path, procDepsFile.path]),
       cache: cache);
-
-  // don't send the full config to the Task!
-  final deps = config.allDependencies.toList();
-  final exclusions = config.dependencyExclusionPatterns.toSet();
-  final procDeps = config.allProcessorDependencies.toList();
-  final procExc = config.processorDependencyExclusionPatterns.toSet();
-
   return Task(
-      (_) async => await writeDependencies(
-            depsFile: depsFile,
-            localDeps: localDependencies,
+      (args) async => await writeDependencies(
+            jbuildSender,
+            preArgs,
+            cache,
+            localDependencies,
+            exclusions,
+            localProcessorDeps,
+            procExclusions,
+            args,
             deps: deps,
-            localProcessorDeps: localProcessorDeps,
-            exclusions: exclusions,
+            procDeps: procDeps,
+            depsFile: depsFile,
             processorDepsFile: procDepsFile,
-            processorDeps: procDeps,
-            processorsExclusions: procExc,
           ),
       runCondition: runCondition,
       name: writeDepsTaskName,

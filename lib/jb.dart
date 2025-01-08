@@ -2,7 +2,6 @@ export 'src/config.dart';
 export 'src/config_import.dart';
 export 'src/config_source.dart';
 export 'src/create/create.dart';
-export 'src/dependencies.dart';
 export 'src/entry_point.dart';
 export 'src/exec.dart';
 export 'src/file_tree.dart';

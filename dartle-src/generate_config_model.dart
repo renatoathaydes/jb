@@ -32,10 +32,10 @@ Future<void> _generateJbConfigModel(File output) async {
     writer.write(
         generateDartClasses([jbConfig, extensionTask, resolvedDependencies],
             options: const DartGeneratorOptions(methodGenerators: [
-          ...DartGeneratorOptions.defaultMethodGenerators,
-          DartToJsonMethodGenerator(),
-          DartFromJsonMethodGenerator(),
-        ])));
+              ...DartGeneratorOptions.defaultMethodGenerators,
+              DartToJsonMethodGenerator(),
+              DartFromJsonMethodGenerator(),
+            ])));
   } finally {
     await writer.flush();
     await writer.close();

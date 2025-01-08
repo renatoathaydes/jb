@@ -128,8 +128,14 @@ class JbDartle {
         _files, configContainer, testConfig, _cache, _jvmExecutor);
     publicationCompile = createPublicationCompileTask(
         _files, configContainer, testConfig, _cache, _jvmExecutor);
-    writeDeps = createWriteDependenciesTask(_files, _config, _cache,
-        jbFileInputs, unresolvedLocalDeps, unresolvedLocalProcessorDeps);
+    writeDeps = createWriteDependenciesTask(
+        _files,
+        _config,
+        _cache,
+        jbFileInputs,
+        _jvmExecutor,
+        unresolvedLocalDeps,
+        unresolvedLocalProcessorDeps);
     installCompile = createInstallCompileDepsTask(
         _files, _config, _jvmExecutor, _cache, localDependencies);
     installRuntime = createInstallRuntimeDepsTask(

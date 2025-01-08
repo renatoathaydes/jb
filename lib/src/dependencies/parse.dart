@@ -1,13 +1,13 @@
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 
-import 'jb_config.g.dart';
-import 'output_consumer.dart';
+import '../jb_config.g.dart';
+import '../output_consumer.dart';
 
 final whitespace = ' '.runes.first;
 
-List<ResolvedDependency> parse(List<String> lines) {
-  final collector = _JBuildDepsCollector();
+List<ResolvedDependency> parseDependencyTree(List<String> lines) {
+  final collector = JBuildDepsCollector();
   for (final line in lines) {
     collector(line);
   }
@@ -22,7 +22,7 @@ class _DepNode {
   _DepNode(this.id);
 }
 
-class _JBuildDepsCollector implements ProcessOutputConsumer {
+class JBuildDepsCollector implements ProcessOutputConsumer {
   int pid = -1;
   bool _enabled = true;
   DependencyScope? _currentScope;

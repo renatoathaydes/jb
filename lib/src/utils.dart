@@ -225,6 +225,18 @@ extension DirectoryExtension on Directory {
   }
 }
 
+extension FileExtension on File {
+  Future<void> withSink(Future<void> Function(IOSink) action) async {
+    final handle = openWrite();
+    try {
+      await action(handle);
+    } finally {
+      await handle.flush();
+      await handle.close();
+    }
+  }
+}
+
 extension StringExtension on String {
   String replaceExtension(String ext) => '${p.withoutExtension(this)}$ext';
 
