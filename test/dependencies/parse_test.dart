@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 void main() {
   test('can parse JBuild dependency tree', () {
     final results = parseDependencyTree([
-      '* my-group:my-app:1.0.0 (incl. transitive):',
+      'Dependencies of my-group:my-app:1.0.0 (incl. transitive):',
       '  - scope compile',
       '    * org.slf4j:slf4j-api:2.0.16 [compile]',
       '  1 compile dependency listed',
@@ -28,10 +28,21 @@ void main() {
         equals([
           ResolvedDependency(
               artifact: 'org.slf4j:slf4j-api:2.0.16',
-              spec: const DependencySpec(scope: DependencyScope.all),
+              spec: defaultSpec,
               kind: DependencyKind.maven,
               sha1: '',
               dependencies: [],
+              isDirect: false),
+          ResolvedDependency(
+              artifact: 'my-group:my-app:1.0.0',
+              spec: defaultSpec,
+              kind: DependencyKind.maven,
+              sha1: '',
+              dependencies: [
+                'org.slf4j:slf4j-api:2.0.16',
+                'org.apache.logging.log4j:log4j-core:2.24.3',
+                'org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0',
+              ],
               isDirect: true),
           ResolvedDependency(
               artifact: 'org.apache.logging.log4j:log4j-core:2.24.3',
@@ -41,7 +52,7 @@ void main() {
               dependencies: [
                 'org.apache.logging.log4j:log4j-api:2.24.3',
               ],
-              isDirect: true),
+              isDirect: false),
           ResolvedDependency(
               artifact: 'org.apache.logging.log4j:log4j-api:2.24.3',
               spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
@@ -58,7 +69,7 @@ void main() {
                 'org.apache.logging.log4j:log4j-api:2.19.0',
                 'org.slf4j:slf4j-api:2.0.0',
               ],
-              isDirect: true),
+              isDirect: false),
           ResolvedDependency(
               artifact: 'org.apache.logging.log4j:log4j-api:2.19.0',
               spec: const DependencySpec(scope: DependencyScope.runtimeOnly),

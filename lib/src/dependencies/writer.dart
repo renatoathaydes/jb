@@ -26,7 +26,15 @@ Future<void> writeDependencies(
 }) async {
   final collector = _CollectorSendable();
   await jBuildSender.send(RunJBuild(writeDepsTaskName,
-      [...preArgs, 'deps', '-t', '-s', 'compile', ...deps], collector));
+      [
+        ...preArgs.where((n) => n != '-V'),
+        'deps',
+        '-t',
+        '-s',
+        'compile',
+        ...deps
+      ],
+      collector));
   collector.delegate.done();
   await depsFile.withSink((sink) async {
     sink.write(jsonEncode(collector.delegate.results));
