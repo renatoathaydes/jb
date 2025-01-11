@@ -546,7 +546,7 @@ class DependencySpec {
 
   Map<String, Object?> toJson() => {
         'transitive': transitive,
-        'scope': scope,
+        'scope': scope.name,
         if (path != null) 'path': path,
         'exclusions': exclusions,
       };
@@ -1060,7 +1060,7 @@ class ResolvedDependency {
         'artifact': artifact,
         'spec': spec,
         'sha1': sha1,
-        'kind': kind,
+        'kind': kind.name,
         'isDirect': isDirect,
         'dependencies': dependencies,
       };
@@ -1137,6 +1137,11 @@ enum DependencyScope {
   runtimeOnly,
   ;
 
+  String get name => switch (this) {
+        all => 'all',
+        compileOnly => 'compile-only',
+        runtimeOnly => 'runtime-only',
+      };
   static DependencyScope from(String s) => switch (s) {
         'all' => all,
         'compile-only' => compileOnly,
@@ -1334,6 +1339,11 @@ enum DependencyKind {
   maven,
   ;
 
+  String get name => switch (this) {
+        localJar => 'localJar',
+        localProject => 'localProject',
+        maven => 'maven',
+      };
   static DependencyKind from(String s) => switch (s) {
         'localJar' => localJar,
         'localProject' => localProject,

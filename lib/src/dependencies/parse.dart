@@ -8,7 +8,7 @@ import '../output_consumer.dart';
 final whitespace = ' '.runes.first;
 
 final _directDepPattern =
-    RegExp(r'^Dependencies of ([^\s]+) \(incl. transitive\):$');
+    RegExp(r'^Dependencies of ([^\s]+)\s+\(incl. transitive\):$');
 
 final _depPattern = RegExp(r'^(\s+)\*\s([^\s]+)');
 
@@ -61,7 +61,10 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     Match? match = _directDepPattern.matchAsPrefix(line);
     if (match != null) {
       // finalize the previous dep if any
-      if (_currentDep != null && _currentScope != null) done();
+      if (_currentDep != null) {
+        _currentScope ??= DependencyScope.all;
+        done();
+      }
       _currentDep = _DepNode(match.group(1)!, 0, parent: null);
       _currentScope = null;
       _currentIndentLevel = null;
@@ -105,33 +108,28 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     }
     if (dep == null) return;
 
-    Iterable<ResolvedDependency> result;
     if (emitRoot) {
-      result = _resolveDependency(dep, scope, isDirect: dep.parent == null);
+      _resolveDependency(dep, scope, isDirect: dep.parent == null);
     } else {
-      result = [];
       for (final d in dep.deps) {
-        result =
-            result.followedBy(_resolveDependency(d, scope, isDirect: false));
+        _resolveDependency(d, scope, isDirect: false);
       }
     }
-    results.addAll(result);
   }
 
-  Iterable<ResolvedDependency> _resolveDependency(_DepNode node,
-      DependencyScope? scope,
-      {required bool isDirect}) sync* {
+  void _resolveDependency(_DepNode node, DependencyScope? scope,
+      {required bool isDirect}) {
     if (_resultIds.add(node.id)) {
-      yield ResolvedDependency(
+      results.add(ResolvedDependency(
           artifact: node.id,
           spec: DependencySpec(scope: isDirect ? DependencyScope.all : scope!),
           kind: DependencyKind.maven,
           isDirect: isDirect,
           sha1: '',
-          dependencies: node.deps.map((d) => d.id).toList(growable: false));
+          dependencies: node.deps.map((d) => d.id).toList(growable: false)));
     }
     for (final dep in node.deps) {
-      yield* _resolveDependency(dep, scope, isDirect: false);
+      _resolveDependency(dep, scope, isDirect: false);
     }
   }
 }
