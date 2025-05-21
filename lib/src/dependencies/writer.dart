@@ -25,6 +25,19 @@ Future<void> writeDependencies(
   required File depsFile,
   required File processorDepsFile,
 }) async {
+  // TODO handle localDependencies and exclusions
+  final depsFuture = _write(jBuildSender, preArgs, deps, depsFile);
+  final procDepsFuture =
+      _write(jBuildSender, preArgs, procDeps, processorDepsFile);
+  await Future.wait([depsFuture, procDepsFuture]);
+}
+
+Future<void> _write(
+  JBuildSender jBuildSender,
+  List<String> preArgs,
+  Set<String> deps,
+  File depsFile,
+) async {
   final collector = Actor.create(_CollectorActor.new);
   await jBuildSender.send(RunJBuild(
       writeDepsTaskName,
