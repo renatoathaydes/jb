@@ -170,14 +170,9 @@ Task createWriteDependenciesTask(
     LocalDependencies localProcessorDeps) {
   final depsFile = jbFiles.dependenciesFile;
   final procDepsFile = jbFiles.processorDependenciesFile;
-  final deps = config.allDependencies
-      .where((d) => d.value.path == null)
-      .map((d) => d.key)
-      .toSet();
-  final procDeps = config.allProcessorDependencies
-      .where((d) => d.value.path == null)
-      .map((d) => d.key)
-      .toSet();
+  final deps = config.allDependencies.where((d) => d.value.path == null);
+  final procDeps =
+      config.allProcessorDependencies.where((d) => d.value.path == null);
   final preArgs = config.preArgs(Directory.current.path);
   final exclusions = config.dependencyExclusionPatterns.toSet();
   final procExclusions = config.processorDependencyExclusionPatterns.toSet();

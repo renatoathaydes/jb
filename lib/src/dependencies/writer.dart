@@ -20,22 +20,22 @@ Future<void> writeDependencies(
   LocalDependencies localProcessorDependencies,
   Set<String> procExclusions,
   List<String> args, {
-  required Set<String> deps,
-  required Set<String> procDeps,
+  required Iterable<MapEntry<String, DependencySpec>> deps,
+  required Iterable<MapEntry<String, DependencySpec>> procDeps,
   required File depsFile,
   required File processorDepsFile,
 }) async {
-  // TODO handle localDependencies and exclusions
-  final depsFuture = _write(jBuildSender, preArgs, deps, depsFile);
-  final procDepsFuture =
-      _write(jBuildSender, preArgs, procDeps, processorDepsFile);
+  final depsFuture = _write(jBuildSender, preArgs, deps, exclusions, depsFile);
+  final procDepsFuture = _write(
+      jBuildSender, preArgs, procDeps, procExclusions, processorDepsFile);
   await Future.wait([depsFuture, procDepsFuture]);
 }
 
 Future<void> _write(
   JBuildSender jBuildSender,
   List<String> preArgs,
-  Set<String> deps,
+  Iterable<MapEntry<String, DependencySpec>> deps,
+  Set<String> exclusions,
   File depsFile,
 ) async {
   final collector = Actor.create(_CollectorActor.new);
@@ -47,13 +47,19 @@ Future<void> _write(
         '-t',
         '-s',
         'compile',
-        ...deps
+        ...exclusions.expand(_exclusionOption),
+        ...deps.expand(
+            (d) => [d.key, ...d.value.exclusions.expand(_exclusionOption)])
       ],
       _CollectorSendable(await collector.toSendable())));
   final results = await collector.send(const _Done());
   await depsFile.withSink((sink) async {
     sink.write(jsonEncode(results));
   });
+}
+
+List<String> _exclusionOption(String exclusion) {
+  return ['-x', exclusion];
 }
 
 sealed class _CollectorMessage {
