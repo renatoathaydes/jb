@@ -1,6 +1,6 @@
 source-dirs: [ src ]
 resource-dirs: [ resources ]
-
+javac-args: ["--release", "11"]
 dependencies:
   com.athaydes.jbuild:jbuild-api:0.10.0:
     scope: compile-only

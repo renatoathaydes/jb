@@ -10,6 +10,7 @@ resource-dirs: [ resources ]
 compile-libs-dir: build/comp
 runtime-libs-dir: build/runtime
 output-dir: build/out
+javac-args: ["--release", "11"]
 
 dependencies:
   greetings:

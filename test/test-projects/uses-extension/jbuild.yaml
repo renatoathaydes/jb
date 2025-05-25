@@ -1,6 +1,7 @@
 extension-project: ../example-extension
 source-dirs: [ src ]
 resource-dirs: [ resources ]
+javac-args: ["--release", "11"]
 
 # extension tasks
 copyFile:
