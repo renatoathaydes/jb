@@ -52,8 +52,10 @@ final class ResolvedProjectDependency {
     await withCurrentDirectory(
         projectDir,
         () async => await runner.run(
-            copyDartleOptions(
-                options, const [compileTaskName, installRuntimeDepsTaskName]),
+            options.copy(tasksInvocation: const [
+              compileTaskName,
+              installRuntimeDepsTaskName
+            ]),
             Stopwatch(),
             isRoot: false));
 

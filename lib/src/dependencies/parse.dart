@@ -24,7 +24,7 @@ List<ResolvedDependency> parseDependencyTree(List<String> lines) {
 class _DepNode {
   final _DepNode? parent;
   final String id;
-  final indentLevel;
+  final int indentLevel;
   final List<_DepNode> deps = [];
 
   _DepNode(this.id, this.indentLevel, {required this.parent});

@@ -50,15 +50,17 @@ class JbCliOptions {
   }
 }
 
-Options copyDartleOptions(Options options, List<String> tasksInvocation) {
-  return Options(
-      logLevel: options.logLevel,
-      colorfulLog: options.colorfulLog,
-      forceTasks: options.forceTasks,
-      parallelizeTasks: options.parallelizeTasks,
-      resetCache: options.resetCache,
-      logBuildTime: false,
-      runPubGet: options.runPubGet,
-      disableCache: options.disableCache,
-      tasksInvocation: tasksInvocation);
+extension ExtensionProjectDartleOptions on Options {
+  Options copy({List<String>? tasksInvocation}) {
+    return Options(
+        logLevel: logLevel,
+        colorfulLog: colorfulLog,
+        forceTasks: forceTasks,
+        parallelizeTasks: parallelizeTasks,
+        resetCache: resetCache,
+        logBuildTime: false,
+        runPubGet: runPubGet,
+        disableCache: disableCache,
+        tasksInvocation: tasksInvocation ?? this.tasksInvocation);
+  }
 }

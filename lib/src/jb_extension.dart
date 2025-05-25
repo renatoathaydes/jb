@@ -36,10 +36,11 @@ import 'utils.dart';
 
 class ExtensionProject {
   final String name;
+  final String rootDir;
   final JbExtensionModel model;
   final List<Task> tasks;
 
-  const ExtensionProject(this.name, this.model, this.tasks);
+  const ExtensionProject(this.name, this.rootDir, this.model, this.tasks);
 }
 
 final class _JbExtensionConfig {
@@ -83,46 +84,55 @@ Future<ExtensionProject?> loadExtensionProject(
   final configContainer =
       await withCurrentDirectory(dir, () => JbConfigContainer(config));
   final runner = JbRunner(files, extensionConfig, jvmExecutor);
+
+  // run the extension project's compile task so that its
+  // jb tasks can be executed later
   final buildTasks = await withCurrentDirectory(
       dir,
       () async => await runner.run(
-          copyDartleOptions(
-              options, const [compileTaskName, installRuntimeDepsTaskName]),
+          options.copy(tasksInvocation: const [
+            compileTaskName,
+            installRuntimeDepsTaskName
+          ]),
           Stopwatch(),
           isRoot: false));
 
   logger.fine(() => "Extension project '$dir' initialized");
+
+  final isUpToDate = buildTasks
+      .expand((phase) => phase.tasks.map((t) => t.status))
+      .every((s) => s == TaskStatus.upToDate);
 
   final jbExtensionConfig = await configContainer.output.when(
     dir: (d) async => await _jbExtensionFromDir(dir, d),
     jar: (j) async => await _jbExtensionFromJar(dir, j),
   );
 
-  final taskConfigs = _resolveTaskConstructors(
+  // resolve the [BasicExtensionTask] and constructor data for each task
+  final tasksBasicData = _resolveTaskConstructors(
       config,
       await loadExtensionTaskConfigs(
           config, jbExtensionConfig.yaml, jbExtensionConfig.yamlUri));
 
+  final absRootDir = p.canonicalize(dir);
+
   final classpath = await _toClasspath(dir, configContainer);
 
-  final isUpToDate = buildTasks
-      .expand((phase) => phase.tasks.map((t) => t.status))
-      .every((s) => s == TaskStatus.upToDate);
-
   final (extensionModel, extensionTasks) = await _createExtensionModel(
-      isUpToDate, config, taskConfigs, cache, dir, classpath, jvmExecutor);
+      isUpToDate, config, tasksBasicData, cache, dir, classpath, jvmExecutor);
 
+  // convert the [ExtensionTask]s and constructor data into Dartle [Task]s
   final tasks = extensionTasks.map((entry) {
     final (taskConfig, constructorData) = entry;
     return _createTask(
-        jvmExecutor, classpath, taskConfig, constructorData, cache);
+        jvmExecutor, classpath, taskConfig, absRootDir, constructorData, cache);
   }).toList();
 
   logger.log(profile,
       () => 'Loaded jb extension project in ${elapsedTime(stopWatch)}');
   logger.info('========= jb extension loaded =========');
 
-  return ExtensionProject(projectDir.path, extensionModel, tasks);
+  return ExtensionProject(dir, absRootDir, extensionModel, tasks);
 }
 
 Future<(JbExtensionModel, List<(ExtensionTask, List<Object?>)>)>
@@ -324,11 +334,13 @@ Task _createTask(
     Sendable<JavaCommand, Object?> jvmExecutor,
     String classpath,
     ExtensionTask extensionTask,
+    String absRootDir,
     List<Object?> constructorData,
     DartleCache cache) {
   final runCondition = _runCondition(extensionTask, cache);
   return Task(
-      _taskAction(jvmExecutor, classpath, constructorData, extensionTask),
+      _taskAction(
+          jvmExecutor, classpath, absRootDir, constructorData, extensionTask),
       name: extensionTask.name,
       argsValidator: const AcceptAnyArgs(),
       description: extensionTask.description,
@@ -340,6 +352,7 @@ Task _createTask(
 Future<void> Function(List<String>, [ChangeSet?]) _taskAction(
     Sendable<JavaCommand, Object?> jvmExecutor,
     String classpath,
+    String absRootDir,
     List<Object?> constructorData,
     ExtensionTask extensionTask) {
   return (List<String> taskArgs, [ChangeSet? changes]) async {
@@ -375,8 +388,7 @@ RunCondition _runCondition(ExtensionTask extensionTask, DartleCache cache) {
 }
 
 Future<String> _toClasspath(
-    String rootDir, JbConfigContainer extensionConfig) async {
-  final absRootDir = p.canonicalize(rootDir);
+    String absRootDir, JbConfigContainer extensionConfig) async {
   final artifact = p.join(absRootDir,
       extensionConfig.output.when(dir: (d) => d.asDirPath(), jar: (j) => j));
   final libsDir =
