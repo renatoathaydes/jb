@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
-import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
@@ -32,9 +31,7 @@ Future<bool> runJb(
     return false;
   }
   var rootDir = jbOptions.rootDirectory;
-  if (rootDir == null) {
-    await _runJb(jbOptions, dartleOptions, configSource, stopwatch, jbuildJar);
-  } else {
+  if (rootDir != null) {
     rootDir = p.canonicalize(rootDir);
     final dir = Directory(rootDir);
     if (!(await dir.exists())) {
@@ -45,12 +42,12 @@ Future<bool> runJb(
         await dir.create(recursive: true);
       }
     }
+    Directory.current = Directory(rootDir);
     logger.fine(() => "Running jb on directory '$rootDir'");
-    await withCurrentDirectory(
-        rootDir,
-        () async => await _runJb(
-            jbOptions, dartleOptions, configSource, stopwatch, jbuildJar));
   }
+
+  await _runJb(jbOptions, dartleOptions, configSource, stopwatch, jbuildJar);
+
   return true;
 }
 

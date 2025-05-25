@@ -226,6 +226,31 @@ void main() {
           contains('Extension task running: SampleTask'));
     }, timeout: const Timeout(Duration(seconds: 10)));
 
+    test('can run custom task defined by extension project from another dir',
+        () async {
+      var jbResult = await runJb(Directory(projectsDir),
+          const ['copyFile', '--no-color', '-p', 'uses-extension']);
+      expectSuccess(jbResult);
+
+      // ensure we did not copy the file to the wrong place
+      expect(await Directory(p.join(projectsDir, 'output-resources')).exists(),
+          isFalse);
+
+      await assertDirectoryContents(
+          Directory(p.join(usesExtensionDir, 'output-resources')), [
+        'hello.txt',
+        'bye.txt',
+      ]);
+      expect(
+          await File(p.join(usesExtensionDir, 'output-resources', 'hello.txt'))
+              .readAsString(),
+          equals('Hello'));
+      expect(
+          await File(p.join(usesExtensionDir, 'output-resources', 'bye.txt'))
+              .readAsString(),
+          equals('Bye'));
+    }, timeout: const Timeout(Duration(seconds: 10)));
+
     test('can run custom task with config defined by extension project',
         () async {
       var jbResult = await runJb(
