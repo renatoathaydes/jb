@@ -42,11 +42,23 @@ class JbCliOptions {
     if (waitingForRootDir) {
       throw DartleException(message: '-p option requires an argument.');
     }
-    if (dartleArgs.isNotEmpty && createOptions != null) {
+    if (dartleArgs.containsNonLoggingArgs() && createOptions != null) {
       throw DartleException(
-          message: 'The "create" command cannot be used with other tasks.');
+          message:
+              'The "create" command cannot be used with other tasks or arguments.');
     }
     return JbCliOptions(dartleArgs, rootDir, createOptions);
+  }
+}
+
+extension _ArgsList on List<String> {
+  bool containsNonLoggingArgs() {
+    if (isEmpty) return false;
+    print("ARGS: $this");
+    if (first == '-l' || first == '--log-level') {
+      return length != 2;
+    }
+    return true;
   }
 }
 

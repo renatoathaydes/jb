@@ -113,24 +113,38 @@ const junitJupiterApi = 'org.junit.jupiter:junit-jupiter-api';
 const assertjCore = 'org.assertj:assertj-core';
 
 Future<String> _computeTestDependencies() async {
-  logger.fine(
-      () => 'Fetching latest versions of $junitJupiterApi and $assertjCore');
-  final versionsParser = _VersionsParser();
-  final exitCode = await execJBuild('create-test-project',
-      File(jbuildJarPath()), ['-q'], 'versions', [junitJupiterApi, assertjCore],
-      onStdout: versionsParser);
-  if (exitCode != 0) {
-    failBuild(reason: 'jbuild versions command failed', exitCode: exitCode);
+  var assertjVersion = Platform.environment['ASSERTJ_VERSION'];
+  var junitJupiterApiVersion =
+      Platform.environment['JUNIT_JUPITER_API_VERSION'];
+  if (assertjVersion == null || junitJupiterApiVersion == null) {
+    logger.fine(() => 'Fetching latest version of '
+        '$junitJupiterApi${assertjVersion == null ? ' and $assertjCore' : ''}');
+    final versionsParser = _VersionsParser();
+    final exitCode = await execJBuild(
+        'create-test-project',
+        File(jbuildJarPath()),
+        ['-q'],
+        'versions',
+        [
+          if (junitJupiterApiVersion == null) junitJupiterApi,
+          if (assertjVersion == null) assertjCore,
+        ],
+        onStdout: versionsParser);
+    if (exitCode != 0) {
+      failBuild(reason: 'jbuild versions command failed', exitCode: exitCode);
+    }
+    logger.fine(
+        () => 'Latest versions obtained: ${versionsParser.latestVersions}');
+    junitJupiterApiVersion ??= versionsParser.latestVersions[junitJupiterApi]
+        .orThrow(
+            () => failBuild(reason: 'Cannot find JUnit API latest version'));
+    assertjVersion ??= versionsParser.latestVersions[assertjCore]
+        .orThrow(() => failBuild(reason: 'Cannot find Assertj latest version'));
   }
-  logger
-      .fine(() => 'Latest versions obtained: ${versionsParser.latestVersions}');
-  final latestJUnitVersion = versionsParser.latestVersions[junitJupiterApi]
-      .orThrow(() => failBuild(reason: 'Cannot find JUnit API latest version'));
-  final latestAssertjVersion = versionsParser.latestVersions[assertjCore]
-      .orThrow(() => failBuild(reason: 'Cannot find Assertj latest version'));
+
   return '''\
-  $junitJupiterApi:$latestJUnitVersion:
-  $assertjCore:$latestAssertjVersion:
+  $junitJupiterApi:$junitJupiterApiVersion:
+  $assertjCore:$assertjVersion:
   core-module:
     path: ../
 ''';

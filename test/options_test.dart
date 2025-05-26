@@ -74,7 +74,7 @@ Future<void> main() async {
               (e) => e.message,
               'message',
               equals(
-                  'The "create" command cannot be used with other tasks.'))));
+                  'The "create" command cannot be used with other tasks or arguments.'))));
     });
   });
 }

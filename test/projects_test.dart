@@ -389,7 +389,10 @@ void main() {
 
     test('can create and test a jb project', () async {
       final jbProc = await startJb(
-          Directory(emptyProjectDir), const ['create', '--no-color']);
+          Directory(emptyProjectDir),
+          const ['create', '--no-color'],
+          // freeze the assertj version so the tests work on Java 11 forever
+          const {'ASSERTJ_VERSION': '3.27.3'});
       addTearDown(jbProc.kill);
       addTearDown(cleanupEmptyProjectDir);
 
