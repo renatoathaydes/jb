@@ -56,7 +56,10 @@ Future<void> _buildProject(String name) async {
             await jbuildJarPath(),
             'compile',
             '-j',
-            path.join('build', 'lists.jar')
+            path.join('build', 'lists.jar'),
+            '--',
+            '--release',
+            '11'
           ],
           workingDirectory: listsMavenRepoProjectSrc),
       name: 'java (compile $name project)');
