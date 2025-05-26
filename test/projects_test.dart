@@ -340,7 +340,11 @@ void main() {
   Future<void> cleanupEmptyProjectDir() async {
     await for (final entity in Directory(emptyProjectDir).list()) {
       if (entity.path.endsWith('.gitkeep')) continue;
-      await entity.delete(recursive: true);
+      try {
+        await entity.delete(recursive: true);
+      } on PathAccessException catch (e) {
+        print("cleanupEmptyProjectDir: UNABLE TO CLEANUP: $e");
+      }
     }
   }
 
