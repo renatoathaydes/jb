@@ -54,7 +54,6 @@ class JbCliOptions {
 extension _ArgsList on List<String> {
   bool containsNonLoggingArgs() {
     if (isEmpty) return false;
-    print("ARGS: $this");
     if (first == '-l' || first == '--log-level') {
       return length != 2;
     }

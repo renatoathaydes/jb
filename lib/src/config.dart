@@ -46,7 +46,7 @@ Future<JbConfiguration> loadConfig(File configFile) async {
 ///
 /// Applies defaults and resolves properties and imports.
 Future<JbConfiguration> loadConfigString(String config) async {
-  final dynamic json;
+  final Object? json;
   try {
     json = loadYaml(config);
   } catch (e) {

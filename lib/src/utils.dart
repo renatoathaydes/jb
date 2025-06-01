@@ -180,8 +180,8 @@ extension DependencyMapExtension on Map<String, DependencySpec?> {
 
 extension MapEntryIterable on Iterable<MapEntry<String, DependencySpec?>> {
   Map<String, DependencySpec?> resolve(Map<String, Object?> props) {
-    return Map.fromEntries(
-        map((e) => MapEntry(e.key, e.value?.resolveProperties(props))));
+    return Map.fromEntries(map((e) => MapEntry(
+        resolveString(e.key, props), e.value?.resolveProperties(props))));
   }
 }
 

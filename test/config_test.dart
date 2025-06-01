@@ -256,6 +256,21 @@ test-reports-dir: "build/test-reports"
 extension-project: null
 ''';
 
+const _versionsConfig = '''
+properties:
+    versions:
+        jbuild: 0.12.0  
+''';
+
+String _configImportingVersionsConfig(String importPath) => '''
+imports:
+    - "$importPath"
+
+module: importing-versions-config
+dependencies:
+  com.athaydes.jbuild:jbuild:{{versions.jbuild}}:
+''';
+
 void main() {
   group('JBuildConfiguration', () {
     test('can load', () async {
@@ -631,6 +646,19 @@ void main() {
             'test-reports-dir': 'reports',
             'properties': {'DEP': 'big1', 'REPORTS_DIR': 'reports'}
           })));
+    });
+
+    test('can import configuration with properties', () async {
+      final versionsFile =
+          await tempFile(extension: '.yaml').writeAsString(_versionsConfig);
+      final config = await loadConfigString(
+          _configImportingVersionsConfig(versionsFile.path));
+      expect(config.module, equals('importing-versions-config'));
+      expect(
+          config.dependencies,
+          equals({
+            'com.athaydes.jbuild:jbuild:0.12.0': null,
+          }));
     });
   });
 
