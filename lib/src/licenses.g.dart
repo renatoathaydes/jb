@@ -338,6 +338,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "Aspell-RU": License(
+    licenseId: "Aspell-RU",
+    name: "Aspell Russian License",
+    uri: "https://spdx.org/licenses/Aspell-RU.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "ASWF-Digital-Assets-1.0": License(
     licenseId: "ASWF-Digital-Assets-1.0",
     name: "ASWF Digital Assets License version 1.0",
@@ -1810,6 +1817,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "FSFULLRSD": License(
+    licenseId: "FSFULLRSD",
+    name: "FSF Unlimited License (with License Retention and Short Disclaimer)",
+    uri: "https://spdx.org/licenses/FSFULLRSD.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "FSFULLRWD": License(
     licenseId: "FSFULLRWD",
     name:
@@ -2235,6 +2249,13 @@ const allLicenses = <String, License>{
     licenseId: "HaskellReport",
     name: "Haskell Language Report License",
     uri: "https://spdx.org/licenses/HaskellReport.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "HDF5": License(
+    licenseId: "HDF5",
+    name: "HDF5 License",
+    uri: "https://spdx.org/licenses/HDF5.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
@@ -2774,6 +2795,13 @@ const allLicenses = <String, License>{
     licenseId: "Libpng",
     name: "libpng License",
     uri: "https://spdx.org/licenses/Libpng.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "libpng-1.6.35": License(
+    licenseId: "libpng-1.6.35",
+    name: "PNG Reference Library License v1 (for libpng 0.5 through 1.6.35",
+    uri: "https://spdx.org/licenses/libpng-1.6.35.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
@@ -3342,6 +3370,13 @@ const allLicenses = <String, License>{
     name: "Nethack General Public License",
     uri: "https://spdx.org/licenses/NGPL.html",
     isOsiApproved: true,
+    isFsfLibre: null,
+  ),
+  "ngrep": License(
+    licenseId: "ngrep",
+    name: "ngrep License",
+    uri: "https://spdx.org/licenses/ngrep.html",
+    isOsiApproved: false,
     isFsfLibre: null,
   ),
   "NICTA-1.0": License(
