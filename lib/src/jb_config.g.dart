@@ -38,7 +38,7 @@ class JbConfiguration {
   /// Class files output directory (mutual exclusive with output-jar)
   final String? outputDir;
 
-  /// Output jar path (mutual exclusive with output-dir
+  /// Output jar path (mutual exclusive with output-dir)
   final String? outputJar;
 
   /// Java Resource directories

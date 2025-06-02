@@ -140,8 +140,10 @@ Future<void> _compile(
   final changes =
       await computeAllChanges(changeSet, jbFiles.javaSrcFileTreeFile);
   if (changes != null) {
-    logger.log(profile,
-        () => 'Computed transitive changes in ${elapsedTime(stopwatch)}');
+    logger.log(
+        profile,
+        () => 'Computed transitive changes in '
+            '${elapsedTime(stopwatch)}: $changes');
   }
   stopwatch.reset();
   await jBuildSender.send(await compileCommand(

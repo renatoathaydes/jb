@@ -108,6 +108,15 @@ void main() {
           changes.deletions, equals(const {'jbuild/artifact/Artifact.java'}));
     });
 
+    test('can compute class files from Java files', () {
+      expect(
+          tree.classFilesOf('jbuild/errors/JBuildException.java').toSet(),
+          equals({
+            r'jbuild/errors/JBuildException$ErrorCause.class',
+            r'jbuild/errors/JBuildException.class'
+          }));
+    });
+
     test('can merge with another tree', () async {
       final changesTree = await loadFileTree(Stream.fromIterable(const [
         // JBuildException was changed to not depend on Error anymore

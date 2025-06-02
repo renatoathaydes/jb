@@ -84,7 +84,7 @@ const jbConfig = Objects(
           description:
               'Class files output directory (mutual exclusive with output-jar)'),
       'output-jar': Property(Nullable(Strings()),
-          description: 'Output jar path (mutual exclusive with output-dir'),
+          description: 'Output jar path (mutual exclusive with output-dir)'),
       'resource-dirs': Property(Arrays(Strings()),
           defaultValue: [], description: 'Java Resource directories'),
       'repositories': Property(Arrays(Strings()),

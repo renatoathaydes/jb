@@ -15,7 +15,9 @@ Future<JavaCommand> compileCommand(
     TransitiveChanges? changes,
     List<String> args) async {
   List<String> allArgs;
-  if (testConfig.spockVersion != null || hasGroovyDependency(config)) {
+  final isGroovyEnabled =
+      hasGroovyDependency(config) || testConfig.spockVersion != null;
+  if (isGroovyEnabled) {
     logger.fine(
         'Project has Groovy or Spock dependencies. Using Groovy compiler.');
     final groovyJar = await findGroovyJar(config);
@@ -24,6 +26,6 @@ Future<JavaCommand> compileCommand(
     logger.finer('No Groovy dependencies found. Using javac compiler.');
     allArgs = args;
   }
-  return jbuildCompileCommand(
-      jbFiles, config, workingDir, publication, changes, allArgs);
+  return jbuildCompileCommand(jbFiles, config, workingDir, publication, changes,
+      allArgs, isGroovyEnabled);
 }

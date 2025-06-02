@@ -36,6 +36,10 @@ const _expectedWithSubProjectPom = '''\
   </dependencies>
 </project>''';
 
+const _fooJavaFileContents = '''\
+class Foo {}
+''';
+
 void main() {
   activateLogging(Level.FINE);
 
@@ -213,8 +217,9 @@ void main() {
           p.join(exampleExtensionDir, '.jb-cache'),
           p.join(usesExtensionDir, 'output-resources'),
         ], includeHidden: true),
-        // this file is created by the test
+        // these files are created by the test
         file(p.join(usesExtensionDir, 'input-resources', 'new.txt')),
+        file(p.join(exampleExtensionDir, 'src', 'Foo.java')),
       ]));
     });
 
@@ -229,7 +234,7 @@ void main() {
     test('can run custom task defined by extension project from another dir',
         () async {
       var jbResult = await runJb(Directory(projectsDir),
-          const ['copyFile', '--no-color', '-p', 'uses-extension']);
+          ['copyFile', '--no-color', '-p', p.basename(usesExtensionDir)]);
       expectSuccess(jbResult);
 
       // ensure we did not copy the file to the wrong place
@@ -249,6 +254,52 @@ void main() {
           await File(p.join(usesExtensionDir, 'output-resources', 'bye.txt'))
               .readAsString(),
           equals('Bye'));
+
+      // should not run again as the task output is cached
+      jbResult = await runJb(Directory(projectsDir),
+          ['copyFile', '--no-color', '-p', p.basename(usesExtensionDir)]);
+      expectSuccess(jbResult);
+      expect(
+          jbResult.stdout.where(
+              (String line) => line.endsWith('to output-resources directory')),
+          isEmpty);
+      expect(jbResult.stdout, hasLength(greaterThan(2)));
+      expect(lastItems(2, jbResult.stdout), [
+        'Everything is up-to-date!',
+        startsWith('Build succeeded in '),
+      ]);
+
+      // modify a file in the extension project
+      await File(p.join(exampleExtensionDir, 'src', 'Foo.java'))
+          .writeAsString(_fooJavaFileContents);
+
+      // running the task again causes the extension to re-compile
+      jbResult = await runJb(Directory(projectsDir),
+          ['copyFile', '--no-color', '-p', p.basename(usesExtensionDir)]);
+      expectSuccess(jbResult);
+      expect(
+          jbResult.stdout,
+          contains(matches(RegExp(r'^copyFile:stdout \[jvm \d+]: '
+              r'Copying 2 file\(s\) to output-resources directory$'))));
+
+      // change the inputs and make sure the task runs incrementally
+      await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
+          .writeAsString('hello there');
+
+      jbResult = await runJb(Directory(projectsDir),
+          ['copyFile', '--no-color', '-p', p.basename(usesExtensionDir)]);
+      expectSuccess(jbResult);
+
+      expect(
+          jbResult.stdout,
+          contains(matches(RegExp(r'^copyFile:stdout \[jvm \d+]: '
+              r'Copying 1 file\(s\) to output-resources directory$'))));
+      await assertDirectoryContents(
+          Directory(p.join(usesExtensionDir, 'output-resources')), [
+        'hello.txt',
+        'bye.txt',
+        'new.txt',
+      ]);
     }, timeout: const Timeout(Duration(seconds: 10)));
 
     test('can run custom task with config defined by extension project',
