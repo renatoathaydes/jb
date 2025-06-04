@@ -41,7 +41,7 @@ class Foo {}
 ''';
 
 void main() {
-  activateLogging(Level.FINE);
+  activateLogging(Level.INFO);
 
   projectGroup(helloProjectDir, 'hello project', () {
     test('can compile basic Java class and cache result', () async {
@@ -59,8 +59,7 @@ void main() {
 
   projectGroup(withDepsProjectDir, 'with-deps project', () {
     test('can install dependencies and compile project', () async {
-      final jbResult =
-          await runJb(Directory(withDepsProjectDir), const ['-l', 'debug']);
+      final jbResult = await runJb(Directory(withDepsProjectDir), const []);
       expectSuccess(jbResult);
 
       await assertDirectoryContents(
@@ -277,10 +276,19 @@ void main() {
       jbResult = await runJb(Directory(projectsDir),
           ['copyFile', '--no-color', '-p', p.basename(usesExtensionDir)]);
       expectSuccess(jbResult);
-      expect(
-          jbResult.stdout,
-          contains(matches(RegExp(r'^copyFile:stdout \[jvm \d+]: '
-              r'Copying 2 file\(s\) to output-resources directory$'))));
+      expect(jbResult.stdout, isA<List<String>>());
+      var lines = jbResult.stdout as List<String>;
+      final loadingLineIndex = lines.indexed
+              .where((e) => e.$2.endsWith(
+                  '========= Loading jb extension project: ../example-extension ========='))
+              .map((e) => e.$1)
+              .firstOrNull ??
+          fail('Could not find line for Loading extension');
+      lines = lines.sublist(loadingLineIndex + 1);
+
+      expect(lines.length, greaterThan(2));
+      expect(lines[0], contains('Executing 1 task'));
+      expect(lines[1], endsWith(" Running task 'compile'"));
 
       // change the inputs and make sure the task runs incrementally
       await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
