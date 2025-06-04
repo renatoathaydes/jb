@@ -152,10 +152,11 @@ Future<(JbExtensionModel, List<(ExtensionTask, List<Object?>)>)>
   // need to instantiate the Java extension to get its full model.
   if (isUpToDate) {
     final maybeTasks =
-        await _loadExtensionTasksFromCache(config, taskConfigs, cache, dir);
-    if (maybeTasks != null) {
+        await _loadExtensionTasksFromCache(config, taskConfigs, cache, dir)
+            .toList();
+    if (maybeTasks.isNotEmpty) {
       fromCache = true;
-      tasks = maybeTasks.toList();
+      tasks = maybeTasks;
       logger.log(
           profile,
           () =>
@@ -243,32 +244,32 @@ Stream<(ExtensionTask, List<Object?>)> _loadExtensionTasks(
   }
 }
 
-Future<Iterable<(ExtensionTask, List<Object?>)>?> _loadExtensionTasksFromCache(
+Stream<(ExtensionTask, List<Object?>)> _loadExtensionTasksFromCache(
     JbConfiguration config,
     Iterable<(BasicExtensionTask, List<Object?>)> taskConfigs,
     DartleCache cache,
-    String dir) async {
+    String dir) async* {
   logger.finer(() => 'Trying to load extension tasks data from cache');
   final cacheDir = Directory(_hashLocation(cache.rootDir, dir));
   final file = File(p.join(cacheDir.path, 'model.json'));
   if (!await file.exists()) {
-    return null;
+    return;
   }
   logger.fine(() => 'Loading extension tasks data from cache');
   final extras = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-  return taskConfigs.map((entry) {
+  for (final entry in taskConfigs) {
     final (taskConfig, constructorData) = entry;
     final extra = extras[taskConfig.name];
     if (extra == null) {
-      failBuild(
-          reason:
-              'Task with name "${taskConfig.name}" was not found in serialized extension task cache: $extras');
+      logger.fine(() =>
+          'Task with name "${taskConfig.name}" was not found in serialized extension task cache: $extras');
+      continue;
     }
     final task = ExtensionTask(
         basicConfig: taskConfig,
         extraConfig: ExtensionTaskExtra.fromJson(extra));
-    return (task, constructorData);
-  });
+    yield (task, constructorData);
+  }
 }
 
 Future<void> _cacheExtensionTasks(
