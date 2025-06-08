@@ -37,7 +37,17 @@ const _expectedWithSubProjectPom = '''\
 </project>''';
 
 const _fooJavaFileContents = '''\
-class Foo {}
+package foo;
+
+import jbuild.api.*;
+
+@JbTaskInfo( name = "bar", description = "Bars everything!" )
+public final class Bar implements JbTask {
+    @Override
+    public void run( String... args ) {
+        System.out.println( "Hello from Bar!" );
+    }
+}
 ''';
 
 void main() {
@@ -215,10 +225,10 @@ void main() {
           p.join(exampleExtensionDir, 'build'),
           p.join(exampleExtensionDir, '.jb-cache'),
           p.join(usesExtensionDir, 'output-resources'),
+          p.join(exampleExtensionDir, 'src', 'foo'),
         ], includeHidden: true),
         // these files are created by the test
         file(p.join(usesExtensionDir, 'input-resources', 'new.txt')),
-        file(p.join(exampleExtensionDir, 'src', 'Foo.java')),
       ]));
     });
 
@@ -268,13 +278,14 @@ void main() {
         startsWith('Build succeeded in '),
       ]);
 
-      // modify a file in the extension project
-      await File(p.join(exampleExtensionDir, 'src', 'Foo.java'))
+      // modify a file in the extension project (adds task "bar")
+      await Directory(p.join(exampleExtensionDir, 'src', 'foo')).create();
+      await File(p.join(exampleExtensionDir, 'src', 'foo', 'Bar.java'))
           .writeAsString(_fooJavaFileContents);
 
-      // running the task again causes the extension to re-compile
+      // run the task "bar" newly defined by the extension project
       jbResult = await runJb(Directory(projectsDir),
-          ['copyFile', '--no-color', '-p', p.basename(usesExtensionDir)]);
+          ['bar', '--no-color', '-p', p.basename(usesExtensionDir)]);
       expectSuccess(jbResult);
       expect(jbResult.stdout, isA<List<String>>());
       var lines = jbResult.stdout as List<String>;
@@ -284,13 +295,19 @@ void main() {
               .map((e) => e.$1)
               .firstOrNull ??
           fail('Could not find line for Loading extension');
-      lines = lines.sublist(loadingLineIndex + 1);
 
-      expect(lines.length, greaterThan(2));
-      expect(lines[0], contains('Executing 1 task'));
-      expect(lines[1], endsWith(" Running task 'compile'"));
+      // the extension project is re-compiled
+      expect(lines.length, greaterThan(loadingLineIndex + 4));
+      expect(lines[loadingLineIndex + 1], contains('Executing 1 task'));
+      expect(lines[loadingLineIndex + 2], endsWith(" Running task 'compile'"));
 
-      // change the inputs and make sure the task runs incrementally
+      // the new custom task is run
+      expect(
+          lines,
+          contains(
+              matches(RegExp(r'^\?:stdout \[jvm \d+]: Hello from Bar!$'))));
+
+      // change the inputs and make sure the previous task runs incrementally
       await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
           .writeAsString('hello there');
 
@@ -308,6 +325,17 @@ void main() {
         'bye.txt',
         'new.txt',
       ]);
+
+      // remove the new task
+      await deleteAll(dir(p.join(exampleExtensionDir, 'src', 'foo')));
+
+      // ensure that the task no longer exists
+      jbResult = await runJb(Directory(projectsDir),
+          ['bar', '--no-color', '-p', p.basename(usesExtensionDir)]);
+
+      expect(jbResult.exitCode, isNot(0));
+      expect(jbResult.stdout,
+          contains(matches(RegExp(r" Task 'bar' does not exist$"))));
     }, timeout: const Timeout(Duration(seconds: 10)));
 
     test('can run custom task with config defined by extension project',

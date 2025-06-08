@@ -20,7 +20,7 @@ class FileDeps {
   const FileDeps(this.path, this.deps);
 
   @override
-  String toString() => 'File $path depends on ${deps.join(', ')}';
+  String toString() => 'File $path depends on [${deps.join(', ')}]';
 }
 
 class TransitiveChanges {
@@ -45,7 +45,7 @@ class TransitiveChanges {
   }
 }
 
-/// A tree of files describing files' dependencies.
+/// A tree of files describing source files' dependencies.
 class FileTree {
   late final Map<String, FileDeps> depsByFile;
   final Map<String, List<String>> _typeDeps;

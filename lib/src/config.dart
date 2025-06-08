@@ -204,9 +204,13 @@ class ExtensionTask {
   final BasicExtensionTask basicConfig;
   final ExtensionTaskExtra extraConfig;
 
+  /// configuration data given to the task via its constructor.
+  final List<Object?> constructorData;
+
   const ExtensionTask({
     required this.basicConfig,
     required this.extraConfig,
+    required this.constructorData,
   });
 
   String get name => basicConfig.name;
@@ -703,7 +707,10 @@ Use the following syntax to declare 'developers':
 List<BasicExtensionTask> _extensionTasks(Map<String, Object?> map) {
   final tasks = map['tasks'];
   if (tasks is Map<String, Object?>) {
-    return tasks.entries.map(_extensionTask).toList(growable: false);
+    final result = tasks.entries.map(_extensionTask).toList(growable: false);
+    logger.fine(() => 'Found the following extension tasks: '
+        '${result.map((t) => t.name).join(', ')}');
+    return result;
   } else {
     throw DartleException(
         message: "expecting a List of tasks for value 'tasks', "

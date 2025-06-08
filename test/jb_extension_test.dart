@@ -1,7 +1,7 @@
 import 'package:dartle/dartle.dart' show DartleException;
 import 'package:jb/src/config.dart'
     show ConfigType, JbConfiguration, loadConfigString, JavaConstructor;
-import 'package:jb/src/jb_extension.dart' show resolveConstructorData;
+import 'package:jb/src/extension/constructors.dart' show resolveConstructorData;
 import 'package:test/expect.dart';
 import 'package:test/scaffolding.dart';
 

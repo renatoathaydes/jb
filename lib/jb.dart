@@ -15,4 +15,5 @@ export 'src/paths.dart';
 export 'src/pom.dart';
 export 'src/resolved_dependency.dart';
 export 'src/tasks.dart';
+export 'src/extension/jb_extension.dart';
 export 'src/utils.dart' show createIfNeededAndGetJBuildJarFile;

@@ -7,7 +7,7 @@ import 'package:dartle/dartle_cache.dart';
 import 'config.dart';
 import 'config_source.dart';
 import 'java_tests.dart';
-import 'jb_extension.dart';
+import 'extension/jb_extension.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart' show JavaCommand;
 import 'path_dependency.dart';
