@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dartle/dartle.dart';
 import 'package:io/ansi.dart';
 import 'package:jb/jb.dart';
@@ -264,7 +266,7 @@ properties:
 
 String _configImportingVersionsConfig(String importPath) => '''
 imports:
-    - "$importPath"
+    - ${jsonEncode(importPath)}
 
 module: importing-versions-config
 dependencies:

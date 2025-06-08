@@ -333,6 +333,7 @@ void main() {
       jbResult = await runJb(Directory(projectsDir),
           ['bar', '--no-color', '-p', p.basename(usesExtensionDir)]);
 
+      print(jbResult.stdout.join('\n'));
       expect(jbResult.exitCode, isNot(0));
       expect(jbResult.stdout,
           contains(matches(RegExp(r" Task 'bar' does not exist$"))));

@@ -20,7 +20,7 @@ class FileDeps {
   const FileDeps(this.path, this.deps);
 
   @override
-  String toString() => 'File $path depends on [${deps.join(', ')}]';
+  String toString() => '$path: [${deps.join(', ')}]';
 }
 
 class TransitiveChanges {
@@ -144,7 +144,10 @@ class FileTree {
   }
 
   @override
-  String toString() => depsByFile.values.map((fd) => '$fd').join(', ');
+  String toString() => 'FileTree{depsByFile: ('
+      '${depsByFile.values.map((fd) => '$fd').join('\n')}), '
+      'classFilesByPath: ${_typesByPath.entries.map((e) => '${e.key}: '
+          '${e.value.map(_toClassFile).toList()}').join('\n')}}';
 }
 
 class _TypeEntry {
@@ -159,8 +162,9 @@ class _TypeEntry {
     if (result == null) {
       if (type.contains('.')) {
         final lastDot = type.lastIndexOf('.');
-        final pkg = type.substring(0, lastDot).replaceAll('.', '/');
-        result = '$pkg/$file';
+        final pkg =
+            type.substring(0, lastDot).replaceAll('.', Platform.pathSeparator);
+        result = '$pkg${Platform.pathSeparator}$file';
       } else {
         result = file;
       }

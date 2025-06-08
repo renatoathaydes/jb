@@ -88,14 +88,25 @@ extension _JbConfig on JbConfiguration {
         if (sourceFilter(path)) {
           final srcDir =
               sourceDirs.firstWhere((d) => isWithin(d, path), orElse: () => '');
-          if (srcDir.isNotEmpty) {
-            for (final classFile in changes.fileTree
-                .classFilesOf(relative(path, from: srcDir))) {
-              args.add('--deleted');
-              args.add(classFile);
-            }
-            continue;
+          if (srcDir.isEmpty) {
+            failBuild(
+                reason:
+                    'Cannot find file in any of the source directories $sourceDirs: $path');
           }
+          final classFiles = changes.fileTree
+              .classFilesOf(relative(path, from: srcDir))
+              .toList(growable: false);
+          if (classFiles.isEmpty) {
+            failBuild(
+                reason:
+                    'Cannot find any class file for deleted source file: ${relative(path, from: srcDir)}\n'
+                    'File tree: ${changes.fileTree}');
+          }
+          for (final classFile in classFiles) {
+            args.add('--deleted');
+            args.add(classFile);
+          }
+          continue;
         }
         args.add('--deleted');
         args.add(path);
