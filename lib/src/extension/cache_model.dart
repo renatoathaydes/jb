@@ -166,7 +166,10 @@ Future<ExtensionTask> _loadExtensionTask(
         basicConfig: taskConfig,
         constructorData: constructorData,
         extraConfig: ExtensionTaskExtra(
-            inputs: _ensureStrings(inputs),
+            // TODO the config may change even if the jb file does not,
+            // so we should check the actual JbConfiguration object if possible.
+            inputs: _addJbFileIfRequiringConfig(
+                taskConfig.constructors, _ensureStrings(inputs)),
             outputs: _ensureStrings(outputs),
             dependsOn: _ensureStrings(dependsOn),
             dependents: _ensureStrings(dependents)));
@@ -175,6 +178,18 @@ Future<ExtensionTask> _loadExtensionTask(
         reason: 'getSummary should return list with 4 elements, '
             'but got: $summary');
   }
+}
+
+List<String> _addJbFileIfRequiringConfig(
+    List<Map<String, ConfigType>> constructors, List<String> inputs) {
+  // if any constructor requires jbConfig, we need to add the jb config file
+  // to the inputs if it's not already there.
+  if (constructors.any((c) => c.values.any((v) => v == ConfigType.jbConfig)) &&
+      !inputs.contains(yamlJbFile) &&
+      !inputs.contains(jsonJbFile)) {
+    return inputs.followedBy([yamlJbFile, jsonJbFile]).toList(growable: false);
+  }
+  return inputs;
 }
 
 Future<List<_CacheTask>?> _loadExtensionTasksFromCache(
