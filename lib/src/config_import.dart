@@ -5,7 +5,7 @@ import 'package:dartle/dartle.dart' show DartleException;
 import 'config.dart';
 
 extension ImportsJBuildConfigurationExtension on JbConfiguration {
-  Future<JbConfiguration> applyImports(imports) async {
+  Future<JbConfiguration> applyImports(Object? imports) async {
     if (imports == null) return this;
     var result = this;
     if (imports is String) {
@@ -23,7 +23,7 @@ extension ImportsJBuildConfigurationExtension on JbConfiguration {
     } else {
       throw DartleException(
           message: 'Value for `imports` must  be a String or List of Strings, '
-              'but it is ${imports?.runtimeType}');
+              'but it is ${imports.runtimeType}');
     }
     return result;
   }

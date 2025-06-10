@@ -15,7 +15,7 @@ dependencies:
   yaml: ^3.1.1
   file: ^7.0.0
   isolate_current_directory: ^2.1.0
-  archive: ^3.3.4
+  archive: ^4.0.7
   xml: ^6.2.2
   actors: ^0.11.0
   #    path: ../actors
@@ -25,7 +25,7 @@ dependencies:
   schemake: ^0.6.3
 dev_dependencies:
   build_runner: ^2.4.11
-  lints: ^4.0.0
+  lints: ^6.0.0
   test: ^1.25.8
 
 executables:

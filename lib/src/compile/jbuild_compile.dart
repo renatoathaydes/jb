@@ -126,7 +126,7 @@ extension _JbConfig on JbConfiguration {
   }
 }
 
-bool Function(String path) _createSourceFilter(isGroovyEnabled) {
+bool Function(String path) _createSourceFilter(bool isGroovyEnabled) {
   if (isGroovyEnabled) {
     return (path) => path.endsWith('.java');
   }

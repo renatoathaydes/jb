@@ -110,7 +110,7 @@ Future<_JbExtensionConfig> _jbExtensionFromJar(
   logger.fine(() => 'Loading jb extension from jar: $path');
   final stream = InputFileStream(path);
   try {
-    final buffer = ZipDecoder().decodeBuffer(stream);
+    final buffer = ZipDecoder().decodeStream(stream);
     final extensionEntry = 'META-INF/jb/$jbExtension.yaml';
     final archiveFile = buffer.findFile(extensionEntry).orThrow(() => failBuild(
         reason: 'jb extension jar at $jarPath '

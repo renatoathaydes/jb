@@ -50,7 +50,7 @@ Future<String> getJBuildVersion(File jbuildJar) async {
   const implVersionPrefix = 'Implementation-Version: ';
   final stream = InputFileStream(jbuildJar.path);
   try {
-    final buffer = ZipDecoder().decodeBuffer(stream);
+    final buffer = ZipDecoder().decodeStream(stream);
     final manifestEntry = 'META-INF/MANIFEST.MF';
     final archiveFile = buffer.findFile(manifestEntry).orThrow(() => failBuild(
         reason: 'JBuild jar at ${jbuildJar.path} '
