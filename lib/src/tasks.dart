@@ -530,10 +530,11 @@ Future<void> _downloadTestRunner(
     DartleCache cache) async {
   validateTestConfig(testConfig);
   final outDir = Directory(p.join(cache.rootDir, junitRunnerLibsDir));
-  await testConfig.consoleVersion.apply((version) {
+  await testConfig.consoleVersion.apply((version) async {
     if (version != null) {
+      await outDir.create(recursive: true);
       // the JUnit Console Runner is part of the runtime libs, no need to install it
-      return File(p.join(outDir.path, '.no-dependencies')).create();
+      await File(p.join(outDir.path, '.no-dependencies')).create();
     }
     logger.fine('Installing the latest version of JUnit5 Console Runner');
     return _install(
