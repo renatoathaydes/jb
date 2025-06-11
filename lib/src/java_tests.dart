@@ -42,7 +42,7 @@ TestConfig createTestConfig(
 /// Validate that the test configuration is valid for running tests.
 void validateTestConfig(TestConfig config) {
   logger.fine(() => 'Validating test configuration: $config');
-  if (config.apiVersion == null && config.spockVersion == null) {
+  if (!config.hasTestConfig()) {
     throw DartleException(
         message: 'cannot run tests as no test libraries have been detected.\n'
             'To use JUnit, add the JUnit API as a dependency:\n'
@@ -53,8 +53,15 @@ void validateTestConfig(TestConfig config) {
 }
 
 /// Dependency coordinates for the JUnit ConsoleLauncher.
-String junitConsoleLib() {
-  return '$_junitConsolePrefix:jar';
+String junitConsoleLib(TestConfig testConfig) {
+  final version = testConfig.consoleVersion ?? '';
+  return '$_junitConsolePrefix$version:jar';
+}
+
+/// Dependency coordinates for the Spock Test Runner.
+String spockRunnerLib(TestConfig testConfig) {
+  final version = testConfig.spockVersion ?? '';
+  return '$_spockPrefix$version:jar';
 }
 
 extension on Iterable<MapEntry<String, DependencySpec>> {
@@ -70,5 +77,11 @@ extension on Iterable<MapEntry<String, DependencySpec>> {
       }
     }
     return null;
+  }
+}
+
+extension TestConfigExtension on TestConfig {
+  bool hasTestConfig() {
+    return apiVersion != null || spockVersion != null;
   }
 }

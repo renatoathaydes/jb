@@ -6,6 +6,7 @@ import 'package:actors/actors.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 
 import '../config.dart';
+import '../java_tests.dart';
 import '../jvm_executor.dart';
 import '../tasks.dart' show writeDepsTaskName;
 import '../utils.dart';
@@ -24,11 +25,26 @@ Future<void> writeDependencies(
   required Iterable<MapEntry<String, DependencySpec>> procDeps,
   required File depsFile,
   required File processorDepsFile,
+  required File testDepsFile,
+  required TestConfig testConfig,
 }) async {
-  final depsFuture = _write(jBuildSender, preArgs, deps, exclusions, depsFile);
-  final procDepsFuture = _write(
+  await _write(jBuildSender, preArgs, deps, exclusions, depsFile);
+  await _write(
       jBuildSender, preArgs, procDeps, procExclusions, processorDepsFile);
-  await Future.wait([depsFuture, procDepsFuture]);
+
+  final testDeps = [
+    if (testConfig.apiVersion != null) junitConsoleLib(testConfig),
+    if (testConfig.spockVersion != null) ...[
+      spockRunnerLib(testConfig),
+      if (testConfig.apiVersion == null) junitConsoleLib(testConfig),
+    ],
+  ].map(_testRunnerEntry);
+
+  await _write(jBuildSender, preArgs, testDeps, const {}, testDepsFile);
+}
+
+MapEntry<String, DependencySpec> _testRunnerEntry(String lib) {
+  return MapEntry(lib, DependencySpec(scope: DependencyScope.all));
 }
 
 Future<void> _write(
@@ -38,6 +54,11 @@ Future<void> _write(
   Set<String> exclusions,
   File depsFile,
 ) async {
+  if (deps.isEmpty) {
+    return await depsFile.withSink((sink) async {
+      sink.write('[]');
+    });
+  }
   final collector = Actor.create(_CollectorActor.new);
   await jBuildSender.send(RunJBuild(
       writeDepsTaskName,
@@ -46,7 +67,7 @@ Future<void> _write(
         'deps',
         '-t',
         '-s',
-        'compile',
+        'runtime',
         ...exclusions.expand(_exclusionOption),
         ...deps.expand(
             (d) => [d.key, ...d.value.exclusions.expand(_exclusionOption)])

@@ -135,7 +135,8 @@ class JbDartle {
         jbFileInputs,
         _jvmExecutor,
         unresolvedLocalDeps,
-        unresolvedLocalProcessorDeps);
+        unresolvedLocalProcessorDeps,
+        testConfig);
     installCompile = createInstallCompileDepsTask(
         _files, _config, _jvmExecutor, _cache, localDependencies);
     installRuntime = createInstallRuntimeDepsTask(
@@ -144,7 +145,7 @@ class JbDartle {
         _files, _config, _jvmExecutor, _cache, localProcessorDependencies);
     run = createRunTask(_files, configContainer, _cache);
     downloadTestRunner = createDownloadTestRunnerTask(
-        _config, testConfig, _jvmExecutor, _cache, jbFileInputs);
+        _files, _config, testConfig, _jvmExecutor, _cache, jbFileInputs);
     test = createTestTask(_files.jbuildJar, configContainer, testConfig, _cache,
         !_options.colorfulLog);
     deps = createDepsTask(_files.jbuildJar, _config, _cache,

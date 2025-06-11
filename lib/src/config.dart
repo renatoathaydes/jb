@@ -367,45 +367,14 @@ extension JbConfigExtension on JbConfiguration {
 
   /// Get the install arguments for the compile task from this configuration.
   List<String> installArgsForCompilation() {
-    final depsToInstall = allDependencies
-        .where((e) =>
-            e.value.scope.includedInCompilation() && e.value.path == null)
-        .toList(growable: false);
-
-    if (depsToInstall.isEmpty) return const [];
-
-    final result = ['-s', 'compile', '-m', '-d', compileLibsDir];
-    result.addDepsWithExclusions(depsToInstall, dependencyExclusionPatterns);
-    return result;
-  }
-
-  /// Get the install arguments for the installRuntime task from this configuration.
-  List<String> installArgsForRuntime() {
-    return _installRuntimeArgs(
-        allDependencies, dependencyExclusionPatterns.toSet(), runtimeLibsDir);
-  }
-
-  /// Get the install arguments for the installProcessor task from this configuration.
-  List<String> installArgsForProcessor(String destinationDir) {
-    return _installRuntimeArgs(allProcessorDependencies,
-        processorDependencyExclusionPatterns.toSet(), destinationDir);
-  }
-
-  static List<String> _installRuntimeArgs(
-      Iterable<MapEntry<String, DependencySpec>> deps,
-      Set<String> exclusions,
-      String destinationDir) {
-    if (deps.isEmpty) return const [];
-
-    final depsToInstall = deps
-        .where((e) => e.value.scope.includedAtRuntime() && e.value.path == null)
-        .toList(growable: false);
-
-    if (depsToInstall.isEmpty) return const [];
-
-    final result = ['-s', 'runtime', '-m', '-d', destinationDir];
-    result.addDepsWithExclusions(depsToInstall, exclusions);
-    return result;
+    return [
+      '--scope',
+      'compile',
+      '--non-transitive',
+      '--maven-local',
+      '-d',
+      compileLibsDir,
+    ];
   }
 
   String toYaml(bool noColor) {
@@ -840,26 +809,5 @@ extension on List<String> {
     //   - otherwise, use src
     final useSrcMainJava = Directory('src/main/java').existsSync();
     return useSrcMainJava ? ['src/main/java'] : ['src'];
-  }
-
-  void addDepsWithExclusions(
-      List<MapEntry<String, DependencySpec>> depsToInstall,
-      Iterable<String> exclusions) {
-    for (final exclude in exclusions.toSet()) {
-      add('--exclusion');
-      add(exclude);
-    }
-    for (final dep in depsToInstall) {
-      add(dep.key);
-      if (dep.value.transitive) {
-        for (final String exclusion in dep.value.exclusions) {
-          add('-x');
-          add(exclusion);
-        }
-      } else {
-        add('-x');
-        add('.*');
-      }
-    }
   }
 }
