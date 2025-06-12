@@ -12,8 +12,12 @@ import 'helpers.dart';
 
 const _testArtifactId = 'tests';
 
-String _jbuildYaml(String groupId, String artifactId, String? mainClass,
-        String dependencies) =>
+String _jbuildYaml(
+  String groupId,
+  String artifactId,
+  String? mainClass,
+  String dependencies,
+) =>
     '''
 group: $groupId
 module: $artifactId
@@ -26,8 +30,8 @@ source-dirs: [ src ]
 resource-dirs: [ resources ]
 
 ${artifactId == _testArtifactId ? ''
-            '# do not create a redundant jar for tests\n'
-            'output-dir: build/classes\n' : '''
+              '# do not create a redundant jar for tests\n'
+              'output-dir: build/classes\n' : '''
 # The following options use the default values and could be omitted
 compile-libs-dir: build/compile-libs
 runtime-libs-dir: build/runtime-libs
@@ -45,7 +49,8 @@ main-class: $mainClass'''}
 dependencies:
 $dependencies''';
 
-String _mainJava(String package) => '''
+String _mainJava(String package) =>
+    '''
 package $package;
 
 final class Main {
@@ -58,7 +63,8 @@ final class Main {
 }
 ''';
 
-String _mainTestJava(String package) => '''
+String _mainTestJava(String package) =>
+    '''
 package $package;
 
 import org.junit.jupiter.api.Test;
@@ -73,26 +79,32 @@ final class MainTest {
 }
 ''';
 
-List<FileCreator> getBasicFileCreators(File jbuildFile,
-    {required String groupId,
-    required String artifactId,
-    required String package,
-    required bool createTestModule}) {
+List<FileCreator> getBasicFileCreators(
+  File jbuildFile, {
+  required String groupId,
+  required String artifactId,
+  required String package,
+  required bool createTestModule,
+}) {
   const mainClass = 'Main';
 
   return [
     FileCreator(
-        jbuildFile,
-        () => jbuildFile.writeAsString(_jbuildYaml(
-            groupId,
-            artifactId,
-            '$package.$mainClass',
-            '    # Examples:\n'
-                '    #   org.slf4j:slf4j-api:2.0.16:\n'
-                '    #   com.google.guava:guava:33.4.0-jre:\n'
-                '    #     transitive: false\n'
-                '    #     scope: all\n'
-                '    {}\n'))),
+      jbuildFile,
+      () => jbuildFile.writeAsString(
+        _jbuildYaml(
+          groupId,
+          artifactId,
+          '$package.$mainClass',
+          '    # Examples:\n'
+              '    #   org.slf4j:slf4j-api:2.0.16:\n'
+              '    #   com.google.guava:guava:33.4.0-jre:\n'
+              '    #     transitive: false\n'
+              '    #     scope: all\n'
+              '    {}\n',
+        ),
+      ),
+    ),
     createJavaFile(package, mainClass, 'src', _mainJava(package)),
     if (createTestModule) ..._createTestModule(groupId, package),
   ];
@@ -100,12 +112,23 @@ List<FileCreator> getBasicFileCreators(File jbuildFile,
 
 List<FileCreator> _createTestModule(String groupId, String package) {
   final javaTestCreator = createJavaFile(
-      package, 'MainTest', p.join('test', 'src'), _mainTestJava(package));
+    package,
+    'MainTest',
+    p.join('test', 'src'),
+    _mainTestJava(package),
+  );
   final buildFile = File(p.join('test', yamlJbFile));
   final buildFileCreator = FileCreator(
-      buildFile,
-      () async => buildFile.writeAsString(_jbuildYaml(
-          groupId, _testArtifactId, null, await _computeTestDependencies())));
+    buildFile,
+    () async => buildFile.writeAsString(
+      _jbuildYaml(
+        groupId,
+        _testArtifactId,
+        null,
+        await _computeTestDependencies(),
+      ),
+    ),
+  );
   return [javaTestCreator, buildFileCreator];
 }
 
@@ -117,29 +140,36 @@ Future<String> _computeTestDependencies() async {
   var junitJupiterApiVersion =
       Platform.environment['JUNIT_JUPITER_API_VERSION'];
   if (assertjVersion == null || junitJupiterApiVersion == null) {
-    logger.fine(() => 'Fetching latest version of '
-        '$junitJupiterApi${assertjVersion == null ? ' and $assertjCore' : ''}');
+    logger.fine(
+      () =>
+          'Fetching latest version of '
+          '$junitJupiterApi${assertjVersion == null ? ' and $assertjCore' : ''}',
+    );
     final versionsParser = _VersionsParser();
     final exitCode = await execJBuild(
-        'create-test-project',
-        File(jbuildJarPath()),
-        ['-q'],
-        'versions',
-        [
-          if (junitJupiterApiVersion == null) junitJupiterApi,
-          if (assertjVersion == null) assertjCore,
-        ],
-        onStdout: versionsParser);
+      'create-test-project',
+      File(jbuildJarPath()),
+      ['-q'],
+      'versions',
+      [
+        if (junitJupiterApiVersion == null) junitJupiterApi,
+        if (assertjVersion == null) assertjCore,
+      ],
+      onStdout: versionsParser,
+    );
     if (exitCode != 0) {
       failBuild(reason: 'jbuild versions command failed', exitCode: exitCode);
     }
     logger.fine(
-        () => 'Latest versions obtained: ${versionsParser.latestVersions}');
+      () => 'Latest versions obtained: ${versionsParser.latestVersions}',
+    );
     junitJupiterApiVersion ??= versionsParser.latestVersions[junitJupiterApi]
         .orThrow(
-            () => failBuild(reason: 'Cannot find JUnit API latest version'));
-    assertjVersion ??= versionsParser.latestVersions[assertjCore]
-        .orThrow(() => failBuild(reason: 'Cannot find Assertj latest version'));
+          () => failBuild(reason: 'Cannot find JUnit API latest version'),
+        );
+    assertjVersion ??= versionsParser.latestVersions[assertjCore].orThrow(
+      () => failBuild(reason: 'Cannot find Assertj latest version'),
+    );
   }
 
   return '''\

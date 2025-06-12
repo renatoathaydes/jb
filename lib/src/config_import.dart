@@ -16,23 +16,30 @@ extension ImportsJBuildConfigurationExtension on JbConfiguration {
           result = await _resolveImport(this, File(value));
         } else {
           throw DartleException(
-              message: 'Value for `imports` item must  be a String, '
-                  'but it is ${value?.runtimeType}');
+            message:
+                'Value for `imports` item must  be a String, '
+                'but it is ${value?.runtimeType}',
+          );
         }
       }
     } else {
       throw DartleException(
-          message: 'Value for `imports` must  be a String or List of Strings, '
-              'but it is ${imports.runtimeType}');
+        message:
+            'Value for `imports` must  be a String or List of Strings, '
+            'but it is ${imports.runtimeType}',
+      );
     }
     return result;
   }
 }
 
 Future<JbConfiguration> _resolveImport(
-    JbConfiguration config, File importedConfigFile) async {
+  JbConfiguration config,
+  File importedConfigFile,
+) async {
   logger.fine(() => 'Reading imported config file: ${importedConfigFile.path}');
-  final imported =
-      await loadConfigString(await importedConfigFile.readAsString());
+  final imported = await loadConfigString(
+    await importedConfigFile.readAsString(),
+  );
   return imported.merge(config);
 }

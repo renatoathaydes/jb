@@ -22,9 +22,11 @@ Object _parsePattern(String pattern) {
   if (recursionCount > 1 ||
       (recursionIndex >= 0 && recursionIndex < partsCount - 2)) {
     throw DartleException(
-        message: "invalid pattern: '$pattern'. "
-            "The '**' (recursion) pattern must be the last or second last part"
-            " of a pattern, and may only appear once.");
+      message:
+          "invalid pattern: '$pattern'. "
+          "The '**' (recursion) pattern must be the last or second last part"
+          " of a pattern, and may only appear once.",
+    );
   }
   final anyCount = parts.where((f) => f == '*').length;
   final anyIndex = anyCount > 0 ? parts.lastIndexOf('*') : -1;
@@ -32,40 +34,50 @@ Object _parsePattern(String pattern) {
       (anyIndex >= 0 && anyIndex != partsCount - 1) ||
       (anyCount != 0 && recursionCount != 0)) {
     throw DartleException(
-        message: "invalid pattern: '$pattern'. "
-            "The '*' (any) pattern must be the last part"
-            " of a pattern, may not appear together with '**',"
-            " and may only appear once.");
+      message:
+          "invalid pattern: '$pattern'. "
+          "The '*' (any) pattern must be the last part"
+          " of a pattern, may not appear together with '**',"
+          " and may only appear once.",
+    );
   }
   final extCount = parts.where((f) => f.isExtensionPattern).length;
-  final extIndex =
-      extCount > 0 ? parts.indexWhere((f) => f.isExtensionPattern) : -1;
+  final extIndex = extCount > 0
+      ? parts.indexWhere((f) => f.isExtensionPattern)
+      : -1;
   if (extCount > 1 ||
       (extIndex >= 0 && extIndex != partsCount - 1) ||
       (extCount > 0 && anyCount > 0)) {
     throw DartleException(
-        message: "invalid pattern: '$pattern'. "
-            "The '*.<ext>' pattern must be the last part"
-            " of a pattern, may not appear together with '*',"
-            " and may only appear once.");
+      message:
+          "invalid pattern: '$pattern'. "
+          "The '*.<ext>' pattern must be the last part"
+          " of a pattern, may not appear together with '*',"
+          " and may only appear once.",
+    );
   }
   final endsWithSlash = pattern.endsWith('/');
   if (extCount > 0 && endsWithSlash) {
     throw DartleException(
-        message: "invalid pattern: '$pattern'. "
-            "The '*.<ext>' pattern cannot be used to match a directory.");
+      message:
+          "invalid pattern: '$pattern'. "
+          "The '*.<ext>' pattern cannot be used to match a directory.",
+    );
   }
   if (recursionCount > 0 && recursionIndex == partsCount - 2) {
     if (extCount == 0) {
       throw DartleException(
-          message: "invalid pattern: '$pattern'. "
-              "The '**' (recursion) pattern must be the last part or be followed"
-              " by an extension pattern '*.<ext>'.");
+        message:
+            "invalid pattern: '$pattern'. "
+            "The '**' (recursion) pattern must be the last part or be followed"
+            " by an extension pattern '*.<ext>'.",
+      );
     }
     return DirectoryEntry(
-        path: parts.pathTo(recursionIndex),
-        recurse: true,
-        fileExtensions: {parts.last.substring(1)});
+      path: parts.pathTo(recursionIndex),
+      recurse: true,
+      fileExtensions: {parts.last.substring(1)},
+    );
   }
   if (recursionCount > 0 && recursionIndex == partsCount - 1) {
     return DirectoryEntry(path: parts.pathTo(recursionIndex), recurse: true);
@@ -75,9 +87,10 @@ Object _parsePattern(String pattern) {
   }
   if (extIndex >= 0) {
     return DirectoryEntry(
-        path: parts.pathTo(extIndex),
-        recurse: false,
-        fileExtensions: {parts.last.substring(1)});
+      path: parts.pathTo(extIndex),
+      recurse: false,
+      fileExtensions: {parts.last.substring(1)},
+    );
   }
   if (endsWithSlash) {
     return DirectoryEntry(path: parts.join('/'), recurse: false);

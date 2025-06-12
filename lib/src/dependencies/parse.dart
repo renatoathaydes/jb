@@ -7,8 +7,9 @@ import '../output_consumer.dart';
 
 final whitespace = ' '.runes.first;
 
-final _directDepPattern =
-    RegExp(r'^Dependencies of ([^\s]+)\s+\(incl. transitive\):$');
+final _directDepPattern = RegExp(
+  r'^Dependencies of ([^\s]+)\s+\(incl. transitive\):$',
+);
 
 final _depPattern = RegExp(r'^(\s+)\*\s([^\s]+)');
 
@@ -117,16 +118,22 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     }
   }
 
-  void _resolveDependency(_DepNode node, DependencyScope? scope,
-      {required bool isDirect}) {
+  void _resolveDependency(
+    _DepNode node,
+    DependencyScope? scope, {
+    required bool isDirect,
+  }) {
     if (_resultIds.add(node.id)) {
-      results.add(ResolvedDependency(
+      results.add(
+        ResolvedDependency(
           artifact: node.id,
           spec: DependencySpec(scope: isDirect ? DependencyScope.all : scope!),
           kind: DependencyKind.maven,
           isDirect: isDirect,
           sha1: '',
-          dependencies: node.deps.map((d) => d.id).toList(growable: false)));
+          dependencies: node.deps.map((d) => d.id).toList(growable: false),
+        ),
+      );
     }
     for (final dep in node.deps) {
       _resolveDependency(dep, scope, isDirect: false);

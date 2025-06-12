@@ -8,14 +8,16 @@ const generateVersionFileTaskName = 'generateVersionFile';
 
 String _versionFilePath = p.join('lib', 'src', 'version.g.dart');
 
-Task generateVersionFileTask = Task(_generateVersionFile,
-    name: generateVersionFileTaskName,
-    description: 'Generates the version file from pubspec.',
-    phase: TaskPhase.setup,
-    runCondition: RunOnChanges(
-      inputs: file('pubspec.yaml'),
-      outputs: file(_versionFilePath),
-    ));
+Task generateVersionFileTask = Task(
+  _generateVersionFile,
+  name: generateVersionFileTaskName,
+  description: 'Generates the version file from pubspec.',
+  phase: TaskPhase.setup,
+  runCondition: RunOnChanges(
+    inputs: file('pubspec.yaml'),
+    outputs: file(_versionFilePath),
+  ),
+);
 
 void setupTaskDependencies(DartleDart dartle) {
   dartle.formatCode.dependsOn(const {generateVersionFileTaskName});

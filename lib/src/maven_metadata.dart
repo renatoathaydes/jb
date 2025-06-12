@@ -11,12 +11,13 @@ final class License {
   final bool? isOsiApproved;
   final bool? isFsfLibre;
 
-  const License(
-      {required this.licenseId,
-      required this.name,
-      required this.uri,
-      required this.isOsiApproved,
-      required this.isFsfLibre});
+  const License({
+    required this.licenseId,
+    required this.name,
+    required this.uri,
+    required this.isOsiApproved,
+    required this.isFsfLibre,
+  });
 
   @override
   bool operator ==(Object other) =>

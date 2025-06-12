@@ -14,20 +14,32 @@ class JbRunner {
 
   JbRunner(this.files, this.config, this._jvmExecutor);
 
-  static Future<JbRunner> create(JbFiles files, JbConfiguration config,
-      Sendable<JavaCommand, Object?> jvmExecutor) async {
+  static Future<JbRunner> create(
+    JbFiles files,
+    JbConfiguration config,
+    Sendable<JavaCommand, Object?> jvmExecutor,
+  ) async {
     logger.fine(() => 'Parsed jb configuration: $config');
     config.validate();
     return JbRunner(files, config, jvmExecutor);
   }
 
-  Future<List<ParallelTasks>> run(Options options, Stopwatch stopWatch,
-      {bool isRoot = true}) async {
+  Future<List<ParallelTasks>> run(
+    Options options,
+    Stopwatch stopWatch, {
+    bool isRoot = true,
+  }) async {
     final cache = DartleCache(files.jbCache);
 
     final jb = JbDartle.create(
-        files, config, cache, options, _jvmExecutor, stopWatch,
-        isRoot: isRoot);
+      files,
+      config,
+      cache,
+      options,
+      _jvmExecutor,
+      stopWatch,
+      isRoot: isRoot,
+    );
 
     await jb.init;
 

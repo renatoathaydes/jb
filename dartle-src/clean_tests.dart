@@ -27,8 +27,10 @@ Stream<T> _appendStreams<T>(List<Stream<T>> streams) async* {
   }
 }
 
-Stream<Directory> _deletables(
-    {bool tests = false, bool examples = false}) async* {
+Stream<Directory> _deletables({
+  bool tests = false,
+  bool examples = false,
+}) async* {
   await for (final entity in _appendStreams([
     if (tests) Directory(testProjectsDir).list(),
     if (examples) Directory(exampleProjectsDir).list(),
@@ -47,8 +49,12 @@ Stream<Directory> _deletablesIn(Directory entity) async* {
   await for (final projectDir in entity.list()) {
     final name = p.basename(projectDir.path);
     if (projectDir is Directory &&
-        const {'build', '.jb-cache', '.dartle_tool', 'test-repo'}
-            .contains(name)) {
+        const {
+          'build',
+          '.jb-cache',
+          '.dartle_tool',
+          'test-repo',
+        }.contains(name)) {
       yield projectDir;
       if (name == 'with-sub-project') {
         yield* _deletablesIn(projectDir);
@@ -65,17 +71,21 @@ void setupTaskDependencies(DartleDart dartleDart) {
   dartleDart.clean.dependsOn(const {'cleanTests', 'cleanExamples'});
 }
 
-Future<Task> cleanTestsTask() async => Task(cleanTests,
-    description: 'Cleans the test directories from temporary files.',
-    phase: TaskPhase.setup,
-    runCondition:
-        RunToDelete(dirs((await _testDirs.dirs()).map((e) => e.path))));
+Future<Task> cleanTestsTask() async => Task(
+  cleanTests,
+  description: 'Cleans the test directories from temporary files.',
+  phase: TaskPhase.setup,
+  runCondition: RunToDelete(dirs((await _testDirs.dirs()).map((e) => e.path))),
+);
 
-Future<Task> cleanExamplesTask() async => Task(cleanExamples,
-    description: 'Cleans the example dir from generated files.',
-    phase: TaskPhase.setup,
-    runCondition:
-        RunToDelete(dirs((await _exampleDirs.dirs()).map((e) => e.path))));
+Future<Task> cleanExamplesTask() async => Task(
+  cleanExamples,
+  description: 'Cleans the example dir from generated files.',
+  phase: TaskPhase.setup,
+  runCondition: RunToDelete(
+    dirs((await _exampleDirs.dirs()).map((e) => e.path)),
+  ),
+);
 
 Future<void> cleanTests(_) async {
   for (final entity in await _testDirs.dirs()) {

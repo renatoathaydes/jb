@@ -11,12 +11,19 @@ void main(List<String> arguments) async {
   try {
     final jbOptions = JbCliOptions.parseArgs(arguments);
     dartleOptions = parseOptions(jbOptions.dartleArgs);
-    loggingEnabled = activateLogging(dartleOptions.logLevel,
-        colorfulLog: dartleOptions.colorfulLog, logName: 'jb');
+    loggingEnabled = activateLogging(
+      dartleOptions.logLevel,
+      colorfulLog: dartleOptions.colorfulLog,
+      logName: 'jb',
+    );
     final printBuildSuccess = await runJb(jbOptions, dartleOptions, stopWatch);
     if (printBuildSuccess) {
-      logger.info(ColoredLogMessage(
-          'Build succeeded in ${_elapsedTime(stopWatch)}!', LogColor.green));
+      logger.info(
+        ColoredLogMessage(
+          'Build succeeded in ${_elapsedTime(stopWatch)}!',
+          LogColor.green,
+        ),
+      );
     }
     // explicitly exit to avoid rogue futures keeping the process alive
     exit(0);
@@ -26,7 +33,11 @@ void main(List<String> arguments) async {
 }
 
 Never _logAndExit(
-    bool loggingEnabled, Level? logLevel, Object exception, StackTrace? st) {
+  bool loggingEnabled,
+  Level? logLevel,
+  Object exception,
+  StackTrace? st,
+) {
   int code;
   if (loggingEnabled) {
     if (exception is DartleException) {

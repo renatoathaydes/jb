@@ -24,13 +24,24 @@ Future<void> main(List<String> args) async {
   final jbOptions = JbCliOptions.parseArgs(args);
   final dartleOptions = parseOptions(jbOptions.dartleArgs);
 
-  activateLogging(dartleOptions.logLevel,
-      colorfulLog: dartleOptions.colorfulLog, logName: 'jbuild');
+  activateLogging(
+    dartleOptions.logLevel,
+    colorfulLog: dartleOptions.colorfulLog,
+    logName: 'jbuild',
+  );
 
   final buildRan = await runJb(
-      jbOptions, dartleOptions, stopwatch, InstanceConfigSource(config));
+    jbOptions,
+    dartleOptions,
+    stopwatch,
+    InstanceConfigSource(config),
+  );
   if (buildRan) {
-    logger.info(ColoredLogMessage(
-        'jb completed successfully in ${stopwatch.elapsed}!', LogColor.green));
+    logger.info(
+      ColoredLogMessage(
+        'jb completed successfully in ${stopwatch.elapsed}!',
+        LogColor.green,
+      ),
+    );
   }
 }

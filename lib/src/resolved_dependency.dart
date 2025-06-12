@@ -31,33 +31,41 @@ final class ResolvedProjectDependency {
   DependencyScope get scope => projectDependency.spec.scope;
 
   CompileOutput get output => _config.output.when(
-      dir: (d) => CompileOutput.dir(_relativize(d)),
-      jar: (j) => CompileOutput.jar(_relativize(j)));
+    dir: (d) => CompileOutput.dir(_relativize(d)),
+    jar: (j) => CompileOutput.jar(_relativize(j)),
+  );
 
   String get runtimeLibsDir => _relativize(_config.config.runtimeLibsDir);
 
   String get compileLibsDir => _relativize(_config.config.compileLibsDir);
 
   const ResolvedProjectDependency(
-      this.projectDependency, this.projectDir, this._config);
+    this.projectDependency,
+    this.projectDir,
+    this._config,
+  );
 
   String _relativize(String path) {
     return p.join(projectDir, path);
   }
 
   Future<void> initialize(
-      Options options, JbFiles files, JBuildSender jvmExecutor) async {
+    Options options,
+    JbFiles files,
+    JBuildSender jvmExecutor,
+  ) async {
     final runner = JbRunner(files, _config.config, jvmExecutor);
     logger.info(() => "Initializing project dependency at '$projectDir'");
     await withCurrentDirectory(
-        projectDir,
-        () async => await runner.run(
-            options.copy(tasksInvocation: const [
-              compileTaskName,
-              installRuntimeDepsTaskName
-            ]),
-            Stopwatch(),
-            isRoot: false));
+      projectDir,
+      () async => await runner.run(
+        options.copy(
+          tasksInvocation: const [compileTaskName, installRuntimeDepsTaskName],
+        ),
+        Stopwatch(),
+        isRoot: false,
+      ),
+    );
 
     logger.fine(() => "Project dependency '$projectDir' initialized");
   }
@@ -72,10 +80,9 @@ final class ResolvedLocalDependencies {
   bool get isEmpty => jars.isEmpty && projectDependencies.isEmpty;
 
   LocalDependencies get unresolved => LocalDependencies(
-      jars,
-      projectDependencies
-          .map((e) => e.projectDependency)
-          .toList(growable: false));
+    jars,
+    projectDependencies.map((e) => e.projectDependency).toList(growable: false),
+  );
 }
 
 extension Resolver on ProjectDependency {
@@ -97,10 +104,13 @@ extension Resolver on ProjectDependency {
       // the config loader defaults some stuff to the current directory,
       // so we must load it from the right dir.
       config = await withCurrentDirectory(
-          projectDir, () async => JbConfigContainer(await configSource.load()));
+        projectDir,
+        () async => JbConfigContainer(await configSource.load()),
+      );
     } catch (e) {
       throw DartleException(
-          message: 'Error loading project dependency at path: "$path": $e');
+        message: 'Error loading project dependency at path: "$path": $e',
+      );
     }
     logger.fine(() => 'Parsed jb project dependency configuration: $config');
     return ResolvedProjectDependency(this, projectDir, config);

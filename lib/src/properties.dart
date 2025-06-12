@@ -21,8 +21,10 @@ Map<String, Object?> resolveProperties(Map map, Properties properties) {
     });
   }
   return map.map((Object? key, Object? value) {
-    return MapEntry(_resolveValue('$key', properties) as String,
-        _resolveValue(value, properties));
+    return MapEntry(
+      _resolveValue('$key', properties) as String,
+      _resolveValue(value, properties),
+    );
   });
 }
 

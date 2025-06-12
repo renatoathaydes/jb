@@ -45,34 +45,39 @@ class DepsArgValidator extends ArgsCount {
   }
 
   @override
-  String helpMessage() => 'Acceptable flags:\n'
+  String helpMessage() =>
+      'Acceptable flags:\n'
       '        * $compileScopeFlag: show only compile-time dependencies.\n'
       '        * $licensesFlag: show dependencies\' licenses.';
 }
 
 Future<int> printDependencies(
-    File jbuildJar,
-    JbConfiguration config,
-    String workingDir,
-    DartleCache cache,
-    LocalDependencies localDependencies,
-    LocalDependencies localProcessorDependencies,
-    List<String> args) async {
+  File jbuildJar,
+  JbConfiguration config,
+  String workingDir,
+  DartleCache cache,
+  LocalDependencies localDependencies,
+  LocalDependencies localProcessorDependencies,
+  List<String> args,
+) async {
   final compileScope = DepsArgValidator.instance.isCompileScope(args);
   final licenseOn = DepsArgValidator.instance.isLicenseOn(args);
   final scopeString = compileScope ? 'compile-time' : 'runtime';
   final mainDeps = _computeDependencies(
-          localDependencies, config.allDependencies,
-          compileTimeScope: compileScope)
-      .toList(growable: false);
+    localDependencies,
+    config.allDependencies,
+    compileTimeScope: compileScope,
+  ).toList(growable: false);
   final processorDeps = _computeDependencies(
-          localProcessorDependencies, config.allProcessorDependencies,
-          compileTimeScope: compileScope)
-      .toList(growable: false);
+    localProcessorDependencies,
+    config.allProcessorDependencies,
+    compileTimeScope: compileScope,
+  ).toList(growable: false);
 
   if (mainDeps.isEmpty && processorDeps.isEmpty) {
-    logger.info(PlainMessage(
-        'This project does not have any $scopeString dependencies!'));
+    logger.info(
+      PlainMessage('This project does not have any $scopeString dependencies!'),
+    );
     return 0;
   }
 
@@ -80,51 +85,75 @@ Future<int> printDependencies(
 
   var result = 0;
   if (mainDeps.isNotEmpty) {
-    result = await _print(config, mainDeps, jbuildJar, preArgs,
-        config.dependencyExclusionPatterns,
-        header: 'This project has the following $scopeString dependencies:',
-        compileTimeScope: compileScope,
-        licenseOn: licenseOn);
+    result = await _print(
+      config,
+      mainDeps,
+      jbuildJar,
+      preArgs,
+      config.dependencyExclusionPatterns,
+      header: 'This project has the following $scopeString dependencies:',
+      compileTimeScope: compileScope,
+      licenseOn: licenseOn,
+    );
   }
   if (result == 0 && processorDeps.isNotEmpty) {
-    result = await _print(config, processorDeps, jbuildJar, preArgs,
-        config.processorDependencyExclusionPatterns,
-        header: 'Annotation processor $scopeString dependencies:',
-        compileTimeScope: compileScope,
-        licenseOn: licenseOn);
+    result = await _print(
+      config,
+      processorDeps,
+      jbuildJar,
+      preArgs,
+      config.processorDependencyExclusionPatterns,
+      header: 'Annotation processor $scopeString dependencies:',
+      compileTimeScope: compileScope,
+      licenseOn: licenseOn,
+    );
   }
 
   return result;
 }
 
-Iterable<_Dependency> _computeDependencies(LocalDependencies localDependencies,
-    Iterable<MapEntry<String, DependencySpec>> dependencies,
-    {required bool compileTimeScope}) {
+Iterable<_Dependency> _computeDependencies(
+  LocalDependencies localDependencies,
+  Iterable<MapEntry<String, DependencySpec>> dependencies, {
+  required bool compileTimeScope,
+}) {
   final bool Function(DependencyScope) scopeFilter = compileTimeScope
       ? (s) => s != DependencyScope.runtimeOnly
       : (s) => s != DependencyScope.compileOnly;
   return localDependencies.jars
       .where((j) => scopeFilter(j.spec.scope))
       .map((j) => _Dependency(j.path, j.spec, ' (local jar)'))
-      .followedBy(localDependencies.projectDependencies
-          .where((d) => scopeFilter(d.spec.scope))
-          .map((d) => _Dependency(d.path, d.spec, ' (local project)')))
-      .followedBy(dependencies
-          .where(
-              (dep) => dep.value.path == null && scopeFilter(dep.value.scope))
-          .map((dep) => _Dependency(dep.key, dep.value)));
+      .followedBy(
+        localDependencies.projectDependencies
+            .where((d) => scopeFilter(d.spec.scope))
+            .map((d) => _Dependency(d.path, d.spec, ' (local project)')),
+      )
+      .followedBy(
+        dependencies
+            .where(
+              (dep) => dep.value.path == null && scopeFilter(dep.value.scope),
+            )
+            .map((dep) => _Dependency(dep.key, dep.value)),
+      );
 }
 
-Future<int> _print(JbConfiguration config, Iterable<_Dependency> deps,
-    File jbuildJar, List<String> preArgs, Iterable<String> exclusionPatterns,
-    {required String header,
-    required bool compileTimeScope,
-    required bool licenseOn}) async {
-  logger.info(AnsiMessage([
-    AnsiMessagePart.code(ansi.styleItalic),
-    AnsiMessagePart.code(ansi.styleBold),
-    AnsiMessagePart.text(header)
-  ]));
+Future<int> _print(
+  JbConfiguration config,
+  Iterable<_Dependency> deps,
+  File jbuildJar,
+  List<String> preArgs,
+  Iterable<String> exclusionPatterns, {
+  required String header,
+  required bool compileTimeScope,
+  required bool licenseOn,
+}) async {
+  logger.info(
+    AnsiMessage([
+      AnsiMessagePart.code(ansi.styleItalic),
+      AnsiMessagePart.code(ansi.styleBold),
+      AnsiMessagePart.text(header),
+    ]),
+  );
 
   _printLocalDependencies(deps.where((d) => d.isLocal));
 
@@ -134,24 +163,23 @@ Future<int> _print(JbConfiguration config, Iterable<_Dependency> deps,
     final artifact = _createSimpleArtifact(config);
     final pomFile = tempFile(extension: '.pom');
     logger.fine(() => 'Writing POM to ${pomFile.path}');
-    await pomFile.writeAsString(createPom(artifact, nonLocalDeps.specEntries,
-        const ResolvedLocalDependencies([], [])));
+    await pomFile.writeAsString(
+      createPom(
+        artifact,
+        nonLocalDeps.specEntries,
+        const ResolvedLocalDependencies([], []),
+      ),
+    );
 
-    return await execJBuild(
-        depsTaskName,
-        jbuildJar,
-        preArgs,
-        'deps',
-        [
-          '-t',
-          '-s',
-          compileTimeScope ? 'compile' : 'runtime',
-          ...exclusionPatterns.expand((ex) => ['-x', ex]),
-          '-p',
-          pomFile.path,
-          if (licenseOn) '-l',
-        ],
-        onStdout: _JBuildDepsPrinter());
+    return await execJBuild(depsTaskName, jbuildJar, preArgs, 'deps', [
+      '-t',
+      '-s',
+      compileTimeScope ? 'compile' : 'runtime',
+      ...exclusionPatterns.expand((ex) => ['-x', ex]),
+      '-p',
+      pomFile.path,
+      if (licenseOn) '-l',
+    ], onStdout: _JBuildDepsPrinter());
   }
   return 0;
 }
@@ -195,8 +223,12 @@ class _JBuildDepsPrinter implements ProcessOutputConsumer {
   }
 
   void _logDirectDependency(String line) {
-    logger.info(ColoredLogMessage(
-        '* ${line.substring('Dependencies of '.length)}', LogColor.magenta));
+    logger.info(
+      ColoredLogMessage(
+        '* ${line.substring('Dependencies of '.length)}',
+        LogColor.magenta,
+      ),
+    );
   }
 
   void _logScopeLine(String line) {

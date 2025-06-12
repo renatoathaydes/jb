@@ -2,11 +2,9 @@ import 'package:schemake/schemake.dart';
 
 import 'jb_config_schema.dart';
 
-const dependencyKind = Enums(EnumValidator('DependencyKind', {
-  'localJar',
-  'localProject',
-  'maven',
-}));
+const dependencyKind = Enums(
+  EnumValidator('DependencyKind', {'localJar', 'localProject', 'maven'}),
+);
 
 const resolvedDependency = Objects('ResolvedDependency', {
   'artifact': Property(Strings()),

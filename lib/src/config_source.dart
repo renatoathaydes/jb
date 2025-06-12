@@ -24,9 +24,11 @@ final class FileConfigSource implements ConfigSource {
       }
     }
     throw DartleException(
-        message: 'None of the expected jb config files exist.\n'
-            'Run `jb create` to create a project, '
-            'or create a config file: ${configFiles.join(' or ')}.');
+      message:
+          'None of the expected jb config files exist.\n'
+          'Run `jb create` to create a project, '
+          'or create a config file: ${configFiles.join(' or ')}.',
+    );
   }
 
   @override

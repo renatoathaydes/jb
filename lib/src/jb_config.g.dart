@@ -133,7 +133,8 @@ class JbConfiguration {
     this.extras = const {},
   });
   @override
-  String toString() => 'JbConfiguration{'
+  String toString() =>
+      'JbConfiguration{'
       'group: ${group == null ? "null" : '"$group"'}, '
       'module: ${module == null ? "null" : '"$module"'}, '
       'name: ${name == null ? "null" : '"$name"'}, '
@@ -184,38 +185,61 @@ class JbConfiguration {
           const ListEquality<String>().equals(sourceDirs, other.sourceDirs) &&
           outputDir == other.outputDir &&
           outputJar == other.outputJar &&
-          const ListEquality<String>()
-              .equals(resourceDirs, other.resourceDirs) &&
-          const ListEquality<String>()
-              .equals(repositories, other.repositories) &&
-          const MapEquality<String, DependencySpec?>()
-              .equals(dependencies, other.dependencies) &&
-          const MapEquality<String, DependencySpec?>()
-              .equals(processorDependencies, other.processorDependencies) &&
           const ListEquality<String>().equals(
-              dependencyExclusionPatterns, other.dependencyExclusionPatterns) &&
+            resourceDirs,
+            other.resourceDirs,
+          ) &&
           const ListEquality<String>().equals(
-              processorDependencyExclusionPatterns,
-              other.processorDependencyExclusionPatterns) &&
+            repositories,
+            other.repositories,
+          ) &&
+          const MapEquality<String, DependencySpec?>().equals(
+            dependencies,
+            other.dependencies,
+          ) &&
+          const MapEquality<String, DependencySpec?>().equals(
+            processorDependencies,
+            other.processorDependencies,
+          ) &&
+          const ListEquality<String>().equals(
+            dependencyExclusionPatterns,
+            other.dependencyExclusionPatterns,
+          ) &&
+          const ListEquality<String>().equals(
+            processorDependencyExclusionPatterns,
+            other.processorDependencyExclusionPatterns,
+          ) &&
           compileLibsDir == other.compileLibsDir &&
           runtimeLibsDir == other.runtimeLibsDir &&
           testReportsDir == other.testReportsDir &&
           const ListEquality<String>().equals(javacArgs, other.javacArgs) &&
           const ListEquality<String>().equals(runJavaArgs, other.runJavaArgs) &&
-          const ListEquality<String>()
-              .equals(testJavaArgs, other.testJavaArgs) &&
-          const MapEquality<String, String>()
-              .equals(javacEnv, other.javacEnv) &&
-          const MapEquality<String, String>()
-              .equals(runJavaEnv, other.runJavaEnv) &&
-          const MapEquality<String, String>()
-              .equals(testJavaEnv, other.testJavaEnv) &&
+          const ListEquality<String>().equals(
+            testJavaArgs,
+            other.testJavaArgs,
+          ) &&
+          const MapEquality<String, String>().equals(
+            javacEnv,
+            other.javacEnv,
+          ) &&
+          const MapEquality<String, String>().equals(
+            runJavaEnv,
+            other.runJavaEnv,
+          ) &&
+          const MapEquality<String, String>().equals(
+            testJavaEnv,
+            other.testJavaEnv,
+          ) &&
           scm == other.scm &&
-          const ListEquality<Developer>()
-              .equals(developers, other.developers) &&
+          const ListEquality<Developer>().equals(
+            developers,
+            other.developers,
+          ) &&
           const ListEquality<String>().equals(licenses, other.licenses) &&
-          const MapEquality<String, Object?>()
-              .equals(properties, other.properties) &&
+          const MapEquality<String, Object?>().equals(
+            properties,
+            other.properties,
+          ) &&
           const MapEquality<String, Object?>().equals(extras, other.extras);
   @override
   int get hashCode =>
@@ -321,7 +345,7 @@ class JbConfiguration {
           dependencyExclusionPatterns ?? [...this.dependencyExclusionPatterns],
       processorDependencyExclusionPatterns:
           processorDependencyExclusionPatterns ??
-              [...this.processorDependencyExclusionPatterns],
+          [...this.processorDependencyExclusionPatterns],
       compileLibsDir: compileLibsDir ?? this.compileLibsDir,
       runtimeLibsDir: runtimeLibsDir ?? this.runtimeLibsDir,
       testReportsDir: testReportsDir ?? this.testReportsDir,
@@ -340,40 +364,40 @@ class JbConfiguration {
   }
 
   Map<String, Object?> toJson() => {
-        if (group != null) 'group': group,
-        if (module != null) 'module': module,
-        if (name != null) 'name': name,
-        if (version != null) 'version': version,
-        if (description != null) 'description': description,
-        if (url != null) 'url': url,
-        if (mainClass != null) 'main-class': mainClass,
-        if (manifest != null) 'manifest': manifest,
-        if (extensionProject != null) 'extension-project': extensionProject,
-        'source-dirs': sourceDirs,
-        if (outputDir != null) 'output-dir': outputDir,
-        if (outputJar != null) 'output-jar': outputJar,
-        'resource-dirs': resourceDirs,
-        'repositories': repositories,
-        'dependencies': dependencies,
-        'processor-dependencies': processorDependencies,
-        'dependency-exclusion-patterns': dependencyExclusionPatterns,
-        'processor-dependency-exclusion-patterns':
-            processorDependencyExclusionPatterns,
-        'compile-libs-dir': compileLibsDir,
-        'runtime-libs-dir': runtimeLibsDir,
-        'test-reports-dir': testReportsDir,
-        'javac-args': javacArgs,
-        'run-java-args': runJavaArgs,
-        'test-java-args': testJavaArgs,
-        'javac-env': javacEnv,
-        'run-java-env': runJavaEnv,
-        'test-java-env': testJavaEnv,
-        if (scm != null) 'scm': scm,
-        'developers': developers,
-        'licenses': licenses,
-        'properties': properties,
-        ...extras,
-      };
+    if (group != null) 'group': group,
+    if (module != null) 'module': module,
+    if (name != null) 'name': name,
+    if (version != null) 'version': version,
+    if (description != null) 'description': description,
+    if (url != null) 'url': url,
+    if (mainClass != null) 'main-class': mainClass,
+    if (manifest != null) 'manifest': manifest,
+    if (extensionProject != null) 'extension-project': extensionProject,
+    'source-dirs': sourceDirs,
+    if (outputDir != null) 'output-dir': outputDir,
+    if (outputJar != null) 'output-jar': outputJar,
+    'resource-dirs': resourceDirs,
+    'repositories': repositories,
+    'dependencies': dependencies,
+    'processor-dependencies': processorDependencies,
+    'dependency-exclusion-patterns': dependencyExclusionPatterns,
+    'processor-dependency-exclusion-patterns':
+        processorDependencyExclusionPatterns,
+    'compile-libs-dir': compileLibsDir,
+    'runtime-libs-dir': runtimeLibsDir,
+    'test-reports-dir': testReportsDir,
+    'javac-args': javacArgs,
+    'run-java-args': runJavaArgs,
+    'test-java-args': testJavaArgs,
+    'javac-env': javacEnv,
+    'run-java-env': runJavaEnv,
+    'test-java-env': testJavaEnv,
+    if (scm != null) 'scm': scm,
+    'developers': developers,
+    'licenses': licenses,
+    'properties': properties,
+    ...extras,
+  };
   static JbConfiguration fromJson(Object? value) =>
       const _JbConfigurationJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
@@ -396,7 +420,8 @@ class ExtensionTaskExtra {
     required this.dependents,
   });
   @override
-  String toString() => 'ExtensionTaskExtra{'
+  String toString() =>
+      'ExtensionTaskExtra{'
       'inputs: $inputs, '
       'outputs: $outputs, '
       'dependsOn: $dependsOn, '
@@ -432,11 +457,11 @@ class ExtensionTaskExtra {
   }
 
   Map<String, Object?> toJson() => {
-        'inputs': inputs,
-        'outputs': outputs,
-        'dependsOn': dependsOn,
-        'dependents': dependents,
-      };
+    'inputs': inputs,
+    'outputs': outputs,
+    'dependsOn': dependsOn,
+    'dependents': dependents,
+  };
   static ExtensionTaskExtra fromJson(Object? value) =>
       const _ExtensionTaskExtraJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
@@ -453,7 +478,8 @@ class ResolvedDependencies {
     required this.instant,
   });
   @override
-  String toString() => 'ResolvedDependencies{'
+  String toString() =>
+      'ResolvedDependencies{'
       'dependencies: $dependencies, '
       'instant: "$instant"'
       '}';
@@ -462,8 +488,10 @@ class ResolvedDependencies {
       identical(this, other) ||
       other is ResolvedDependencies &&
           runtimeType == other.runtimeType &&
-          const ListEquality<ResolvedDependency>()
-              .equals(dependencies, other.dependencies) &&
+          const ListEquality<ResolvedDependency>().equals(
+            dependencies,
+            other.dependencies,
+          ) &&
           instant == other.instant;
   @override
   int get hashCode =>
@@ -480,9 +508,9 @@ class ResolvedDependencies {
   }
 
   Map<String, Object?> toJson() => {
-        'dependencies': dependencies,
-        'instant': instant,
-      };
+    'dependencies': dependencies,
+    'instant': instant,
+  };
   static ResolvedDependencies fromJson(Object? value) =>
       const _ResolvedDependenciesJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
@@ -507,7 +535,8 @@ class DependencySpec {
     this.exclusions = const [],
   });
   @override
-  String toString() => 'DependencySpec{'
+  String toString() =>
+      'DependencySpec{'
       'transitive: $transitive, '
       'scope: $scope, '
       'path: ${path == null ? "null" : '"$path"'}, '
@@ -544,11 +573,11 @@ class DependencySpec {
   }
 
   Map<String, Object?> toJson() => {
-        'transitive': transitive,
-        'scope': scope.name,
-        if (path != null) 'path': path,
-        'exclusions': exclusions,
-      };
+    'transitive': transitive,
+    'scope': scope.name,
+    if (path != null) 'path': path,
+    'exclusions': exclusions,
+  };
   static DependencySpec fromJson(Object? value) =>
       const _DependencySpecJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
@@ -569,7 +598,8 @@ class SourceControlManagement {
     required this.url,
   });
   @override
-  String toString() => 'SourceControlManagement{'
+  String toString() =>
+      'SourceControlManagement{'
       'connection: "$connection", '
       'developerConnection: "$developerConnection", '
       'url: "$url"'
@@ -598,10 +628,10 @@ class SourceControlManagement {
   }
 
   Map<String, Object?> toJson() => {
-        'connection': connection,
-        'developer-connection': developerConnection,
-        'url': url,
-      };
+    'connection': connection,
+    'developer-connection': developerConnection,
+    'url': url,
+  };
   static SourceControlManagement fromJson(Object? value) =>
       const _SourceControlManagementJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
@@ -624,7 +654,8 @@ class Developer {
     required this.organizationUrl,
   });
   @override
-  String toString() => 'Developer{'
+  String toString() =>
+      'Developer{'
       'name: "$name", '
       'email: "$email", '
       'organization: "$organization", '
@@ -660,11 +691,11 @@ class Developer {
   }
 
   Map<String, Object?> toJson() => {
-        'name': name,
-        'email': email,
-        'organization': organization,
-        'organization-url': organizationUrl,
-      };
+    'name': name,
+    'email': email,
+    'organization': organization,
+    'organization-url': organizationUrl,
+  };
   static Developer fromJson(Object? value) =>
       const _DeveloperJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
@@ -675,8 +706,10 @@ class Developer {
 
 class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
   const _JbConfigurationJsonReviver()
-      : super("JbConfiguration",
-            unknownPropertiesStrategy: UnknownPropertiesStrategy.keep);
+    : super(
+        "JbConfiguration",
+        unknownPropertiesStrategy: UnknownPropertiesStrategy.keep,
+      );
 
   @override
   JbConfiguration convert(Object? value) {
@@ -690,115 +723,196 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
     checkRequiredProperties(keys);
     return JbConfiguration(
       group: convertProperty(
-          const Nullable<String, Strings>(Strings()), 'group', value),
+        const Nullable<String, Strings>(Strings()),
+        'group',
+        value,
+      ),
       module: convertProperty(
-          const Nullable<String, Strings>(Strings()), 'module', value),
+        const Nullable<String, Strings>(Strings()),
+        'module',
+        value,
+      ),
       name: convertProperty(
-          const Nullable<String, Strings>(Strings()), 'name', value),
+        const Nullable<String, Strings>(Strings()),
+        'name',
+        value,
+      ),
       version: convertProperty(
-          const Nullable<String, Strings>(Strings()), 'version', value),
+        const Nullable<String, Strings>(Strings()),
+        'version',
+        value,
+      ),
       description: convertProperty(
-          const Nullable<String, Strings>(Strings()), 'description', value),
+        const Nullable<String, Strings>(Strings()),
+        'description',
+        value,
+      ),
       url: convertProperty(
-          const Nullable<String, Strings>(Strings()), 'url', value),
+        const Nullable<String, Strings>(Strings()),
+        'url',
+        value,
+      ),
       mainClass: convertProperty(
-          const Nullable<String, Strings>(Strings()), 'main-class', value),
+        const Nullable<String, Strings>(Strings()),
+        'main-class',
+        value,
+      ),
       manifest: convertProperty(
-          const Nullable<String, Strings>(Strings()), 'manifest', value),
+        const Nullable<String, Strings>(Strings()),
+        'manifest',
+        value,
+      ),
       extensionProject: convertProperty(
-          const Nullable<String, Strings>(Strings()),
-          'extension-project',
-          value),
+        const Nullable<String, Strings>(Strings()),
+        'extension-project',
+        value,
+      ),
       sourceDirs: convertPropertyOrDefault(
-          const Arrays<String, Strings>(Strings()),
-          'source-dirs',
-          value, const []),
+        const Arrays<String, Strings>(Strings()),
+        'source-dirs',
+        value,
+        const [],
+      ),
       outputDir: convertProperty(
-          const Nullable<String, Strings>(Strings()), 'output-dir', value),
+        const Nullable<String, Strings>(Strings()),
+        'output-dir',
+        value,
+      ),
       outputJar: convertProperty(
-          const Nullable<String, Strings>(Strings()), 'output-jar', value),
+        const Nullable<String, Strings>(Strings()),
+        'output-jar',
+        value,
+      ),
       resourceDirs: convertPropertyOrDefault(
-          const Arrays<String, Strings>(Strings()),
-          'resource-dirs',
-          value, const []),
+        const Arrays<String, Strings>(Strings()),
+        'resource-dirs',
+        value,
+        const [],
+      ),
       repositories: convertPropertyOrDefault(
-          const Arrays<String, Strings>(Strings()),
-          'repositories',
-          value, const []),
+        const Arrays<String, Strings>(Strings()),
+        'repositories',
+        value,
+        const [],
+      ),
       dependencies: convertPropertyOrDefault(
-          const Maps('Map',
-              valueType: Nullable<DependencySpec, _DependencySpecJsonReviver>(
-                  _DependencySpecJsonReviver())),
-          'dependencies',
-          value,
-          const {}),
+        const Maps(
+          'Map',
+          valueType: Nullable<DependencySpec, _DependencySpecJsonReviver>(
+            _DependencySpecJsonReviver(),
+          ),
+        ),
+        'dependencies',
+        value,
+        const {},
+      ),
       processorDependencies: convertPropertyOrDefault(
-          const Maps('Map',
-              valueType: Nullable<DependencySpec, _DependencySpecJsonReviver>(
-                  _DependencySpecJsonReviver())),
-          'processor-dependencies',
-          value,
-          const {}),
+        const Maps(
+          'Map',
+          valueType: Nullable<DependencySpec, _DependencySpecJsonReviver>(
+            _DependencySpecJsonReviver(),
+          ),
+        ),
+        'processor-dependencies',
+        value,
+        const {},
+      ),
       dependencyExclusionPatterns: convertPropertyOrDefault(
-          const Arrays<String, Strings>(Strings()),
-          'dependency-exclusion-patterns',
-          value, const []),
+        const Arrays<String, Strings>(Strings()),
+        'dependency-exclusion-patterns',
+        value,
+        const [],
+      ),
       processorDependencyExclusionPatterns: convertPropertyOrDefault(
-          const Arrays<String, Strings>(Strings()),
-          'processor-dependency-exclusion-patterns',
-          value, const []),
+        const Arrays<String, Strings>(Strings()),
+        'processor-dependency-exclusion-patterns',
+        value,
+        const [],
+      ),
       compileLibsDir: convertPropertyOrDefault(
-          const Strings(), 'compile-libs-dir', value, 'build/compile-libs'),
+        const Strings(),
+        'compile-libs-dir',
+        value,
+        'build/compile-libs',
+      ),
       runtimeLibsDir: convertPropertyOrDefault(
-          const Strings(), 'runtime-libs-dir', value, 'build/runtime-libs'),
+        const Strings(),
+        'runtime-libs-dir',
+        value,
+        'build/runtime-libs',
+      ),
       testReportsDir: convertPropertyOrDefault(
-          const Strings(), 'test-reports-dir', value, 'build/test-reports'),
+        const Strings(),
+        'test-reports-dir',
+        value,
+        'build/test-reports',
+      ),
       javacArgs: convertPropertyOrDefault(
-          const Arrays<String, Strings>(Strings()),
-          'javac-args',
-          value, const []),
+        const Arrays<String, Strings>(Strings()),
+        'javac-args',
+        value,
+        const [],
+      ),
       runJavaArgs: convertPropertyOrDefault(
-          const Arrays<String, Strings>(Strings()),
-          'run-java-args',
-          value, const []),
+        const Arrays<String, Strings>(Strings()),
+        'run-java-args',
+        value,
+        const [],
+      ),
       testJavaArgs: convertPropertyOrDefault(
-          const Arrays<String, Strings>(Strings()),
-          'test-java-args',
-          value, const []),
+        const Arrays<String, Strings>(Strings()),
+        'test-java-args',
+        value,
+        const [],
+      ),
       javacEnv: convertPropertyOrDefault(
-          const Maps('Map', valueType: Strings()),
-          'javac-env',
-          value, const {}),
+        const Maps('Map', valueType: Strings()),
+        'javac-env',
+        value,
+        const {},
+      ),
       runJavaEnv: convertPropertyOrDefault(
-          const Maps('Map', valueType: Strings()),
-          'run-java-env',
-          value, const {}),
+        const Maps('Map', valueType: Strings()),
+        'run-java-env',
+        value,
+        const {},
+      ),
       testJavaEnv: convertPropertyOrDefault(
-          const Maps('Map', valueType: Strings()),
-          'test-java-env',
-          value, const {}),
+        const Maps('Map', valueType: Strings()),
+        'test-java-env',
+        value,
+        const {},
+      ),
       scm: convertProperty(
-          const Nullable<SourceControlManagement,
-                  _SourceControlManagementJsonReviver>(
-              _SourceControlManagementJsonReviver()),
-          'scm',
-          value),
+        const Nullable<
+          SourceControlManagement,
+          _SourceControlManagementJsonReviver
+        >(_SourceControlManagementJsonReviver()),
+        'scm',
+        value,
+      ),
       developers: convertPropertyOrDefault(
-          const Arrays<Developer, _DeveloperJsonReviver>(
-              _DeveloperJsonReviver()),
-          'developers',
-          value,
-          const []),
+        const Arrays<Developer, _DeveloperJsonReviver>(_DeveloperJsonReviver()),
+        'developers',
+        value,
+        const [],
+      ),
       licenses: convertPropertyOrDefault(
-          const Arrays<String, Strings>(Strings()),
-          'licenses',
-          value, const []),
+        const Arrays<String, Strings>(Strings()),
+        'licenses',
+        value,
+        const [],
+      ),
       properties: convertPropertyOrDefault(
-          const Objects('Map', {},
-              unknownPropertiesStrategy: UnknownPropertiesStrategy.keep),
-          'properties',
-          value,
-          const {}),
+        const Objects(
+          'Map',
+          {},
+          unknownPropertiesStrategy: UnknownPropertiesStrategy.keep,
+        ),
+        'properties',
+        value,
+        const {},
+      ),
       extras: _unknownPropertiesMap(value),
     );
   }
@@ -835,13 +949,19 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
       case 'repositories':
         return const Arrays<String, Strings>(Strings());
       case 'dependencies':
-        return const Maps('Map',
-            valueType: Nullable<DependencySpec, _DependencySpecJsonReviver>(
-                _DependencySpecJsonReviver()));
+        return const Maps(
+          'Map',
+          valueType: Nullable<DependencySpec, _DependencySpecJsonReviver>(
+            _DependencySpecJsonReviver(),
+          ),
+        );
       case 'processor-dependencies':
-        return const Maps('Map',
-            valueType: Nullable<DependencySpec, _DependencySpecJsonReviver>(
-                _DependencySpecJsonReviver()));
+        return const Maps(
+          'Map',
+          valueType: Nullable<DependencySpec, _DependencySpecJsonReviver>(
+            _DependencySpecJsonReviver(),
+          ),
+        );
       case 'dependency-exclusion-patterns':
         return const Arrays<String, Strings>(Strings());
       case 'processor-dependency-exclusion-patterns':
@@ -865,17 +985,22 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
       case 'test-java-env':
         return const Maps('Map', valueType: Strings());
       case 'scm':
-        return const Nullable<SourceControlManagement,
-                _SourceControlManagementJsonReviver>(
-            _SourceControlManagementJsonReviver());
+        return const Nullable<
+          SourceControlManagement,
+          _SourceControlManagementJsonReviver
+        >(_SourceControlManagementJsonReviver());
       case 'developers':
         return const Arrays<Developer, _DeveloperJsonReviver>(
-            _DeveloperJsonReviver());
+          _DeveloperJsonReviver(),
+        );
       case 'licenses':
         return const Arrays<String, Strings>(Strings());
       case 'properties':
-        return const Objects('Map', {},
-            unknownPropertiesStrategy: UnknownPropertiesStrategy.keep);
+        return const Objects(
+          'Map',
+          {},
+          unknownPropertiesStrategy: UnknownPropertiesStrategy.keep,
+        );
       default:
         return null;
     }
@@ -921,7 +1046,7 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
       'scm',
       'developers',
       'licenses',
-      'properties'
+      'properties',
     };
     for (final entry in value.entries) {
       final key = entry.key;
@@ -938,8 +1063,10 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
 
 class _ExtensionTaskExtraJsonReviver extends ObjectsBase<ExtensionTaskExtra> {
   const _ExtensionTaskExtraJsonReviver()
-      : super("ExtensionTaskExtra",
-            unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid);
+    : super(
+        "ExtensionTaskExtra",
+        unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid,
+      );
 
   @override
   ExtensionTaskExtra convert(Object? value) {
@@ -952,20 +1079,33 @@ class _ExtensionTaskExtraJsonReviver extends ObjectsBase<ExtensionTaskExtra> {
     }).toSet();
     checkRequiredProperties(keys);
     const knownProperties = {'inputs', 'outputs', 'dependsOn', 'dependents'};
-    final unknownKey =
-        keys.where((k) => !knownProperties.contains(k)).firstOrNull;
+    final unknownKey = keys
+        .where((k) => !knownProperties.contains(k))
+        .firstOrNull;
     if (unknownKey != null) {
       throw UnknownPropertyException([unknownKey], ExtensionTaskExtra);
     }
     return ExtensionTaskExtra(
       inputs: convertProperty(
-          const Arrays<String, Strings>(Strings()), 'inputs', value),
+        const Arrays<String, Strings>(Strings()),
+        'inputs',
+        value,
+      ),
       outputs: convertProperty(
-          const Arrays<String, Strings>(Strings()), 'outputs', value),
+        const Arrays<String, Strings>(Strings()),
+        'outputs',
+        value,
+      ),
       dependsOn: convertProperty(
-          const Arrays<String, Strings>(Strings()), 'dependsOn', value),
+        const Arrays<String, Strings>(Strings()),
+        'dependsOn',
+        value,
+      ),
       dependents: convertProperty(
-          const Arrays<String, Strings>(Strings()), 'dependents', value),
+        const Arrays<String, Strings>(Strings()),
+        'dependents',
+        value,
+      ),
     );
   }
 
@@ -1010,7 +1150,8 @@ class ResolvedDependency {
     required this.dependencies,
   });
   @override
-  String toString() => 'ResolvedDependency{'
+  String toString() =>
+      'ResolvedDependency{'
       'artifact: "$artifact", '
       'spec: $spec, '
       'sha1: "$sha1", '
@@ -1056,13 +1197,13 @@ class ResolvedDependency {
   }
 
   Map<String, Object?> toJson() => {
-        'artifact': artifact,
-        'spec': spec,
-        'sha1': sha1,
-        'kind': kind.name,
-        'isDirect': isDirect,
-        'dependencies': dependencies,
-      };
+    'artifact': artifact,
+    'spec': spec,
+    'sha1': sha1,
+    'kind': kind.name,
+    'isDirect': isDirect,
+    'dependencies': dependencies,
+  };
   static ResolvedDependency fromJson(Object? value) =>
       const _ResolvedDependencyJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
@@ -1074,8 +1215,10 @@ class ResolvedDependency {
 class _ResolvedDependenciesJsonReviver
     extends ObjectsBase<ResolvedDependencies> {
   const _ResolvedDependenciesJsonReviver()
-      : super("ResolvedDependencies",
-            unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid);
+    : super(
+        "ResolvedDependencies",
+        unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid,
+      );
 
   @override
   ResolvedDependencies convert(Object? value) {
@@ -1088,17 +1231,20 @@ class _ResolvedDependenciesJsonReviver
     }).toSet();
     checkRequiredProperties(keys);
     const knownProperties = {'dependencies', 'instant'};
-    final unknownKey =
-        keys.where((k) => !knownProperties.contains(k)).firstOrNull;
+    final unknownKey = keys
+        .where((k) => !knownProperties.contains(k))
+        .firstOrNull;
     if (unknownKey != null) {
       throw UnknownPropertyException([unknownKey], ResolvedDependencies);
     }
     return ResolvedDependencies(
       dependencies: convertProperty(
-          const Arrays<ResolvedDependency, _ResolvedDependencyJsonReviver>(
-              _ResolvedDependencyJsonReviver()),
-          'dependencies',
-          value),
+        const Arrays<ResolvedDependency, _ResolvedDependencyJsonReviver>(
+          _ResolvedDependencyJsonReviver(),
+        ),
+        'dependencies',
+        value,
+      ),
       instant: convertProperty(const Strings(), 'instant', value),
     );
   }
@@ -1108,7 +1254,8 @@ class _ResolvedDependenciesJsonReviver
     switch (property) {
       case 'dependencies':
         return const Arrays<ResolvedDependency, _ResolvedDependencyJsonReviver>(
-            _ResolvedDependencyJsonReviver());
+          _ResolvedDependencyJsonReviver(),
+        );
       case 'instant':
         return const Strings();
       default:
@@ -1133,22 +1280,21 @@ enum DependencyScope {
   compileOnly,
 
   /// dependency is required at runtime, but not compile-time.
-  runtimeOnly,
-  ;
+  runtimeOnly;
 
   String get name => switch (this) {
-        all => 'all',
-        compileOnly => 'compile-only',
-        runtimeOnly => 'runtime-only',
-      };
+    all => 'all',
+    compileOnly => 'compile-only',
+    runtimeOnly => 'runtime-only',
+  };
   static DependencyScope from(String s) => switch (s) {
-        'all' => all,
-        'compile-only' => compileOnly,
-        'runtime-only' => runtimeOnly,
-        _ => throw ValidationException([
-            'value not allowed for DependencyScope: "$s" - should be one of {all, compile-only, runtime-only}'
-          ]),
-      };
+    'all' => all,
+    'compile-only' => compileOnly,
+    'runtime-only' => runtimeOnly,
+    _ => throw ValidationException([
+      'value not allowed for DependencyScope: "$s" - should be one of {all, compile-only, runtime-only}',
+    ]),
+  };
 }
 
 class _DependencyScopeConverter extends Converter<Object?, DependencyScope> {
@@ -1161,8 +1307,10 @@ class _DependencyScopeConverter extends Converter<Object?, DependencyScope> {
 
 class _DependencySpecJsonReviver extends ObjectsBase<DependencySpec> {
   const _DependencySpecJsonReviver()
-      : super("DependencySpec",
-            unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid);
+    : super(
+        "DependencySpec",
+        unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid,
+      );
 
   @override
   DependencySpec convert(Object? value) {
@@ -1175,22 +1323,36 @@ class _DependencySpecJsonReviver extends ObjectsBase<DependencySpec> {
     }).toSet();
     checkRequiredProperties(keys);
     const knownProperties = {'transitive', 'scope', 'path', 'exclusions'};
-    final unknownKey =
-        keys.where((k) => !knownProperties.contains(k)).firstOrNull;
+    final unknownKey = keys
+        .where((k) => !knownProperties.contains(k))
+        .firstOrNull;
     if (unknownKey != null) {
       throw UnknownPropertyException([unknownKey], DependencySpec);
     }
     return DependencySpec(
-      transitive:
-          convertPropertyOrDefault(const Bools(), 'transitive', value, true),
-      scope: convertPropertyOrDefault(const _DependencyScopeConverter(),
-          'scope', value, DependencyScope.all),
+      transitive: convertPropertyOrDefault(
+        const Bools(),
+        'transitive',
+        value,
+        true,
+      ),
+      scope: convertPropertyOrDefault(
+        const _DependencyScopeConverter(),
+        'scope',
+        value,
+        DependencyScope.all,
+      ),
       path: convertProperty(
-          const Nullable<String, Strings>(Strings()), 'path', value),
+        const Nullable<String, Strings>(Strings()),
+        'path',
+        value,
+      ),
       exclusions: convertPropertyOrDefault(
-          const Arrays<String, Strings>(Strings()),
-          'exclusions',
-          value, const []),
+        const Arrays<String, Strings>(Strings()),
+        'exclusions',
+        value,
+        const [],
+      ),
     );
   }
 
@@ -1222,8 +1384,10 @@ class _DependencySpecJsonReviver extends ObjectsBase<DependencySpec> {
 class _SourceControlManagementJsonReviver
     extends ObjectsBase<SourceControlManagement> {
   const _SourceControlManagementJsonReviver()
-      : super("SourceControlManagement",
-            unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid);
+    : super(
+        "SourceControlManagement",
+        unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid,
+      );
 
   @override
   SourceControlManagement convert(Object? value) {
@@ -1236,15 +1400,19 @@ class _SourceControlManagementJsonReviver
     }).toSet();
     checkRequiredProperties(keys);
     const knownProperties = {'connection', 'developer-connection', 'url'};
-    final unknownKey =
-        keys.where((k) => !knownProperties.contains(k)).firstOrNull;
+    final unknownKey = keys
+        .where((k) => !knownProperties.contains(k))
+        .firstOrNull;
     if (unknownKey != null) {
       throw UnknownPropertyException([unknownKey], SourceControlManagement);
     }
     return SourceControlManagement(
       connection: convertProperty(const Strings(), 'connection', value),
-      developerConnection:
-          convertProperty(const Strings(), 'developer-connection', value),
+      developerConnection: convertProperty(
+        const Strings(),
+        'developer-connection',
+        value,
+      ),
       url: convertProperty(const Strings(), 'url', value),
     );
   }
@@ -1274,8 +1442,10 @@ class _SourceControlManagementJsonReviver
 
 class _DeveloperJsonReviver extends ObjectsBase<Developer> {
   const _DeveloperJsonReviver()
-      : super("Developer",
-            unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid);
+    : super(
+        "Developer",
+        unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid,
+      );
 
   @override
   Developer convert(Object? value) {
@@ -1291,10 +1461,11 @@ class _DeveloperJsonReviver extends ObjectsBase<Developer> {
       'name',
       'email',
       'organization',
-      'organization-url'
+      'organization-url',
     };
-    final unknownKey =
-        keys.where((k) => !knownProperties.contains(k)).firstOrNull;
+    final unknownKey = keys
+        .where((k) => !knownProperties.contains(k))
+        .firstOrNull;
     if (unknownKey != null) {
       throw UnknownPropertyException([unknownKey], Developer);
     }
@@ -1302,8 +1473,11 @@ class _DeveloperJsonReviver extends ObjectsBase<Developer> {
       name: convertProperty(const Strings(), 'name', value),
       email: convertProperty(const Strings(), 'email', value),
       organization: convertProperty(const Strings(), 'organization', value),
-      organizationUrl:
-          convertProperty(const Strings(), 'organization-url', value),
+      organizationUrl: convertProperty(
+        const Strings(),
+        'organization-url',
+        value,
+      ),
     );
   }
 
@@ -1335,22 +1509,21 @@ class _DeveloperJsonReviver extends ObjectsBase<Developer> {
 enum DependencyKind {
   localJar,
   localProject,
-  maven,
-  ;
+  maven;
 
   String get name => switch (this) {
-        localJar => 'localJar',
-        localProject => 'localProject',
-        maven => 'maven',
-      };
+    localJar => 'localJar',
+    localProject => 'localProject',
+    maven => 'maven',
+  };
   static DependencyKind from(String s) => switch (s) {
-        'localJar' => localJar,
-        'localProject' => localProject,
-        'maven' => maven,
-        _ => throw ValidationException([
-            'value not allowed for DependencyKind: "$s" - should be one of {localJar, localProject, maven}'
-          ]),
-      };
+    'localJar' => localJar,
+    'localProject' => localProject,
+    'maven' => maven,
+    _ => throw ValidationException([
+      'value not allowed for DependencyKind: "$s" - should be one of {localJar, localProject, maven}',
+    ]),
+  };
 }
 
 class _DependencyKindConverter extends Converter<Object?, DependencyKind> {
@@ -1363,8 +1536,10 @@ class _DependencyKindConverter extends Converter<Object?, DependencyKind> {
 
 class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
   const _ResolvedDependencyJsonReviver()
-      : super("ResolvedDependency",
-            unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid);
+    : super(
+        "ResolvedDependency",
+        unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid,
+      );
 
   @override
   ResolvedDependency convert(Object? value) {
@@ -1382,10 +1557,11 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       'sha1',
       'kind',
       'isDirect',
-      'dependencies'
+      'dependencies',
     };
-    final unknownKey =
-        keys.where((k) => !knownProperties.contains(k)).firstOrNull;
+    final unknownKey = keys
+        .where((k) => !knownProperties.contains(k))
+        .firstOrNull;
     if (unknownKey != null) {
       throw UnknownPropertyException([unknownKey], ResolvedDependency);
     }
@@ -1396,7 +1572,10 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       kind: convertProperty(const _DependencyKindConverter(), 'kind', value),
       isDirect: convertProperty(const Bools(), 'isDirect', value),
       dependencies: convertProperty(
-          const Arrays<String, Strings>(Strings()), 'dependencies', value),
+        const Arrays<String, Strings>(Strings()),
+        'dependencies',
+        value,
+      ),
     );
   }
 
@@ -1428,7 +1607,7 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       'sha1',
       'kind',
       'isDirect',
-      'dependencies'
+      'dependencies',
     };
   }
 

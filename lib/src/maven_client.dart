@@ -40,14 +40,13 @@ enum Sonatype implements MavenRepo {
   s01Oss,
 
   /// Older Sonatype Repository for Maven Central.
-  oss,
-  ;
+  oss;
 
   @override
   String get url => switch (this) {
-        Sonatype.s01Oss => 'https://s01.oss.sonatype.org/service/local/',
-        Sonatype.oss => 'https://oss.sonatype.org/service/local/',
-      };
+    Sonatype.s01Oss => 'https://s01.oss.sonatype.org/service/local/',
+    Sonatype.oss => 'https://oss.sonatype.org/service/local/',
+  };
 }
 
 /// A custom Maven repository.
@@ -87,10 +86,10 @@ class MavenClient {
     this.promotePath = 'staging/bulk/promote',
     this.checkActivityPath = _checkActivityPath,
     this.getRepositoryPath = _getRepositoryPath,
-  })  : _credentials = credentials,
-        _client = HttpClient()
-          ..userAgent = "JBuild-$jbVersion"
-          ..idleTimeout = Duration(minutes: 5);
+  }) : _credentials = credentials,
+       _client = HttpClient()
+         ..userAgent = "JBuild-$jbVersion"
+         ..idleTimeout = Duration(minutes: 5);
 
   Future<void> publish(Artifact artifact, File bundleJar) async {
     Uri uri;
@@ -100,34 +99,49 @@ class MavenClient {
       failBuild(reason: 'Repository URI is invalid: "${repo.url}"');
     }
     final cookies = await _credentials.vmapOr(
-        (c) => _login(uri, c), () async => const <Cookie>[]);
+      (c) => _login(uri, c),
+      () async => const <Cookie>[],
+    );
     final publicationId = await _upload(uri, bundleJar, cookies);
     if (publicationId == null) return;
-    logger.info(() => 'Successfully created publication "$publicationId", '
-        'waiting for repository checks (this may take minutes).');
+    logger.info(
+      () =>
+          'Successfully created publication "$publicationId", '
+          'waiting for repository checks (this may take minutes).',
+    );
 
     // inspired by https://gist.github.com/romainbsl/0d0bb2149ce7f34246ec6ab0733a07f1
     {
       final closingMonitor = _ClosingActivitiesMonitor();
-      await _tryUntil(closingMonitor.allCloseRulesPass,
-          () => _getCloseStatus(uri, publicationId, cookies),
-          error: 'Closing publication with ID "$publicationId"');
+      await _tryUntil(
+        closingMonitor.allCloseRulesPass,
+        () => _getCloseStatus(uri, publicationId, cookies),
+        error: 'Closing publication with ID "$publicationId"',
+      );
     }
 
     // the repository is "transitioning" now, wait for that to stop
-    await _tryUntil((transitioning) => transitioning == false,
-        () => _isRepositoryTransitioning(uri, publicationId, cookies),
-        error: 'Checking if repository is transitioning');
+    await _tryUntil(
+      (transitioning) => transitioning == false,
+      () => _isRepositoryTransitioning(uri, publicationId, cookies),
+      error: 'Checking if repository is transitioning',
+    );
 
-    logger.info(() => 'Repository closed successfully, requesting the '
-        'release of the published artifacts.');
+    logger.info(
+      () =>
+          'Repository closed successfully, requesting the '
+          'release of the published artifacts.',
+    );
     try {
       await _promote(uri, artifact, publicationId, cookies);
       logger.info(
-          () => 'Artifact ${artifact.coordinates()} released successfully!');
+        () => 'Artifact ${artifact.coordinates()} released successfully!',
+      );
     } catch (e) {
-      logger.warning('A problem occurred when trying to release artifact in '
-          'staging repository, the release may not have completed: $e');
+      logger.warning(
+        'A problem occurred when trying to release artifact in '
+        'staging repository, the release may not have completed: $e',
+      );
     }
   }
 
@@ -136,44 +150,60 @@ class MavenClient {
   }
 
   Future<List<Cookie>> _login(
-      Uri repoUri, HttpClientCredentials credentials) async {
+    Uri repoUri,
+    HttpClientCredentials credentials,
+  ) async {
     final loginUri = repoUri.resolve(loginPath);
     _client.addCredentials(
-        loginUri,
-        'Sonatype Nexus Repository Manager API (specialized auth)',
-        credentials);
+      loginUri,
+      'Sonatype Nexus Repository Manager API (specialized auth)',
+      credentials,
+    );
     logger.fine(() => 'Sending login request: $loginUri');
     final loginRequest = await _client.getUrl(loginUri);
     final loginResponse = await loginRequest.close();
-    await _verifySuccess(loginResponse,
-        error: 'Could not login to Maven repository');
+    await _verifySuccess(
+      loginResponse,
+      error: 'Could not login to Maven repository',
+    );
     logger.fine('Successfully logged in to Maven repository');
     return loginResponse.cookies;
   }
 
   Future<String?> _upload(
-      Uri repoUri, File bundle, List<Cookie> cookies) async {
+    Uri repoUri,
+    File bundle,
+    List<Cookie> cookies,
+  ) async {
     final uploadUri = repoUri.resolve(bundleUpload);
     logger.fine(() => 'Sending bundle upload request: $uploadUri');
     final uploadRequest = await _client.postUrl(uploadUri);
     uploadRequest.cookies.addAll(cookies);
     await uploadRequest.addStream(bundle.openRead());
     final uploadResponse = await uploadRequest.close();
-    await _verifySuccess(uploadResponse,
-        error: 'Failed to upload bundle to Maven repository',
-        consumeBody: false);
+    await _verifySuccess(
+      uploadResponse,
+      error: 'Failed to upload bundle to Maven repository',
+      consumeBody: false,
+    );
     final publicationIds = await _parseUploadResponse(uploadResponse);
     if (publicationIds.isEmpty) {
-      logger.warning(() => 'The Maven repository did not return the staging ID '
-          'so the publication could not be finalized. '
-          'You must manually release from staging!');
+      logger.warning(
+        () =>
+            'The Maven repository did not return the staging ID '
+            'so the publication could not be finalized. '
+            'You must manually release from staging!',
+      );
       return null;
     }
     return publicationIds.first;
   }
 
   Future<Map?> _getCloseStatus(
-      Uri repoUri, String publicationId, List<Cookie> cookies) async {
+    Uri repoUri,
+    String publicationId,
+    List<Cookie> cookies,
+  ) async {
     var statusUri = repoUri.resolve(checkActivityPath(publicationId));
     logger.fine(() => 'Checking publication status: $statusUri');
     final result = await _getJson(statusUri, cookies, '');
@@ -185,7 +215,10 @@ class MavenClient {
   }
 
   Future<bool> _isRepositoryTransitioning(
-      Uri repoUri, String publicationId, List<Cookie> cookies) async {
+    Uri repoUri,
+    String publicationId,
+    List<Cookie> cookies,
+  ) async {
     var statusUri = repoUri.resolve(getRepositoryPath(publicationId));
     logger.fine(() => 'Checking repository status: $statusUri');
     final result = await _getJson(statusUri, cookies, '');
@@ -196,26 +229,32 @@ class MavenClient {
     failBuild(reason: 'Expected $repoUri to return JSON object');
   }
 
-  Future<void> _promote(Uri repoUri, Artifact theArtifact, String publicationId,
-      List<Cookie> cookies) async {
+  Future<void> _promote(
+    Uri repoUri,
+    Artifact theArtifact,
+    String publicationId,
+    List<Cookie> cookies,
+  ) async {
     var promoteUri = repoUri.resolve(promotePath);
     logger.fine(() => 'Sending promote request: $promoteUri');
     final result = await _postJson(
-        promoteUri,
-        cookies,
-        {
-          'data': {
-            'autoDropAfterRelease': true,
-            'stagedRepositoryIds': [publicationId],
-            'description': 'JBuild releasing ${theArtifact.coordinates()}',
-          },
+      promoteUri,
+      cookies,
+      {
+        'data': {
+          'autoDropAfterRelease': true,
+          'stagedRepositoryIds': [publicationId],
+          'description': 'JBuild releasing ${theArtifact.coordinates()}',
         },
-        'All artifacts published, but failed to release publication!');
+      },
+      'All artifacts published, but failed to release publication!',
+    );
     logger.finer(() => 'Promote response: $result');
   }
 
   Future<Iterable<String>> _parseUploadResponse(
-      HttpClientResponse uploadResponse) async {
+    HttpClientResponse uploadResponse,
+  ) async {
     final results = await uploadResponse
         .transform(const Utf8Decoder())
         .transform(json.decoder)
@@ -225,7 +264,8 @@ class MavenClient {
     final repositoryUris = result['repositoryUris'];
     if (repositoryUris is! List) {
       failBuild(
-          reason: 'Expected upload response to contain "repositoryUris array');
+        reason: 'Expected upload response to contain "repositoryUris array',
+      );
     }
     return repositoryUris
         .map<List<String>>((uri) => Uri.parse(uri).pathSegments)
@@ -243,7 +283,11 @@ class MavenClient {
   }
 
   Future<String> _postJson(
-      Uri uri, List<Cookie> cookies, Object body, String error) async {
+    Uri uri,
+    List<Cookie> cookies,
+    Object body,
+    String error,
+  ) async {
     final request = await _client.postUrl(uri);
     request.headers.add('Content-Type', 'application/json');
     request.cookies.addAll(cookies);
@@ -253,8 +297,11 @@ class MavenClient {
     return response.transform(const Utf8Decoder()).join('');
   }
 
-  Future<void> _verifySuccess(HttpClientResponse response,
-      {required String error, bool consumeBody = true}) async {
+  Future<void> _verifySuccess(
+    HttpClientResponse response, {
+    required String error,
+    bool consumeBody = true,
+  }) async {
     final status = response.statusCode;
     if (_successCodes.contains(status)) {
       logger.finer(() => 'HTTP response status is successful: $status');
@@ -276,8 +323,11 @@ class MavenClient {
     }
   }
 
-  Future<T> _tryUntil<T>(bool Function(T) check, Future<T> Function() action,
-      {required String error}) async {
+  Future<T> _tryUntil<T>(
+    bool Function(T) check,
+    Future<T> Function() action, {
+    required String error,
+  }) async {
     final endTime = DateTime.now().add(const Duration(minutes: 5));
     do {
       final result = await action();
@@ -298,7 +348,8 @@ class _ClosingActivitiesMonitor {
     if (events == null) return false;
     if (events is! List) {
       failBuild(
-          reason: 'Expected repository close status to contain events array');
+        reason: 'Expected repository close status to contain events array',
+      );
     }
     var repositoryClosed = false;
     for (final event in events) {
@@ -372,8 +423,9 @@ extension on Artifact {
 
 extension on HttpClientResponse {
   Future<dynamic> jsonBody() async {
-    final result =
-        await transform(const Utf8Decoder()).transform(json.decoder).toList();
+    final result = await transform(
+      const Utf8Decoder(),
+    ).transform(json.decoder).toList();
     return result.first;
   }
 }

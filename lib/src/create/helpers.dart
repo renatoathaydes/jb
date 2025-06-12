@@ -8,7 +8,11 @@ final _javaIdPattern = RegExp(r'^[a-zA-Z_$][a-zA-Z_$\d]*$');
 Future<void> _noOp() async {}
 
 FileCreator createJavaFile(
-    String package, String name, String dir, String contents) {
+  String package,
+  String name,
+  String dir,
+  String contents,
+) {
   final javaDir = p.joinAll([dir] + package.split('.'));
   final javaFile = File(p.join(javaDir, '$name.java'));
   return FileCreator(javaFile, () async {
@@ -28,8 +32,10 @@ class FileCreator {
   Future<void> check() async {
     if (await file.exists()) {
       throw DartleException(
-          message: 'Cannot create jb project, at least '
-              'one existing file would be overwritten: ${file.path}');
+        message:
+            'Cannot create jb project, at least '
+            'one existing file would be overwritten: ${file.path}',
+      );
     }
   }
 }
@@ -66,8 +72,8 @@ extension JavaHelper on String {
     for (final part in split('.')) {
       if (!_javaIdPattern.hasMatch(part)) {
         throw DartleException(
-            message:
-                'Invalid Java package name: $this (invalid segment: $part)');
+          message: 'Invalid Java package name: $this (invalid segment: $part)',
+        );
       }
     }
     return this;

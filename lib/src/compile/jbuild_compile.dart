@@ -12,16 +12,20 @@ import '../tasks.dart';
 import '../utils.dart';
 
 Future<JavaCommand> jbuildCompileCommand(
-    JbFiles jbFiles,
-    JbConfiguration config,
-    String workingDir,
-    bool publication,
-    TransitiveChanges? changes,
-    List<String> args,
-    bool isGroovyEnabled) async {
+  JbFiles jbFiles,
+  JbConfiguration config,
+  String workingDir,
+  bool publication,
+  TransitiveChanges? changes,
+  List<String> args,
+  bool isGroovyEnabled,
+) async {
   final commandArgs = [
     ...await config.compileArgs(
-        jbFiles.processorLibsDir, changes, isGroovyEnabled),
+      jbFiles.processorLibsDir,
+      changes,
+      isGroovyEnabled,
+    ),
     ...args,
   ];
 
@@ -36,8 +40,11 @@ Future<JavaCommand> jbuildCompileCommand(
 
 extension _JbConfig on JbConfiguration {
   /// Get the compile task arguments from this configuration.
-  Future<List<String>> compileArgs(String processorLibsDir,
-      TransitiveChanges? changes, bool isGroovyEnabled) async {
+  Future<List<String>> compileArgs(
+    String processorLibsDir,
+    TransitiveChanges? changes,
+    bool isGroovyEnabled,
+  ) async {
     final result = <String>[];
     if (compileLibsDir.isNotEmpty) {
       result.addAll(['-cp', compileLibsDir.asDirPath()]);
@@ -77,7 +84,10 @@ extension _JbConfig on JbConfiguration {
   ///
   /// Return true if added, false otherwise.
   bool _addIncrementalCompileArgs(
-      List<String> args, TransitiveChanges changes, bool isGroovyEnabled) {
+    List<String> args,
+    TransitiveChanges changes,
+    bool isGroovyEnabled,
+  ) {
     final sourceFilter = _createSourceFilter(isGroovyEnabled);
     var incremental = false;
     for (final change in changes.fileChanges) {
@@ -86,21 +96,25 @@ extension _JbConfig on JbConfiguration {
       final path = change.entity.path;
       if (change.kind == ChangeKind.deleted) {
         if (sourceFilter(path)) {
-          final srcDir =
-              sourceDirs.firstWhere((d) => isWithin(d, path), orElse: () => '');
+          final srcDir = sourceDirs.firstWhere(
+            (d) => isWithin(d, path),
+            orElse: () => '',
+          );
           if (srcDir.isEmpty) {
             failBuild(
-                reason:
-                    'Cannot find file in any of the source directories $sourceDirs: $path');
+              reason:
+                  'Cannot find file in any of the source directories $sourceDirs: $path',
+            );
           }
           final classFiles = changes.fileTree
               .classFilesOf(relative(path, from: srcDir))
               .toList(growable: false);
           if (classFiles.isEmpty) {
             failBuild(
-                reason:
-                    'Cannot find any class file for deleted source file: ${relative(path, from: srcDir)}\n'
-                    'File tree: ${changes.fileTree}');
+              reason:
+                  'Cannot find any class file for deleted source file: ${relative(path, from: srcDir)}\n'
+                  'File tree: ${changes.fileTree}',
+            );
           }
           for (final classFile in classFiles) {
             args.add('--deleted');

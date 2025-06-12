@@ -37,105 +37,128 @@ void main() {
     });
 
     test('can compute transitive dependents of a file', () async {
-      expect(tree.dependentsOf(p.join('jbuild', 'artifact', 'Artifact.java')),
-          equals(const <String>{}));
+      expect(
+        tree.dependentsOf(p.join('jbuild', 'artifact', 'Artifact.java')),
+        equals(const <String>{}),
+      );
 
       expect(
-          tree.dependentsOf(p.join('jbuild', 'errors', 'Error.java')),
-          equals({
-            p.join('jbuild', 'errors', 'JBuildException.java'),
-            p.join('jbuild', 'artifact', 'Artifact.java'),
-          }));
+        tree.dependentsOf(p.join('jbuild', 'errors', 'Error.java')),
+        equals({
+          p.join('jbuild', 'errors', 'JBuildException.java'),
+          p.join('jbuild', 'artifact', 'Artifact.java'),
+        }),
+      );
     });
 
     test('can compute transitive changes from file changes', () async {
       var changes = tree.computeTransitiveChanges([
-        FileChange(File(p.join('jbuild', 'artifact', 'Artifact.java')),
-            ChangeKind.modified),
+        FileChange(
+          File(p.join('jbuild', 'artifact', 'Artifact.java')),
+          ChangeKind.modified,
+        ),
       ]);
 
       expect(
-          changes.modified,
-          equals({
-            p.join('jbuild', 'artifact', 'Artifact.java'),
-          }));
+        changes.modified,
+        equals({p.join('jbuild', 'artifact', 'Artifact.java')}),
+      );
       expect(changes.deletions, isEmpty);
 
       changes = tree.computeTransitiveChanges([
-        FileChange(File(p.join('jbuild', 'artifact', 'Version.java')),
-            ChangeKind.modified),
-        FileChange(File(p.join('jbuild', 'api', 'CustomTaskPhase.java')),
-            ChangeKind.modified),
+        FileChange(
+          File(p.join('jbuild', 'artifact', 'Version.java')),
+          ChangeKind.modified,
+        ),
+        FileChange(
+          File(p.join('jbuild', 'api', 'CustomTaskPhase.java')),
+          ChangeKind.modified,
+        ),
       ]);
 
       expect(
-          changes.modified,
-          equals({
-            p.join('jbuild', 'artifact', 'Version.java'),
-            p.join('jbuild', 'errors', 'Error.java'),
-            p.join('jbuild', 'errors', 'JBuildException.java'),
-            p.join('jbuild', 'artifact', 'Artifact.java'),
-            p.join('jbuild', 'api', 'CustomTaskPhase.java'),
-          }));
+        changes.modified,
+        equals({
+          p.join('jbuild', 'artifact', 'Version.java'),
+          p.join('jbuild', 'errors', 'Error.java'),
+          p.join('jbuild', 'errors', 'JBuildException.java'),
+          p.join('jbuild', 'artifact', 'Artifact.java'),
+          p.join('jbuild', 'api', 'CustomTaskPhase.java'),
+        }),
+      );
       expect(changes.deletions, isEmpty);
     });
 
-    test('can compute transitive changes from file changes and deletions',
-        () async {
-      var changes = tree.computeTransitiveChanges([
-        FileChange(File(p.join('jbuild', 'artifact', 'Artifact.java')),
-            ChangeKind.modified),
-        FileChange(File(p.join('jbuild', 'artifact', 'VersionRange.java')),
-            ChangeKind.deleted),
-      ]);
+    test(
+      'can compute transitive changes from file changes and deletions',
+      () async {
+        var changes = tree.computeTransitiveChanges([
+          FileChange(
+            File(p.join('jbuild', 'artifact', 'Artifact.java')),
+            ChangeKind.modified,
+          ),
+          FileChange(
+            File(p.join('jbuild', 'artifact', 'VersionRange.java')),
+            ChangeKind.deleted,
+          ),
+        ]);
 
-      expect(
+        expect(
           changes.modified,
           equals({
             p.join('jbuild', 'artifact', 'Artifact.java'),
             p.join('jbuild', 'artifact', 'Version.java'),
             p.join('jbuild', 'errors', 'JBuildException.java'),
             p.join('jbuild', 'errors', 'Error.java'),
-          }));
-      expect(
+          }),
+        );
+        expect(
           changes.deletions,
-          equals({
-            p.join('jbuild', 'artifact', 'VersionRange.java'),
-          }));
+          equals({p.join('jbuild', 'artifact', 'VersionRange.java')}),
+        );
 
-      changes = tree.computeTransitiveChanges([
-        FileChange(File(p.join('jbuild', 'artifact', 'Artifact.java')),
-            ChangeKind.deleted),
-      ]);
+        changes = tree.computeTransitiveChanges([
+          FileChange(
+            File(p.join('jbuild', 'artifact', 'Artifact.java')),
+            ChangeKind.deleted,
+          ),
+        ]);
 
-      expect(changes.modified, isEmpty);
-      expect(changes.deletions,
-          equals({p.join('jbuild', 'artifact', 'Artifact.java')}));
-    });
+        expect(changes.modified, isEmpty);
+        expect(
+          changes.deletions,
+          equals({p.join('jbuild', 'artifact', 'Artifact.java')}),
+        );
+      },
+    );
 
     test('can compute class files from Java files', () {
       expect(
-          tree
-              .classFilesOf(p.join('jbuild', 'errors', 'JBuildException.java'))
-              .toSet(),
-          equals({
-            r'jbuild/errors/JBuildException$ErrorCause.class',
-            r'jbuild/errors/JBuildException.class'
-          }));
+        tree
+            .classFilesOf(p.join('jbuild', 'errors', 'JBuildException.java'))
+            .toSet(),
+        equals({
+          r'jbuild/errors/JBuildException$ErrorCause.class',
+          r'jbuild/errors/JBuildException.class',
+        }),
+      );
     });
 
     test('can merge with another tree', () async {
-      final changesTree = await loadFileTree(Stream.fromIterable(const [
-        // JBuildException was changed to not depend on Error anymore
-        r'  - jbuild.errors.JBuildException (JBuildException.java):',
-        r'    * some.NewType',
-        // and a new type was added
-        r'  - some.NewType (NewType.java):',
-        r'    * jbuild.artifact.Version',
-      ]));
+      final changesTree = await loadFileTree(
+        Stream.fromIterable(const [
+          // JBuildException was changed to not depend on Error anymore
+          r'  - jbuild.errors.JBuildException (JBuildException.java):',
+          r'    * some.NewType',
+          // and a new type was added
+          r'  - some.NewType (NewType.java):',
+          r'    * jbuild.artifact.Version',
+        ]),
+      );
 
-      final mergedTree =
-          tree.merge(changesTree, {p.join('jbuild', 'errors', 'Error.java')});
+      final mergedTree = tree.merge(changesTree, {
+        p.join('jbuild', 'errors', 'Error.java'),
+      });
 
       const expectedTree = [
         r'  - jbuild.api.CustomTaskPhase (CustomTaskPhase.java):',

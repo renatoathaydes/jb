@@ -20,19 +20,21 @@ void main(List<String> args) async {
   lic.setupTaskDependencies(dartleDart);
   conf.setupTaskDependencies(dartleDart);
 
-  await run(args, tasks: {
-    comp.generateEmbeddedAssetsTask,
-    lic.generateLicensesTask,
-    tests.buildMvnRepoListsProjectTask,
-    tests.setupTestMvnRepoTask,
-    emptier.emptyGeneratedAssetsTask,
-    dist.distributionTask,
-    gen.generateVersionFileTask,
-    conf.generateJbConfigModelTask,
-    await cleaners.cleanTestsTask(),
-    await cleaners.cleanExamplesTask(),
-    ...dartleDart.tasks,
-  }, defaultTasks: {
-    dartleDart.build
-  });
+  await run(
+    args,
+    tasks: {
+      comp.generateEmbeddedAssetsTask,
+      lic.generateLicensesTask,
+      tests.buildMvnRepoListsProjectTask,
+      tests.setupTestMvnRepoTask,
+      emptier.emptyGeneratedAssetsTask,
+      dist.distributionTask,
+      gen.generateVersionFileTask,
+      conf.generateJbConfigModelTask,
+      await cleaners.cleanTestsTask(),
+      await cleaners.cleanExamplesTask(),
+      ...dartleDart.tasks,
+    },
+    defaultTasks: {dartleDart.build},
+  );
 }

@@ -15,16 +15,20 @@ void main() {
 
     expect(cp.rootElement.name.local, equals('classpath'));
     expect(
-        cp.rootElement.childElements
-            .where((c) => c.name.local == 'classpathentry')
-            .map((e) => Map.fromEntries(
-                e.attributes.map((a) => MapEntry(a.name.local, a.value)))),
-        unorderedEquals([
-          {'kind': 'con', 'path': 'org.eclipse.jdt.launching.JRE_CONTAINER'},
-          {'kind': 'src', 'path': 'src/main'},
-          {'kind': 'src', 'path': 'res'},
-          {'kind': 'lib', 'path': fooJar.path},
-          {'kind': 'lib', 'path': barJar.path},
-        ]));
+      cp.rootElement.childElements
+          .where((c) => c.name.local == 'classpathentry')
+          .map(
+            (e) => Map.fromEntries(
+              e.attributes.map((a) => MapEntry(a.name.local, a.value)),
+            ),
+          ),
+      unorderedEquals([
+        {'kind': 'con', 'path': 'org.eclipse.jdt.launching.JRE_CONTAINER'},
+        {'kind': 'src', 'path': 'src/main'},
+        {'kind': 'src', 'path': 'res'},
+        {'kind': 'lib', 'path': fooJar.path},
+        {'kind': 'lib', 'path': barJar.path},
+      ]),
+    );
   });
 }

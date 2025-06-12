@@ -12,20 +12,21 @@ import 'version.g.dart';
 
 void printHelp() {
   logger.log(
-      Level.SHOUT,
-      const AnsiMessage([
-        AnsiMessagePart.code(ansi.styleBold),
-        AnsiMessagePart.code(ansi.blue),
-        AnsiMessagePart.text(r'''
+    Level.SHOUT,
+    const AnsiMessage([
+      AnsiMessagePart.code(ansi.styleBold),
+      AnsiMessagePart.code(ansi.blue),
+      AnsiMessagePart.text(r'''
                  _ ___      _ _    _ 
               _ | | _ )_  _(_) |__| |
              | || | _ \ || | | / _` |
 '''),
-        AnsiMessagePart.code(ansi.yellow),
-        AnsiMessagePart.text(r'''
+      AnsiMessagePart.code(ansi.yellow),
+      AnsiMessagePart.text(r'''
               \__/|___/\_,_|_|_\__,_|
                 Java Build System'''),
-      ]));
+    ]),
+  );
   print('''
                   Version: $jbVersion
 
@@ -37,8 +38,10 @@ To see available tasks, run 'jb -s' (list of tasks) or 'jb -g' (task graph).
 
 Options:''');
   print(optionsDescription);
-  print('\nFor Documentation, visit '
-      'https://github.com/renatoathaydes/jb');
+  print(
+    '\nFor Documentation, visit '
+    'https://github.com/renatoathaydes/jb',
+  );
 }
 
 Future<void> printVersion(File jbuildJar) async {
@@ -52,9 +55,15 @@ Future<String> getJBuildVersion(File jbuildJar) async {
   try {
     final buffer = ZipDecoder().decodeStream(stream);
     final manifestEntry = 'META-INF/MANIFEST.MF';
-    final archiveFile = buffer.findFile(manifestEntry).orThrow(() => failBuild(
-        reason: 'JBuild jar at ${jbuildJar.path} '
-            'is missing Manifest file: $manifestEntry'));
+    final archiveFile = buffer
+        .findFile(manifestEntry)
+        .orThrow(
+          () => failBuild(
+            reason:
+                'JBuild jar at ${jbuildJar.path} '
+                'is missing Manifest file: $manifestEntry',
+          ),
+        );
 
     final versionLines = await Stream.value((archiveFile.content as List<int>))
         .transform(utf8.decoder)

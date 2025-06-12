@@ -5,9 +5,11 @@ import 'package:dartle/dartle_dart.dart';
 
 import 'paths.dart';
 
-final generateEmbeddedAssetsTask = Task(generateEmbeddedAssets,
-    description: 'Generates Dart sources containing embedded assets.',
-    runCondition: RunOnChanges(outputs: file(jbuildGeneratedDartFilePath)));
+final generateEmbeddedAssetsTask = Task(
+  generateEmbeddedAssets,
+  description: 'Generates Dart sources containing embedded assets.',
+  runCondition: RunOnChanges(outputs: file(jbuildGeneratedDartFilePath)),
+);
 
 void setupTaskDependencies(DartleDart dartleDart) {
   dartleDart.formatCode.dependsOn(const {'generateEmbeddedAssets'});
@@ -19,8 +21,10 @@ Future<void> generateEmbeddedAssets(_) async {
   final out = File(jbuildGeneratedDartFilePath);
   final outStats = await out.stat();
   if (outStats.type == FileSystemEntityType.file && outStats.size > 32) {
-    return print('Will not generate $jbuildGeneratedDartFilePath '
-        'as it already exists (size > 32)!');
+    return print(
+      'Will not generate $jbuildGeneratedDartFilePath '
+      'as it already exists (size > 32)!',
+    );
   }
   final jbuildJar = File(await jbuildJarPath(allowUsingEmbedded: false));
   if (await jbuildJar.exists()) {

@@ -13,25 +13,26 @@ void main() {
       '  1 compile dependency listed',
     ]);
     expect(
-        results,
-        equals([
-          ResolvedDependency(
-              artifact: 'org.slf4j:slf4j-api:2.0.3',
-              spec: defaultSpec,
-              kind: DependencyKind.maven,
-              sha1: '',
-              dependencies: [],
-              isDirect: true),
-          ResolvedDependency(
-              artifact: 'org.slf4j:slf4j-simple:2.0.3',
-              spec: defaultSpec,
-              kind: DependencyKind.maven,
-              sha1: '',
-              dependencies: [
-                'org.slf4j:slf4j-api:2.0.3',
-              ],
-              isDirect: true),
-        ]));
+      results,
+      equals([
+        ResolvedDependency(
+          artifact: 'org.slf4j:slf4j-api:2.0.3',
+          spec: defaultSpec,
+          kind: DependencyKind.maven,
+          sha1: '',
+          dependencies: [],
+          isDirect: true,
+        ),
+        ResolvedDependency(
+          artifact: 'org.slf4j:slf4j-simple:2.0.3',
+          spec: defaultSpec,
+          kind: DependencyKind.maven,
+          sha1: '',
+          dependencies: ['org.slf4j:slf4j-api:2.0.3'],
+          isDirect: true,
+        ),
+      ]),
+    );
   });
 
   test('can parse bigger JBuild dependency tree', () {
@@ -55,66 +56,72 @@ void main() {
       '    * 2.0.16 (org.slf4j:slf4j-api:2.0.16)',
     ]);
     expect(
-        results,
-        equals([
-          ResolvedDependency(
-              artifact: 'org.slf4j:slf4j-api:2.0.16',
-              spec: defaultSpec,
-              kind: DependencyKind.maven,
-              sha1: '',
-              dependencies: [],
-              isDirect: false),
-          ResolvedDependency(
-              artifact: 'my-group:my-app:1.0.0',
-              spec: defaultSpec,
-              kind: DependencyKind.maven,
-              sha1: '',
-              dependencies: [
-                'org.slf4j:slf4j-api:2.0.16',
-                'org.apache.logging.log4j:log4j-core:2.24.3',
-                'org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0',
-              ],
-              isDirect: true),
-          ResolvedDependency(
-              artifact: 'org.apache.logging.log4j:log4j-core:2.24.3',
-              spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
-              kind: DependencyKind.maven,
-              sha1: '',
-              dependencies: [
-                'org.apache.logging.log4j:log4j-api:2.24.3',
-              ],
-              isDirect: false),
-          ResolvedDependency(
-              artifact: 'org.apache.logging.log4j:log4j-api:2.24.3',
-              spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
-              kind: DependencyKind.maven,
-              sha1: '',
-              dependencies: [],
-              isDirect: false),
-          ResolvedDependency(
-              artifact: 'org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0',
-              spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
-              kind: DependencyKind.maven,
-              sha1: '',
-              dependencies: [
-                'org.apache.logging.log4j:log4j-api:2.19.0',
-                'org.slf4j:slf4j-api:2.0.0',
-              ],
-              isDirect: false),
-          ResolvedDependency(
-              artifact: 'org.apache.logging.log4j:log4j-api:2.19.0',
-              spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
-              kind: DependencyKind.maven,
-              sha1: '',
-              dependencies: [],
-              isDirect: false),
-          ResolvedDependency(
-              artifact: 'org.slf4j:slf4j-api:2.0.0',
-              spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
-              kind: DependencyKind.maven,
-              sha1: '',
-              dependencies: [],
-              isDirect: false),
-        ]));
+      results,
+      equals([
+        ResolvedDependency(
+          artifact: 'org.slf4j:slf4j-api:2.0.16',
+          spec: defaultSpec,
+          kind: DependencyKind.maven,
+          sha1: '',
+          dependencies: [],
+          isDirect: false,
+        ),
+        ResolvedDependency(
+          artifact: 'my-group:my-app:1.0.0',
+          spec: defaultSpec,
+          kind: DependencyKind.maven,
+          sha1: '',
+          dependencies: [
+            'org.slf4j:slf4j-api:2.0.16',
+            'org.apache.logging.log4j:log4j-core:2.24.3',
+            'org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0',
+          ],
+          isDirect: true,
+        ),
+        ResolvedDependency(
+          artifact: 'org.apache.logging.log4j:log4j-core:2.24.3',
+          spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
+          kind: DependencyKind.maven,
+          sha1: '',
+          dependencies: ['org.apache.logging.log4j:log4j-api:2.24.3'],
+          isDirect: false,
+        ),
+        ResolvedDependency(
+          artifact: 'org.apache.logging.log4j:log4j-api:2.24.3',
+          spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
+          kind: DependencyKind.maven,
+          sha1: '',
+          dependencies: [],
+          isDirect: false,
+        ),
+        ResolvedDependency(
+          artifact: 'org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0',
+          spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
+          kind: DependencyKind.maven,
+          sha1: '',
+          dependencies: [
+            'org.apache.logging.log4j:log4j-api:2.19.0',
+            'org.slf4j:slf4j-api:2.0.0',
+          ],
+          isDirect: false,
+        ),
+        ResolvedDependency(
+          artifact: 'org.apache.logging.log4j:log4j-api:2.19.0',
+          spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
+          kind: DependencyKind.maven,
+          sha1: '',
+          dependencies: [],
+          isDirect: false,
+        ),
+        ResolvedDependency(
+          artifact: 'org.slf4j:slf4j-api:2.0.0',
+          spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
+          kind: DependencyKind.maven,
+          sha1: '',
+          dependencies: [],
+          isDirect: false,
+        ),
+      ]),
+    );
   });
 }

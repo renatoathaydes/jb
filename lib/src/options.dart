@@ -26,7 +26,8 @@ class JbCliOptions {
       if (waitingForRootDir) {
         if (rootDir != null) {
           throw DartleException(
-              message: 'Cannot pass more than one -p option.');
+            message: 'Cannot pass more than one -p option.',
+          );
         }
         waitingForRootDir = false;
         rootDir = arg;
@@ -44,8 +45,9 @@ class JbCliOptions {
     }
     if (dartleArgs.containsNonLoggingArgs() && createOptions != null) {
       throw DartleException(
-          message:
-              'The "create" command cannot be used with other tasks or arguments.');
+        message:
+            'The "create" command cannot be used with other tasks or arguments.',
+      );
     }
     return JbCliOptions(dartleArgs, rootDir, createOptions);
   }
@@ -64,14 +66,15 @@ extension _ArgsList on List<String> {
 extension ExtensionProjectDartleOptions on Options {
   Options copy({List<String>? tasksInvocation}) {
     return Options(
-        logLevel: logLevel,
-        colorfulLog: colorfulLog,
-        forceTasks: forceTasks,
-        parallelizeTasks: parallelizeTasks,
-        resetCache: resetCache,
-        logBuildTime: false,
-        runPubGet: runPubGet,
-        disableCache: disableCache,
-        tasksInvocation: tasksInvocation ?? this.tasksInvocation);
+      logLevel: logLevel,
+      colorfulLog: colorfulLog,
+      forceTasks: forceTasks,
+      parallelizeTasks: parallelizeTasks,
+      resetCache: resetCache,
+      logBuildTime: false,
+      runPubGet: runPubGet,
+      disableCache: disableCache,
+      tasksInvocation: tasksInvocation ?? this.tasksInvocation,
+    );
   }
 }
