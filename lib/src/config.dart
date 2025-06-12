@@ -9,6 +9,7 @@ import 'package:schemake/schemake.dart';
 import 'package:yaml/yaml.dart';
 
 import 'ansi.dart';
+import 'deps.dart';
 import 'properties.dart';
 import 'utils.dart';
 
@@ -35,9 +36,11 @@ Future<JbConfiguration> loadConfig(File configFile) async {
     configString = await configFile.readAsString();
   } on PathNotFoundException {
     throw DartleException(
-        message: 'jb config file not found.\n'
-            "To create one, run 'jb create'.\n"
-            "Run 'jb --help' to see usage.");
+      message:
+          'jb config file not found.\n'
+          "To create one, run 'jb create'.\n"
+          "Run 'jb --help' to see usage.",
+    );
   }
   return await loadConfigString(configString);
 }
@@ -51,42 +54,55 @@ Future<JbConfiguration> loadConfigString(String config) async {
     json = loadYaml(config);
   } catch (e) {
     throw DartleException(
-        message: 'Invalid jbuild configuration: '
-            'parsing error: $e');
+      message:
+          'Invalid jbuild configuration: '
+          'parsing error: $e',
+    );
   }
   if (json is Map) {
     final resolvedMap = resolvePropertiesFromMap(json);
     final imports = resolvedMap.map.remove('imports');
     try {
-      return await JbConfiguration.fromJson(resolvedMap.map)
-          .applyImports(imports);
+      return await JbConfiguration.fromJson(
+        resolvedMap.map,
+      ).applyImports(imports);
     } on PropertyTypeException catch (e) {
       final help = _helpForProperty(e.propertyPath);
       if (help.isEmpty) {
         throw DartleException(
-            message: 'Invalid jb configuration: '
-                "at '${e.propertyPath.join('/')}': ${e.message}");
+          message:
+              'Invalid jb configuration: '
+              "at '${e.propertyPath.join('/')}': ${e.message}",
+        );
       }
       throw DartleException(
-          message: 'Invalid jb configuration: '
-              "at '${e.propertyPath.join('/')}': invalid syntax.\n$help");
+        message:
+            'Invalid jb configuration: '
+            "at '${e.propertyPath.join('/')}': invalid syntax.\n$help",
+      );
     } on UnknownPropertyException catch (e) {
       final help = _helpForProperty(e.propertyPath);
       throw DartleException(
-          message: 'Invalid jb configuration: '
-              "at '${e.propertyPath.join('/')}': property does not exist."
-              "${help.isEmpty ? '' : '\n$help'}");
+        message:
+            'Invalid jb configuration: '
+            "at '${e.propertyPath.join('/')}': property does not exist."
+            "${help.isEmpty ? '' : '\n$help'}",
+      );
     } on MissingPropertyException catch (e) {
       final help = _helpForProperty(e.propertyPath);
       throw DartleException(
-          message: 'Invalid jb configuration: '
-              "at '${e.propertyPath.join('/')}': mandatory property is missing."
-              "${help.isEmpty ? '' : '\n$help'}");
+        message:
+            'Invalid jb configuration: '
+            "at '${e.propertyPath.join('/')}': mandatory property is missing."
+            "${help.isEmpty ? '' : '\n$help'}",
+      );
     }
   } else {
     throw DartleException(
-        message: 'Expecting jb configuration to be a Map, '
-            'but it is ${json?.runtimeType}');
+      message:
+          'Expecting jb configuration to be a Map, '
+          'but it is ${json?.runtimeType}',
+    );
   }
 }
 
@@ -109,15 +125,20 @@ String _helpForProperty(List<String> propertyPath) {
 ///
 /// Applies defaults and resolves properties and imports.
 Future<List<BasicExtensionTask>> loadExtensionTaskConfigs(
-    JbConfiguration jbConfig, String config, Uri yamlUri) async {
+  JbConfiguration jbConfig,
+  String config,
+  Uri yamlUri,
+) async {
   final json = loadYaml(config, sourceUrl: yamlUri);
   if (json is Map) {
     final resolvedMap = resolvePropertiesFromMap(json);
     return _extensionTasks(resolvedMap.map);
   } else {
     throw DartleException(
-        message: '$yamlUri: Expecting jb extension to be a Map, '
-            'but it is ${json?.runtimeType}');
+      message:
+          '$yamlUri: Expecting jb extension to be a Map, '
+          'but it is ${json?.runtimeType}',
+    );
   }
 }
 
@@ -139,48 +160,46 @@ enum ConfigType {
   listOfStrings,
   arrayOfStrings,
   jbuildLogger,
-  jbConfig,
-  ;
+  jbConfig;
 
   static ConfigType from(String value) => switch (value) {
-        'STRING' => ConfigType.string,
-        'BOOLEAN' => ConfigType.boolean,
-        'INT' => ConfigType.int,
-        'FLOAT' => ConfigType.float,
-        'LIST_OF_STRINGS' => ConfigType.listOfStrings,
-        'ARRAY_OF_STRINGS' => ConfigType.arrayOfStrings,
-        'JBUILD_LOGGER' => ConfigType.jbuildLogger,
-        'JB_CONFIG' => ConfigType.jbConfig,
-        _ => failBuild(reason: 'Unsupported Java type: $value'),
-      };
+    'STRING' => ConfigType.string,
+    'BOOLEAN' => ConfigType.boolean,
+    'INT' => ConfigType.int,
+    'FLOAT' => ConfigType.float,
+    'LIST_OF_STRINGS' => ConfigType.listOfStrings,
+    'ARRAY_OF_STRINGS' => ConfigType.arrayOfStrings,
+    'JBUILD_LOGGER' => ConfigType.jbuildLogger,
+    'JB_CONFIG' => ConfigType.jbConfig,
+    _ => failBuild(reason: 'Unsupported Java type: $value'),
+  };
 
   bool isInstance(Object? object) => switch (this) {
-        ConfigType.string => object is String?,
-        ConfigType.boolean => object is bool?,
-        ConfigType.int => object is NullableInt,
-        ConfigType.float => object is double?,
-        ConfigType.listOfStrings ||
-        ConfigType.arrayOfStrings =>
-          object is List<String>,
-        ConfigType.jbuildLogger || ConfigType.jbConfig => false,
-      };
+    ConfigType.string => object is String?,
+    ConfigType.boolean => object is bool?,
+    ConfigType.int => object is NullableInt,
+    ConfigType.float => object is double?,
+    ConfigType.listOfStrings ||
+    ConfigType.arrayOfStrings => object is List<String>,
+    ConfigType.jbuildLogger || ConfigType.jbConfig => false,
+  };
 
   bool mayBeConfigured() => switch (this) {
-        ConfigType.jbuildLogger || ConfigType.jbConfig => false,
-        _ => true,
-      };
+    ConfigType.jbuildLogger || ConfigType.jbConfig => false,
+    _ => true,
+  };
 
   @override
   String toString() => switch (this) {
-        string => 'String',
-        boolean => 'boolean',
-        int => 'int',
-        float => 'float',
-        listOfStrings => 'List<String>',
-        arrayOfStrings => 'String[]',
-        jbuildLogger => 'jbuild.api.JBuildLogger',
-        jbConfig => 'jbuild.api.config.JbConfig',
-      };
+    string => 'String',
+    boolean => 'boolean',
+    int => 'int',
+    float => 'float',
+    listOfStrings => 'List<String>',
+    arrayOfStrings => 'String[]',
+    jbuildLogger => 'jbuild.api.JBuildLogger',
+    jbConfig => 'jbuild.api.config.JbConfig',
+  };
 }
 
 /// Java constructor representation.
@@ -248,13 +267,20 @@ class JbExtensionModel {
 class JbConfigContainer {
   final JbConfiguration config;
   final CompileOutput output;
+  final TestConfig testConfig;
+  final KnownDependencies knownDeps;
 
   JbConfigContainer(JbConfiguration config)
-      : config = _processPaths(config),
-        output = config.outputDir.vmapOr(
-            (d) => CompileOutput.dir(_processPath(d)),
-            () => CompileOutput.jar(config.outputJar?.vmap(_processPath) ??
-                '${p.join('build', p.basename(Directory.current.path))}.jar'));
+    : config = _processPaths(config),
+      output = config.outputDir.vmapOr(
+        (d) => CompileOutput.dir(_processPath(d)),
+        () => CompileOutput.jar(
+          config.outputJar?.vmap(_processPath) ??
+              '${p.join('build', p.basename(Directory.current.path))}.jar',
+        ),
+      ),
+      testConfig = createTestConfig(config.allDependencies),
+      knownDeps = createKnownDeps(config.allDependencies);
 
   @override
   String toString() {
@@ -275,41 +301,54 @@ extension JbConfigExtension on JbConfiguration {
       module: resolveOptionalString(other.module ?? module, props),
       name: resolveOptionalString(other.name ?? name, props),
       version: resolveOptionalString(other.version ?? version, props),
-      description:
-          resolveOptionalString(other.description ?? description, props),
+      description: resolveOptionalString(
+        other.description ?? description,
+        props,
+      ),
       url: resolveOptionalString(other.url ?? url, props),
       mainClass: resolveOptionalString(other.mainClass ?? mainClass, props),
       manifest: resolveOptionalString(other.manifest ?? manifest, props),
       extensionProject: resolveOptionalString(
-          other.extensionProject ?? extensionProject, props),
+        other.extensionProject ?? extensionProject,
+        props,
+      ),
       sourceDirs: sourceDirs.merge(other.sourceDirs, props),
       outputDir: resolveOptionalString(other.outputDir ?? outputDir, props),
-      outputJar:
-          resolveOptionalString(other.outputJar ?? outputJar, properties),
+      outputJar: resolveOptionalString(
+        other.outputJar ?? outputJar,
+        properties,
+      ),
       resourceDirs: resourceDirs.merge(other.resourceDirs, props),
       repositories: repositories.merge(other.repositories, props),
       dependencies: dependencies.merge(other.dependencies, props),
-      processorDependencies:
-          processorDependencies.merge(other.processorDependencies, props),
+      processorDependencies: processorDependencies.merge(
+        other.processorDependencies,
+        props,
+      ),
       dependencyExclusionPatterns: dependencyExclusionPatterns.merge(
-          other.dependencyExclusionPatterns, props),
+        other.dependencyExclusionPatterns,
+        props,
+      ),
       processorDependencyExclusionPatterns: processorDependencyExclusionPatterns
           .merge(other.processorDependencyExclusionPatterns, props),
       compileLibsDir: resolveString(
-          other.compileLibsDir == 'build/compile-libs'
-              ? compileLibsDir
-              : other.compileLibsDir,
-          props),
+        other.compileLibsDir == 'build/compile-libs'
+            ? compileLibsDir
+            : other.compileLibsDir,
+        props,
+      ),
       runtimeLibsDir: resolveString(
-          other.runtimeLibsDir == 'build/runtime-libs'
-              ? runtimeLibsDir
-              : other.runtimeLibsDir,
-          props),
+        other.runtimeLibsDir == 'build/runtime-libs'
+            ? runtimeLibsDir
+            : other.runtimeLibsDir,
+        props,
+      ),
       testReportsDir: resolveString(
-          other.testReportsDir == 'build/test-reports'
-              ? testReportsDir
-              : other.testReportsDir,
-          props),
+        other.testReportsDir == 'build/test-reports'
+            ? testReportsDir
+            : other.testReportsDir,
+        props,
+      ),
       javacArgs: javacArgs.merge(other.javacArgs, props),
       runJavaArgs: runJavaArgs.merge(other.runJavaArgs, props),
       testJavaArgs: testJavaArgs.merge(other.testJavaArgs, props),
@@ -327,11 +366,14 @@ extension JbConfigExtension on JbConfiguration {
   void validate() {
     if (outputDir != null && outputJar != null) {
       throw DartleException(
-          message: 'Invalid configuration: '
-              'only one of "output-dir" and "output-jar" should be provided');
+        message:
+            'Invalid configuration: '
+            'only one of "output-dir" and "output-jar" should be provided',
+      );
     }
-    final invalidLicenses =
-        licenses.where(allLicenses.containsKey.not$).toSet();
+    final invalidLicenses = licenses
+        .where(allLicenses.containsKey.not$)
+        .toSet();
     if (invalidLicenses.isNotEmpty) {
       throw invalidLicense(invalidLicenses);
     }
@@ -344,7 +386,8 @@ extension JbConfigExtension on JbConfiguration {
       _depsIterable(processorDependencies);
 
   Iterable<MapEntry<String, DependencySpec>> _depsIterable(
-      Map<String, DependencySpec?> deps) sync* {
+    Map<String, DependencySpec?> deps,
+  ) sync* {
     for (final dep in deps.entries) {
       final value = dep.value;
       yield MapEntry(dep.key, value ?? defaultSpec);
@@ -393,9 +436,11 @@ extension JbConfigExtension on JbConfiguration {
 
     String depsToYaml(Iterable<MapEntry<String, DependencySpec>> deps) {
       return multilineList(
-          deps.map((dep) =>
-              '${quote(dep.key)}:\n${dep.value.toYaml(color, '    ')}'),
-          isMap: true);
+        deps.map(
+          (dep) => '${quote(dep.key)}:\n${dep.value.toYaml(color, '    ')}',
+        ),
+        isMap: true,
+      );
     }
 
     String developersToYaml(Iterable<Developer> developers) {
@@ -486,9 +531,11 @@ extension-project: ${quote(extensionProject)}
 Exception invalidLicense(Iterable<String> ids) {
   final prefix = ids.length == 1 ? 'License is' : 'Licenses are';
   return DartleException(
-      message: '$prefix not recognized: ${ids.join(', ')}. '
-          'See https://spdx.org/licenses/ for valid licenses.\n'
-          'Currently known license IDs: ${allLicenses.keys.join(', ')}');
+    message:
+        '$prefix not recognized: ${ids.join(', ')}. '
+        'See https://spdx.org/licenses/ for valid licenses.\n'
+        'Currently known license IDs: ${allLicenses.keys.join(', ')}',
+  );
 }
 
 /// Grouping of all local dependencies, which can be local
@@ -513,16 +560,18 @@ class CompileOutput {
   final String _value;
 
   const CompileOutput._(String value, _CompileOutputTag tag)
-      : _value = value,
-        _tag = tag;
+    : _value = value,
+      _tag = tag;
 
   const CompileOutput.dir(String directory)
-      : this._(directory, _CompileOutputTag.dir);
+    : this._(directory, _CompileOutputTag.dir);
 
   const CompileOutput.jar(String jar) : this._(jar, _CompileOutputTag.jar);
 
-  T when<T>(
-      {required T Function(String) dir, required T Function(String) jar}) {
+  T when<T>({
+    required T Function(String) dir,
+    required T Function(String) jar,
+  }) {
     switch (_tag) {
       case _CompileOutputTag.dir:
         return dir(_value);
@@ -561,45 +610,49 @@ extension DependencyScopeExtension on DependencyScope {
   }
 
   String toYaml(AnsiColor color) {
-    return color(
-        switch (this) {
-          DependencyScope.runtimeOnly => '"runtime-only"',
-          DependencyScope.compileOnly => '"compile-only"',
-          DependencyScope.all => '"all"',
-        },
-        strColor);
+    return color(switch (this) {
+      DependencyScope.runtimeOnly => '"runtime-only"',
+      DependencyScope.compileOnly => '"compile-only"',
+      DependencyScope.all => '"all"',
+    }, strColor);
   }
 }
 
-const DependencySpec defaultSpec =
-    DependencySpec(transitive: true, scope: DependencyScope.all);
+const DependencySpec defaultSpec = DependencySpec(
+  transitive: true,
+  scope: DependencyScope.all,
+);
 
 extension DependencySpecExtension on DependencySpec {
   Future<PathDependency>? toPathDependency() {
     final thisPath = path;
     if (thisPath == null) return null;
-    return FileSystemEntity.isFile(thisPath).then((isFile) => isFile
-        ? PathDependency.jar(this, thisPath)
-        : PathDependency.jbuildProject(this, thisPath));
+    return FileSystemEntity.isFile(thisPath).then(
+      (isFile) => isFile
+          ? PathDependency.jar(this, thisPath)
+          : PathDependency.jbuildProject(this, thisPath),
+    );
   }
 
   DependencySpec resolveProperties(Properties props) {
     final p = path;
     if ((p != null && p.contains('{')) || exclusions.isNotEmpty) {
       return DependencySpec(
-          transitive: transitive,
-          scope: scope,
-          path: resolveOptionalString(p, props),
-          exclusions: exclusions
-              .map((e) => resolveString(e, props))
-              .toList(growable: false));
+        transitive: transitive,
+        scope: scope,
+        path: resolveOptionalString(p, props),
+        exclusions: exclusions
+            .map((e) => resolveString(e, props))
+            .toList(growable: false),
+      );
     }
     return this;
   }
 
   String toYaml(AnsiColor color, String ident) {
-    final colorPath =
-        path == null ? color('null', kwColor) : color('"$path"', strColor);
+    final colorPath = path == null
+        ? color('null', kwColor)
+        : color('"$path"', strColor);
     return '${ident}transitive: ${color('$transitive', kwColor)}\n'
         '${ident}scope: ${scope.toYaml(color)}\n'
         '${ident}path: $colorPath\n'
@@ -608,8 +661,11 @@ extension DependencySpecExtension on DependencySpec {
 }
 
 _Value<String> _stringValue(
-    Map<String, Object?> map, String key, String? defaultValue,
-    {String? type}) {
+  Map<String, Object?> map,
+  String key,
+  String? defaultValue, {
+  String? type,
+}) {
   final value = map.remove(key);
   String result;
   bool isDefault = false;
@@ -621,14 +677,19 @@ _Value<String> _stringValue(
   } else {
     final prefix = type == null ? '' : 'on $type: ';
     throw DartleException(
-        message:
-            "${prefix}expecting a String value for '$key', but got '$value'.");
+      message:
+          "${prefix}expecting a String value for '$key', but got '$value'.",
+    );
   }
   return _Value(isDefault, result);
 }
 
-String? _optionalStringValue(Map<String, Object?> map, String key,
-    {bool allowNumber = false, String? type}) {
+String? _optionalStringValue(
+  Map<String, Object?> map,
+  String key, {
+  bool allowNumber = false,
+  String? type,
+}) {
   final value = map.remove(key);
   if (value == null) return null;
   if (value is String) {
@@ -639,8 +700,8 @@ String? _optionalStringValue(Map<String, Object?> map, String key,
   }
   final prefix = type == null ? '' : 'on $type: ';
   throw DartleException(
-      message:
-          "${prefix}expecting a String value for '$key', but got '$value'.");
+    message: "${prefix}expecting a String value for '$key', but got '$value'.",
+  );
 }
 
 const dependenciesSyntaxHelp = '''
@@ -677,13 +738,18 @@ List<BasicExtensionTask> _extensionTasks(Map<String, Object?> map) {
   final tasks = map['tasks'];
   if (tasks is Map<String, Object?>) {
     final result = tasks.entries.map(_extensionTask).toList(growable: false);
-    logger.fine(() => 'Found the following extension tasks: '
-        '${result.map((t) => t.name).join(', ')}');
+    logger.fine(
+      () =>
+          'Found the following extension tasks: '
+          '${result.map((t) => t.name).join(', ')}',
+    );
     return result;
   } else {
     throw DartleException(
-        message: "expecting a List of tasks for value 'tasks', "
-            "but got '$tasks'.");
+      message:
+          "expecting a List of tasks for value 'tasks', "
+          "but got '$tasks'.",
+    );
   }
 }
 
@@ -706,18 +772,23 @@ BasicExtensionTask _extensionTask(MapEntry<String, Object?> task) {
       name: task.key,
       description: _stringValue(spec, 'description', '', type: 'Task').value,
       phase: _taskPhase(spec['phase']),
-      className: _optionalStringValue(spec, 'class-name', type: 'Task')
-          .orThrow(() => DartleException(
-              message: "declaration of task '${task.key}' is missing mandatory "
-                  "'class-name'.\n$taskSyntaxHelp")),
+      className: _optionalStringValue(spec, 'class-name', type: 'Task').orThrow(
+        () => DartleException(
+          message:
+              "declaration of task '${task.key}' is missing mandatory "
+              "'class-name'.\n$taskSyntaxHelp",
+        ),
+      ),
       methodName: 'run',
       constructors: _taskConstructors(spec['config-constructors']),
     );
   } else {
     throw DartleException(
-        message: 'bad task declaration, '
-            "expected String or Map value, got '$task'.\n"
-            "$taskSyntaxHelp");
+      message:
+          'bad task declaration, '
+          "expected String or Map value, got '$task'.\n"
+          "$taskSyntaxHelp",
+    );
   }
 }
 
@@ -726,22 +797,26 @@ TaskPhase _taskPhase(Object? phase) {
   if (phase is Map) {
     if (phase.length != 1) {
       throw DartleException(
-          message: 'invalid task phase declaration, not single entry Map.');
+        message: 'invalid task phase declaration, not single entry Map.',
+      );
     }
     final name = phase.keys.first.toString();
     var index = phase.values.first;
     if (index is int) {
       if (index == -1) {
         // default value: probably wants a built-in phase
-        final builtInPhase =
-            TaskPhase.builtInPhases.where((p) => p.name == name).firstOrNull;
+        final builtInPhase = TaskPhase.builtInPhases
+            .where((p) => p.name == name)
+            .firstOrNull;
         if (builtInPhase != null) {
           index = builtInPhase.index;
         } else {
           final builtInIndexes = TaskPhase.builtInPhases.join(', ');
           throw DartleException(
-              message: 'Custom Task phase "$name" must provide an index. '
-                  'Builtin phase indexes are: $builtInIndexes');
+            message:
+                'Custom Task phase "$name" must provide an index. '
+                'Builtin phase indexes are: $builtInIndexes',
+          );
         }
       }
       return TaskPhase.custom(index, name);
@@ -757,16 +832,18 @@ List<JavaConstructor> _taskConstructors(Object? constructors) {
   }
   if (constructors is! Iterable) {
     failBuild(
-        reason:
-            'jb manifest has invalid constructors declaration: $constructors');
+      reason: 'jb manifest has invalid constructors declaration: $constructors',
+    );
   }
-  return constructors.map((entry) {
-    if (entry is Map) {
-      return entry.map((key, value) => _constructorEntry(key, value));
-    } else {
-      failBuild(reason: 'jb manifest has invalid constructor item: $entry');
-    }
-  }).toList(growable: false);
+  return constructors
+      .map((entry) {
+        if (entry is Map) {
+          return entry.map((key, value) => _constructorEntry(key, value));
+        } else {
+          failBuild(reason: 'jb manifest has invalid constructor item: $entry');
+        }
+      })
+      .toList(growable: false);
 }
 
 MapEntry<String, ConfigType> _constructorEntry(Object? key, Object? value) {
@@ -774,7 +851,8 @@ MapEntry<String, ConfigType> _constructorEntry(Object? key, Object? value) {
     return MapEntry(key, ConfigType.from(value));
   }
   failBuild(
-      reason: 'jb manifest has invalid constructor entry: $key -> $value');
+    reason: 'jb manifest has invalid constructor entry: $key -> $value',
+  );
 }
 
 /// Normalize and ensure paths use the OS-specific path separator.
