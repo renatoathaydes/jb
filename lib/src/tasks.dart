@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:conveniently/conveniently.dart';
@@ -10,6 +9,7 @@ import 'compile/compile.dart';
 import 'config.dart';
 import 'dependencies/printer.dart';
 import 'dependencies/writer.dart';
+import 'deps.dart';
 import 'eclipse.dart';
 import 'exec.dart';
 import 'file_tree.dart';
@@ -227,8 +227,10 @@ Task createInstallCompileDepsTask(
 
   // can only use Sendable objects inside action
   Future<void> action(_) async {
-    await _install(installCompileDepsTaskName, jBuildSender, preArgs, depsFile,
-        libsDir, (scope) => scope.includedInCompilation());
+    final deps = FileDependencies(
+        File(depsFile), (scope) => scope.includedInCompilation());
+    await _install(
+        installCompileDepsTaskName, jBuildSender, preArgs, deps, libsDir);
     await _copy(projectDeps, libsDir, runtime: false);
     await _copyFiles(jarDeps, libsDir);
   }
@@ -255,8 +257,10 @@ Task createInstallRuntimeDepsTask(
   final preArgs = config.preArgs(Directory.current.path);
   final runtimeLibsDir = config.runtimeLibsDir;
   Future<void> action(_) async {
-    await _install(installRuntimeDepsTaskName, jBuildSender, preArgs, depsFile,
-        runtimeLibsDir, (scope) => scope.includedAtRuntime());
+    final deps =
+        FileDependencies(File(depsFile), (scope) => scope.includedAtRuntime());
+    await _install(installRuntimeDepsTaskName, jBuildSender, preArgs, deps,
+        runtimeLibsDir);
     await _copy(projectDeps, runtimeLibsDir, runtime: true);
     await _copyFiles(jarDeps, runtimeLibsDir);
   }
@@ -284,8 +288,10 @@ Task createInstallProcessorDepsTask(
   final depsFile = files.processorDependenciesFile.path;
 
   Future<void> action(_) async {
-    await _install(installProcessorDepsTaskName, jBuildSender, preArgs,
-        depsFile, libsDir, (scope) => scope.includedAtRuntime());
+    final deps =
+        FileDependencies(File(depsFile), (scope) => scope.includedAtRuntime());
+    await _install(
+        installProcessorDepsTaskName, jBuildSender, preArgs, deps, libsDir);
     await _copy(projectDeps, libsDir, runtime: true);
     await _copyFiles(jarDeps, libsDir);
   }
@@ -332,24 +338,21 @@ Task _createInstallDepsTask(
       description: 'Install $scopeName dependencies.');
 }
 
-Future<void> _install(
-    String taskName,
-    JBuildSender jBuildSender,
-    List<String> preArgs,
-    String dependenciesFile,
-    String outputDir,
-    bool Function(DependencyScope) scopeFilter) async {
-  final deps = (jsonDecode(await File(dependenciesFile).readAsString()) as List)
-      .map(ResolvedDependency.fromJson)
-      .where((dep) =>
-          dep.kind == DependencyKind.maven && scopeFilter(dep.spec.scope))
-      .map((dep) => dep.artifact)
-      .toList(growable: false);
+Future<void> _install(String taskName, JBuildSender jBuildSender,
+    List<String> preArgs, Dependencies dependencies, String outputDir,
+    {bool transitive = false}) async {
+  final deps = await dependencies.resolveArtifacts();
   if (deps.isEmpty) {
     return logger.fine("No dependencies to install for '$taskName'.");
   }
-  await jBuildSender.send(RunJBuild(taskName,
-      [...preArgs, 'install', '--non-transitive', '-d', outputDir, ...deps]));
+  await jBuildSender.send(RunJBuild(taskName, [
+    ...preArgs,
+    'install',
+    if (!transitive) '--non-transitive',
+    '-d',
+    outputDir,
+    ...deps
+  ]));
 }
 
 Future<void> _copy(
@@ -492,10 +495,9 @@ Task createDownloadTestRunnerTask(
     DartleCache cache,
     FileCollection jbFileInputs) {
   final workingDir = Directory.current.path;
-  final depsFile = files.testDependenciesFile.path;
   return Task(
       (_) => _downloadTestRunner(
-          jBuildSender, config, testConfig, workingDir, depsFile, cache),
+          jBuildSender, config, testConfig, workingDir, cache),
       runCondition: RunOnChanges(
           inputs: jbFileInputs,
           outputs: dir(p.join(cache.rootDir, junitRunnerLibsDir)),
@@ -526,24 +528,19 @@ Future<void> _downloadTestRunner(
     JbConfiguration config,
     TestConfig testConfig,
     String workingDir,
-    String depsFile,
     DartleCache cache) async {
   validateTestConfig(testConfig);
   final outDir = Directory(p.join(cache.rootDir, junitRunnerLibsDir));
   await testConfig.consoleVersion.apply((version) async {
-    if (version != null) {
-      await outDir.create(recursive: true);
-      // the JUnit Console Runner is part of the runtime libs, no need to install it
-      await File(p.join(outDir.path, '.no-dependencies')).create();
-    }
-    logger.fine('Installing the latest version of JUnit5 Console Runner');
+    logger.fine(() =>
+        'Installing JUnit5 Console Runner (version: ${version ?? 'latest'})');
     return _install(
         downloadTestRunnerTaskName,
         jBuildSender,
         config.preArgs(workingDir),
-        depsFile,
+        SimpleDependencies([junitConsoleLib(testConfig)]),
         outDir.path,
-        (scope) => scope.includedAtRuntime());
+        transitive: true);
   });
 }
 
