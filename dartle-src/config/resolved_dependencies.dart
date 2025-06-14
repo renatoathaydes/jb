@@ -10,6 +10,7 @@ const resolvedDependency = Objects('ResolvedDependency', {
   'artifact': Property(Strings()),
   'spec': Property(dependency),
   'sha1': Property(Strings()),
+  'license': Property(Strings()),
   'kind': Property(dependencyKind),
   'isDirect': Property(Bools()),
   'dependencies': Property(Arrays(Strings())),

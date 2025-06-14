@@ -5,34 +5,24 @@ import '../config.dart';
 import '../jb_config.g.dart';
 import '../output_consumer.dart';
 
-final whitespace = ' '.runes.first;
-
 final _directDepPattern = RegExp(
-  r'^Dependencies of ([^\s]+)\s+\(incl. transitive\):$',
+  r'^Dependencies of ([^\s]+)\s+\(incl. transitive\) \[\{(.+)}]:$',
 );
 
-final _depPattern = RegExp(r'^(\s+)\*\s([^\s]+)');
-
-List<ResolvedDependency> parseDependencyTree(List<String> lines) {
-  final collector = JBuildDepsCollector();
-  for (final line in lines) {
-    collector(line);
-  }
-  collector.done();
-  return collector.results;
-}
+final _depPattern = RegExp(r'^(\s+)\*\s([^\s]+) \[[a-z]+] \[\{(.+)}]$');
 
 class _DepNode {
   final _DepNode? parent;
   final String id;
+  final String license;
   final int indentLevel;
   final List<_DepNode> deps = [];
 
-  _DepNode(this.id, this.indentLevel, {required this.parent});
+  _DepNode(this.id, this.license, this.indentLevel, {required this.parent});
 
   /// Create a child _DepNode and return it.
-  _DepNode add(String dep, int indentLevel) =>
-      _DepNode(dep, indentLevel, parent: this).apply$(deps.add);
+  _DepNode add(String dep, String license, int indentLevel) =>
+      _DepNode(dep, license, indentLevel, parent: this).apply$(deps.add);
 
   _DepNode? findParentAtIndentation(int indentationLevel) {
     if (indentLevel == indentationLevel) return parent;
@@ -66,7 +56,7 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
         _currentScope ??= DependencyScope.all;
         done();
       }
-      _currentDep = _DepNode(match.group(1)!, 0, parent: null);
+      _currentDep = _DepNode(match.group(1)!, match.group(2)!, 0, parent: null);
       _currentScope = null;
       _currentIndentLevel = null;
       return;
@@ -81,6 +71,7 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     if (match != null) {
       final indentationLevel = match.group(1)!.length;
       final dep = match.group(2)!;
+      final license = match.group(3)!;
       final currentIndentLevel = _currentIndentLevel ?? indentationLevel;
       if (indentationLevel != currentIndentLevel) {
         if (indentationLevel > currentIndentLevel) {
@@ -92,7 +83,7 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
         }
         _currentDep = currentDep;
       }
-      currentDep!.add(dep, indentationLevel);
+      currentDep!.add(dep, license, indentationLevel);
       _currentIndentLevel = indentationLevel;
     } else if (line.endsWith('is required with more than one version:')) {
       _enabled = false;
@@ -131,6 +122,7 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
           kind: DependencyKind.maven,
           isDirect: isDirect,
           sha1: '',
+          license: node.license,
           dependencies: node.deps.map((d) => d.id).toList(growable: false),
         ),
       );

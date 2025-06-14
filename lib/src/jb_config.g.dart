@@ -1138,6 +1138,7 @@ class ResolvedDependency {
   final String artifact;
   final DependencySpec spec;
   final String sha1;
+  final String license;
   final DependencyKind kind;
   final bool isDirect;
   final List<String> dependencies;
@@ -1145,6 +1146,7 @@ class ResolvedDependency {
     required this.artifact,
     required this.spec,
     required this.sha1,
+    required this.license,
     required this.kind,
     required this.isDirect,
     required this.dependencies,
@@ -1155,6 +1157,7 @@ class ResolvedDependency {
       'artifact: "$artifact", '
       'spec: $spec, '
       'sha1: "$sha1", '
+      'license: "$license", '
       'kind: $kind, '
       'isDirect: $isDirect, '
       'dependencies: $dependencies'
@@ -1167,6 +1170,7 @@ class ResolvedDependency {
           artifact == other.artifact &&
           spec == other.spec &&
           sha1 == other.sha1 &&
+          license == other.license &&
           kind == other.kind &&
           isDirect == other.isDirect &&
           const ListEquality<String>().equals(dependencies, other.dependencies);
@@ -1175,6 +1179,7 @@ class ResolvedDependency {
       artifact.hashCode ^
       spec.hashCode ^
       sha1.hashCode ^
+      license.hashCode ^
       kind.hashCode ^
       isDirect.hashCode ^
       const ListEquality<String>().hash(dependencies);
@@ -1182,6 +1187,7 @@ class ResolvedDependency {
     String? artifact = null,
     DependencySpec? spec = null,
     String? sha1 = null,
+    String? license = null,
     DependencyKind? kind = null,
     bool? isDirect = null,
     List<String>? dependencies = null,
@@ -1190,6 +1196,7 @@ class ResolvedDependency {
       artifact: artifact ?? this.artifact,
       spec: spec ?? this.spec.copyWith(),
       sha1: sha1 ?? this.sha1,
+      license: license ?? this.license,
       kind: kind ?? this.kind,
       isDirect: isDirect ?? this.isDirect,
       dependencies: dependencies ?? [...this.dependencies],
@@ -1200,6 +1207,7 @@ class ResolvedDependency {
     'artifact': artifact,
     'spec': spec,
     'sha1': sha1,
+    'license': license,
     'kind': kind.name,
     'isDirect': isDirect,
     'dependencies': dependencies,
@@ -1555,6 +1563,7 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       'artifact',
       'spec',
       'sha1',
+      'license',
       'kind',
       'isDirect',
       'dependencies',
@@ -1569,6 +1578,7 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       artifact: convertProperty(const Strings(), 'artifact', value),
       spec: convertProperty(const _DependencySpecJsonReviver(), 'spec', value),
       sha1: convertProperty(const Strings(), 'sha1', value),
+      license: convertProperty(const Strings(), 'license', value),
       kind: convertProperty(const _DependencyKindConverter(), 'kind', value),
       isDirect: convertProperty(const Bools(), 'isDirect', value),
       dependencies: convertProperty(
@@ -1588,6 +1598,8 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
         return const _DependencySpecJsonReviver();
       case 'sha1':
         return const Strings();
+      case 'license':
+        return const Strings();
       case 'kind':
         return const _DependencyKindConverter();
       case 'isDirect':
@@ -1605,6 +1617,7 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       'artifact',
       'spec',
       'sha1',
+      'license',
       'kind',
       'isDirect',
       'dependencies',

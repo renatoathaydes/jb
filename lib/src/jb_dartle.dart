@@ -190,7 +190,7 @@ class JbDartle {
       !_options.colorfulLog,
     );
     deps = createDepsTask(
-      _files.jbuildJar,
+      _files,
       _config,
       _cache,
       unresolvedLocalDeps,

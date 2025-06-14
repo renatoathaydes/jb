@@ -609,6 +609,14 @@ extension DependencyScopeExtension on DependencyScope {
     return this != DependencyScope.compileOnly;
   }
 
+  bool includes(DependencyScope scope) {
+    return switch (this) {
+      DependencyScope.all => true,
+      DependencyScope.compileOnly => scope == DependencyScope.compileOnly,
+      DependencyScope.runtimeOnly => scope == DependencyScope.runtimeOnly,
+    };
+  }
+
   String toYaml(AnsiColor color) {
     return color(switch (this) {
       DependencyScope.runtimeOnly => '"runtime-only"',

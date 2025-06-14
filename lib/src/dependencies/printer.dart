@@ -1,14 +1,22 @@
+import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartle/dartle.dart';
+import 'package:args/args.dart';
+import 'package:conveniently/conveniently.dart';
+import 'package:dartle/dartle.dart'
+    show
+        ArgsValidator,
+        AnsiMessage,
+        AnsiMessagePart,
+        ColoredLogMessage,
+        LogColor,
+        PlainMessage;
 import 'package:dartle/dartle_cache.dart' show DartleCache;
-import 'package:io/ansi.dart' as ansi;
+import 'package:io/ansi.dart' show magenta, styleBold, yellow, styleItalic;
 
 import '../config.dart';
-import '../exec.dart';
-import '../output_consumer.dart';
+import '../jb_files.dart';
 import '../pom.dart';
-import '../resolved_dependency.dart';
 import '../tasks.dart' show depsTaskName;
 
 final class _Dependency {
@@ -16,43 +24,71 @@ final class _Dependency {
   final DependencySpec spec;
   final String localSuffix;
 
-  bool get isLocal => localSuffix.isNotEmpty;
-
-  const _Dependency(this.name, this.spec, [this.localSuffix = '']);
+  const _Dependency(this.name, this.spec, this.localSuffix);
 }
 
-class DepsArgValidator extends ArgsCount {
-  static const compileScopeFlag = 'compile-scope';
+class _DepsArgs {
+  final DependencyScope scope;
+  final bool showLicenses;
+  final List<String> rest;
+
+  const _DepsArgs({
+    DependencyScope? scope,
+    bool? showLicenses,
+    required this.rest,
+  }) : scope = scope ?? DependencyScope.all,
+       showLicenses = showLicenses ?? false;
+}
+
+class DepsArgValidator with ArgsValidator {
+  static const scopeFlag = 'scope';
   static const licensesFlag = 'show-licenses';
-  static const instance = DepsArgValidator._();
 
-  const DepsArgValidator._() : super.range(min: 0, max: 2);
-
-  bool isCompileScope(List<String> args) => args.contains(compileScopeFlag);
-
-  bool isLicenseOn(List<String> args) => args.contains(licensesFlag);
+  const DepsArgValidator();
 
   @override
   bool validate(List<String> args) {
-    final superResult = super.validate(args);
-    if (!superResult) return false;
-    for (final arg in args) {
-      if (arg != compileScopeFlag && arg != licensesFlag) {
-        return false;
-      }
+    try {
+      return _parse(args).rest.isEmpty;
+    } on FormatException catch (e) {
+      logger.warning('Invalid arguments for $depsTaskName: ${e.message}');
+      return false;
     }
-    return true;
+  }
+
+  _DepsArgs _parse(List<String> args) {
+    final parser = ArgParser()
+      ..addOption(
+        scopeFlag,
+        abbr: 's',
+        help: 'the scope to include',
+        defaultsTo: DependencyScope.all.name,
+        allowed: DependencyScope.values.map((s) => s.name),
+      )
+      ..addFlag(
+        licensesFlag,
+        abbr: 'l',
+        help: 'show licenses of dependencies',
+        defaultsTo: false,
+      );
+
+    final ArgResults result = parser.parse(args);
+    return _DepsArgs(
+      showLicenses: result.flag(licensesFlag),
+      scope: result.option(scopeFlag)?.vmap((s) => DependencyScope.from(s)),
+      rest: result.rest,
+    );
   }
 
   @override
   String helpMessage() =>
-      'Acceptable flags:\n'
-      '        * $compileScopeFlag: show only compile-time dependencies.\n'
+      'Acceptable options:\n'
+      '        * $scopeFlag <scope>: the scope of dependencies. One of ${DependencyScope.values.map((s) => s.name)}.\n'
       '        * $licensesFlag: show dependencies\' licenses.';
 }
 
-Future<int> printDependencies(
-  File jbuildJar,
+Future<void> printDependencies(
+  JbFiles jbFiles,
   JbConfiguration config,
   String workingDir,
   DartleCache cache,
@@ -60,134 +96,75 @@ Future<int> printDependencies(
   LocalDependencies localProcessorDependencies,
   List<String> args,
 ) async {
-  final compileScope = DepsArgValidator.instance.isCompileScope(args);
-  final licenseOn = DepsArgValidator.instance.isLicenseOn(args);
-  final scopeString = compileScope ? 'compile-time' : 'runtime';
-  final mainDeps = _computeDependencies(
+  final options = const DepsArgValidator()._parse(args);
+  final scope = options.scope;
+  final mainLocalDeps = _getLocalDependencies(
     localDependencies,
     config.allDependencies,
-    compileTimeScope: compileScope,
+    scope: scope,
   ).toList(growable: false);
-  final processorDeps = _computeDependencies(
+  final processorLocalDeps = _getLocalDependencies(
     localProcessorDependencies,
     config.allProcessorDependencies,
-    compileTimeScope: compileScope,
+    scope: scope,
   ).toList(growable: false);
+  final mainDeps = (await _parseDeps(
+    jbFiles.dependenciesFile,
+  )).where((dep) => scope.includes(dep.spec.scope)).toList(growable: false);
+  final processorDeps = (await _parseDeps(
+    jbFiles.processorDependenciesFile,
+  )).where((dep) => scope.includes(dep.spec.scope)).toList(growable: false);
 
-  if (mainDeps.isEmpty && processorDeps.isEmpty) {
+  final artifact = _createSimpleArtifact(config);
+
+  if ([
+    mainLocalDeps,
+    processorLocalDeps,
+    mainDeps,
+    processorDeps,
+  ].every((d) => d.isEmpty)) {
     logger.info(
-      PlainMessage('This project does not have any $scopeString dependencies!'),
+      PlainMessage(
+        'Project ${artifact.identifier} does not have any dependencies'
+        '${scope == DependencyScope.all ? '' : ' with scope ${scope.name}'}!',
+      ),
     );
-    return 0;
+    return;
   }
 
-  final preArgs = config.preArgs(workingDir);
-
-  var result = 0;
-  if (mainDeps.isNotEmpty) {
-    result = await _print(
-      config,
-      mainDeps,
-      jbuildJar,
-      preArgs,
-      config.dependencyExclusionPatterns,
-      header: 'This project has the following $scopeString dependencies:',
-      compileTimeScope: compileScope,
-      licenseOn: licenseOn,
-    );
+  final printer = _JBuildDepsPrinter(options.showLicenses);
+  if (mainDeps.isNotEmpty || mainLocalDeps.isNotEmpty) {
+    printer
+      ..header(artifact, scope)
+      ..print(mainDeps, options)
+      ..printLocal(mainLocalDeps);
   }
-  if (result == 0 && processorDeps.isNotEmpty) {
-    result = await _print(
-      config,
-      processorDeps,
-      jbuildJar,
-      preArgs,
-      config.processorDependencyExclusionPatterns,
-      header: 'Annotation processor $scopeString dependencies:',
-      compileTimeScope: compileScope,
-      licenseOn: licenseOn,
-    );
+  if (processorLocalDeps.isNotEmpty || processorDeps.isNotEmpty) {
+    printer
+      ..header(artifact, scope, forProcessor: true)
+      ..print(processorDeps, options)
+      ..printLocal(processorLocalDeps);
   }
-
-  return result;
 }
 
-Iterable<_Dependency> _computeDependencies(
+Iterable<_Dependency> _getLocalDependencies(
   LocalDependencies localDependencies,
   Iterable<MapEntry<String, DependencySpec>> dependencies, {
-  required bool compileTimeScope,
+  required DependencyScope scope,
 }) {
-  final bool Function(DependencyScope) scopeFilter = compileTimeScope
-      ? (s) => s != DependencyScope.runtimeOnly
-      : (s) => s != DependencyScope.compileOnly;
   return localDependencies.jars
-      .where((j) => scopeFilter(j.spec.scope))
+      .where((j) => scope.includes(j.spec.scope))
       .map((j) => _Dependency(j.path, j.spec, ' (local jar)'))
       .followedBy(
         localDependencies.projectDependencies
-            .where((d) => scopeFilter(d.spec.scope))
+            .where((d) => scope.includes(d.spec.scope))
             .map((d) => _Dependency(d.path, d.spec, ' (local project)')),
-      )
-      .followedBy(
-        dependencies
-            .where(
-              (dep) => dep.value.path == null && scopeFilter(dep.value.scope),
-            )
-            .map((dep) => _Dependency(dep.key, dep.value)),
       );
 }
 
-Future<int> _print(
-  JbConfiguration config,
-  Iterable<_Dependency> deps,
-  File jbuildJar,
-  List<String> preArgs,
-  Iterable<String> exclusionPatterns, {
-  required String header,
-  required bool compileTimeScope,
-  required bool licenseOn,
-}) async {
-  logger.info(
-    AnsiMessage([
-      AnsiMessagePart.code(ansi.styleItalic),
-      AnsiMessagePart.code(ansi.styleBold),
-      AnsiMessagePart.text(header),
-    ]),
-  );
-
-  _printLocalDependencies(deps.where((d) => d.isLocal));
-
-  final nonLocalDeps = deps.where((d) => !d.isLocal);
-
-  if (nonLocalDeps.isNotEmpty) {
-    final artifact = _createSimpleArtifact(config);
-    final pomFile = tempFile(extension: '.pom');
-    logger.fine(() => 'Writing POM to ${pomFile.path}');
-    await pomFile.writeAsString(
-      createPom(
-        artifact,
-        nonLocalDeps.specEntries,
-        const ResolvedLocalDependencies([], []),
-      ),
-    );
-
-    return await execJBuild(depsTaskName, jbuildJar, preArgs, 'deps', [
-      '-t',
-      '-s',
-      compileTimeScope ? 'compile' : 'runtime',
-      ...exclusionPatterns.expand((ex) => ['-x', ex]),
-      '-p',
-      pomFile.path,
-      if (licenseOn) '-l',
-    ], onStdout: _JBuildDepsPrinter());
-  }
-  return 0;
-}
-
-void _printLocalDependencies(Iterable<_Dependency> deps) {
-  for (var dep in deps.map((s) => '* ${s.name} ${s.localSuffix}')) {
-    logger.info(ColoredLogMessage(dep, LogColor.magenta));
-  }
+Future<Iterable<ResolvedDependency>> _parseDeps(File file) async {
+  final text = await file.readAsString();
+  return (jsonDecode(text) as List).map(ResolvedDependency.fromJson);
 }
 
 Artifact _createSimpleArtifact(JbConfiguration config) {
@@ -204,59 +181,101 @@ Artifact _createSimpleArtifact(JbConfiguration config) {
   );
 }
 
-class _JBuildDepsPrinter implements ProcessOutputConsumer {
-  int pid = -1;
+class _JBuildDepsPrinter {
+  bool showLicenses;
 
-  @override
-  void call(String line) {
-    if (line.startsWith('Dependencies of ')) {
-      _logDirectDependency(line);
-    } else if (line.startsWith('  - scope')) {
-      _logScopeLine(line);
-    } else if (line.isDependency()) {
-      _logDependency(line);
-    } else if (line.endsWith('is required with more than one version:')) {
-      _logDependencyWarning(line);
-    } else {
-      logger.info(PlainMessage(line));
-    }
-  }
+  _JBuildDepsPrinter(this.showLicenses);
 
-  void _logDirectDependency(String line) {
+  void header(
+    Artifact artifact,
+    DependencyScope scope, {
+    bool forProcessor = false,
+  }) {
+    final scopeMsg = scope == DependencyScope.all
+        ? ''
+        : 'with scope ${scope.name}';
+    final prefix = forProcessor
+        ? 'Annotation processor dependencies'
+        : 'Dependencies';
     logger.info(
-      ColoredLogMessage(
-        '* ${line.substring('Dependencies of '.length)}',
-        LogColor.magenta,
-      ),
+      AnsiMessage([
+        AnsiMessagePart.code(styleItalic),
+        AnsiMessagePart.text('$prefix of '),
+        AnsiMessagePart.code(styleBold),
+        AnsiMessagePart.code(magenta),
+        AnsiMessagePart.text('${artifact.identifier}$scopeMsg:'),
+      ]),
     );
   }
 
-  void _logScopeLine(String line) {
-    logger.info(ColoredLogMessage(line, LogColor.blue));
+  void print(List<ResolvedDependency> deps, _DepsArgs options) {
+    final map = deps.toMap();
+    final visited = <String>{};
+    map.forEach((dep, spec) {
+      _printTree(dep, map, visited, options);
+    });
   }
 
-  void _logDependencyWarning(String line) {
-    logger.info(ColoredLogMessage(line, LogColor.yellow));
-  }
-
-  void _logDependency(String line) {
-    if (line.endsWith('(-)')) {
-      logger.info(ColoredLogMessage(line, LogColor.gray));
+  void _printTree(
+    String dep,
+    Map<String, ResolvedDependency> map,
+    Set<String> visited,
+    _DepsArgs options, {
+    String indent = '  ',
+  }) {
+    final dependency = map[dep]!;
+    if (dependency.kind != DependencyKind.maven) {
+      return;
+    }
+    if (indent == '  ' && !dependency.isDirect) {
+      // indirect dependency is printed in its parent tree
+      return;
+    }
+    if (visited.add(dep)) {
+      if (indent != '  ' && dependency.isDirect) {
+        _printVisited(dep, indent: indent);
+        visited.remove(dep);
+        return;
+      }
+      final licenseParts = options.showLicenses && dependency.license.isNotEmpty
+          ? [
+              AnsiMessagePart.code(styleBold),
+              AnsiMessagePart.code(yellow),
+              AnsiMessagePart.text(' [${dependency.license}]'),
+            ]
+          : const [];
+      logger.info(
+        AnsiMessage([
+          AnsiMessagePart.code(magenta),
+          AnsiMessagePart.text("$indent* $dep"),
+          ...licenseParts,
+        ]),
+      );
+      for (final ddep in dependency.dependencies) {
+        _printTree(ddep, map, visited, options, indent: '  $indent');
+      }
     } else {
-      logger.info(PlainMessage(line));
+      _printVisited(dep, indent: indent);
+    }
+  }
+
+  void _printVisited(String dep, {required String indent}) {
+    logger.info(ColoredLogMessage("$indent* $dep (-)", LogColor.gray));
+  }
+
+  void printLocal(List<_Dependency> localDeps) {
+    for (var dep in localDeps.map((s) => '  * ${s.name} ${s.localSuffix}')) {
+      logger.info(ColoredLogMessage(dep, LogColor.blue));
     }
   }
 }
 
-final _depPattern = RegExp(r'^\s+\*\s');
-
-extension _DepString on String {
-  bool isDependency() {
-    return _depPattern.hasMatch(this);
+extension _Mapper on Iterable<ResolvedDependency> {
+  Map<String, ResolvedDependency> toMap() {
+    return {for (var item in this) item.artifact: item};
   }
 }
 
-extension _Deps on Iterable<_Dependency> {
-  Iterable<MapEntry<String, DependencySpec>> get specEntries =>
-      map((dep) => MapEntry(dep.name, dep.spec));
+extension ArtifactExtension on Artifact {
+  String get identifier => "$group:$module:$version";
 }

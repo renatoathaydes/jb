@@ -43,6 +43,8 @@ const createPomTaskName = 'generatePom';
 const publishTaskName = 'publish';
 const updateJBuildTaskName = 'updateJBuild';
 
+final depsPhase = TaskPhase.custom(TaskPhase.setup.index + 1, 'deps');
+
 const _reasonPublicationCompileCannotRun =
     'Cannot publish project because "output-jar" is not configured. '
     'Replace "output-dir" with "output-jar" to publish.';
@@ -259,6 +261,7 @@ Task createWriteDependenciesTask(
     ),
     runCondition: runCondition,
     name: writeDepsTaskName,
+    phase: depsPhase,
     description: 'Write resolved dependencies files.',
   );
 }
@@ -751,7 +754,7 @@ Future<void> _test(
 
 /// Create the `dependencies` task.
 Task createDepsTask(
-  File jbuildJar,
+  JbFiles jbFiles,
   JbConfiguration config,
   DartleCache cache,
   LocalDependencies localDependencies,
@@ -760,7 +763,7 @@ Task createDepsTask(
   final workingDir = Directory.current.path;
   return Task(
     (List<String> args) => _deps(
-      jbuildJar,
+      jbFiles,
       config,
       workingDir,
       cache,
@@ -769,14 +772,14 @@ Task createDepsTask(
       args,
     ),
     name: depsTaskName,
-    argsValidator: DepsArgValidator.instance,
-    phase: TaskPhase.setup,
+    dependsOn: {writeDepsTaskName},
+    argsValidator: const DepsArgValidator(),
     description: 'Shows information about project dependencies.',
   );
 }
 
 Future<void> _deps(
-  File jbuildJar,
+  JbFiles jbFiles,
   JbConfiguration config,
   String workingDir,
   DartleCache cache,
@@ -784,8 +787,8 @@ Future<void> _deps(
   LocalDependencies localProcessorDependencies,
   List<String> args,
 ) async {
-  final exitCode = await printDependencies(
-    jbuildJar,
+  await printDependencies(
+    jbFiles,
     config,
     workingDir,
     cache,
@@ -793,12 +796,6 @@ Future<void> _deps(
     localProcessorDependencies,
     args,
   );
-  if (exitCode != 0) {
-    throw DartleException(
-      message: 'jbuild dependencies command failed',
-      exitCode: exitCode,
-    );
-  }
 }
 
 Task createShowConfigTask(JbConfiguration config, bool noColor) {

@@ -27,6 +27,9 @@ Future<void> writeDependencies(
   required File processorDepsFile,
   required File testDepsFile,
 }) async {
+  // TODO invoke 'jbuild fetch' to get SHA1:
+  // e.g. jbuild fetch -d sha1-dir group:module:version:jar.sha1
+  // and then read the file sha1-dir/<module>-<version>.jar.sha1
   final mainDeps = await _write(
     jBuildSender,
     preArgs,
@@ -67,8 +70,9 @@ Future<List<ResolvedDependency>> _write(
     RunJBuild(writeDepsTaskName, [
       ...preArgs.where((n) => n != '-V'),
       'deps',
-      '-t',
-      '-s',
+      '--transitive',
+      '--licenses',
+      '--scope',
       'runtime',
       ...exclusions.expand(_exclusionOption),
       ...deps.expand(

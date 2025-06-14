@@ -12,5 +12,4 @@ Once the project is in good shape, this should be moved to a proper bug tracker.
 
 ## Bugs
 
-- extension task inputs/outputs not tracked properly
 - test task generates a test-reports directory but does not clean it.
