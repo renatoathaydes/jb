@@ -6,23 +6,23 @@ import '../jb_config.g.dart';
 import '../output_consumer.dart';
 
 final _directDepPattern = RegExp(
-  r'^Dependencies of ([^\s]+)\s+\(incl. transitive\) \[\{(.+)}]:$',
+  r'^Dependencies of ([^\s]+)\s+\(incl. transitive\) \[({.+})]:$',
 );
 
-final _depPattern = RegExp(r'^(\s+)\*\s([^\s]+) \[[a-z]+] \[\{(.+)}]$');
+final _depPattern = RegExp(r'^(\s+)\*\s([^\s]+) \[[a-z]+] \[({.+})]$');
 
 class _DepNode {
   final _DepNode? parent;
   final String id;
-  final String license;
+  final List<DependencyLicense> licenses;
   final int indentLevel;
   final List<_DepNode> deps = [];
 
-  _DepNode(this.id, this.license, this.indentLevel, {required this.parent});
+  _DepNode(this.id, this.licenses, this.indentLevel, {required this.parent});
 
   /// Create a child _DepNode and return it.
-  _DepNode add(String dep, String license, int indentLevel) =>
-      _DepNode(dep, license, indentLevel, parent: this).apply$(deps.add);
+  _DepNode add(String dep, List<DependencyLicense> licenses, int indentLevel) =>
+      _DepNode(dep, licenses, indentLevel, parent: this).apply$(deps.add);
 
   _DepNode? findParentAtIndentation(int indentationLevel) {
     if (indentLevel == indentationLevel) return parent;
@@ -49,6 +49,8 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
       _currentIndentLevel = null;
       return;
     }
+    const licenseParser = LicenseParser();
+
     Match? match = _directDepPattern.matchAsPrefix(line);
     if (match != null) {
       // finalize the previous dep if any
@@ -56,7 +58,12 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
         _currentScope ??= DependencyScope.all;
         done();
       }
-      _currentDep = _DepNode(match.group(1)!, match.group(2)!, 0, parent: null);
+      _currentDep = _DepNode(
+        match.group(1)!,
+        licenseParser.parseLicenses(match.group(2)!),
+        0,
+        parent: null,
+      );
       _currentScope = null;
       _currentIndentLevel = null;
       return;
@@ -71,7 +78,7 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     if (match != null) {
       final indentationLevel = match.group(1)!.length;
       final dep = match.group(2)!;
-      final license = match.group(3)!;
+      final licenses = licenseParser.parseLicenses(match.group(3)!);
       final currentIndentLevel = _currentIndentLevel ?? indentationLevel;
       if (indentationLevel != currentIndentLevel) {
         if (indentationLevel > currentIndentLevel) {
@@ -83,7 +90,7 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
         }
         _currentDep = currentDep;
       }
-      currentDep!.add(dep, license, indentationLevel);
+      currentDep!.add(dep, licenses, indentationLevel);
       _currentIndentLevel = indentationLevel;
     } else if (line.endsWith('is required with more than one version:')) {
       _enabled = false;
@@ -122,7 +129,7 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
           kind: DependencyKind.maven,
           isDirect: isDirect,
           sha1: '',
-          license: node.license,
+          licenses: node.licenses,
           dependencies: node.deps.map((d) => d.id).toList(growable: false),
         ),
       );
@@ -130,6 +137,106 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     for (final dep in node.deps) {
       _resolveDependency(dep, scope, isDirect: false);
     }
+  }
+}
+
+class LicenseParser {
+  static const nameKey = '{name=';
+  static const nameOffset = nameKey.length;
+  static const urlKey = ', url=';
+  static const urlOffset = urlKey.length;
+  static const betweenEntries = '}, {';
+
+  const LicenseParser();
+
+  /// Parse a license text as printed by JBuild.
+  /// It normally looks like this (without line breaks):
+  /// ```
+  /// {name=Apache Software License - Version 2.0,
+  ///  url=https://www.apache.org/licenses/LICENSE-2.0},
+  /// {name=Eclipse Public License - Version 2.0,
+  ///  url=https://www.eclipse.org/legal/epl-2.0}
+  /// ```
+  ///
+  /// But may also look like a simple string:
+  /// ```
+  /// {MIT}
+  /// ```
+  List<DependencyLicense> parseLicenses(final String text) {
+    final result = <DependencyLicense>[];
+    var startIndex = 0;
+    while (startIndex < text.length) {
+      if (!text.startsWith(nameKey, startIndex)) {
+        // simple license without keys?
+        if (!text.startsWith('{', startIndex)) {
+          _err("does not start with '{'", text, startIndex);
+        }
+        final endIndex = text.indexOf(betweenEntries, startIndex);
+        if (endIndex < 0) {
+          // just one license?
+          if (!text.endsWith('}')) {
+            _err("not closed with '}'", text, text.length - 1);
+          }
+          result.add(
+            DependencyLicense(
+              name: text.substring(startIndex + 1, text.length - 1),
+              url: '',
+            ),
+          );
+          break;
+        }
+        result.add(
+          DependencyLicense(
+            name: text.substring(startIndex + 1, endIndex),
+            url: '',
+          ),
+        );
+        startIndex = endIndex + betweenEntries.length - 1;
+        continue;
+      }
+
+      final nameIndex = text.indexOf(nameKey, startIndex);
+      if (nameIndex < 0) {
+        _err('missing name', text, startIndex);
+      }
+      final urlIndex = text.indexOf(urlKey, nameIndex + nameOffset);
+      if (urlIndex < 0) {
+        _err('missing url', text, nameIndex + nameOffset);
+      }
+      var closeIndex = text.indexOf(betweenEntries, urlIndex + urlOffset);
+      if (closeIndex < 0) {
+        if (text.endsWith('}')) {
+          closeIndex = text.length - 1;
+          startIndex = text.length;
+        } else {
+          _err('unclosed', text, urlIndex + urlOffset);
+        }
+      } else {
+        startIndex = closeIndex + betweenEntries.length - 1;
+      }
+      result.add(_createLicense(text, nameIndex, urlIndex, closeIndex));
+    }
+    return result;
+  }
+
+  Never _err(String reason, String text, int startIndex) {
+    final at = Iterable.generate(startIndex + 2, (int _) => ' ').join();
+    throw StateError(
+      'Invalid license text ($reason):\n'
+      '  $text\n'
+      '$at^',
+    );
+  }
+
+  DependencyLicense _createLicense(
+    String text,
+    int nameIndex,
+    int urlIndex,
+    int closeIndex,
+  ) {
+    final name = text.substring(nameIndex + nameOffset, urlIndex);
+    final url = text.substring(urlIndex + urlOffset, closeIndex);
+    return DependencyLicense(name: name, url: url);
   }
 }
 

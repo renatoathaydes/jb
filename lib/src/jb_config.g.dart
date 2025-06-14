@@ -1138,7 +1138,7 @@ class ResolvedDependency {
   final String artifact;
   final DependencySpec spec;
   final String sha1;
-  final String license;
+  final List<DependencyLicense> licenses;
   final DependencyKind kind;
   final bool isDirect;
   final List<String> dependencies;
@@ -1146,7 +1146,7 @@ class ResolvedDependency {
     required this.artifact,
     required this.spec,
     required this.sha1,
-    required this.license,
+    required this.licenses,
     required this.kind,
     required this.isDirect,
     required this.dependencies,
@@ -1157,7 +1157,7 @@ class ResolvedDependency {
       'artifact: "$artifact", '
       'spec: $spec, '
       'sha1: "$sha1", '
-      'license: "$license", '
+      'licenses: $licenses, '
       'kind: $kind, '
       'isDirect: $isDirect, '
       'dependencies: $dependencies'
@@ -1170,7 +1170,10 @@ class ResolvedDependency {
           artifact == other.artifact &&
           spec == other.spec &&
           sha1 == other.sha1 &&
-          license == other.license &&
+          const ListEquality<DependencyLicense>().equals(
+            licenses,
+            other.licenses,
+          ) &&
           kind == other.kind &&
           isDirect == other.isDirect &&
           const ListEquality<String>().equals(dependencies, other.dependencies);
@@ -1179,7 +1182,7 @@ class ResolvedDependency {
       artifact.hashCode ^
       spec.hashCode ^
       sha1.hashCode ^
-      license.hashCode ^
+      const ListEquality<DependencyLicense>().hash(licenses) ^
       kind.hashCode ^
       isDirect.hashCode ^
       const ListEquality<String>().hash(dependencies);
@@ -1187,7 +1190,7 @@ class ResolvedDependency {
     String? artifact = null,
     DependencySpec? spec = null,
     String? sha1 = null,
-    String? license = null,
+    List<DependencyLicense>? licenses = null,
     DependencyKind? kind = null,
     bool? isDirect = null,
     List<String>? dependencies = null,
@@ -1196,7 +1199,7 @@ class ResolvedDependency {
       artifact: artifact ?? this.artifact,
       spec: spec ?? this.spec.copyWith(),
       sha1: sha1 ?? this.sha1,
-      license: license ?? this.license,
+      licenses: licenses ?? [...this.licenses],
       kind: kind ?? this.kind,
       isDirect: isDirect ?? this.isDirect,
       dependencies: dependencies ?? [...this.dependencies],
@@ -1207,7 +1210,7 @@ class ResolvedDependency {
     'artifact': artifact,
     'spec': spec,
     'sha1': sha1,
-    'license': license,
+    'licenses': licenses,
     'kind': kind.name,
     'isDirect': isDirect,
     'dependencies': dependencies,
@@ -1514,6 +1517,38 @@ class _DeveloperJsonReviver extends ObjectsBase<Developer> {
   String toString() => 'Developer';
 }
 
+class DependencyLicense {
+  final String name;
+  final String url;
+  const DependencyLicense({required this.name, required this.url});
+  @override
+  String toString() =>
+      'DependencyLicense{'
+      'name: "$name", '
+      'url: "$url"'
+      '}';
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DependencyLicense &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          url == other.url;
+  @override
+  int get hashCode => name.hashCode ^ url.hashCode;
+  DependencyLicense copyWith({String? name = null, String? url = null}) {
+    return DependencyLicense(name: name ?? this.name, url: url ?? this.url);
+  }
+
+  Map<String, Object?> toJson() => {'name': name, 'url': url};
+  static DependencyLicense fromJson(Object? value) =>
+      const _DependencyLicenseJsonReviver().convert(switch (value) {
+        String() => jsonDecode(value),
+        List<int>() => jsonDecode(utf8.decode(value)),
+        _ => value,
+      });
+}
+
 enum DependencyKind {
   localJar,
   localProject,
@@ -1563,7 +1598,7 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       'artifact',
       'spec',
       'sha1',
-      'license',
+      'licenses',
       'kind',
       'isDirect',
       'dependencies',
@@ -1578,7 +1613,13 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       artifact: convertProperty(const Strings(), 'artifact', value),
       spec: convertProperty(const _DependencySpecJsonReviver(), 'spec', value),
       sha1: convertProperty(const Strings(), 'sha1', value),
-      license: convertProperty(const Strings(), 'license', value),
+      licenses: convertProperty(
+        const Arrays<DependencyLicense, _DependencyLicenseJsonReviver>(
+          _DependencyLicenseJsonReviver(),
+        ),
+        'licenses',
+        value,
+      ),
       kind: convertProperty(const _DependencyKindConverter(), 'kind', value),
       isDirect: convertProperty(const Bools(), 'isDirect', value),
       dependencies: convertProperty(
@@ -1598,8 +1639,10 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
         return const _DependencySpecJsonReviver();
       case 'sha1':
         return const Strings();
-      case 'license':
-        return const Strings();
+      case 'licenses':
+        return const Arrays<DependencyLicense, _DependencyLicenseJsonReviver>(
+          _DependencyLicenseJsonReviver(),
+        );
       case 'kind':
         return const _DependencyKindConverter();
       case 'isDirect':
@@ -1617,7 +1660,7 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       'artifact',
       'spec',
       'sha1',
-      'license',
+      'licenses',
       'kind',
       'isDirect',
       'dependencies',
@@ -1626,4 +1669,55 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
 
   @override
   String toString() => 'ResolvedDependency';
+}
+
+class _DependencyLicenseJsonReviver extends ObjectsBase<DependencyLicense> {
+  const _DependencyLicenseJsonReviver()
+    : super(
+        "DependencyLicense",
+        unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid,
+      );
+
+  @override
+  DependencyLicense convert(Object? value) {
+    if (value is! Map) throw TypeException(DependencyLicense, value);
+    final keys = value.keys.map((key) {
+      if (key is! String) {
+        throw TypeException(String, key, "object key is not a String");
+      }
+      return key;
+    }).toSet();
+    checkRequiredProperties(keys);
+    const knownProperties = {'name', 'url'};
+    final unknownKey = keys
+        .where((k) => !knownProperties.contains(k))
+        .firstOrNull;
+    if (unknownKey != null) {
+      throw UnknownPropertyException([unknownKey], DependencyLicense);
+    }
+    return DependencyLicense(
+      name: convertProperty(const Strings(), 'name', value),
+      url: convertProperty(const Strings(), 'url', value),
+    );
+  }
+
+  @override
+  Converter<Object?, Object?>? getPropertyConverter(String property) {
+    switch (property) {
+      case 'name':
+        return const Strings();
+      case 'url':
+        return const Strings();
+      default:
+        return null;
+    }
+  }
+
+  @override
+  Iterable<String> getRequiredProperties() {
+    return const {'name', 'url'};
+  }
+
+  @override
+  String toString() => 'DependencyLicense';
 }

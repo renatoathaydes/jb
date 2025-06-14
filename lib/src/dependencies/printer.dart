@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:collection/collection.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart'
     show
@@ -12,10 +13,13 @@ import 'package:dartle/dartle.dart'
         LogColor,
         PlainMessage;
 import 'package:dartle/dartle_cache.dart' show DartleCache;
-import 'package:io/ansi.dart' show magenta, styleBold, yellow, styleItalic;
+import 'package:io/ansi.dart'
+    show magenta, styleBold, yellow, styleItalic, resetBold;
 
 import '../config.dart';
 import '../jb_files.dart';
+import '../licenses.g.dart' show allLicenses;
+import '../maven_metadata.dart' show License;
 import '../pom.dart';
 import '../tasks.dart' show depsTaskName;
 
@@ -145,6 +149,7 @@ Future<void> printDependencies(
       ..print(processorDeps, options)
       ..printLocal(processorLocalDeps);
   }
+  printer.printSeenLicenses();
 }
 
 Iterable<_Dependency> _getLocalDependencies(
@@ -183,6 +188,7 @@ Artifact _createSimpleArtifact(JbConfiguration config) {
 
 class _JBuildDepsPrinter {
   bool showLicenses;
+  Set<_License> seenLicenses = {};
 
   _JBuildDepsPrinter(this.showLicenses);
 
@@ -232,18 +238,21 @@ class _JBuildDepsPrinter {
       return;
     }
     if (visited.add(dep)) {
-      if (indent != '  ' && dependency.isDirect) {
-        _printVisited(dep, indent: indent);
-        visited.remove(dep);
-        return;
+      List<AnsiMessagePart> licenseParts = const [];
+      if (options.showLicenses) {
+        final depLicenses = dependency.licenses
+            .map((d) => _findLicense(d))
+            .toList(growable: false);
+        if (depLicenses.isNotEmpty) {
+          seenLicenses.addAll(depLicenses);
+          licenseParts = [
+            AnsiMessagePart.code(styleBold),
+            AnsiMessagePart.code(yellow),
+            AnsiMessagePart.text(' [${depLicenses.join(', ')}]'),
+          ];
+        }
       }
-      final licenseParts = options.showLicenses && dependency.license.isNotEmpty
-          ? [
-              AnsiMessagePart.code(styleBold),
-              AnsiMessagePart.code(yellow),
-              AnsiMessagePart.text(' [${dependency.license}]'),
-            ]
-          : const [];
+
       logger.info(
         AnsiMessage([
           AnsiMessagePart.code(magenta),
@@ -268,6 +277,133 @@ class _JBuildDepsPrinter {
       logger.info(ColoredLogMessage(dep, LogColor.blue));
     }
   }
+
+  void printSeenLicenses() {
+    if (seenLicenses.isEmpty) return;
+    logger.info(
+      AnsiMessage([
+        AnsiMessagePart.code(styleItalic),
+        AnsiMessagePart.text(
+          'The listed dependencies use ${seenLicenses.length} '
+          'license${seenLicenses.length == 1 ? '' : 's'}:',
+        ),
+      ]),
+    );
+    for (final license in seenLicenses.sortedBy((l) => l.toString())) {
+      logger.info(
+        AnsiMessage([
+          AnsiMessagePart.code(styleBold),
+          AnsiMessagePart.text('  - $license'),
+          AnsiMessagePart.code(resetBold),
+          ...switch (license) {
+            _SpdxLicense(license: final lic) => [
+              AnsiMessagePart.text(' ('),
+              AnsiMessagePart.text(
+                [
+                  'URI=${lic.uri}',
+                  if (lic.isOsiApproved != null) 'OSI?=${lic.isOsiApproved}',
+                  if (lic.isFsfLibre != null) 'FSF?=${lic.isFsfLibre}',
+                ].join(', '),
+              ),
+              AnsiMessagePart.text(')'),
+            ],
+            _UnknownLicense(license: final lic) => [
+              if (lic.url.isNotEmpty) AnsiMessagePart.text(' (URI=${lic.url})'),
+            ],
+          },
+        ]),
+      );
+    }
+  }
+}
+
+_License _findLicense(DependencyLicense license) {
+  // try to find the license by ID
+  var knowLicense = allLicenses[license.name];
+  if (knowLicense != null) {
+    return _SpdxLicense(knowLicense);
+  }
+  // try by name
+  knowLicense = allLicenses.values
+      .where((lic) => license.name == lic.name)
+      .firstOrNull;
+  if (knowLicense != null) {
+    return _SpdxLicense(knowLicense);
+  }
+  // if available, try by URL
+  if (license.url.isNotEmpty) {
+    knowLicense = allLicenses.values
+        .where((lic) => license.url == lic.uri)
+        .firstOrNull;
+    if (knowLicense != null) {
+      return _SpdxLicense(knowLicense);
+    }
+  }
+  // try some commonly used licenses
+  if (license.name.startsWith('Apache')) {
+    if (license.name.endsWith('1.0')) {
+      return _SpdxLicense(allLicenses['Apache-1.0']!);
+    }
+    if (license.name.endsWith('1.1')) {
+      return _SpdxLicense(allLicenses['Apache-1.1']!);
+    }
+    if (license.name.endsWith(' 2.0')) {
+      return _SpdxLicense(allLicenses['Apache-2.0']!);
+    }
+  }
+  if (license.name.startsWith('Eclipse Public')) {
+    if (license.name.endsWith('1.0')) {
+      return _SpdxLicense(allLicenses['EPL-1.0']!);
+    }
+    if (license.name.endsWith('2.0')) {
+      return _SpdxLicense(allLicenses['EPL-2.0']!);
+    }
+  }
+  logger.fine(
+    () =>
+        'Could not find dependency license in the '
+        'current SPDX registry: $license',
+  );
+  return _UnknownLicense(license);
+}
+
+sealed class _License {
+  const _License();
+
+  /// This is used to print the license in the dependency tree.
+  @override
+  String toString() => switch (this) {
+    _SpdxLicense(license: var lic) => lic.licenseId,
+    _UnknownLicense(license: var lic) => lic.name,
+  };
+}
+
+final class _SpdxLicense extends _License {
+  final License license;
+
+  const _SpdxLicense(this.license);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _SpdxLicense && license.licenseId == other.license.licenseId;
+
+  @override
+  int get hashCode => license.licenseId.hashCode;
+}
+
+final class _UnknownLicense extends _License {
+  final DependencyLicense license;
+
+  const _UnknownLicense(this.license);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _UnknownLicense && license.name == other.license.name;
+
+  @override
+  int get hashCode => license.name.hashCode;
 }
 
 extension _Mapper on Iterable<ResolvedDependency> {

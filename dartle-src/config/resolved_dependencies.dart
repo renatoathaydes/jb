@@ -6,11 +6,16 @@ const dependencyKind = Enums(
   EnumValidator('DependencyKind', {'localJar', 'localProject', 'maven'}),
 );
 
+const dependencyLicense = Objects('DependencyLicense', {
+  'name': Property(Strings()),
+  'url': Property(Strings()),
+});
+
 const resolvedDependency = Objects('ResolvedDependency', {
   'artifact': Property(Strings()),
   'spec': Property(dependency),
   'sha1': Property(Strings()),
-  'license': Property(Strings()),
+  'licenses': Property(Arrays(dependencyLicense)),
   'kind': Property(dependencyKind),
   'isDirect': Property(Bools()),
   'dependencies': Property(Arrays(Strings())),
