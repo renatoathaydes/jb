@@ -9,20 +9,24 @@ final _directDepPattern = RegExp(
   r'^Dependencies of ([^\s]+)\s+\(incl. transitive\) \[({.+})]:$',
 );
 
-final _depPattern = RegExp(r'^(\s+)\*\s([^\s]+) \[[a-z]+] \[({.+})]$');
+final _depPattern = RegExp(r'^(\s+)\*\s(\S+) \[[a-z]+] (\(-\)|\[({.+})])$');
 
 class _DepNode {
   final _DepNode? parent;
   final String id;
-  final List<DependencyLicense> licenses;
+  final List<DependencyLicense>? licenses;
   final int indentLevel;
   final List<_DepNode> deps = [];
 
   _DepNode(this.id, this.licenses, this.indentLevel, {required this.parent});
 
   /// Create a child _DepNode and return it.
-  _DepNode add(String dep, List<DependencyLicense> licenses, int indentLevel) =>
-      _DepNode(dep, licenses, indentLevel, parent: this).apply$(deps.add);
+  /// If `licenses` is `null`, then this represents a repeated node.
+  _DepNode add(
+    String dep,
+    List<DependencyLicense>? licenses,
+    int indentLevel,
+  ) => _DepNode(dep, licenses, indentLevel, parent: this).apply$(deps.add);
 
   _DepNode? findParentAtIndentation(int indentationLevel) {
     if (indentLevel == indentationLevel) return parent;
@@ -37,7 +41,6 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
   int? _currentIndentLevel;
   _DepNode? _currentDep;
   final List<ResolvedDependency> results = [];
-  final Set<String> _resultIds = {};
 
   @override
   void call(String line) {
@@ -78,7 +81,11 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     if (match != null) {
       final indentationLevel = match.group(1)!.length;
       final dep = match.group(2)!;
-      final licenses = licenseParser.parseLicenses(match.group(3)!);
+      // group 3 contains either "(-)" or the actual licenses
+      final licensesGroup = match.group(3)!;
+      final licenses = licensesGroup == '(-)'
+          ? null
+          : licenseParser.parseLicenses(match.group(4)!);
       final currentIndentLevel = _currentIndentLevel ?? indentationLevel;
       if (indentationLevel != currentIndentLevel) {
         if (indentationLevel > currentIndentLevel) {
@@ -121,21 +128,23 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     DependencyScope? scope, {
     required bool isDirect,
   }) {
-    if (_resultIds.add(node.id)) {
-      results.add(
-        ResolvedDependency(
-          artifact: node.id,
-          spec: DependencySpec(scope: isDirect ? DependencyScope.all : scope!),
-          kind: DependencyKind.maven,
-          isDirect: isDirect,
-          sha1: '',
-          licenses: node.licenses,
-          dependencies: node.deps.map((d) => d.id).toList(growable: false),
-        ),
-      );
-    }
-    for (final dep in node.deps) {
-      _resolveDependency(dep, scope, isDirect: false);
+    results.add(
+      ResolvedDependency(
+        artifact: node.id,
+        spec: DependencySpec(scope: isDirect ? DependencyScope.all : scope!),
+        kind: DependencyKind.maven,
+        isDirect: isDirect,
+        sha1: '',
+        licenses: node.licenses,
+        dependencies: node.deps.map((d) => d.id).toList(growable: false),
+      ),
+    );
+    // the licenses field is only null if this is a repeated dep,
+    // so we know we don't need to recurse in such case.
+    if (node.licenses != null) {
+      for (final dep in node.deps) {
+        _resolveDependency(dep, scope, isDirect: false);
+      }
     }
   }
 }

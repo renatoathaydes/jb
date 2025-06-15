@@ -429,10 +429,10 @@ packages:
     dependency: "direct main"
     description:
       name: schemake
-      sha256: c362aee343a5d1c6212f6925c90b8f2471542404f0ce4fe8b21e2f5bfcb1c835
+      sha256: "058885e901d44455ae594273570bafb25e27cd422a1bfe5e14591e17749ca75c"
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.4"
+    version: "0.6.5"
   shelf:
     dependency: transitive
     description:

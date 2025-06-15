@@ -18,6 +18,8 @@ void setupTaskDependencies(DartleDart dartleDart) {
 
 const outputFile = configFile;
 
+String _finalPrefix(String _) => '\nfinal ';
+
 Task generateJbConfigModelTask = Task(
   (_) => _generateJbConfigModel(File(outputFile)),
   name: generateJbConfigModelTaskName,
@@ -36,6 +38,7 @@ Future<void> _generateJbConfigModel(File output) async {
       generateDartClasses(
         [jbConfig, extensionTask, resolvedDependencies],
         options: const DartGeneratorOptions(
+          insertBeforeClass: _finalPrefix,
           methodGenerators: [
             ...DartGeneratorOptions.defaultMethodGenerators,
             DartToJsonMethodGenerator(),
@@ -51,4 +54,9 @@ Future<void> _generateJbConfigModel(File output) async {
 
   // format the generated code to avoid making the 'analyse' task to run
   await formatDart(outputFile);
+}
+
+main() async {
+  final out = File('jb_model.dart');
+  await _generateJbConfigModel(out);
 }

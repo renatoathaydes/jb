@@ -216,16 +216,14 @@ class _JBuildDepsPrinter {
 
   void print(List<ResolvedDependency> deps, _DepsArgs options) {
     final map = deps.toMap();
-    final visited = <String>{};
     map.forEach((dep, spec) {
-      _printTree(dep, map, visited, options);
+      _printTree(dep, map, options);
     });
   }
 
   void _printTree(
     String dep,
     Map<String, ResolvedDependency> map,
-    Set<String> visited,
     _DepsArgs options, {
     String indent = '  ',
   }) {
@@ -237,34 +235,37 @@ class _JBuildDepsPrinter {
       // indirect dependency is printed in its parent tree
       return;
     }
-    if (visited.add(dep)) {
-      List<AnsiMessagePart> licenseParts = const [];
-      if (options.showLicenses) {
-        final depLicenses = dependency.licenses
-            .map((d) => _findLicense(d))
-            .toList(growable: false);
-        if (depLicenses.isNotEmpty) {
-          seenLicenses.addAll(depLicenses);
-          licenseParts = [
-            AnsiMessagePart.code(styleBold),
-            AnsiMessagePart.code(yellow),
-            AnsiMessagePart.text(' [${depLicenses.join(', ')}]'),
-          ];
-        }
-      }
 
-      logger.info(
-        AnsiMessage([
-          AnsiMessagePart.code(magenta),
-          AnsiMessagePart.text("$indent* $dep"),
-          ...licenseParts,
-        ]),
-      );
-      for (final ddep in dependency.dependencies) {
-        _printTree(ddep, map, visited, options, indent: '  $indent');
-      }
-    } else {
+    // the parser sets licenses to null for repeated deps.
+    if (dependency.licenses == null) {
       _printVisited(dep, indent: indent);
+      return;
+    }
+
+    List<AnsiMessagePart> licenseParts = const [];
+    if (options.showLicenses) {
+      final depLicenses = dependency.licenses!
+          .map((d) => _findLicense(d))
+          .toList(growable: false);
+      if (depLicenses.isNotEmpty) {
+        seenLicenses.addAll(depLicenses);
+        licenseParts = [
+          AnsiMessagePart.code(styleBold),
+          AnsiMessagePart.code(yellow),
+          AnsiMessagePart.text(' [${depLicenses.join(', ')}]'),
+        ];
+      }
+    }
+
+    logger.info(
+      AnsiMessage([
+        AnsiMessagePart.code(magenta),
+        AnsiMessagePart.text("$indent* $dep"),
+        ...licenseParts,
+      ]),
+    );
+    for (final ddep in dependency.dependencies) {
+      _printTree(ddep, map, options, indent: '  $indent');
     }
   }
 

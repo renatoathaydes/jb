@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:actors/actors.dart';
+import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 
 import '../config.dart';
@@ -65,6 +66,7 @@ Future<List<ResolvedDependency>> _write(
     });
     return const [];
   }
+  _checkDependenciesAreNotExcludedDirectly(deps, exclusions);
   final collector = Actor.create(_CollectorActor.new);
   await jBuildSender.send(
     RunJBuild(writeDepsTaskName, [
@@ -85,6 +87,24 @@ Future<List<ResolvedDependency>> _write(
     sink.write(jsonEncode(results));
   });
   return results ?? const [];
+}
+
+void _checkDependenciesAreNotExcludedDirectly(
+  Iterable<MapEntry<String, DependencySpec>> deps,
+  Set<String> exclusions,
+) {
+  final exclusionPatterns = exclusions.map(RegExp.new).toList();
+  final directExclusions = deps
+      .where((e) => exclusionPatterns.any((rgx) => rgx.hasMatch(e.key)))
+      .toList();
+  if (directExclusions.isNotEmpty) {
+    final listMsg = directExclusions.map((dep) => '  - ${dep.key}').join('\n');
+    failBuild(
+      reason:
+          'Direct dependenc${directExclusions.length == 1 ? 'y is' : 'ies are'}'
+          ' explicitly excluded:\n$listMsg',
+    );
+  }
 }
 
 List<String> _exclusionOption(String exclusion) {

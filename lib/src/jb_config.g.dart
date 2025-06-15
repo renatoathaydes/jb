@@ -4,7 +4,7 @@ import 'package:schemake/schemake.dart';
 
 /// jb configuration model.
 
-class JbConfiguration {
+final class JbConfiguration {
   /// Name of the Maven group of this project
   final String? group;
 
@@ -276,38 +276,38 @@ class JbConfiguration {
       const MapEquality<String, Object?>().hash(properties) ^
       const MapEquality<String, Object?>().hash(extras);
   JbConfiguration copyWith({
-    String? group = null,
-    String? module = null,
-    String? name = null,
-    String? version = null,
-    String? description = null,
-    String? url = null,
-    String? mainClass = null,
-    String? manifest = null,
-    String? extensionProject = null,
-    List<String>? sourceDirs = null,
-    String? outputDir = null,
-    String? outputJar = null,
-    List<String>? resourceDirs = null,
-    List<String>? repositories = null,
-    Map<String, DependencySpec?>? dependencies = null,
-    Map<String, DependencySpec?>? processorDependencies = null,
-    List<String>? dependencyExclusionPatterns = null,
-    List<String>? processorDependencyExclusionPatterns = null,
-    String? compileLibsDir = null,
-    String? runtimeLibsDir = null,
-    String? testReportsDir = null,
-    List<String>? javacArgs = null,
-    List<String>? runJavaArgs = null,
-    List<String>? testJavaArgs = null,
-    Map<String, String>? javacEnv = null,
-    Map<String, String>? runJavaEnv = null,
-    Map<String, String>? testJavaEnv = null,
-    SourceControlManagement? scm = null,
-    List<Developer>? developers = null,
-    List<String>? licenses = null,
-    Map<String, Object?>? properties = null,
-    Map<String, Object?>? extras = null,
+    String? group,
+    String? module,
+    String? name,
+    String? version,
+    String? description,
+    String? url,
+    String? mainClass,
+    String? manifest,
+    String? extensionProject,
+    List<String>? sourceDirs,
+    String? outputDir,
+    String? outputJar,
+    List<String>? resourceDirs,
+    List<String>? repositories,
+    Map<String, DependencySpec?>? dependencies,
+    Map<String, DependencySpec?>? processorDependencies,
+    List<String>? dependencyExclusionPatterns,
+    List<String>? processorDependencyExclusionPatterns,
+    String? compileLibsDir,
+    String? runtimeLibsDir,
+    String? testReportsDir,
+    List<String>? javacArgs,
+    List<String>? runJavaArgs,
+    List<String>? testJavaArgs,
+    Map<String, String>? javacEnv,
+    Map<String, String>? runJavaEnv,
+    Map<String, String>? testJavaEnv,
+    SourceControlManagement? scm,
+    List<Developer>? developers,
+    List<String>? licenses,
+    Map<String, Object?>? properties,
+    Map<String, Object?>? extras,
     bool unsetGroup = false,
     bool unsetModule = false,
     bool unsetName = false,
@@ -408,7 +408,7 @@ class JbConfiguration {
 
 /// The extra config for a jb task obtained by instantiating the Java task and calling getSummary().
 
-class ExtensionTaskExtra {
+final class ExtensionTaskExtra {
   final List<String> inputs;
   final List<String> outputs;
   final List<String> dependsOn;
@@ -443,10 +443,10 @@ class ExtensionTaskExtra {
       const ListEquality<String>().hash(dependsOn) ^
       const ListEquality<String>().hash(dependents);
   ExtensionTaskExtra copyWith({
-    List<String>? inputs = null,
-    List<String>? outputs = null,
-    List<String>? dependsOn = null,
-    List<String>? dependents = null,
+    List<String>? inputs,
+    List<String>? outputs,
+    List<String>? dependsOn,
+    List<String>? dependents,
   }) {
     return ExtensionTaskExtra(
       inputs: inputs ?? [...this.inputs],
@@ -470,7 +470,7 @@ class ExtensionTaskExtra {
       });
 }
 
-class ResolvedDependencies {
+final class ResolvedDependencies {
   final List<ResolvedDependency> dependencies;
   final String instant;
   const ResolvedDependencies({
@@ -498,8 +498,8 @@ class ResolvedDependencies {
       const ListEquality<ResolvedDependency>().hash(dependencies) ^
       instant.hashCode;
   ResolvedDependencies copyWith({
-    List<ResolvedDependency>? dependencies = null,
-    String? instant = null,
+    List<ResolvedDependency>? dependencies,
+    String? instant,
   }) {
     return ResolvedDependencies(
       dependencies: dependencies ?? [...this.dependencies],
@@ -521,7 +521,7 @@ class ResolvedDependencies {
 
 /// Specification of a dependency.
 
-class DependencySpec {
+final class DependencySpec {
   final bool transitive;
 
   /// Scope of a dependency.
@@ -558,10 +558,10 @@ class DependencySpec {
       path.hashCode ^
       const ListEquality<String>().hash(exclusions);
   DependencySpec copyWith({
-    bool? transitive = null,
-    DependencyScope? scope = null,
-    String? path = null,
-    List<String>? exclusions = null,
+    bool? transitive,
+    DependencyScope? scope,
+    String? path,
+    List<String>? exclusions,
     bool unsetPath = false,
   }) {
     return DependencySpec(
@@ -588,7 +588,7 @@ class DependencySpec {
 
 /// Source control Management settings.
 
-class SourceControlManagement {
+final class SourceControlManagement {
   final String connection;
   final String developerConnection;
   final String url;
@@ -616,9 +616,9 @@ class SourceControlManagement {
   int get hashCode =>
       connection.hashCode ^ developerConnection.hashCode ^ url.hashCode;
   SourceControlManagement copyWith({
-    String? connection = null,
-    String? developerConnection = null,
-    String? url = null,
+    String? connection,
+    String? developerConnection,
+    String? url,
   }) {
     return SourceControlManagement(
       connection: connection ?? this.connection,
@@ -642,7 +642,7 @@ class SourceControlManagement {
 
 /// Developers that have contributed to this project.
 
-class Developer {
+final class Developer {
   final String name;
   final String email;
   final String organization;
@@ -677,10 +677,10 @@ class Developer {
       organization.hashCode ^
       organizationUrl.hashCode;
   Developer copyWith({
-    String? name = null,
-    String? email = null,
-    String? organization = null,
-    String? organizationUrl = null,
+    String? name,
+    String? email,
+    String? organization,
+    String? organizationUrl,
   }) {
     return Developer(
       name: name ?? this.name,
@@ -1134,11 +1134,11 @@ class _ExtensionTaskExtraJsonReviver extends ObjectsBase<ExtensionTaskExtra> {
   String toString() => 'ExtensionTaskExtra';
 }
 
-class ResolvedDependency {
+final class ResolvedDependency {
   final String artifact;
   final DependencySpec spec;
   final String sha1;
-  final List<DependencyLicense> licenses;
+  final List<DependencyLicense>? licenses;
   final DependencyKind kind;
   final bool isDirect;
   final List<String> dependencies;
@@ -1146,7 +1146,7 @@ class ResolvedDependency {
     required this.artifact,
     required this.spec,
     required this.sha1,
-    required this.licenses,
+    this.licenses,
     required this.kind,
     required this.isDirect,
     required this.dependencies,
@@ -1187,19 +1187,22 @@ class ResolvedDependency {
       isDirect.hashCode ^
       const ListEquality<String>().hash(dependencies);
   ResolvedDependency copyWith({
-    String? artifact = null,
-    DependencySpec? spec = null,
-    String? sha1 = null,
-    List<DependencyLicense>? licenses = null,
-    DependencyKind? kind = null,
-    bool? isDirect = null,
-    List<String>? dependencies = null,
+    String? artifact,
+    DependencySpec? spec,
+    String? sha1,
+    List<DependencyLicense>? licenses,
+    DependencyKind? kind,
+    bool? isDirect,
+    List<String>? dependencies,
+    bool unsetLicenses = false,
   }) {
     return ResolvedDependency(
       artifact: artifact ?? this.artifact,
       spec: spec ?? this.spec.copyWith(),
       sha1: sha1 ?? this.sha1,
-      licenses: licenses ?? [...this.licenses],
+      licenses: unsetLicenses
+          ? null
+          : licenses ?? (this.licenses == null ? null : [...this.licenses!]),
       kind: kind ?? this.kind,
       isDirect: isDirect ?? this.isDirect,
       dependencies: dependencies ?? [...this.dependencies],
@@ -1210,7 +1213,7 @@ class ResolvedDependency {
     'artifact': artifact,
     'spec': spec,
     'sha1': sha1,
-    'licenses': licenses,
+    if (licenses != null) 'licenses': licenses,
     'kind': kind.name,
     'isDirect': isDirect,
     'dependencies': dependencies,
@@ -1517,7 +1520,7 @@ class _DeveloperJsonReviver extends ObjectsBase<Developer> {
   String toString() => 'Developer';
 }
 
-class DependencyLicense {
+final class DependencyLicense {
   final String name;
   final String url;
   const DependencyLicense({required this.name, required this.url});
@@ -1536,7 +1539,7 @@ class DependencyLicense {
           url == other.url;
   @override
   int get hashCode => name.hashCode ^ url.hashCode;
-  DependencyLicense copyWith({String? name = null, String? url = null}) {
+  DependencyLicense copyWith({String? name, String? url}) {
     return DependencyLicense(name: name ?? this.name, url: url ?? this.url);
   }
 
@@ -1614,8 +1617,13 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       spec: convertProperty(const _DependencySpecJsonReviver(), 'spec', value),
       sha1: convertProperty(const Strings(), 'sha1', value),
       licenses: convertProperty(
-        const Arrays<DependencyLicense, _DependencyLicenseJsonReviver>(
-          _DependencyLicenseJsonReviver(),
+        const Nullable<
+          List<DependencyLicense>,
+          Arrays<DependencyLicense, _DependencyLicenseJsonReviver>
+        >(
+          Arrays<DependencyLicense, _DependencyLicenseJsonReviver>(
+            _DependencyLicenseJsonReviver(),
+          ),
         ),
         'licenses',
         value,
@@ -1640,8 +1648,13 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       case 'sha1':
         return const Strings();
       case 'licenses':
-        return const Arrays<DependencyLicense, _DependencyLicenseJsonReviver>(
-          _DependencyLicenseJsonReviver(),
+        return const Nullable<
+          List<DependencyLicense>,
+          Arrays<DependencyLicense, _DependencyLicenseJsonReviver>
+        >(
+          Arrays<DependencyLicense, _DependencyLicenseJsonReviver>(
+            _DependencyLicenseJsonReviver(),
+          ),
         );
       case 'kind':
         return const _DependencyKindConverter();
@@ -1660,7 +1673,6 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       'artifact',
       'spec',
       'sha1',
-      'licenses',
       'kind',
       'isDirect',
       'dependencies',
