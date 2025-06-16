@@ -41,8 +41,7 @@ Future<void> _generateJbConfigModel(File output) async {
           insertBeforeClass: _finalPrefix,
           methodGenerators: [
             ...DartGeneratorOptions.defaultMethodGenerators,
-            DartToJsonMethodGenerator(),
-            DartFromJsonMethodGenerator(),
+            ...DartGeneratorOptions.jsonMethodGenerators,
           ],
         ),
       ),

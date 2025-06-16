@@ -3,12 +3,14 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:actors/actors.dart';
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 
 import '../config.dart';
 import '../java_tests.dart';
 import '../jvm_executor.dart';
+import '../path_dependency.dart';
 import '../tasks.dart' show writeDepsTaskName;
 import '../utils.dart';
 import 'parse.dart';
@@ -35,6 +37,7 @@ Future<void> writeDependencies(
     jBuildSender,
     preArgs,
     deps,
+    localDependencies,
     exclusions,
     depsFile,
   );
@@ -42,11 +45,19 @@ Future<void> writeDependencies(
     jBuildSender,
     preArgs,
     procDeps,
+    localProcessorDependencies,
     procExclusions,
     processorDepsFile,
   );
   final testRunnerLibs = [?findTestRunnerLib(mainDeps)].map(_testRunnerEntry);
-  await _write(jBuildSender, preArgs, testRunnerLibs, const {}, testDepsFile);
+  await _write(
+    jBuildSender,
+    preArgs,
+    testRunnerLibs,
+    LocalDependencies.empty,
+    const {},
+    testDepsFile,
+  );
 }
 
 MapEntry<String, DependencySpec> _testRunnerEntry(String lib) {
@@ -57,36 +68,44 @@ Future<List<ResolvedDependency>> _write(
   JBuildSender jBuildSender,
   List<String> preArgs,
   Iterable<MapEntry<String, DependencySpec>> deps,
+  LocalDependencies localDeps,
   Set<String> exclusions,
   File depsFile,
 ) async {
-  if (deps.isEmpty) {
+  if (deps.isEmpty && localDeps.isEmpty) {
     await depsFile.withSink((sink) async {
       sink.write('[]');
     });
     return const [];
   }
-  _checkDependenciesAreNotExcludedDirectly(deps, exclusions);
-  final collector = Actor.create(_CollectorActor.new);
-  await jBuildSender.send(
-    RunJBuild(writeDepsTaskName, [
-      ...preArgs.where((n) => n != '-V'),
-      'deps',
-      '--transitive',
-      '--licenses',
-      '--scope',
-      'runtime',
-      ...exclusions.expand(_exclusionOption),
-      ...deps.expand(
-        (d) => [d.key, ...d.value.exclusions.expand(_exclusionOption)],
-      ),
-    ], _CollectorSendable(await collector.toSendable())),
-  );
-  final results = await collector.send(const _Done());
+  final results = <ResolvedDependency>[];
+  if (deps.isNotEmpty) {
+    _checkDependenciesAreNotExcludedDirectly(deps, exclusions);
+    final collector = Actor.create(_CollectorActor.new);
+    await jBuildSender.send(
+      RunJBuild(writeDepsTaskName, [
+        ...preArgs.where((n) => n != '-V'),
+        'deps',
+        '--transitive',
+        '--licenses',
+        '--scope',
+        'runtime',
+        ...exclusions.expand(_exclusionOption),
+        ...deps.expand(
+          (d) => [d.key, ...d.value.exclusions.expand(_exclusionOption)],
+        ),
+      ], _CollectorSendable(await collector.toSendable())),
+    );
+    (await collector.send(const _Done()))?.vmap(results.addAll);
+  }
+
+  results.addAll(localDeps.jars.map(_resolvedJar));
+  results.addAll(localDeps.projectDependencies.map(_resolvedProject));
+
   await depsFile.withSink((sink) async {
     sink.write(jsonEncode(results));
   });
-  return results ?? const [];
+  return results;
 }
 
 void _checkDependenciesAreNotExcludedDirectly(
@@ -157,3 +176,22 @@ class _CollectorSendable with Sendable<String, void> {
     return delegate.send(_Line(message));
   }
 }
+
+ResolvedDependency _resolvedJar(JarDependency jar) => ResolvedDependency(
+  artifact: jar.path,
+  spec: jar.spec,
+  sha1: '',
+  kind: DependencyKind.localJar,
+  isDirect: true,
+  dependencies: const [],
+);
+
+ResolvedDependency _resolvedProject(ProjectDependency project) =>
+    ResolvedDependency(
+      artifact: project.path,
+      spec: project.spec,
+      sha1: '',
+      kind: DependencyKind.localProject,
+      isDirect: true,
+      dependencies: const [],
+    );

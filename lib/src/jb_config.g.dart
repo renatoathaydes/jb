@@ -363,6 +363,12 @@ final class JbConfiguration {
     );
   }
 
+  static JbConfiguration fromJson(Object? value) =>
+      const _JbConfigurationJsonReviver().convert(switch (value) {
+        String() => jsonDecode(value),
+        List<int>() => jsonDecode(utf8.decode(value)),
+        _ => value,
+      });
   Map<String, Object?> toJson() => {
     if (group != null) 'group': group,
     if (module != null) 'module': module,
@@ -398,12 +404,6 @@ final class JbConfiguration {
     'properties': properties,
     ...extras,
   };
-  static JbConfiguration fromJson(Object? value) =>
-      const _JbConfigurationJsonReviver().convert(switch (value) {
-        String() => jsonDecode(value),
-        List<int>() => jsonDecode(utf8.decode(value)),
-        _ => value,
-      });
 }
 
 /// The extra config for a jb task obtained by instantiating the Java task and calling getSummary().
@@ -456,18 +456,18 @@ final class ExtensionTaskExtra {
     );
   }
 
-  Map<String, Object?> toJson() => {
-    'inputs': inputs,
-    'outputs': outputs,
-    'dependsOn': dependsOn,
-    'dependents': dependents,
-  };
   static ExtensionTaskExtra fromJson(Object? value) =>
       const _ExtensionTaskExtraJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
         List<int>() => jsonDecode(utf8.decode(value)),
         _ => value,
       });
+  Map<String, Object?> toJson() => {
+    'inputs': inputs,
+    'outputs': outputs,
+    'dependsOn': dependsOn,
+    'dependents': dependents,
+  };
 }
 
 final class ResolvedDependencies {
@@ -507,16 +507,16 @@ final class ResolvedDependencies {
     );
   }
 
-  Map<String, Object?> toJson() => {
-    'dependencies': dependencies,
-    'instant': instant,
-  };
   static ResolvedDependencies fromJson(Object? value) =>
       const _ResolvedDependenciesJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
         List<int>() => jsonDecode(utf8.decode(value)),
         _ => value,
       });
+  Map<String, Object?> toJson() => {
+    'dependencies': dependencies,
+    'instant': instant,
+  };
 }
 
 /// Specification of a dependency.
@@ -572,18 +572,18 @@ final class DependencySpec {
     );
   }
 
-  Map<String, Object?> toJson() => {
-    'transitive': transitive,
-    'scope': scope.name,
-    if (path != null) 'path': path,
-    'exclusions': exclusions,
-  };
   static DependencySpec fromJson(Object? value) =>
       const _DependencySpecJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
         List<int>() => jsonDecode(utf8.decode(value)),
         _ => value,
       });
+  Map<String, Object?> toJson() => {
+    'transitive': transitive,
+    'scope': scope.name,
+    if (path != null) 'path': path,
+    'exclusions': exclusions,
+  };
 }
 
 /// Source control Management settings.
@@ -627,17 +627,17 @@ final class SourceControlManagement {
     );
   }
 
-  Map<String, Object?> toJson() => {
-    'connection': connection,
-    'developer-connection': developerConnection,
-    'url': url,
-  };
   static SourceControlManagement fromJson(Object? value) =>
       const _SourceControlManagementJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
         List<int>() => jsonDecode(utf8.decode(value)),
         _ => value,
       });
+  Map<String, Object?> toJson() => {
+    'connection': connection,
+    'developer-connection': developerConnection,
+    'url': url,
+  };
 }
 
 /// Developers that have contributed to this project.
@@ -690,18 +690,18 @@ final class Developer {
     );
   }
 
-  Map<String, Object?> toJson() => {
-    'name': name,
-    'email': email,
-    'organization': organization,
-    'organization-url': organizationUrl,
-  };
   static Developer fromJson(Object? value) =>
       const _DeveloperJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
         List<int>() => jsonDecode(utf8.decode(value)),
         _ => value,
       });
+  Map<String, Object?> toJson() => {
+    'name': name,
+    'email': email,
+    'organization': organization,
+    'organization-url': organizationUrl,
+  };
 }
 
 class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
@@ -1209,6 +1209,12 @@ final class ResolvedDependency {
     );
   }
 
+  static ResolvedDependency fromJson(Object? value) =>
+      const _ResolvedDependencyJsonReviver().convert(switch (value) {
+        String() => jsonDecode(value),
+        List<int>() => jsonDecode(utf8.decode(value)),
+        _ => value,
+      });
   Map<String, Object?> toJson() => {
     'artifact': artifact,
     'spec': spec,
@@ -1218,12 +1224,6 @@ final class ResolvedDependency {
     'isDirect': isDirect,
     'dependencies': dependencies,
   };
-  static ResolvedDependency fromJson(Object? value) =>
-      const _ResolvedDependencyJsonReviver().convert(switch (value) {
-        String() => jsonDecode(value),
-        List<int>() => jsonDecode(utf8.decode(value)),
-        _ => value,
-      });
 }
 
 class _ResolvedDependenciesJsonReviver
@@ -1543,13 +1543,13 @@ final class DependencyLicense {
     return DependencyLicense(name: name ?? this.name, url: url ?? this.url);
   }
 
-  Map<String, Object?> toJson() => {'name': name, 'url': url};
   static DependencyLicense fromJson(Object? value) =>
       const _DependencyLicenseJsonReviver().convert(switch (value) {
         String() => jsonDecode(value),
         List<int>() => jsonDecode(utf8.decode(value)),
         _ => value,
       });
+  Map<String, Object?> toJson() => {'name': name, 'url': url};
 }
 
 enum DependencyKind {

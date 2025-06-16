@@ -541,6 +541,7 @@ Exception invalidLicense(Iterable<String> ids) {
 /// Grouping of all local dependencies, which can be local
 /// [JarDependency] or [ProjectDependency]s.
 class LocalDependencies {
+  static const empty = LocalDependencies([], []);
   final List<JarDependency> jars;
   final List<ProjectDependency> projectDependencies;
 

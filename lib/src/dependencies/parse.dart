@@ -6,10 +6,10 @@ import '../jb_config.g.dart';
 import '../output_consumer.dart';
 
 final _directDepPattern = RegExp(
-  r'^Dependencies of ([^\s]+)\s+\(incl. transitive\) \[({.+})]:$',
+  r'^Dependencies of ([^\s]+)\s+\(incl. transitive\)( \[({.+})])?:$',
 );
 
-final _depPattern = RegExp(r'^(\s+)\*\s(\S+) \[[a-z]+] (\(-\)|\[({.+})])$');
+final _depPattern = RegExp(r'^(\s+)\*\s(\S+) \[[a-z]+]( \(-\)| \[({.+})])?$');
 
 class _DepNode {
   final _DepNode? parent;
@@ -63,7 +63,9 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
       }
       _currentDep = _DepNode(
         match.group(1)!,
-        licenseParser.parseLicenses(match.group(2)!),
+        match.group(2) == null
+            ? const []
+            : licenseParser.parseLicenses(match.group(3)!),
         0,
         parent: null,
       );
@@ -82,9 +84,9 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
       final indentationLevel = match.group(1)!.length;
       final dep = match.group(2)!;
       // group 3 contains either "(-)" or the actual licenses
-      final licensesGroup = match.group(3)!;
-      final licenses = licensesGroup == '(-)'
-          ? null
+      final licensesGroup = match.group(3);
+      final licenses = (licensesGroup == null || licensesGroup == ' (-)')
+          ? const <DependencyLicense>[]
           : licenseParser.parseLicenses(match.group(4)!);
       final currentIndentLevel = _currentIndentLevel ?? indentationLevel;
       if (indentationLevel != currentIndentLevel) {
