@@ -6,27 +6,43 @@ import '../jb_config.g.dart';
 import '../output_consumer.dart';
 
 final _directDepPattern = RegExp(
-  r'^Dependencies of ([^\s]+)\s+\(incl. transitive\)( \[({.+})])?:$',
+  r'^Dependencies of (?<dep>\S+)\s+\(incl. transitive\)( \[(?<lic>{.+})])?:$',
 );
 
-final _depPattern = RegExp(r'^(\s+)\*\s(\S+) \[[a-z]+]( \(-\)| \[({.+})])?$');
+final _depPattern = RegExp(
+  r'^(?<ind>\s+)\*\s(?<dep>\S+) \[[a-z]+](:exclusions:\[(?<exc>[^\]]+)\])?( ?(?<rep>\(-\))| ?\[(?<lic>\{.+?})])?$',
+);
 
 class _DepNode {
   final _DepNode? parent;
   final String id;
   final List<DependencyLicense>? licenses;
+  final List<String> exclusions;
   final int indentLevel;
   final List<_DepNode> deps = [];
 
-  _DepNode(this.id, this.licenses, this.indentLevel, {required this.parent});
+  _DepNode(
+    this.id,
+    this.licenses,
+    this.exclusions,
+    this.indentLevel, {
+    required this.parent,
+  });
 
   /// Create a child _DepNode and return it.
   /// If `licenses` is `null`, then this represents a repeated node.
   _DepNode add(
     String dep,
     List<DependencyLicense>? licenses,
+    List<String> exclusions,
     int indentLevel,
-  ) => _DepNode(dep, licenses, indentLevel, parent: this).apply$(deps.add);
+  ) => _DepNode(
+    dep,
+    licenses,
+    exclusions,
+    indentLevel,
+    parent: this,
+  ).apply$(deps.add);
 
   _DepNode? findParentAtIndentation(int indentationLevel) {
     if (indentLevel == indentationLevel) return parent;
@@ -54,18 +70,20 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     }
     const licenseParser = LicenseParser();
 
-    Match? match = _directDepPattern.matchAsPrefix(line);
+    RegExpMatch? match = _directDepPattern.firstMatch(line);
     if (match != null) {
       // finalize the previous dep if any
       if (_currentDep != null) {
         _currentScope ??= DependencyScope.all;
         done();
       }
+      List<DependencyLicense> licenses = match
+          .namedGroup('lic')
+          .vmapOr((g) => licenseParser.parseLicenses(g), () => const []);
       _currentDep = _DepNode(
-        match.group(1)!,
-        match.group(2) == null
-            ? const []
-            : licenseParser.parseLicenses(match.group(3)!),
+        match.namedGroup('dep')!,
+        licenses,
+        const [],
         0,
         parent: null,
       );
@@ -79,15 +97,19 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
         (currentDep.parent == null && line.endsWith('* no dependencies'))) {
       return;
     }
-    match = _depPattern.matchAsPrefix(line);
+    match = _depPattern.firstMatch(line);
     if (match != null) {
-      final indentationLevel = match.group(1)!.length;
-      final dep = match.group(2)!;
-      // group 3 contains either "(-)" or the actual licenses
-      final licensesGroup = match.group(3);
-      final licenses = (licensesGroup == null || licensesGroup == ' (-)')
-          ? const <DependencyLicense>[]
-          : licenseParser.parseLicenses(match.group(4)!);
+      final indentationLevel = match.namedGroup('ind')!.length;
+      final dep = match.namedGroup('dep')!;
+      List<String> exclusions = match
+          .namedGroup('exc')
+          .vmapOr((s) => s.split(', '), () => const []);
+      // set licenses to null in case this is a repeated listing (with `(-)`).
+      List<DependencyLicense>? licenses = match.namedGroup('rep') != null
+          ? null
+          : match
+                .namedGroup('lic')
+                .vmapOr((g) => licenseParser.parseLicenses(g), () => const []);
       final currentIndentLevel = _currentIndentLevel ?? indentationLevel;
       if (indentationLevel != currentIndentLevel) {
         if (indentationLevel > currentIndentLevel) {
@@ -99,7 +121,7 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
         }
         _currentDep = currentDep;
       }
-      currentDep!.add(dep, licenses, indentationLevel);
+      currentDep!.add(dep, licenses, exclusions, indentationLevel);
       _currentIndentLevel = indentationLevel;
     } else if (line.endsWith('is required with more than one version:')) {
       _enabled = false;
@@ -133,7 +155,10 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     results.add(
       ResolvedDependency(
         artifact: node.id,
-        spec: DependencySpec(scope: isDirect ? DependencyScope.all : scope!),
+        spec: DependencySpec(
+          scope: isDirect ? DependencyScope.all : scope!,
+          exclusions: node.exclusions,
+        ),
         kind: DependencyKind.maven,
         isDirect: isDirect,
         sha1: '',
