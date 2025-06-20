@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'dart:convert' show jsonDecode;
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -216,35 +216,35 @@ class _JBuildDepsPrinter {
 
   void print(List<ResolvedDependency> deps, _DepsArgs options) {
     final map = deps.toMap();
-    map.forEach((dep, spec) {
-      _printTree(dep, map, options);
-    });
+    final visited = <String>{};
+    for (final dep
+        in deps.where((d) => d.isDirect).sortedBy((d) => d.artifact)) {
+      _printTree(dep, map, visited, options);
+    }
   }
 
+  static const _indentUnit = '  ';
+
   void _printTree(
-    String dep,
+    ResolvedDependency dependency,
     Map<String, ResolvedDependency> map,
+    Set<String> visited,
     _DepsArgs options, {
-    String indent = '  ',
+    String indent = _indentUnit,
   }) {
-    final dependency = map[dep]!;
     if (dependency.kind != DependencyKind.maven) {
       return;
     }
-    if (indent == '  ' && !dependency.isDirect) {
-      // indirect dependency is printed in its parent tree
+
+    if (!visited.add(dependency.artifact)) {
+      _printVisited(dependency.artifact, indent: indent);
       return;
     }
 
-    // the parser sets licenses to null for repeated deps.
-    if (dependency.licenses == null) {
-      _printVisited(dep, indent: indent);
-      return;
-    }
-
+    final licenses = dependency.licenses ?? const [];
     List<AnsiMessagePart> licenseParts = const [];
     if (options.showLicenses) {
-      final depLicenses = dependency.licenses!
+      final depLicenses = licenses
           .map((d) => _findLicense(d))
           .toList(growable: false);
       if (depLicenses.isNotEmpty) {
@@ -259,13 +259,15 @@ class _JBuildDepsPrinter {
 
     logger.info(
       AnsiMessage([
-        AnsiMessagePart.code(magenta),
-        AnsiMessagePart.text("$indent* $dep"),
+        AnsiMessagePart.code(styleBold),
+        AnsiMessagePart.text("$indent* ${dependency.artifact}"),
         ...licenseParts,
       ]),
     );
-    for (final ddep in dependency.dependencies) {
-      _printTree(ddep, map, options, indent: '  $indent');
+
+    for (final ddep in dependency.dependencies.sorted()) {
+      final dep = map[ddep]!;
+      _printTree(dep, map, visited, options, indent: '$_indentUnit$indent');
     }
   }
 
@@ -301,7 +303,7 @@ class _JBuildDepsPrinter {
               AnsiMessagePart.text(' ('),
               AnsiMessagePart.text(
                 [
-                  'URI=${lic.uri}',
+                  lic.uri,
                   if (lic.isOsiApproved != null) 'OSI?=${lic.isOsiApproved}',
                   if (lic.isFsfLibre != null) 'FSF?=${lic.isFsfLibre}',
                 ].join(', '),
@@ -309,7 +311,8 @@ class _JBuildDepsPrinter {
               AnsiMessagePart.text(')'),
             ],
             _UnknownLicense(license: final lic) => [
-              if (lic.url.isNotEmpty) AnsiMessagePart.text(' (URI=${lic.url})'),
+              if (lic.url.isNotEmpty && lic.url != '<unspecified>')
+                AnsiMessagePart.text(' (${lic.url})'),
             ],
           },
         ]),
@@ -408,8 +411,24 @@ final class _UnknownLicense extends _License {
 }
 
 extension _Mapper on Iterable<ResolvedDependency> {
+  /// Create a Map with the resolved dependencies by the artifact identifier.
+  ///
+  /// The Iterable may contain repeated dependencies because they may appear
+  /// on multiple branches. In case of repetition, the one with a non-null
+  /// license value is kept because only repeated dependencies, as printed by
+  /// JBuild, have a null licenses field.
   Map<String, ResolvedDependency> toMap() {
-    return {for (var item in this) item.artifact: item};
+    final map = <String, ResolvedDependency>{};
+    for (final dep in this) {
+      final key = dep.artifact;
+      final current = map[key];
+      if (current == null) {
+        map[key] = dep;
+      } else if (dep.licenses != null) {
+        map[key] = dep;
+      }
+    }
+    return map;
   }
 }
 
