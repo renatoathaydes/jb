@@ -51,6 +51,8 @@ void main() {
         lines.sublist(runningTaskIndex + 1, endIndex).join('\n'),
         equals('''
 Annotation processor dependencies of jb.example:error-prone:0.0.0:
+  x com.google.*error_prone_annotation.*
+  x org.checkerframework:.*
   * com.google.errorprone:error_prone_core:2.16
     * com.google.auto.service:auto-service-annotations:1.0.1
     * com.google.auto.value:auto-value-annotations:1.9
@@ -68,6 +70,12 @@ Annotation processor dependencies of jb.example:error-prone:0.0.0:
       * com.google.code.findbugs:jsr305:3.0.2 (-)
       * io.github.java-diff-utils:java-diff-utils:4.0
         * org.eclipse.jgit:org.eclipse.jgit:4.4.1.201607150455-r
+          x com.googlecode.javaewah:JavaEWAH
+          x com.jcraft:jsch
+          x commons-codec:commons-codec
+          x commons-logging:commons-logging
+          x org.apache.httpcomponents:httpclient
+          x org.slf4j:slf4j-api
     * com.google.errorprone:error_prone_type_annotations:2.16
     * com.google.guava:guava:31.0.1-jre (-)
     * com.google.protobuf:protobuf-java:3.19.2
@@ -100,6 +108,8 @@ Annotation processor dependencies of jb.example:error-prone:0.0.0:
           lines.sublist(runningTaskIndex + 1, endIndex).join('\n'),
           equals('''\
 Annotation processor dependencies of jb.example:error-prone:0.0.0:
+  x com.google.*error_prone_annotation.*
+  x org.checkerframework:.*
   * com.google.errorprone:error_prone_core:2.16 [Apache-2.0]
     * com.google.auto.service:auto-service-annotations:1.0.1 [Apache-2.0]
     * com.google.auto.value:auto-value-annotations:1.9 [Apache-2.0]
@@ -117,6 +127,12 @@ Annotation processor dependencies of jb.example:error-prone:0.0.0:
       * com.google.code.findbugs:jsr305:3.0.2 (-)
       * io.github.java-diff-utils:java-diff-utils:4.0 [Apache-2.0]
         * org.eclipse.jgit:org.eclipse.jgit:4.4.1.201607150455-r [Eclipse Distribution License (New BSD License)]
+          x com.googlecode.javaewah:JavaEWAH
+          x com.jcraft:jsch
+          x commons-codec:commons-codec
+          x commons-logging:commons-logging
+          x org.apache.httpcomponents:httpclient
+          x org.slf4j:slf4j-api
     * com.google.errorprone:error_prone_type_annotations:2.16 [Apache-2.0]
     * com.google.guava:guava:31.0.1-jre (-)
     * com.google.protobuf:protobuf-java:3.19.2 [3-Clause BSD License]

@@ -14,7 +14,7 @@ import 'package:dartle/dartle.dart'
         PlainMessage;
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:io/ansi.dart'
-    show magenta, styleBold, yellow, styleItalic, resetBold;
+    show magenta, styleBold, yellow, styleItalic, resetBold, styleDim, red;
 
 import '../config.dart';
 import '../jb_files.dart';
@@ -142,12 +142,14 @@ Future<void> printDependencies(
   if (mainDeps.isNotEmpty || mainLocalDeps.isNotEmpty) {
     printer
       ..header(artifact, scope)
+      ..exclusions(config.dependencyExclusionPatterns)
       ..print(mainDeps, options)
       ..printLocal(mainLocalDeps);
   }
   if (processorLocalDeps.isNotEmpty || processorDeps.isNotEmpty) {
     printer
       ..header(artifact, scope, forProcessor: true)
+      ..exclusions(config.processorDependencyExclusionPatterns)
       ..print(processorDeps, options)
       ..printLocal(processorLocalDeps);
   }
@@ -216,6 +218,10 @@ class _JBuildDepsPrinter {
     );
   }
 
+  void exclusions(List<String> exclusions) {
+    _printExclusions(exclusions);
+  }
+
   void print(List<ResolvedDependency> deps, _DepsArgs options) {
     final map = deps.toMap();
     final visited = <String>{};
@@ -267,9 +273,23 @@ class _JBuildDepsPrinter {
       ]),
     );
 
+    _printExclusions(dependency.spec.exclusions, indent: indent);
+
     for (final ddep in dependency.dependencies.sorted()) {
       final dep = map[ddep]!;
       _printTree(dep, map, visited, options, indent: '$_indentUnit$indent');
+    }
+  }
+
+  void _printExclusions(List<String> exclusions, {String indent = ''}) {
+    for (final exclusion in exclusions.sorted()) {
+      logger.info(
+        AnsiMessage([
+          AnsiMessagePart.code(red),
+          AnsiMessagePart.code(styleDim),
+          AnsiMessagePart.text('$indent${_indentUnit}x $exclusion'),
+        ]),
+      );
     }
   }
 
