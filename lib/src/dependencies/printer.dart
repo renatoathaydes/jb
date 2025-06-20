@@ -87,8 +87,10 @@ class DepsArgValidator with ArgsValidator {
   @override
   String helpMessage() =>
       'Acceptable options:\n'
-      '        * $scopeFlag <scope>: the scope of dependencies. One of ${DependencyScope.values.map((s) => s.name)}.\n'
-      '        * $licensesFlag: show dependencies\' licenses.';
+      '        * --$scopeFlag\n'
+      '          -s <scope>: the scope of dependencies. One of ${DependencyScope.values.map((s) => s.name)}.\n'
+      '        * --$licensesFlag\n'
+      '          -l: show dependencies\' licenses.';
 }
 
 Future<void> printDependencies(
