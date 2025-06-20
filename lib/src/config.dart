@@ -524,6 +524,14 @@ ${color('# Test reports output dir', commentColor)}
 test-reports-dir: ${quote(testReportsDir)}
 ${color('# jb extension project path (for custom tasks)', commentColor)}
 extension-project: ${quote(extensionProject)}
+${extras.isNotEmpty ? color(
+            //
+            '############################\n'
+            '# Custom tasks configuration\n'
+            '############################',
+            commentColor,
+          ) : ''}
+${[for (final e in extras.entries) "${quote(e.key)}: ${e.value}"].join('\n')}
 ''';
   }
 }
