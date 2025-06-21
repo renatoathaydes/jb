@@ -167,6 +167,10 @@ public final class ExampleTask implements JbTask {
 }
 ```
 
+`JbTask`s may be configured via the `jb.yaml` configuration file (configuration is received in the task's constructor)
+and can support incremental builds as well, by implementing the `run( ChangeSet changeSet, String... args )` method overload.
+See the [example-extension CopierTask](test/test-projects/example-extension/src/CopierTask.java) for an example.
+
 ## Demo Project
 
 A few demo Java projects, including one using the [Javalin Web Framework](https://javalin.io/), are available in the
