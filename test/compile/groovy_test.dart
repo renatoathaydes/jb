@@ -9,6 +9,8 @@ void main() {
     expect(groovyJarPattern.matchAsPrefix('groovy-3.0.0.jar'), isNotNull);
     expect(groovyJarPattern.matchAsPrefix('groovy-4.0.24.jar'), isNotNull);
     expect(
-        groovyJarPattern.matchAsPrefix('groovy-5.0.0-alpha-9.jar'), isNotNull);
+      groovyJarPattern.matchAsPrefix('groovy-5.0.0-alpha-9.jar'),
+      isNotNull,
+    );
   });
 }

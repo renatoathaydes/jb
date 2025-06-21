@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
-import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
@@ -20,8 +19,11 @@ import 'utils.dart';
 ///
 /// The caller must handle errors.
 Future<bool> runJb(
-    JbCliOptions jbOptions, Options dartleOptions, Stopwatch stopwatch,
-    [ConfigSource? configSource]) async {
+  JbCliOptions jbOptions,
+  Options dartleOptions,
+  Stopwatch stopwatch, [
+  ConfigSource? configSource,
+]) async {
   if (dartleOptions.showHelp) {
     printHelp();
     return false;
@@ -32,9 +34,7 @@ Future<bool> runJb(
     return false;
   }
   var rootDir = jbOptions.rootDirectory;
-  if (rootDir == null) {
-    await _runJb(jbOptions, dartleOptions, configSource, stopwatch, jbuildJar);
-  } else {
+  if (rootDir != null) {
     rootDir = p.canonicalize(rootDir);
     final dir = Directory(rootDir);
     if (!(await dir.exists())) {
@@ -45,23 +45,32 @@ Future<bool> runJb(
         await dir.create(recursive: true);
       }
     }
+    Directory.current = Directory(rootDir);
     logger.fine(() => "Running jb on directory '$rootDir'");
-    await withCurrentDirectory(
-        rootDir,
-        () async => await _runJb(
-            jbOptions, dartleOptions, configSource, stopwatch, jbuildJar));
   }
+
+  await _runJb(jbOptions, dartleOptions, configSource, stopwatch, jbuildJar);
+
   return true;
 }
 
-Future<void> _runJb(JbCliOptions options, Options dartleOptions,
-    ConfigSource? configSource, Stopwatch stopwatch, File jbuildJar) async {
-  logger.log(profile,
-      () => 'Initialized CLI and parsed options in ${elapsedTime(stopwatch)}');
+Future<void> _runJb(
+  JbCliOptions options,
+  Options dartleOptions,
+  ConfigSource? configSource,
+  Stopwatch stopwatch,
+  File jbuildJar,
+) async {
+  logger.log(
+    profile,
+    () => 'Initialized CLI and parsed options in ${elapsedTime(stopwatch)}',
+  );
   final createOptions = options.createOptions;
   if (createOptions != null) {
-    return createNewProject(createOptions.arguments,
-        colors: dartleOptions.colorfulLog);
+    return createNewProject(
+      createOptions.arguments,
+      colors: dartleOptions.colorfulLog,
+    );
   }
 
   final config = await _createConfig(configSource ?? defaultJbConfigSource);
@@ -71,13 +80,17 @@ Future<void> _runJb(JbCliOptions options, Options dartleOptions,
   );
 
   final jvmExecutor = createJavaActor(
-      dartleOptions.logLevel,
-      jbuildJar.path,
-      jbFiles.jvmCdsFile.absolute.path,
-      config.javacArgs.javaRuntimeArgs().toList(growable: false));
+    dartleOptions.logLevel,
+    jbuildJar.path,
+    jbFiles.jvmCdsFile.absolute.path,
+    config.javacArgs.javaRuntimeArgs().toList(growable: false),
+  );
 
-  final runner =
-      await JbRunner.create(jbFiles, config, await jvmExecutor.toSendable());
+  final runner = await JbRunner.create(
+    jbFiles,
+    config,
+    await jvmExecutor.toSendable(),
+  );
 
   try {
     await runner.run(dartleOptions, stopwatch);
@@ -93,7 +106,9 @@ Future<JbConfiguration> _createConfig(ConfigSource configSource) async {
     rethrow;
   } catch (e) {
     throw DartleException(
-        message: 'Unable to load jb config due to: $e.'
-            '\nRun with the --help option to see usage.');
+      message:
+          'Unable to load jb config due to: $e.'
+          '\nRun with the --help option to see usage.',
+    );
   }
 }

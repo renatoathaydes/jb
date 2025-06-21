@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dartle/dartle.dart';
 import 'package:io/ansi.dart';
 import 'package:jb/jb.dart';
@@ -256,6 +258,107 @@ test-reports-dir: "build/test-reports"
 extension-project: null
 ''';
 
+const _versionsConfig = '''
+properties:
+    versions:
+        jbuild: 0.12.0  
+''';
+
+const _basicConfigWithExtensions = '''
+group: com.example
+module: basic-with-extensions
+extensionTask:
+  inputs: [a, b]
+  outputs: "foo"
+anotherTask:
+  verbose: true
+''';
+
+const _basicConfigWithExtensionsExpanded = '''
+######################## Full jb configuration ########################
+
+### For more information, visit https://github.com/renatoathaydes/jb
+
+# Maven artifact groupId
+group: "com.example"
+# Module name (Maven artifactId)
+module: "basic-with-extensions"
+# Human readable name of this project
+name: null
+# Maven version
+version: null
+# Description for this project
+description: null
+# URL of this project
+url: null
+# Licenses this project uses
+licenses: []
+# Developers who have contributed to this project
+developers: []
+# Source control management
+scm: null
+# List of source directories
+source-dirs: []
+# List of resource directories (assets)
+resource-dirs: []
+# Output directory (class files)
+output-dir: null
+# Output jar (may be used instead of output-dir)
+output-jar: null
+# Java Main class name
+main-class: null
+# Manifest file to include in the jar
+manifest: null
+# Java Compiler arguments
+javac-args: []
+# Java Compiler environment variables
+javac-env: {}
+# Java Runtime arguments
+run-java-args: []
+# Java Runtime environment variables
+run-java-env: {}
+# Java Test run arguments
+test-java-args: []
+# Java Test environment variables
+test-java-env: {}
+# Maven repositories (URLs or directories)
+repositories: []
+# Maven dependencies
+dependencies: {}
+# Dependency exclusions (regular expressions)
+dependency-exclusion-patterns: []
+# Annotation processor Maven dependencies
+processor-dependencies: {}
+# Annotation processor dependency exclusions (regular expressions)
+processor-dependency-exclusion-patterns: []
+# Compile-time libs output dir
+compile-libs-dir: "build/compile-libs"
+# Runtime libs output dir
+runtime-libs-dir: "build/runtime-libs"
+# Test reports output dir
+test-reports-dir: "build/test-reports"
+# jb extension project path (for custom tasks)
+extension-project: null
+############################
+# Custom tasks configuration
+############################
+"extensionTask":
+  "inputs": ["a", "b"]
+  "outputs": "foo"
+"anotherTask":
+  "verbose": true
+''';
+
+String _configImportingVersionsConfig(String importPath) =>
+    '''
+imports:
+    - ${jsonEncode(importPath)}
+
+module: importing-versions-config
+dependencies:
+  com.athaydes.jbuild:jbuild:{{versions.jbuild}}:
+''';
+
 void main() {
   group('JBuildConfiguration', () {
     test('can load', () async {
@@ -272,8 +375,9 @@ void main() {
       final config = await loadConfigString(_fullConfig);
 
       expect(
-          config,
-          equalsConfig(JbConfiguration(
+        config,
+        equalsConfig(
+          JbConfiguration(
             group: 'my-group',
             module: 'mod1',
             name: 'Module 1',
@@ -287,7 +391,7 @@ void main() {
                 email: 'joe',
                 organization: 'ACME',
                 organizationUrl: 'http://acme.org',
-              )
+              ),
             ],
             scm: SourceControlManagement(
               connection: 'git',
@@ -306,15 +410,14 @@ void main() {
             runJavaEnv: {'HELLO': 'hi', 'FOO': 'bar'},
             testJavaEnv: {'TESTING': 'true'},
             repositories: ['https://maven.org', 'ftp://foo.bar'],
-            dependencies: {
-              'com.google:guava:1.2.3': null,
-            },
+            dependencies: {'com.google:guava:1.2.3': null},
             processorDependencies: {
               'foo.bar:zort:1.0': DependencySpec(
-                  transitive: true,
-                  exclusions: ['foo', 'bar'],
-                  scope: DependencyScope.runtimeOnly,
-                  path: 'foo/bar/zort'),
+                transitive: true,
+                exclusions: ['foo', 'bar'],
+                scope: DependencyScope.runtimeOnly,
+                path: 'foo/bar/zort',
+              ),
             },
             processorDependencyExclusionPatterns: ['others'],
             dependencyExclusionPatterns: ['test.*', '.*other\\d+.*'],
@@ -322,21 +425,33 @@ void main() {
             runtimeLibsDir: 'all-libs',
             testReportsDir: 'reports-dir',
             properties: {
-              'versions': {'guava': '1.2.3'}
+              'versions': {'guava': '1.2.3'},
             },
-          )));
+          ),
+        ),
+      );
     });
 
     test('can print full config as YAML', () async {
       final config = await loadConfigString(_fullConfig);
-      expect(overrideAnsiOutput(true, () => config.toYaml(false)),
-          equals(_fullConfigExpanded));
+      expect(
+        overrideAnsiOutput(true, () => config.toYaml(false)),
+        equals(_fullConfigExpanded),
+      );
     });
 
     test('can print basic config with dependencies as YAML', () async {
       expect(
-          (await loadConfigString(_basicConfigWithDependencies)).toYaml(true),
-          equals(_basicConfigWithDependenciesExpanded));
+        (await loadConfigString(_basicConfigWithDependencies)).toYaml(true),
+        equals(_basicConfigWithDependenciesExpanded),
+      );
+    });
+
+    test('can print basic config with extensions as YAML', () async {
+      expect(
+        (await loadConfigString(_basicConfigWithExtensions)).toYaml(true),
+        equals(_basicConfigWithExtensionsExpanded),
+      );
     });
 
     test('can parse unquoted string in iterable', () async {
@@ -351,27 +466,31 @@ void main() {
       ''');
 
       expect(
-          config,
-          equalsConfig(const JbConfiguration(
-              licenses: [],
-              developers: [],
-              sourceDirs: ['src/java'],
-              outputDir: 'out',
-              resourceDirs: ['resources'],
-              javacArgs: ['-X'],
-              runJavaArgs: [],
-              testJavaArgs: [],
-              javacEnv: {},
-              runJavaEnv: {},
-              testJavaEnv: {},
-              repositories: ['https://maven.org'],
-              dependencies: {},
-              processorDependencies: {},
-              processorDependencyExclusionPatterns: [],
-              dependencyExclusionPatterns: ['one'],
-              compileLibsDir: 'build/compile-libs',
-              runtimeLibsDir: 'build/runtime-libs',
-              testReportsDir: 'reports')));
+        config,
+        equalsConfig(
+          const JbConfiguration(
+            licenses: [],
+            developers: [],
+            sourceDirs: ['src/java'],
+            outputDir: 'out',
+            resourceDirs: ['resources'],
+            javacArgs: ['-X'],
+            runJavaArgs: [],
+            testJavaArgs: [],
+            javacEnv: {},
+            runJavaEnv: {},
+            testJavaEnv: {},
+            repositories: ['https://maven.org'],
+            dependencies: {},
+            processorDependencies: {},
+            processorDependencyExclusionPatterns: [],
+            dependencyExclusionPatterns: ['one'],
+            compileLibsDir: 'build/compile-libs',
+            runtimeLibsDir: 'build/runtime-libs',
+            testReportsDir: 'reports',
+          ),
+        ),
+      );
     });
 
     test('can parse basic string dependencies', () async {
@@ -381,12 +500,7 @@ void main() {
         var:
       ''');
 
-      expect(
-          config.dependencies,
-          equals(const {
-            'foo': null,
-            'var': null,
-          }));
+      expect(config.dependencies, equals(const {'foo': null, 'var': null}));
     });
 
     test('can parse map dependencies', () async {
@@ -400,13 +514,16 @@ void main() {
       ''');
 
       expect(
-          config.dependencies,
-          equals(const {
-            'foo:bar:1.0': DependencySpec(
-                transitive: false, scope: DependencyScope.runtimeOnly),
-            'second:dep:0.1': null,
-            'var': null,
-          }));
+        config.dependencies,
+        equals(const {
+          'foo:bar:1.0': DependencySpec(
+            transitive: false,
+            scope: DependencyScope.runtimeOnly,
+          ),
+          'second:dep:0.1': null,
+          'var': null,
+        }),
+      );
     });
 
     final config1 = JbConfiguration.fromJson(const {
@@ -425,12 +542,12 @@ void main() {
       'test-java-env': {'E': 'F'},
       'repositories': {'r1', 'r2'},
       'dependencies': {
-        'dep1': {'transitive': true}
+        'dep1': {'transitive': true},
       },
       'dependency-exclusion-patterns': {'e1'},
       'compile-libs-dir': 'comp',
       'runtime-libs-dir': 'runtime',
-      'test-reports-dir': 'reports'
+      'test-reports-dir': 'reports',
     });
 
     test('invalid keys are allowed on top config', () async {
@@ -441,9 +558,15 @@ void main() {
       ''');
 
       expect(
-          config,
-          equals(JbConfiguration(
-              module: 'foo', version: '1.0', extras: {'custom': true})));
+        config,
+        equals(
+          JbConfiguration(
+            module: 'foo',
+            version: '1.0',
+            extras: {'custom': true},
+          ),
+        ),
+      );
     });
 
     test('can merge two full configurations', () async {
@@ -463,17 +586,18 @@ void main() {
         'test-java-env': {'S': 'T'},
         'repositories': {'r3', 'r4'},
         'dependencies': {
-          'dep2': {'transitive': false}
+          'dep2': {'transitive': false},
         },
         'dependency-exclusion-patterns': {'e2'},
         'compile-libs-dir': 'comp2',
         'runtime-libs-dir': 'runtime2',
-        'test-reports-dir': 'reports2'
+        'test-reports-dir': 'reports2',
       });
 
       expect(
-          config1.merge(config2),
-          equalsConfig(JbConfiguration.fromJson(const {
+        config1.merge(config2),
+        equalsConfig(
+          JbConfiguration.fromJson(const {
             'group': 'g2',
             'module': 'm2',
             'version': 'v2',
@@ -495,12 +619,15 @@ void main() {
             'dependency-exclusion-patterns': {'e1', 'e2'},
             'compile-libs-dir': 'comp2',
             'runtime-libs-dir': 'runtime2',
-            'test-reports-dir': 'reports2'
-          })));
+            'test-reports-dir': 'reports2',
+          }),
+        ),
+      );
 
       expect(
-          config2.merge(config1),
-          equalsConfig(JbConfiguration.fromJson(const {
+        config2.merge(config1),
+        equalsConfig(
+          JbConfiguration.fromJson(const {
             'group': 'g1',
             'module': 'm1',
             'version': 'v1',
@@ -517,26 +644,29 @@ void main() {
             'repositories': {'r3', 'r4', 'r1', 'r2'},
             'dependencies': {
               'dep1': {'transitive': true},
-              'dep2': {'transitive': false}
+              'dep2': {'transitive': false},
             },
             'dependency-exclusion-patterns': {'e2', 'e1'},
             'compile-libs-dir': 'comp',
             'runtime-libs-dir': 'runtime',
-            'test-reports-dir': 'reports'
-          })));
+            'test-reports-dir': 'reports',
+          }),
+        ),
+      );
     });
 
     test('can merge small config into full configuration and vice-versa', () {
       final smallConfig = JbConfiguration.fromJson({
         'module': 'small',
         'dependencies': {
-          'big': {'transitive': true}
-        }
+          'big': {'transitive': true},
+        },
       });
 
       expect(
-          config1.merge(smallConfig),
-          equalsConfig(JbConfiguration.fromJson(const {
+        config1.merge(smallConfig),
+        equalsConfig(
+          JbConfiguration.fromJson(const {
             'group': 'g1',
             'module': 'small',
             'version': 'v1',
@@ -558,12 +688,15 @@ void main() {
             'dependency-exclusion-patterns': {'e1'},
             'compile-libs-dir': 'comp',
             'runtime-libs-dir': 'runtime',
-            'test-reports-dir': 'reports'
-          })));
+            'test-reports-dir': 'reports',
+          }),
+        ),
+      );
 
       expect(
-          smallConfig.merge(config1),
-          equalsConfig(JbConfiguration.fromJson(const {
+        smallConfig.merge(config1),
+        equalsConfig(
+          JbConfiguration.fromJson(const {
             'group': 'g1',
             'module': 'm1',
             'version': 'v1',
@@ -585,30 +718,33 @@ void main() {
             'dependency-exclusion-patterns': {'e1'},
             'compile-libs-dir': 'comp',
             'runtime-libs-dir': 'runtime',
-            'test-reports-dir': 'reports'
-          })));
+            'test-reports-dir': 'reports',
+          }),
+        ),
+      );
     });
 
     test('can merge two small configurations using properties', () {
       final smallConfig1 = JbConfiguration.fromJson({
         'version': 'v1',
         'dependencies': {
-          '{{DEP}}': {'transitive': true}
+          '{{DEP}}': {'transitive': true},
         },
         'test-reports-dir': '{{REPORTS_DIR}}',
-        'properties': {'REPORTS_DIR': 'reports'}
+        'properties': {'REPORTS_DIR': 'reports'},
       });
       final smallConfig2 = JbConfiguration.fromJson({
         'module': 'small',
         'dependencies': {
-          'big2': {'transitive': false}
+          'big2': {'transitive': false},
         },
-        'properties': {'DEP': 'big1'}
+        'properties': {'DEP': 'big1'},
       });
 
       expect(
-          smallConfig1.merge(smallConfig2),
-          equalsConfig(JbConfiguration.fromJson({
+        smallConfig1.merge(smallConfig2),
+        equalsConfig(
+          JbConfiguration.fromJson({
             'module': 'small',
             'version': 'v1',
             'dependencies': {
@@ -616,12 +752,15 @@ void main() {
               'big2': {'transitive': false},
             },
             'test-reports-dir': 'reports',
-            'properties': {'DEP': 'big1', 'REPORTS_DIR': 'reports'}
-          })));
+            'properties': {'DEP': 'big1', 'REPORTS_DIR': 'reports'},
+          }),
+        ),
+      );
 
       expect(
-          smallConfig2.merge(smallConfig1),
-          equalsConfig(JbConfiguration.fromJson({
+        smallConfig2.merge(smallConfig1),
+        equalsConfig(
+          JbConfiguration.fromJson({
             'module': 'small',
             'version': 'v1',
             'dependencies': {
@@ -629,8 +768,24 @@ void main() {
               'big2': {'transitive': false},
             },
             'test-reports-dir': 'reports',
-            'properties': {'DEP': 'big1', 'REPORTS_DIR': 'reports'}
-          })));
+            'properties': {'DEP': 'big1', 'REPORTS_DIR': 'reports'},
+          }),
+        ),
+      );
+    });
+
+    test('can import configuration with properties', () async {
+      final versionsFile = await tempFile(
+        extension: '.yaml',
+      ).writeAsString(_versionsConfig);
+      final config = await loadConfigString(
+        _configImportingVersionsConfig(versionsFile.path),
+      );
+      expect(config.module, equals('importing-versions-config'));
+      expect(
+        config.dependencies,
+        equals({'com.athaydes.jbuild:jbuild:0.12.0': null}),
+      );
     });
   });
 
@@ -641,12 +796,18 @@ void main() {
       ''');
 
       expect(
-          createConfig,
-          throwsA(isA<DartleException>().having(
-              (e) => e.message,
-              'message',
-              equals("Invalid jb configuration: "
-                  "at 'source-dirs': cannot cast true (type bool) to List<String>"))));
+        createConfig,
+        throwsA(
+          isA<DartleException>().having(
+            (e) => e.message,
+            'message',
+            equals(
+              "Invalid jb configuration: "
+              "at 'source-dirs': cannot cast true (type bool) to List<String>",
+            ),
+          ),
+        ),
+      );
     });
 
     test('cannot parse invalid dependencies', () async {
@@ -657,13 +818,19 @@ void main() {
       ''');
 
       expect(
-          createConfig,
-          throwsA(isA<DartleException>().having(
-              (e) => e.message,
-              'message',
-              equals("Invalid jb configuration: "
-                  "at 'dependencies': invalid syntax.\n"
-                  "$dependenciesSyntaxHelp"))));
+        createConfig,
+        throwsA(
+          isA<DartleException>().having(
+            (e) => e.message,
+            'message',
+            equals(
+              "Invalid jb configuration: "
+              "at 'dependencies': invalid syntax.\n"
+              "$dependenciesSyntaxHelp",
+            ),
+          ),
+        ),
+      );
     });
 
     test('invalid keys are not allowed in dependency', () async {
@@ -676,13 +843,19 @@ void main() {
       ''');
 
       expect(
-          createConfig,
-          throwsA(isA<DartleException>().having(
-              (e) => e.message,
-              'message',
-              equals('Invalid jb configuration: '
-                  "at 'dependencies/foo/checked': property does not exist.\n"
-                  "$dependenciesSyntaxHelp"))));
+        createConfig,
+        throwsA(
+          isA<DartleException>().having(
+            (e) => e.message,
+            'message',
+            equals(
+              'Invalid jb configuration: '
+              "at 'dependencies/foo/checked': property does not exist.\n"
+              "$dependenciesSyntaxHelp",
+            ),
+          ),
+        ),
+      );
     });
 
     test('invalid keys are not allowed in scm', () async {
@@ -696,13 +869,19 @@ void main() {
       ''');
 
       expect(
-          createConfig,
-          throwsA(isA<DartleException>().having(
-              (e) => e.message,
-              'message',
-              equals('Invalid jb configuration: '
-                  "at 'scm/developer': property does not exist.\n"
-                  "$scmSyntaxHelp"))));
+        createConfig,
+        throwsA(
+          isA<DartleException>().having(
+            (e) => e.message,
+            'message',
+            equals(
+              'Invalid jb configuration: '
+              "at 'scm/developer': property does not exist.\n"
+              "$scmSyntaxHelp",
+            ),
+          ),
+        ),
+      );
     });
 
     test('invalid keys are not allowed in developer', () async {
@@ -717,13 +896,19 @@ void main() {
       ''');
 
       expect(
-          createConfig,
-          throwsA(isA<DartleException>().having(
-              (e) => e.message,
-              'message',
-              equals('Invalid jb configuration: '
-                  "at 'developers/surname': property does not exist.\n"
-                  "$developerSyntaxHelp"))));
+        createConfig,
+        throwsA(
+          isA<DartleException>().having(
+            (e) => e.message,
+            'message',
+            equals(
+              'Invalid jb configuration: '
+              "at 'developers/surname': property does not exist.\n"
+              "$developerSyntaxHelp",
+            ),
+          ),
+        ),
+      );
     });
 
     test('duplicate keys are not allowed', () async {
@@ -734,12 +919,18 @@ void main() {
       ''');
 
       expect(
-          createConfig,
-          throwsA(isA<DartleException>().having(
-              (e) => e.message,
-              'message',
-              startsWith('Invalid jbuild configuration: parsing error: '
-                  'Error on line 3, column 7: Duplicate mapping key.'))));
+        createConfig,
+        throwsA(
+          isA<DartleException>().having(
+            (e) => e.message,
+            'message',
+            startsWith(
+              'Invalid jbuild configuration: parsing error: '
+              'Error on line 3, column 7: Duplicate mapping key.',
+            ),
+          ),
+        ),
+      );
     });
   });
 }

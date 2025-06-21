@@ -9,9 +9,8 @@ Once the project is in good shape, this should be moved to a proper bug tracker.
 - fat jar
 - detect Java version from environment and recompile if changed.
 - generatePom task needs to resolve transitive dependencies in order to generate appropriate POM exclusions.
+- tasks that depend on the jb config file must also depend on any imports into it.
 
 ## Bugs
 
-- investigate why adding a dep with scope runtime-only and transitive: false does not honour transitive option.
-- extension task inputs/outputs not tracked properly
 - test task generates a test-reports directory but does not clean it.

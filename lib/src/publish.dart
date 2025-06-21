@@ -23,10 +23,11 @@ import 'utils.dart';
 
 /// A Maven repository publisher.
 class Publisher {
-  static final ArgsValidator argsValidator =
-      const OptionalArgValidator('One argument may be provided: '
-          'a local dir, a http(s) URL, or '
-          ':-m (or :-n for the older repo) for Maven Central');
+  static final ArgsValidator argsValidator = const OptionalArgValidator(
+    'One argument may be provided: '
+    'a local dir, a http(s) URL, or '
+    ':-m (or :-n for the older repo) for Maven Central',
+  );
 
   final Result<Artifact> artifact;
   final Iterable<MapEntry<String, DependencySpec>> dependencies;
@@ -38,19 +39,19 @@ class Publisher {
   /// The `publish` task action.
   Future<void> call(List<String> args) async {
     final theArtifact = _getArtifact();
-    final home = homeDir()
-        .orThrow(() => failBuild(reason: 'Cannot find home directory'));
+    final home = homeDir().orThrow(
+      () => failBuild(reason: 'Cannot find home directory'),
+    );
 
-    final destination =
-        args.isEmpty ? p.join(home, '.m2', 'repository') : args[0];
+    final destination = args.isEmpty
+        ? p.join(home, '.m2', 'repository')
+        : args[0];
 
-    final mavenClient = MavenClient(
-        switch (destination) {
-          '-m' => Sonatype.s01Oss,
-          '-n' => Sonatype.oss,
-          _ => CustomMavenRepo(destination),
-        },
-        credentials: _mavenCredentials());
+    final mavenClient = MavenClient(switch (destination) {
+      '-m' => Sonatype.s01Oss,
+      '-n' => Sonatype.oss,
+      _ => CustomMavenRepo(destination),
+    }, credentials: _mavenCredentials());
 
     final stopwatch = Stopwatch()..start();
 
@@ -75,17 +76,26 @@ class Publisher {
   }
 
   Future<void> _publishLocal(
-      Artifact theArtifact, String repoPath, Stopwatch stopwatch) async {
+    Artifact theArtifact,
+    String repoPath,
+    Stopwatch stopwatch,
+  ) async {
     final destination = Directory(_pathFor(theArtifact, repoPath));
     logger.info(() => 'Publishing artifacts to ${destination.path}');
     await _publishArtifactToDir(destination, theArtifact, stopwatch);
   }
 
-  Future<void> _publishHttp(MavenClient mavenClient, Artifact theArtifact,
-      Stopwatch stopwatch) async {
+  Future<void> _publishHttp(
+    MavenClient mavenClient,
+    Artifact theArtifact,
+    Stopwatch stopwatch,
+  ) async {
     final destination = tempDir(suffix: '-jb-publish');
-    logger.info(() => 'Creating publication artifacts at ${destination.path}, '
-        'will publish to ${mavenClient.repo.url}');
+    logger.info(
+      () =>
+          'Creating publication artifacts at ${destination.path}, '
+          'will publish to ${mavenClient.repo.url}',
+    );
     await _publishArtifactToDir(destination, _getArtifact(), stopwatch);
     logger.fine(() => 'Creating bundle.jar with publication artifacts');
     final bundle = await _createBundleJar(destination, stopwatch);
@@ -98,7 +108,10 @@ class Publisher {
   }
 
   Future<void> _publishArtifactToDir(
-      Directory destination, Artifact artifact, Stopwatch stopwatch) async {
+    Directory destination,
+    Artifact artifact,
+    Stopwatch stopwatch,
+  ) async {
     stopwatch.reset();
 
     // ignore error intentionally
@@ -112,51 +125,72 @@ class Publisher {
     final pom = createPom(artifact, dependencies, localDependencies);
 
     logger.log(
-        profile, () => 'Created POM in ${stopwatch.elapsedMilliseconds} ms');
+      profile,
+      () => 'Created POM in ${stopwatch.elapsedMilliseconds} ms',
+    );
     stopwatch.reset();
 
     await _publishFiles(destination, artifact, pom, jarFile);
 
     logger.log(
-        profile,
-        () => 'Created publication artifacts in '
-            '${stopwatch.elapsedMilliseconds} ms');
+      profile,
+      () =>
+          'Created publication artifacts in '
+          '${stopwatch.elapsedMilliseconds} ms',
+    );
   }
 
-  Future<void> _publishFiles(Directory destination, Artifact artifact,
-      String pom, String jarFile) async {
-    await File(p.join(destination.path, _fileFor(artifact, extension: '.pom')))
-        .writeAsString(pom)
-        .then(_signFile)
-        .then(_shaFile);
+  Future<void> _publishFiles(
+    Directory destination,
+    Artifact artifact,
+    String pom,
+    String jarFile,
+  ) async {
+    await File(
+      p.join(destination.path, _fileFor(artifact, extension: '.pom')),
+    ).writeAsString(pom).then(_signFile).then(_shaFile);
     await File(jarFile)
         .copy(p.join(destination.path, _fileFor(artifact)))
         .then(_signFile)
         .then(_shaFile);
     await File(jarFile.replaceExtension('-sources.jar'))
         .rename(
-            p.join(destination.path, _fileFor(artifact, qualifier: '-sources')))
+          p.join(destination.path, _fileFor(artifact, qualifier: '-sources')),
+        )
         .then(_signFile)
         .then(_shaFile);
     await File(jarFile.replaceExtension('-javadoc.jar'))
         .rename(
-            p.join(destination.path, _fileFor(artifact, qualifier: '-javadoc')))
+          p.join(destination.path, _fileFor(artifact, qualifier: '-javadoc')),
+        )
         .then(_signFile)
         .then(_shaFile);
   }
 
   Future<File> _createBundleJar(
-      Directory directory, Stopwatch stopwatch) async {
+    Directory directory,
+    Stopwatch stopwatch,
+  ) async {
     // jar --create --file target/bundle.jar -C target/deploy .
     final bundleJar = tempFile(extension: '.jar');
     logger.fine(() => 'Creating publication bundle jar at ${bundleJar.path}');
     stopwatch.reset();
-    await execProc(Process.start('jar',
-        ['--create', '--file', bundleJar.path, '-C', directory.path, '.']));
+    await execProc(
+      Process.start('jar', [
+        '--create',
+        '--file',
+        bundleJar.path,
+        '-C',
+        directory.path,
+        '.',
+      ]),
+    );
     logger.log(
-        profile,
-        () => 'Created publication bundle jar at ${bundleJar.path} in '
-            '${stopwatch.elapsedMilliseconds} ms.');
+      profile,
+      () =>
+          'Created publication bundle jar at ${bundleJar.path} in '
+          '${stopwatch.elapsedMilliseconds} ms.',
+    );
     return bundleJar;
   }
 }
@@ -168,15 +202,18 @@ HttpClientCredentials? _mavenCredentials() {
     logger.info('Using MAVEN_USER and MAVEN_PASSWORD for HTTP credentials');
     return HttpClientBasicCredentials(mavenUser, mavenPassword);
   }
-  logger.info('No HTTP credentials provided '
-      '(set MAVEN_USER and MAVEN_PASSWORD to provide it)');
+  logger.info(
+    'No HTTP credentials provided '
+    '(set MAVEN_USER and MAVEN_PASSWORD to provide it)',
+  );
   return null;
 }
 
 Future<void> _shaFile(File file) async {
   logger.finer(() => 'Computing SHA1 of ${file.path}');
-  await File('${file.path}.sha1')
-      .writeAsString(sha1.convert(await file.readAsBytes()).toString());
+  await File(
+    '${file.path}.sha1',
+  ).writeAsString(sha1.convert(await file.readAsBytes()).toString());
   logger.finer(() => 'Computed SHA1 of ${file.path}');
 }
 
@@ -187,13 +224,15 @@ Future<File> _signFile(File file) async {
   if (_gpgExists) {
     logger.info(() => 'Signing $file');
     try {
-      await execProc(Process.start('gpg', [
-        '--armor',
-        '--detach-sign',
-        '--pinentry-mode',
-        'loopback',
-        file.path,
-      ]));
+      await execProc(
+        Process.start('gpg', [
+          '--armor',
+          '--detach-sign',
+          '--pinentry-mode',
+          'loopback',
+          file.path,
+        ]),
+      );
       logger.finer(() => 'Signed $file');
     } catch (e) {
       logger.warning('Unable to sign artifacts as "gpg" failed ($e)!');
@@ -214,6 +253,8 @@ String _pathFor(Artifact artifact, String parent) {
   ]);
 }
 
-String _fileFor(Artifact artifact,
-        {String qualifier = '', String extension = '.jar'}) =>
-    '${artifact.module}-${artifact.version}$qualifier$extension';
+String _fileFor(
+  Artifact artifact, {
+  String qualifier = '',
+  String extension = '.jar',
+}) => '${artifact.module}-${artifact.version}$qualifier$extension';

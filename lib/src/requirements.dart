@@ -6,11 +6,20 @@ import 'package:jb/jb.dart';
 
 import 'output_consumer.dart';
 
-Future<int> logRequirements(File jbuildJar, JbConfiguration config,
-    String workingDir, List<String> args) async {
-  return await execJBuild('requirements', jbuildJar, config.preArgs(workingDir),
-      'requirements', args,
-      onStdout: _RequirementsPrinter());
+Future<int> logRequirements(
+  File jbuildJar,
+  JbConfiguration config,
+  String workingDir,
+  List<String> args,
+) async {
+  return await execJBuild(
+    'requirements',
+    jbuildJar,
+    config.preArgs(workingDir),
+    'requirements',
+    args,
+    onStdout: _RequirementsPrinter(),
+  );
 }
 
 class _RequirementsPrinter implements ProcessOutputConsumer {
@@ -43,14 +52,16 @@ class _RequirementsPrinter implements ProcessOutputConsumer {
       final endParensIndex = line.lastIndexOf(')');
       final type = line.substring(0, parensIndex);
       final sourceFile = line.substring(parensIndex, endParensIndex + 1);
-      logger.info(AnsiMessage([
-        const AnsiMessagePart.code(ansi.styleBold),
-        AnsiMessagePart.text(type),
-        const AnsiMessagePart.code(ansi.resetBold),
-        const AnsiMessagePart.code(ansi.lightGray),
-        AnsiMessagePart.text(sourceFile),
-        const AnsiMessagePart.text(':')
-      ]));
+      logger.info(
+        AnsiMessage([
+          const AnsiMessagePart.code(ansi.styleBold),
+          AnsiMessagePart.text(type),
+          const AnsiMessagePart.code(ansi.resetBold),
+          const AnsiMessagePart.code(ansi.lightGray),
+          AnsiMessagePart.text(sourceFile),
+          const AnsiMessagePart.text(':'),
+        ]),
+      );
     } else {
       logger.info(PlainMessage(line));
     }

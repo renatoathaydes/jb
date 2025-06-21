@@ -6,8 +6,7 @@ import 'package:dartle/dartle_cache.dart';
 
 import 'config.dart';
 import 'config_source.dart';
-import 'java_tests.dart';
-import 'jb_extension.dart';
+import 'extension/jb_extension.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart' show JavaCommand;
 import 'path_dependency.dart';
@@ -54,25 +53,34 @@ class JbDartle {
   /// Wait for all sub-projects tasks to be initialized.
   late final Future<void> init;
 
-  JbDartle._(this._files, this._config, this._cache, this._options,
-      this._jvmExecutor, this.isRoot, Stopwatch stopwatch) {
+  JbDartle._(
+    this._files,
+    this._config,
+    this._cache,
+    this._options,
+    this._jvmExecutor,
+    this.isRoot,
+    Stopwatch stopwatch,
+  ) {
     final localDeps = Future.wait([
       _resolveLocalDependencies(_config.allDependencies, name: 'main'),
-      _resolveLocalDependencies(_config.allProcessorDependencies,
-          name: 'annotation processor')
+      _resolveLocalDependencies(
+        _config.allProcessorDependencies,
+        name: 'annotation processor',
+      ),
     ]);
     init = localDeps.then((d) => _initialize(d[0], d[1], stopwatch));
   }
 
   JbDartle.create(
-      JbFiles files,
-      JbConfiguration config,
-      DartleCache cache,
-      Options options,
-      Sendable<JavaCommand, Object?> jvmExecutor,
-      Stopwatch stopWatch,
-      {required bool isRoot})
-      : this._(files, config, cache, options, jvmExecutor, isRoot, stopWatch);
+    JbFiles files,
+    JbConfiguration config,
+    DartleCache cache,
+    Options options,
+    Sendable<JavaCommand, Object?> jvmExecutor,
+    Stopwatch stopWatch, {
+    required bool isRoot,
+  }) : this._(files, config, cache, options, jvmExecutor, isRoot, stopWatch);
 
   /// Get the default tasks (`{ compile }`).
   Set<Task> get defaultTasks {
@@ -80,8 +88,9 @@ class JbDartle {
   }
 
   Future<ResolvedLocalDependencies> _resolveLocalDependencies(
-      Iterable<MapEntry<String, DependencySpec>> dependencies,
-      {required String name}) async {
+    Iterable<MapEntry<String, DependencySpec>> dependencies, {
+    required String name,
+  }) async {
     final pathDependencies = dependencies
         .map((e) => e.value.toPathDependency())
         .whereNonNull()
@@ -94,20 +103,26 @@ class JbDartle {
       pathDep.when(jar: jars.add, jbuildProject: projectDeps.add);
     }
 
-    final subProjects =
-        await projectDeps.toStream().asyncMap((e) => e.resolve()).toList();
+    final subProjects = await projectDeps
+        .toStream()
+        .asyncMap((e) => e.resolve())
+        .toList();
 
-    logger.fine(() => 'Resolved $name configuration: '
-        '${subProjects.length} project dependenc${subProjects.length == 1 ? 'y' : 'ies'}, '
-        '${jars.length} local jar dependenc${jars.length == 1 ? 'y' : 'ies'}.');
+    logger.fine(
+      () =>
+          'Resolved $name configuration: '
+          '${subProjects.length} project dependenc${subProjects.length == 1 ? 'y' : 'ies'}, '
+          '${jars.length} local jar dependenc${jars.length == 1 ? 'y' : 'ies'}.',
+    );
 
     return ResolvedLocalDependencies(jars, subProjects);
   }
 
   Future<void> _initialize(
-      ResolvedLocalDependencies localDependencies,
-      ResolvedLocalDependencies localProcessorDependencies,
-      Stopwatch stopwatch) async {
+    ResolvedLocalDependencies localDependencies,
+    ResolvedLocalDependencies localProcessorDependencies,
+    Stopwatch stopwatch,
+  ) async {
     final configContainer = JbConfigContainer(_config);
     final unresolvedLocalDeps = localDependencies.unresolved;
     final unresolvedLocalProcessorDeps = localProcessorDependencies.unresolved;
@@ -120,43 +135,90 @@ class JbDartle {
       jbFileInputs = FileCollection.empty;
     }
     final artifact = createArtifact(_config);
-    final testConfig = createTestConfig(_config.allDependencies);
 
     final projectTasks = <Task>{};
 
-    compile = createCompileTask(
-        _files, configContainer, testConfig, _cache, _jvmExecutor);
+    compile = createCompileTask(_files, configContainer, _cache, _jvmExecutor);
     publicationCompile = createPublicationCompileTask(
-        _files, configContainer, testConfig, _cache, _jvmExecutor);
-    writeDeps = createWriteDependenciesTask(_files, _config, _cache,
-        jbFileInputs, unresolvedLocalDeps, unresolvedLocalProcessorDeps);
+      _files,
+      configContainer,
+      _cache,
+      _jvmExecutor,
+    );
+    writeDeps = createWriteDependenciesTask(
+      _files,
+      _config,
+      _cache,
+      jbFileInputs,
+      _jvmExecutor,
+      unresolvedLocalDeps,
+      unresolvedLocalProcessorDeps,
+    );
     installCompile = createInstallCompileDepsTask(
-        _files, _config, _jvmExecutor, _cache, localDependencies);
+      _files,
+      _config,
+      _jvmExecutor,
+      _cache,
+      localDependencies,
+    );
     installRuntime = createInstallRuntimeDepsTask(
-        _files, _config, _jvmExecutor, _cache, localDependencies);
+      _files,
+      _config,
+      _jvmExecutor,
+      _cache,
+      localDependencies,
+    );
     installProcessor = createInstallProcessorDepsTask(
-        _files, _config, _jvmExecutor, _cache, localProcessorDependencies);
+      _files,
+      _config,
+      _jvmExecutor,
+      _cache,
+      localProcessorDependencies,
+    );
     run = createRunTask(_files, configContainer, _cache);
     downloadTestRunner = createDownloadTestRunnerTask(
-        _config, testConfig, _jvmExecutor, _cache, jbFileInputs);
-    test = createTestTask(_files.jbuildJar, configContainer, testConfig, _cache,
-        !_options.colorfulLog);
-    deps = createDepsTask(_files.jbuildJar, _config, _cache,
-        unresolvedLocalDeps, unresolvedLocalProcessorDeps);
+      _files,
+      configContainer,
+      _jvmExecutor,
+      _cache,
+      jbFileInputs,
+    );
+    test = createTestTask(
+      _files.jbuildJar,
+      configContainer,
+      _cache,
+      !_options.colorfulLog,
+    );
+    deps = createDepsTask(
+      _files,
+      _config,
+      _cache,
+      unresolvedLocalDeps,
+      unresolvedLocalProcessorDeps,
+    );
     showConfig = createShowConfigTask(_config, !_options.colorfulLog);
     requirements = createRequirementsTask(_files.jbuildJar, configContainer);
     generateEclipse = createEclipseTask(_config);
     generatePom = createGeneratePomTask(
-        artifact, _config.allDependencies, localDependencies);
+      artifact,
+      _config.allDependencies,
+      localDependencies,
+    );
     publish = createPublishTask(
-        artifact,
-        _config.allDependencies,
-        configContainer.output.when(dir: (_) => null, jar: (j) => j),
-        localDependencies);
+      artifact,
+      _config.allDependencies,
+      configContainer.output.when(dir: (_) => null, jar: (j) => j),
+      localDependencies,
+    );
     updateJBuild = createUpdateJBuildTask(_jvmExecutor);
 
     final extensionProject = await loadExtensionProject(
-        _jvmExecutor, _files, _options, _config, _cache);
+      _jvmExecutor,
+      _files,
+      _options,
+      _config,
+      _cache,
+    );
 
     final extensionTasks = extensionProject?.tasks;
 
@@ -181,9 +243,10 @@ class JbDartle {
     });
 
     clean = createCleanTask(
-        tasks: projectTasks,
-        name: cleanTaskName,
-        description: 'deletes the outputs of all other tasks.');
+      tasks: projectTasks,
+      name: cleanTaskName,
+      description: 'deletes the outputs of all other tasks.',
+    );
     projectTasks.add(clean);
 
     extensionProject?.vmap((p) => _wireupTasks(p, projectTasks));
@@ -198,13 +261,16 @@ class JbDartle {
     tasks = Set.unmodifiable(projectTasks);
 
     logger.log(
-        profile,
-        () => 'Project initialization completed in '
-            '${stopwatch.elapsedMilliseconds} ms.');
+      profile,
+      () =>
+          'Project initialization completed in '
+          '${stopwatch.elapsedMilliseconds} ms.',
+    );
   }
 
   Future<void> _initializeProjectDeps(
-      List<ResolvedProjectDependency> projectDeps) async {
+    List<ResolvedProjectDependency> projectDeps,
+  ) async {
     for (var dep in projectDeps) {
       await dep.initialize(_options, _files, _jvmExecutor);
     }
@@ -215,18 +281,26 @@ void _wireupTasks(ExtensionProject extensionProject, Set<Task> allTasks) {
   final taskMap = allTasks.groupFoldBy((t) => t.name, (a, b) => b);
   for (final exTask in extensionProject.model.extensionTasks) {
     for (final dep in exTask.dependents) {
-      final dependent = taskMap[dep].orThrow(() => DartleException(
-          message: "Task '${exTask.name}' of extension project"
+      final dependent = taskMap[dep].orThrow(
+        () => DartleException(
+          message:
+              "Task '${exTask.name}' of extension project"
               " '${extensionProject.name}' has non-existent task "
-              "dependent '$dep'"));
+              "dependent '$dep'",
+        ),
+      );
       dependent.dependsOn({exTask.name});
     }
     for (final dep in exTask.dependsOn) {
       // no need to add dependencies as they're added when the task is created
-      taskMap[dep].orThrow(() => DartleException(
-          message: "Task '${exTask.name}' of extension project"
+      taskMap[dep].orThrow(
+        () => DartleException(
+          message:
+              "Task '${exTask.name}' of extension project"
               " '${extensionProject.name}' has non-existent task "
-              "dependency '$dep'"));
+              "dependency '$dep'",
+        ),
+      );
     }
   }
 }

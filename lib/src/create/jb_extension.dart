@@ -4,7 +4,8 @@ import '../help.dart';
 import '../paths.dart';
 import 'helpers.dart';
 
-String _jbuildYaml(String groupId, String artifactId, jbuildVersion) => '''
+String _jbuildYaml(String groupId, String artifactId, jbuildVersion) =>
+    '''
 group: $groupId
 module: $artifactId
 version: '0.0.0'
@@ -17,7 +18,8 @@ dependencies:
     scope: compile-only
 ''';
 
-String _mainJava(String package) => '''
+String _mainJava(String package) =>
+    '''
 package $package;
 
 import java.io.IOException;
@@ -35,16 +37,24 @@ public final class ExampleTask implements JbTask {
 }
 ''';
 
-List<FileCreator> getJbExtensionFileCreators(File jbuildFile,
-    {required String groupId,
-    required String artifactId,
-    required String package,
-    required bool createTestModule}) {
+List<FileCreator> getJbExtensionFileCreators(
+  File jbuildFile, {
+  required String groupId,
+  required String artifactId,
+  required String package,
+  required bool createTestModule,
+}) {
   return [
     FileCreator(
-        jbuildFile,
-        () async => jbuildFile.writeAsString(_jbuildYaml(groupId, artifactId,
-            await getJBuildVersion(File(jbuildJarPath()))))),
+      jbuildFile,
+      () async => jbuildFile.writeAsString(
+        _jbuildYaml(
+          groupId,
+          artifactId,
+          await getJBuildVersion(File(jbuildJarPath())),
+        ),
+      ),
+    ),
     createJavaFile(package, 'ExampleTask', 'src', _mainJava(package)),
   ];
 }

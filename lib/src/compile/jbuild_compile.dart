@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'package:path/path.dart';
 
 import '../config.dart';
 import '../file_tree.dart';
@@ -11,14 +12,20 @@ import '../tasks.dart';
 import '../utils.dart';
 
 Future<JavaCommand> jbuildCompileCommand(
-    JbFiles jbFiles,
-    JbConfiguration config,
-    String workingDir,
-    bool publication,
-    TransitiveChanges? changes,
-    List<String> args) async {
+  JbFiles jbFiles,
+  JbConfiguration config,
+  String workingDir,
+  bool publication,
+  TransitiveChanges? changes,
+  List<String> args,
+  bool isGroovyEnabled,
+) async {
   final commandArgs = [
-    ...await config.compileArgs(jbFiles.processorLibsDir, changes),
+    ...await config.compileArgs(
+      jbFiles.processorLibsDir,
+      changes,
+      isGroovyEnabled,
+    ),
     ...args,
   ];
 
@@ -33,8 +40,11 @@ Future<JavaCommand> jbuildCompileCommand(
 
 extension _JbConfig on JbConfiguration {
   /// Get the compile task arguments from this configuration.
-  Future<List<String>> compileArgs(String processorLibsDir,
-      [TransitiveChanges? changes]) async {
+  Future<List<String>> compileArgs(
+    String processorLibsDir,
+    TransitiveChanges? changes,
+    bool isGroovyEnabled,
+  ) async {
     final result = <String>[];
     if (compileLibsDir.isNotEmpty) {
       result.addAll(['-cp', compileLibsDir.asDirPath()]);
@@ -55,7 +65,8 @@ extension _JbConfig on JbConfiguration {
     if (dependencies.keys.any((d) => d.startsWith(jbApi))) {
       result.add('--jb-extension');
     }
-    if (changes == null || !_addIncrementalCompileArgs(result, changes)) {
+    if (changes == null ||
+        !_addIncrementalCompileArgs(result, changes, isGroovyEnabled)) {
       result.addAll(sourceDirs);
     }
     if (javacArgs.isNotEmpty || processorDependencies.isNotEmpty) {
@@ -73,26 +84,49 @@ extension _JbConfig on JbConfiguration {
   ///
   /// Return true if added, false otherwise.
   bool _addIncrementalCompileArgs(
-      List<String> args, TransitiveChanges changes) {
+    List<String> args,
+    TransitiveChanges changes,
+    bool isGroovyEnabled,
+  ) {
+    final sourceFilter = _createSourceFilter(isGroovyEnabled);
     var incremental = false;
     for (final change in changes.fileChanges) {
       if (change.entity is! File) continue;
       incremental = true;
+      final path = change.entity.path;
       if (change.kind == ChangeKind.deleted) {
-        final path = change.entity.path;
-        if (path.endsWith('.java')) {
-          for (final classFile in changes.fileTree
-              .classFilesOf(sourceDirs, change.entity.path)) {
+        if (sourceFilter(path)) {
+          final srcDir = sourceDirs.firstWhere(
+            (d) => isWithin(d, path),
+            orElse: () => '',
+          );
+          if (srcDir.isEmpty) {
+            failBuild(
+              reason:
+                  'Cannot find file in any of the source directories $sourceDirs: $path',
+            );
+          }
+          final classFiles = changes.fileTree
+              .classFilesOf(relative(path, from: srcDir))
+              .toList(growable: false);
+          if (classFiles.isEmpty) {
+            failBuild(
+              reason:
+                  'Cannot find any class file for deleted source file: ${relative(path, from: srcDir)}\n'
+                  'File tree: ${changes.fileTree}',
+            );
+          }
+          for (final classFile in classFiles) {
             args.add('--deleted');
             args.add(classFile);
           }
-        } else {
-          args.add('--deleted');
-          args.add(change.entity.path);
+          continue;
         }
+        args.add('--deleted');
+        args.add(path);
       } else {
         args.add('--added');
-        args.add(change.entity.path);
+        args.add(path);
       }
     }
 
@@ -104,4 +138,11 @@ extension _JbConfig on JbConfiguration {
 
     return incremental;
   }
+}
+
+bool Function(String path) _createSourceFilter(bool isGroovyEnabled) {
+  if (isGroovyEnabled) {
+    return (path) => path.endsWith('.java');
+  }
+  return (path) => path.endsWith('.java') || path.endsWith('.groovy');
 }

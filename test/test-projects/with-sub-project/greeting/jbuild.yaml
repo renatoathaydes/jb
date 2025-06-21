@@ -1,6 +1,7 @@
 group: tests
 module: greetings
 version: '1.0'
+javac-args: ["--release", "11"]
 
 source-dirs: [ src ]
 resource-dirs: [ resources ]

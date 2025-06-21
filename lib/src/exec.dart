@@ -9,54 +9,73 @@ import 'tasks.dart';
 import 'utils.dart';
 
 /// Execute the jbuild tool.
-Future<int> execJBuild(String taskName, File jbuildJar, List<String> preArgs,
-    String command, List<String> commandArgs,
-    {ProcessOutputConsumer? onStdout,
-    ProcessOutputConsumer? onStderr,
-    Map<String, String> env = const {}}) {
+Future<int> execJBuild(
+  String taskName,
+  File jbuildJar,
+  List<String> preArgs,
+  String command,
+  List<String> commandArgs, {
+  ProcessOutputConsumer? onStdout,
+  ProcessOutputConsumer? onStderr,
+  Map<String, String> env = const {},
+}) {
   return execJava(
-      taskName,
-      [
-        ...commandArgs.javaRuntimeArgs(),
-        '-jar',
-        jbuildJar.path,
-        '-q',
-        ...preArgs,
-        command,
-        ...commandArgs.notJavaRuntimeArgs(),
-      ],
-      onStdout: onStdout,
-      onStderr: onStderr,
-      env: env);
+    taskName,
+    [
+      ...commandArgs.javaRuntimeArgs(),
+      '-jar',
+      jbuildJar.path,
+      '-q',
+      ...preArgs,
+      command,
+      ...commandArgs.notJavaRuntimeArgs(),
+    ],
+    onStdout: onStdout,
+    onStderr: onStderr,
+    env: env,
+  );
 }
 
 /// Execute a java process.
-Future<int> execJava(String taskName, List<String> args,
-    {ProcessOutputConsumer? onStdout,
-    ProcessOutputConsumer? onStderr,
-    Map<String, String> env = const {}}) {
+Future<int> execJava(
+  String taskName,
+  List<String> args, {
+  ProcessOutputConsumer? onStdout,
+  ProcessOutputConsumer? onStderr,
+  Map<String, String> env = const {},
+}) {
   final workingDir = Directory.current.path;
-  logger.fine(() => '\n====> Task $taskName executing command at $workingDir\n'
-      'java ${args.join(' ')}\n<=============================');
+  logger.fine(
+    () =>
+        '\n====> Task $taskName executing command at $workingDir\n'
+        'java ${args.join(' ')}\n<=============================',
+  );
 
   // on Windows, the shell may interpret the command line arguments in weird ways
   final runInShell = !Platform.isWindows;
 
   // the test task must print to stdout/err directly
   if (taskName == testTaskName) {
-    return exec(Process.start('java', args,
+    return exec(
+      Process.start(
+        'java',
+        args,
         environment: env,
         runInShell: runInShell,
-        workingDirectory: workingDir));
+        workingDirectory: workingDir,
+      ),
+    );
   }
   final stdoutFun = onStdout ?? _TaskExecLogger('-out>', taskName, pid);
   final stderrFun = onStderr ?? _TaskExecLogger('-err>', taskName, pid);
   return exec(
-    Process.start('java', args,
-            runInShell: runInShell,
-            environment: env,
-            workingDirectory: workingDir)
-        .then((proc) {
+    Process.start(
+      'java',
+      args,
+      runInShell: runInShell,
+      environment: env,
+      workingDirectory: workingDir,
+    ).then((proc) {
       stdoutFun.pid = proc.pid;
       stderrFun.pid = proc.pid;
       return proc;
@@ -85,9 +104,8 @@ class _TaskExecLogger extends JbOutputConsumer {
     final color = _colorFor(level);
     final message = '$prompt $taskName [java $pid]: $line';
     logger.log(
-        level,
-        color != null
-            ? ColoredLogMessage(message, color)
-            : PlainMessage(message));
+      level,
+      color != null ? ColoredLogMessage(message, color) : PlainMessage(message),
+    );
   }
 }

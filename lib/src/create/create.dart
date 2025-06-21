@@ -11,11 +11,14 @@ import 'jb_extension.dart';
 enum _ProjectType { basic, jbExtension }
 
 /// Create a new jb project.
-Future<void> createNewProject(List<String> arguments,
-    {bool colors = true}) async {
+Future<void> createNewProject(
+  List<String> arguments, {
+  bool colors = true,
+}) async {
   if (arguments.length > 1) {
     throw DartleException(
-        message: 'create command does not accept any arguments');
+      message: 'create command does not accept any arguments',
+    );
   }
   final jbuildFile = File(yamlJbFile);
   await FileCreator(jbuildFile).check();
@@ -23,20 +26,34 @@ Future<void> createNewProject(List<String> arguments,
 }
 
 Future<void> _create(File jbuildFile, {required bool colors}) async {
-  stdout.write(ansi.styleItalic
-      .wrap('Please enter a project group ID: ', forScript: !colors));
+  stdout.write(
+    ansi.styleItalic.wrap(
+      'Please enter a project group ID: ',
+      forScript: !colors,
+    ),
+  );
   final groupId = stdin.readLineSync().or('my-group');
-  stdout.write(ansi.styleItalic
-      .wrap('\nEnter the artifact ID of this project: ', forScript: !colors));
+  stdout.write(
+    ansi.styleItalic.wrap(
+      '\nEnter the artifact ID of this project: ',
+      forScript: !colors,
+    ),
+  );
   final artifactId = stdin.readLineSync().or('my-app');
   final defaultPackage = '${groupId.toJavaId()}.${artifactId.toJavaId()}';
-  stdout.write(ansi.styleItalic.wrap(
+  stdout.write(
+    ansi.styleItalic.wrap(
       '\nEnter the root package [$defaultPackage]: ',
-      forScript: !colors));
+      forScript: !colors,
+    ),
+  );
   final package = stdin.readLineSync().or(defaultPackage).validateJavaPackage();
-  stdout.write(ansi.styleItalic.wrap(
+  stdout.write(
+    ansi.styleItalic.wrap(
       '\nWould you like to create a test module [Y/n]? ',
-      forScript: !colors));
+      forScript: !colors,
+    ),
+  );
   final createTestModule = stdin.readLineSync().or('yes').yesOrNo();
   final projectType = stdin.chooseProjectType(colors: colors);
 
@@ -44,25 +61,30 @@ Future<void> _create(File jbuildFile, {required bool colors}) async {
 
   switch (projectType) {
     case _ProjectType.basic:
-      fileCreators = getBasicFileCreators(jbuildFile,
-          groupId: groupId,
-          artifactId: artifactId,
-          package: package,
-          createTestModule: createTestModule);
+      fileCreators = getBasicFileCreators(
+        jbuildFile,
+        groupId: groupId,
+        artifactId: artifactId,
+        package: package,
+        createTestModule: createTestModule,
+      );
       break;
     case _ProjectType.jbExtension:
-      fileCreators = getJbExtensionFileCreators(jbuildFile,
-          groupId: groupId,
-          artifactId: artifactId,
-          package: package,
-          createTestModule: createTestModule);
+      fileCreators = getJbExtensionFileCreators(
+        jbuildFile,
+        groupId: groupId,
+        artifactId: artifactId,
+        package: package,
+        createTestModule: createTestModule,
+      );
       break;
   }
 
   await _createAll(fileCreators);
 
   logger.info(
-      () => PlainMessage('\njb project created at ${Directory.current.path}'));
+    () => PlainMessage('\njb project created at ${Directory.current.path}'),
+  );
 }
 
 Future<void> _createAll(List<FileCreator> fileCreators) async {
@@ -76,12 +98,15 @@ Future<void> _createAll(List<FileCreator> fileCreators) async {
 
 extension on Stdin {
   _ProjectType chooseProjectType({required bool colors}) {
-    stdout.write(ansi.styleItalic.wrap(
+    stdout.write(
+      ansi.styleItalic.wrap(
         '\nSelect a project type:\n'
         '  ${ansi.green.wrap('1', forScript: !colors)}. basic project.\n'
         '  ${ansi.green.wrap('2', forScript: !colors)}. jb extension.\n'
         'Choose [1]: ',
-        forScript: !colors));
+        forScript: !colors,
+      ),
+    );
 
     while (true) {
       final answer = readLineSync()?.trim();

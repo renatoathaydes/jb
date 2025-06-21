@@ -16,9 +16,10 @@ sealed class PathDependency {
     return ProjectDependency(spec, path);
   }
 
-  T when<T>(
-      {required T Function(JarDependency) jar,
-      required T Function(ProjectDependency) jbuildProject});
+  T when<T>({
+    required T Function(JarDependency) jar,
+    required T Function(ProjectDependency) jbuildProject,
+  });
 }
 
 final class ProjectDependency extends PathDependency {
@@ -30,10 +31,10 @@ final class ProjectDependency extends PathDependency {
   const ProjectDependency(this.spec, this.path);
 
   @override
-  T when<T>(
-          {required T Function(JarDependency) jar,
-          required T Function(ProjectDependency) jbuildProject}) =>
-      jbuildProject(this);
+  T when<T>({
+    required T Function(JarDependency) jar,
+    required T Function(ProjectDependency) jbuildProject,
+  }) => jbuildProject(this);
 }
 
 final class JarDependency extends PathDependency {
@@ -45,8 +46,8 @@ final class JarDependency extends PathDependency {
   const JarDependency(this.spec, this.path);
 
   @override
-  T when<T>(
-          {required T Function(JarDependency) jar,
-          required T Function(ProjectDependency) jbuildProject}) =>
-      jar(this);
+  T when<T>({
+    required T Function(JarDependency) jar,
+    required T Function(ProjectDependency) jbuildProject,
+  }) => jar(this);
 }

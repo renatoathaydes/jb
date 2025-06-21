@@ -17,8 +17,10 @@ String jbuildCliHome() {
     final varName = Platform.isWindows ? 'APPDATA' : 'HOME';
     final userHome = Platform.environment[varName];
     if (userHome == null) {
-      throw Exception('Cannot find JB_HOME or '
-          '$varName environment variables');
+      throw Exception(
+        'Cannot find JB_HOME or '
+        '$varName environment variables',
+      );
     }
     return path.join(userHome, '.jb');
   }

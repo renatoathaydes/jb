@@ -16,7 +16,11 @@ Future<void> jbuildUpdate(JBuildSender jBuildSender, String workingDir) async {
   final latestVersionOutput = _Lines();
   try {
     await _update(
-        jBuildSender, workingDir, localVersionOutput, latestVersionOutput);
+      jBuildSender,
+      workingDir,
+      localVersionOutput,
+      latestVersionOutput,
+    );
   } catch (e) {
     localVersionOutput.lines.vmap((lines) => _print('jbuild --version', lines));
     latestVersionOutput.lines.vmap((lines) => _print('jbuild versions', lines));
@@ -24,14 +28,22 @@ Future<void> jbuildUpdate(JBuildSender jBuildSender, String workingDir) async {
   }
 }
 
-Future<void> _update(JBuildSender jBuildSender, String workingDir,
-    _Lines localVersionOutput, _Lines latestVersionOutput) async {
-  await jBuildSender.send(RunJBuild(
-    updateJBuildTaskName,
-    ['-q', '-w', workingDir, 'version'],
-    localVersionOutput,
-  ));
-  final currentVersion = localVersionOutput.lines
+Future<void> _update(
+  JBuildSender jBuildSender,
+  String workingDir,
+  _Lines localVersionOutput,
+  _Lines latestVersionOutput,
+) async {
+  await jBuildSender.send(
+    RunJBuild(updateJBuildTaskName, [
+      '-q',
+      '-w',
+      workingDir,
+      'version',
+    ], localVersionOutput),
+  );
+  final currentVersion =
+      localVersionOutput.lines
           .where(_versionPattern.hasMatch)
           .firstOrNull
           ?.trim() ??
@@ -40,8 +52,15 @@ Future<void> _update(JBuildSender jBuildSender, String workingDir,
     failBuild(reason: 'Could not get JBuild current version');
   }
   logger.fine(() => 'JBuild current version: $currentVersion');
-  await jBuildSender.send(RunJBuild(updateJBuildTaskName,
-      ['-q', '-w', workingDir, 'versions', jbuild], latestVersionOutput));
+  await jBuildSender.send(
+    RunJBuild(updateJBuildTaskName, [
+      '-q',
+      '-w',
+      workingDir,
+      'versions',
+      jbuild,
+    ], latestVersionOutput),
+  );
   final latestVersion = latestVersionOutput.lines
       .where((it) => it.startsWith('  * Latest: '))
       .map((it) => it.substring('  * Latest: '.length))
@@ -52,20 +71,24 @@ Future<void> _update(JBuildSender jBuildSender, String workingDir,
   }
   logger.fine(() => 'JBuild latest version is $latestVersion');
   if (currentVersion == latestVersion) {
-    return logger.info(() =>
-        'Nothing to do, current version is already the latest: $latestVersion');
+    return logger.info(
+      () =>
+          'Nothing to do, current version is already the latest: $latestVersion',
+    );
   }
   logger.fine('Fetching latest JBuild jar');
   final jarFile = File(jbuildJarPath());
   final jarDir = jarFile.parent;
-  await jBuildSender.send(RunJBuild('fetch', [
-    '-w',
-    workingDir,
-    'fetch',
-    '-d',
-    jarDir.path,
-    '$jbuild:$latestVersion:jar'
-  ]));
+  await jBuildSender.send(
+    RunJBuild('fetch', [
+      '-w',
+      workingDir,
+      'fetch',
+      '-d',
+      jarDir.path,
+      '$jbuild:$latestVersion:jar',
+    ]),
+  );
   await File('jbuild-$latestVersion.jar').rename(jarFile.path);
   logger.info(() => 'Updated JBuild to version $latestVersion');
 }

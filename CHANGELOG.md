@@ -1,5 +1,14 @@
 ## Next
 
+- updated JBuild version to `0.12.0`.
+- automatically add jb config file as input of custom tasks requiring `JbConfig`.
+- write transitive dependency tree to JSON file and use that to download them later.
+- honour dependency exclusions per dependency and global exclusions.
+- updated SPDX licenses file.
+- fixed `-p` option so that working directory works in more scenarios.
+- allow specifying which Test library version to use with `jb create`.
+- several fixes to incremental builds.
+
 ## 0.12.0
 
 - fixed handling of `-J-` `javacArgs` - must be passed to `java` when starting the JVM executor.

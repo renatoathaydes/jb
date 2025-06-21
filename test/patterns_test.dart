@@ -16,101 +16,156 @@ void main() {
     });
 
     test('simple files', () {
-      expect(patternFileCollection(const ['abc', 'foo/bar', 'a/b/c']),
-          hasContents(files: {'abc', 'foo/bar', 'a/b/c'}));
+      expect(
+        patternFileCollection(const ['abc', 'foo/bar', 'a/b/c']),
+        hasContents(files: {'abc', 'foo/bar', 'a/b/c'}),
+      );
     });
 
     test('simple dir', () {
       expect(
-          patternFileCollection(const ['abc/']),
-          hasContents(dirs: [
-            DirectoryEntry(path: 'abc', recurse: false),
-          ]));
+        patternFileCollection(const ['abc/']),
+        hasContents(dirs: [DirectoryEntry(path: 'abc', recurse: false)]),
+      );
 
       expect(
-          patternFileCollection(const ['/a/b/c/']),
-          hasContents(dirs: [
-            DirectoryEntry(path: 'a/b/c', recurse: false),
-          ]));
+        patternFileCollection(const ['/a/b/c/']),
+        hasContents(dirs: [DirectoryEntry(path: 'a/b/c', recurse: false)]),
+      );
     });
 
     test('all files matching extension', () {
       expect(
-          patternFileCollection(const ['*.txt']),
-          hasContents(dirs: [
-            DirectoryEntry(path: '.', recurse: false, fileExtensions: {'.txt'})
-          ]));
+        patternFileCollection(const ['*.txt']),
+        hasContents(
+          dirs: [
+            DirectoryEntry(path: '.', recurse: false, fileExtensions: {'.txt'}),
+          ],
+        ),
+      );
 
       expect(
-          patternFileCollection(const ['foo/*.txt']),
-          hasContents(dirs: [
+        patternFileCollection(const ['foo/*.txt']),
+        hasContents(
+          dirs: [
             DirectoryEntry(
-                path: 'foo', recurse: false, fileExtensions: {'.txt'})
-          ]));
+              path: 'foo',
+              recurse: false,
+              fileExtensions: {'.txt'},
+            ),
+          ],
+        ),
+      );
 
       expect(
-          patternFileCollection(const ['foo/bar/zort/*.txt']),
-          hasContents(dirs: [
+        patternFileCollection(const ['foo/bar/zort/*.txt']),
+        hasContents(
+          dirs: [
             DirectoryEntry(
-                path: 'foo/bar/zort', recurse: false, fileExtensions: {'.txt'})
-          ]));
+              path: 'foo/bar/zort',
+              recurse: false,
+              fileExtensions: {'.txt'},
+            ),
+          ],
+        ),
+      );
     });
 
     test('all files matching extension recursive', () {
       expect(
-          patternFileCollection(const ['**/*.txt']),
-          hasContents(dirs: [
-            DirectoryEntry(path: '.', recurse: true, fileExtensions: {'.txt'})
-          ]));
+        patternFileCollection(const ['**/*.txt']),
+        hasContents(
+          dirs: [
+            DirectoryEntry(path: '.', recurse: true, fileExtensions: {'.txt'}),
+          ],
+        ),
+      );
 
       expect(
-          patternFileCollection(const ['/foo/**/*.txt']),
-          hasContents(dirs: [
-            DirectoryEntry(path: 'foo', recurse: true, fileExtensions: {'.txt'})
-          ]));
+        patternFileCollection(const ['/foo/**/*.txt']),
+        hasContents(
+          dirs: [
+            DirectoryEntry(
+              path: 'foo',
+              recurse: true,
+              fileExtensions: {'.txt'},
+            ),
+          ],
+        ),
+      );
     });
 
     test('match anything', () {
-      expect(patternFileCollection(const ['*']),
-          hasContents(dirs: [DirectoryEntry(path: '.', recurse: false)]));
+      expect(
+        patternFileCollection(const ['*']),
+        hasContents(dirs: [DirectoryEntry(path: '.', recurse: false)]),
+      );
 
-      expect(patternFileCollection(const ['/*']),
-          hasContents(dirs: [DirectoryEntry(path: '.', recurse: false)]));
+      expect(
+        patternFileCollection(const ['/*']),
+        hasContents(dirs: [DirectoryEntry(path: '.', recurse: false)]),
+      );
 
-      expect(patternFileCollection(const ['ab/cd/*']),
-          hasContents(dirs: [DirectoryEntry(path: 'ab/cd', recurse: false)]));
+      expect(
+        patternFileCollection(const ['ab/cd/*']),
+        hasContents(dirs: [DirectoryEntry(path: 'ab/cd', recurse: false)]),
+      );
     });
 
     test('match anything recursive', () {
-      expect(patternFileCollection(const ['**']),
-          hasContents(dirs: [DirectoryEntry(path: '.', recurse: true)]));
+      expect(
+        patternFileCollection(const ['**']),
+        hasContents(dirs: [DirectoryEntry(path: '.', recurse: true)]),
+      );
 
-      expect(patternFileCollection(const ['/**']),
-          hasContents(dirs: [DirectoryEntry(path: '.', recurse: true)]));
+      expect(
+        patternFileCollection(const ['/**']),
+        hasContents(dirs: [DirectoryEntry(path: '.', recurse: true)]),
+      );
 
-      expect(patternFileCollection(const ['a/b/c/**']),
-          hasContents(dirs: [DirectoryEntry(path: 'a/b/c', recurse: true)]));
+      expect(
+        patternFileCollection(const ['a/b/c/**']),
+        hasContents(dirs: [DirectoryEntry(path: 'a/b/c', recurse: true)]),
+      );
     });
 
     test('bad pattern', () {
-      expect(() => patternFileCollection(const ['*/foo']),
-          throwsA(isA<DartleException>()));
-      expect(() => patternFileCollection(const ['foo/*/*']),
-          throwsA(isA<DartleException>()));
-      expect(() => patternFileCollection(const ['**/foo']),
-          throwsA(isA<DartleException>()));
-      expect(() => patternFileCollection(const ['*/**']),
-          throwsA(isA<DartleException>()));
-      expect(() => patternFileCollection(const ['**/*']),
-          throwsA(isA<DartleException>()));
-      expect(() => patternFileCollection(const ['/a/**/foo/*.txt']),
-          throwsA(isA<DartleException>()));
-      expect(() => patternFileCollection(const ['/**/**/*.txt']),
-          throwsA(isA<DartleException>()));
-      expect(() => patternFileCollection(const ['/*.pdf/*.txt']),
-          throwsA(isA<DartleException>()));
-      expect(() => patternFileCollection(const ['/*.pdf/**']),
-          throwsA(isA<DartleException>()));
+      expect(
+        () => patternFileCollection(const ['*/foo']),
+        throwsA(isA<DartleException>()),
+      );
+      expect(
+        () => patternFileCollection(const ['foo/*/*']),
+        throwsA(isA<DartleException>()),
+      );
+      expect(
+        () => patternFileCollection(const ['**/foo']),
+        throwsA(isA<DartleException>()),
+      );
+      expect(
+        () => patternFileCollection(const ['*/**']),
+        throwsA(isA<DartleException>()),
+      );
+      expect(
+        () => patternFileCollection(const ['**/*']),
+        throwsA(isA<DartleException>()),
+      );
+      expect(
+        () => patternFileCollection(const ['/a/**/foo/*.txt']),
+        throwsA(isA<DartleException>()),
+      );
+      expect(
+        () => patternFileCollection(const ['/**/**/*.txt']),
+        throwsA(isA<DartleException>()),
+      );
+      expect(
+        () => patternFileCollection(const ['/*.pdf/*.txt']),
+        throwsA(isA<DartleException>()),
+      );
+      expect(
+        () => patternFileCollection(const ['/*.pdf/**']),
+        throwsA(isA<DartleException>()),
+      );
     });
   });
 }
@@ -118,8 +173,7 @@ void main() {
 FileCollectionMatcher hasContents({
   Set<String> files = const {},
   List<DirectoryEntry> dirs = const [],
-}) =>
-    FileCollectionMatcher(files, dirs);
+}) => FileCollectionMatcher(files, dirs);
 
 class FileCollectionMatcher extends Matcher {
   final Set<String> files;
@@ -140,8 +194,10 @@ class FileCollectionMatcher extends Matcher {
       if (!const SetEquality().equals(files, this.files)) {
         matchState[#files] = files;
       }
-      if (!const ListEquality()
-          .equals(dirs, this.dirs.map((e) => e.toString()).toList())) {
+      if (!const ListEquality().equals(
+        dirs,
+        this.dirs.map((e) => e.toString()).toList(),
+      )) {
         matchState[#dirs] = dirs;
       }
       return matchState.isEmpty;
@@ -151,8 +207,12 @@ class FileCollectionMatcher extends Matcher {
   }
 
   @override
-  Description describeMismatch(dynamic item, Description mismatchDescription,
-      Map matchState, bool verbose) {
+  Description describeMismatch(
+    dynamic item,
+    Description mismatchDescription,
+    Map matchState,
+    bool verbose,
+  ) {
     final files = matchState[#files];
     final dirs = matchState[#dirs];
     final item = matchState[#item];

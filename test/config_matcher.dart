@@ -51,8 +51,10 @@ class _ConfigMatcher extends Matcher {
           'outputDir should be "${expected.outputDir}" but is "${item.outputDir}"';
       return false;
     }
-    if (!const ListEquality()
-        .equals(expected.resourceDirs, item.resourceDirs)) {
+    if (!const ListEquality().equals(
+      expected.resourceDirs,
+      item.resourceDirs,
+    )) {
       matchState[#reason] =
           'resourceDirs should be "${expected.resourceDirs}" but is "${item.resourceDirs}"';
       return false;
@@ -72,8 +74,10 @@ class _ConfigMatcher extends Matcher {
           'runJavaArgs should be "${expected.runJavaArgs}" but is "${item.runJavaArgs}"';
       return false;
     }
-    if (!const ListEquality()
-        .equals(expected.testJavaArgs, item.testJavaArgs)) {
+    if (!const ListEquality().equals(
+      expected.testJavaArgs,
+      item.testJavaArgs,
+    )) {
       matchState[#reason] =
           'testJavaArgs should be "${expected.testJavaArgs}" but is "${item.testJavaArgs}"';
       return false;
@@ -93,8 +97,10 @@ class _ConfigMatcher extends Matcher {
           'testJavaEnv should be "${expected.testJavaEnv}" but is "${item.testJavaEnv}"';
       return false;
     }
-    if (!const ListEquality()
-        .equals(expected.repositories, item.repositories)) {
+    if (!const ListEquality().equals(
+      expected.repositories,
+      item.repositories,
+    )) {
       matchState[#reason] =
           'repositories should be "${expected.repositories}" but is "${item.repositories}"';
       return false;
@@ -104,8 +110,10 @@ class _ConfigMatcher extends Matcher {
           'dependencies should be "${expected.dependencies}" but is "${item.dependencies}"';
       return false;
     }
-    if (!const ListEquality().equals(expected.dependencyExclusionPatterns,
-        item.dependencyExclusionPatterns)) {
+    if (!const ListEquality().equals(
+      expected.dependencyExclusionPatterns,
+      item.dependencyExclusionPatterns,
+    )) {
       matchState[#reason] =
           'exclusions should be "${expected.dependencyExclusionPatterns}" but is "${item.dependencyExclusionPatterns}"';
       return false;
@@ -125,8 +133,9 @@ class _ConfigMatcher extends Matcher {
           'testReportsDir should be "${expected.testReportsDir}" but is "${item.testReportsDir}"';
       return false;
     }
-    if (!const MapEquality(values: DeepCollectionEquality.unordered())
-        .equals(expected.properties, item.properties)) {
+    if (!const MapEquality(
+      values: DeepCollectionEquality.unordered(),
+    ).equals(expected.properties, item.properties)) {
       matchState[#reason] =
           'properties should be "${expected.properties}" but is "${item.properties}"';
       return false;
@@ -135,8 +144,12 @@ class _ConfigMatcher extends Matcher {
   }
 
   @override
-  Description describeMismatch(dynamic item, Description mismatchDescription,
-      Map matchState, bool verbose) {
+  Description describeMismatch(
+    dynamic item,
+    Description mismatchDescription,
+    Map matchState,
+    bool verbose,
+  ) {
     if (matchState[#reason] != null) {
       mismatchDescription.add('${matchState[#reason]}');
     }

@@ -13,17 +13,22 @@ class JbFiles {
   final ConfigSource configSource;
   final String processorLibsDir;
 
-  File get dependenciesFile => File(p.join(jbCache, 'dependencies.txt'));
+  File get dependenciesFile => File(p.join(jbCache, 'dependencies.json'));
+
+  File get processorDependenciesFile =>
+      File(p.join(jbCache, 'processor-dependencies.json'));
+
+  File get testRunnerDependenciesFile =>
+      File(p.join(jbCache, 'test-runner-dependencies.json'));
 
   File get javaSrcFileTreeFile =>
       File(p.join(jbCache, 'java-src-file-tree.txt'));
 
-  File get processorDependenciesFile =>
-      File(p.join(jbCache, 'processor-dependencies.txt'));
-
   File get jvmCdsFile => File(p.join(jbCache, 'jvm.cds'));
 
-  JbFiles(this.jbuildJar,
-      {required this.configSource, this.jbCache = '.jb-cache'})
-      : processorLibsDir = p.join(jbCache, 'processor-dependencies');
+  JbFiles(
+    this.jbuildJar, {
+    required this.configSource,
+    this.jbCache = '.jb-cache',
+  }) : processorLibsDir = p.join(jbCache, 'processor-dependencies');
 }

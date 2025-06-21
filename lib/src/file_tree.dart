@@ -20,7 +20,7 @@ class FileDeps {
   const FileDeps(this.path, this.deps);
 
   @override
-  String toString() => 'File $path depends on ${deps.join(', ')}';
+  String toString() => '$path: [${deps.join(', ')}]';
 }
 
 class TransitiveChanges {
@@ -45,7 +45,7 @@ class TransitiveChanges {
   }
 }
 
-/// A tree of files describing files' dependencies.
+/// A tree of files describing source files' dependencies.
 class FileTree {
   late final Map<String, FileDeps> depsByFile;
   final Map<String, List<String>> _typeDeps;
@@ -53,8 +53,8 @@ class FileTree {
   final Map<String, List<String>> _typesByPath;
 
   FileTree._(this._typeDeps, List<_TypeEntry> typeEntries)
-      : _pathByType = typeEntries.byType(),
-        _typesByPath = typeEntries.byPath() {
+    : _pathByType = typeEntries.byType(),
+      _typesByPath = typeEntries.byPath() {
     depsByFile = _computeDepsByFile(_typeDeps, _pathByType);
   }
 
@@ -109,9 +109,11 @@ class FileTree {
     final changeSetPaths = changeSet.map((c) => c.entity.path).toSet();
 
     final totalChanges = changeSet
-        .followedBy(transitiveChanges
-            .where(changeSetPaths.contains.not$)
-            .map((e) => FileChange(File(e), ChangeKind.modified)))
+        .followedBy(
+          transitiveChanges
+              .where(changeSetPaths.contains.not$)
+              .map((e) => FileChange(File(e), ChangeKind.modified)),
+        )
         .toList();
 
     return TransitiveChanges(this, totalChanges);
@@ -137,23 +139,18 @@ class FileTree {
     return FileTree._(typeDeps, typeEntries);
   }
 
-  Iterable<String> classFilesOf(List<String> sourceDirs, String path) {
-    String? srcDir;
-    for (final src in sourceDirs) {
-      if (p.isWithin(src, path)) {
-        srcDir = src;
-        break;
-      }
-    }
-    if (srcDir != null) {
-      return (_typesByPath[p.relative(path, from: srcDir)] ?? const [])
-          .map(_toClassFile);
-    }
-    return const [];
+  Iterable<String> classFilesOf(String path) {
+    final types = _typesByPath[path];
+    if (types == null) return const [];
+    return types.map(_toClassFile);
   }
 
   @override
-  String toString() => depsByFile.values.map((fd) => '$fd').join(', ');
+  String toString() =>
+      'FileTree{depsByFile: ('
+      '${depsByFile.values.map((fd) => '$fd').join('\n')}), '
+      'classFilesByPath: ${_typesByPath.entries.map((e) => '${e.key}: '
+          '${e.value.map(_toClassFile).toList()}').join('\n')}}';
 }
 
 class _TypeEntry {
@@ -168,8 +165,10 @@ class _TypeEntry {
     if (result == null) {
       if (type.contains('.')) {
         final lastDot = type.lastIndexOf('.');
-        final pkg = type.substring(0, lastDot).replaceAll('.', '/');
-        result = '$pkg/$file';
+        final pkg = type
+            .substring(0, lastDot)
+            .replaceAll('.', Platform.pathSeparator);
+        result = '$pkg${Platform.pathSeparator}$file';
       } else {
         result = file;
       }
@@ -180,10 +179,12 @@ class _TypeEntry {
 }
 
 Future<FileTree> loadFileTreeFrom(File file) async {
-  return await loadFileTree(file
-      .openRead()
-      .transform(const Utf8Decoder())
-      .transform(const LineSplitter()));
+  return await loadFileTree(
+    file
+        .openRead()
+        .transform(const Utf8Decoder())
+        .transform(const LineSplitter()),
+  );
 }
 
 Future<FileTree> loadFileTree(Stream<String> requirements) async {
@@ -207,13 +208,18 @@ Future<FileTree> loadFileTree(Stream<String> requirements) async {
 }
 
 Map<String, FileDeps> _computeDepsByFile(
-    Map<String, List<String>> typeDeps, Map<String, String> pathByType) {
+  Map<String, List<String>> typeDeps,
+  Map<String, String> pathByType,
+) {
   final result = <String, FileDeps>{};
 
   typeDeps.forEach((type, deps) {
     final path = pathByType[type]!;
-    final fileDeps =
-        result.update(path, (d) => d, ifAbsent: () => FileDeps(path, {}));
+    final fileDeps = result.update(
+      path,
+      (d) => d,
+      ifAbsent: () => FileDeps(path, {}),
+    );
     for (final dep in deps) {
       final path = pathByType[dep];
       if (path != null && fileDeps.path != path) fileDeps.deps.add(path);
@@ -233,8 +239,9 @@ _TypeEntry _parseTypeLine(String line) {
   line = line.substring(4, line.length - 2);
   final parensStart = line.indexOf('(');
   return _TypeEntry(
-      type: line.substring(0, parensStart - 1),
-      file: line.substring(parensStart + 1));
+    type: line.substring(0, parensStart - 1),
+    file: line.substring(parensStart + 1),
+  );
 }
 
 String _parseDepLine(String line) {
@@ -270,7 +277,9 @@ extension on List<_TypeEntry> {
 }
 
 Future<TransitiveChanges?> computeAllChanges(
-    ChangeSet? changeSet, File srcFileTree) async {
+  ChangeSet? changeSet,
+  File srcFileTree,
+) async {
   if (changeSet != null && changeSet.outputChanges.isEmpty) {
     if (await srcFileTree.exists()) {
       final currentTree = await loadFileTreeFrom(srcFileTree);
@@ -281,19 +290,24 @@ Future<TransitiveChanges?> computeAllChanges(
 }
 
 Future<void> storeNewFileTree(
-    String taskName,
-    JbConfiguration config,
-    String workingDir,
-    JBuildSender jBuildSender,
-    String buildOutput,
-    File fileTreeFile) async {
+  String taskName,
+  JbConfiguration config,
+  String workingDir,
+  JBuildSender jBuildSender,
+  String buildOutput,
+  File fileTreeFile,
+) async {
   final fileTreePath = fileTreeFile.absolute.path;
   final outputConsumer = Actor.create(() => _FileOutput(fileTreePath));
   try {
-    await jBuildSender.send(RunJBuild(
+    await jBuildSender.send(
+      RunJBuild('requirements', [
+        ...config.preArgs(workingDir),
         'requirements',
-        [...config.preArgs(workingDir), 'requirements', '-c', buildOutput],
-        await outputConsumer.toSendable()));
+        '-c',
+        buildOutput,
+      ], await outputConsumer.toSendable()),
+    );
   } finally {
     await outputConsumer.close();
   }

@@ -8,16 +8,22 @@ import '../lib/src/jbuild_jar.g.dart' show jbuildJarB64;
 
 final _jbuildHome = Platform.environment['JBUILD_HOME'];
 
-final String jbuildGeneratedDartFilePath =
-    path.join('lib', 'src', 'jbuild_jar.g.dart');
+final String jbuildGeneratedDartFilePath = path.join(
+  'lib',
+  'src',
+  'jbuild_jar.g.dart',
+);
 
 final testProjectsDir = path.join('test', 'test-projects');
 final exampleProjectsDir = 'example';
 
 final String testMavenRepo = path.join('test', 'test-projects', 'test-repo');
 
-final String testMavenRepoSrc =
-    path.join('test', 'test-projects', 'test-repo-src');
+final String testMavenRepoSrc = path.join(
+  'test',
+  'test-projects',
+  'test-repo-src',
+);
 
 final String listsMavenRepoProjectSrc = path.join(testMavenRepoSrc, 'lists');
 

@@ -6,6 +6,7 @@ import 'package:schemake/dart_gen.dart';
 
 import 'config/jb_config_schema.dart';
 import 'config/jb_extension_schema.dart';
+import 'config/resolved_dependencies.dart';
 import 'format.dart';
 
 const generateJbConfigModelTaskName = 'generateJbConfigModel';
@@ -17,23 +18,34 @@ void setupTaskDependencies(DartleDart dartleDart) {
 
 const outputFile = configFile;
 
+String _finalPrefix(String _) => '\nfinal ';
+
 Task generateJbConfigModelTask = Task(
-    (_) => _generateJbConfigModel(File(outputFile)),
-    name: generateJbConfigModelTaskName,
-    phase: TaskPhase.setup,
-    description: 'Generate the jb configuration model from the Schemake schema',
-    runCondition:
-        RunOnChanges(inputs: file('pubspec.yaml'), outputs: file(outputFile)));
+  (_) => _generateJbConfigModel(File(outputFile)),
+  name: generateJbConfigModelTaskName,
+  phase: TaskPhase.setup,
+  description: 'Generate the jb configuration model from the Schemake schema',
+  runCondition: RunOnChanges(
+    inputs: file('pubspec.yaml'),
+    outputs: file(outputFile),
+  ),
+);
 
 Future<void> _generateJbConfigModel(File output) async {
   final writer = output.openWrite();
   try {
-    writer.write(generateDartClasses([jbConfig, extensionTask],
-        options: const DartGeneratorOptions(methodGenerators: [
-          ...DartGeneratorOptions.defaultMethodGenerators,
-          DartToJsonMethodGenerator(),
-          DartFromJsonMethodGenerator(),
-        ])));
+    writer.write(
+      generateDartClasses(
+        [jbConfig, extensionTask, resolvedDependencies],
+        options: const DartGeneratorOptions(
+          insertBeforeClass: _finalPrefix,
+          methodGenerators: [
+            ...DartGeneratorOptions.defaultMethodGenerators,
+            ...DartGeneratorOptions.jsonMethodGenerators,
+          ],
+        ),
+      ),
+    );
   } finally {
     await writer.flush();
     await writer.close();
@@ -41,4 +53,9 @@ Future<void> _generateJbConfigModel(File output) async {
 
   // format the generated code to avoid making the 'analyse' task to run
   await formatDart(outputFile);
+}
+
+main() async {
+  final out = File('jb_model.dart');
+  await _generateJbConfigModel(out);
 }

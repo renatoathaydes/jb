@@ -2,6 +2,10 @@
   "repositories": [
     "../test-repo"
   ],
+  "group": "com.example",
+  "module": "with-deps",
+  "name": "Project With Dependencies",
+  "version": "1.2.3",
   "dependencies": {
     "com.example:lists:1.0": {},
     "minimal-sample": {

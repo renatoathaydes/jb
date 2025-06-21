@@ -19,8 +19,14 @@ Future<void> main() async {
     });
 
     test('Can parse Dartle options with custom rootDir', () {
-      final options = JbCliOptions.parseArgs(
-          const ['-l', 'debug', 'run', '-p', 'root', 'test']);
+      final options = JbCliOptions.parseArgs(const [
+        '-l',
+        'debug',
+        'run',
+        '-p',
+        'root',
+        'test',
+      ]);
       expect(options.createOptions, isNull);
       expect(options.dartleArgs, equals(const ['-l', 'debug', 'run', 'test']));
       expect(options.rootDirectory, 'root');
@@ -58,23 +64,40 @@ Future<void> main() async {
   group('CLI Options errors', () {
     test('missing -p argument', () {
       expect(
-          () => JbCliOptions.parseArgs(const ['-p']),
-          throwsA(isA<DartleException>().having((e) => e.message, 'message',
-              equals('-p option requires an argument.'))));
+        () => JbCliOptions.parseArgs(const ['-p']),
+        throwsA(
+          isA<DartleException>().having(
+            (e) => e.message,
+            'message',
+            equals('-p option requires an argument.'),
+          ),
+        ),
+      );
       expect(
-          () => JbCliOptions.parseArgs(const ['-l', 'debug', '-p']),
-          throwsA(isA<DartleException>().having((e) => e.message, 'message',
-              equals('-p option requires an argument.'))));
+        () => JbCliOptions.parseArgs(const ['-l', 'debug', '-p']),
+        throwsA(
+          isA<DartleException>().having(
+            (e) => e.message,
+            'message',
+            equals('-p option requires an argument.'),
+          ),
+        ),
+      );
     });
 
     test('create command cannot be used with other tasks', () {
       expect(
-          () => JbCliOptions.parseArgs(const ['run', 'test', 'create']),
-          throwsA(isA<DartleException>().having(
-              (e) => e.message,
-              'message',
-              equals(
-                  'The "create" command cannot be used with other tasks.'))));
+        () => JbCliOptions.parseArgs(const ['run', 'test', 'create']),
+        throwsA(
+          isA<DartleException>().having(
+            (e) => e.message,
+            'message',
+            equals(
+              'The "create" command cannot be used with other tasks or arguments.',
+            ),
+          ),
+        ),
+      );
     });
   });
 }

@@ -86,12 +86,9 @@ dependencies:
     # Use the Log4j2 Provider for SLF4J
     org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0:
         scope: runtime-only
+        exclusions: [".*:log4j-api:.*", ".*:slf4j-api:.*"] # <<------
     org.apache.logging.log4j:log4j-core:2.24.3:
         scope: runtime-only
-
-dependency-exclusion-patterns:
-  - .*:log4j-api:2.19.0
-  - .*:slf4j-api:2.0.0
 ```
 
 This has the same effect as before. The downside is that you need to re-calculate the exclusion patterns every time you update

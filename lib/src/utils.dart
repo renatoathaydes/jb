@@ -65,11 +65,9 @@ extension AsyncIterable<T> on Iterable<FutureOr<T>> {
 }
 
 extension ListExtension on Iterable<String> {
-  List<String> merge(Iterable<String> other, Properties props) =>
-      followedBy(other)
-          .map((e) => resolveString(e, props))
-          .toSet()
-          .toList(growable: false);
+  List<String> merge(Iterable<String> other, Properties props) => followedBy(
+    other,
+  ).map((e) => resolveString(e, props)).toSet().toList(growable: false);
 
   bool _javaRuntimeArg(String arg) => arg.startsWith('-J-');
 
@@ -81,7 +79,9 @@ extension ListExtension on Iterable<String> {
 
 extension ScmExtension on SourceControlManagement? {
   SourceControlManagement? merge(
-      SourceControlManagement? other, Properties props) {
+    SourceControlManagement? other,
+    Properties props,
+  ) {
     return switch ((this, other)) {
       (null, null) => null,
       (SourceControlManagement self, null) => self.applying(props),
@@ -90,10 +90,13 @@ extension ScmExtension on SourceControlManagement? {
   }
 
   SourceControlManagement? applying(Properties props) {
-    return this?.vmap((self) => SourceControlManagement(
+    return this?.vmap(
+      (self) => SourceControlManagement(
         connection: resolveString(self.connection, props),
         developerConnection: resolveString(self.developerConnection, props),
-        url: resolveString(self.url, props)));
+        url: resolveString(self.url, props),
+      ),
+    );
   }
 }
 
@@ -130,22 +133,34 @@ extension MapExtension<V> on Map<String, V> {
     return map((k, v) {
       if (v is Map) return MapEntry(k, v as Map<String, Object?>);
       failBuild(
-          reason: "Invalid configuration value: '$k' is not a known jb "
-              "configuration property. If it is a custom task configuration, "
-              "then it must be a Map.");
+        reason:
+            "Invalid configuration value: '$k' is not a known jb "
+            "configuration property. If it is a custom task configuration, "
+            "then it must be a Map.",
+      );
     });
   }
 }
 
 extension StringMapExtension on Map<String, String> {
   Map<String, String> merge(Map<String, String> other, Properties props) =>
-      Map.fromEntries(entries.followedBy(other.entries).map((e) => MapEntry(
-          resolveString(e.key, props), resolveString(e.value, props))));
+      Map.fromEntries(
+        entries
+            .followedBy(other.entries)
+            .map(
+              (e) => MapEntry(
+                resolveString(e.key, props),
+                resolveString(e.value, props),
+              ),
+            ),
+      );
 }
 
 extension DependencyMapExtension on Map<String, DependencySpec?> {
   Map<String, DependencySpec?> merge(
-      Map<String, DependencySpec?> other, Properties props) {
+    Map<String, DependencySpec?> other,
+    Properties props,
+  ) {
     if (isEmpty) {
       if (other.isEmpty) return this;
       return other.entries.resolve(props);
@@ -170,8 +185,9 @@ extension DependencyMapExtension on Map<String, DependencySpec?> {
     }
     // finally, we need to resolve the values of the keys which were only
     // present in this Map (not visited in the previous step)
-    for (final entry
-        in result.entries.where((e) => !visitedInOther.contains(e.key))) {
+    for (final entry in result.entries.where(
+      (e) => !visitedInOther.contains(e.key),
+    )) {
       result[entry.key] = entry.value?.resolveProperties(props);
     }
     return result;
@@ -181,7 +197,13 @@ extension DependencyMapExtension on Map<String, DependencySpec?> {
 extension MapEntryIterable on Iterable<MapEntry<String, DependencySpec?>> {
   Map<String, DependencySpec?> resolve(Map<String, Object?> props) {
     return Map.fromEntries(
-        map((e) => MapEntry(e.key, e.value?.resolveProperties(props))));
+      map(
+        (e) => MapEntry(
+          resolveString(e.key, props),
+          e.value?.resolveProperties(props),
+        ),
+      ),
+    );
   }
 }
 
@@ -191,36 +213,52 @@ extension on DependencySpec? {
     if (self == null) return other?.resolveProperties(props);
     if (other == null) return self.resolveProperties(props);
     return DependencySpec(
-        transitive: self.transitive || other.transitive,
-        scope: self.scope.index < other.scope.index ? self.scope : other.scope,
-        path: resolveOptionalString(other.path, props),
-        exclusions: self.exclusions.merge(other.exclusions, props));
+      transitive: self.transitive || other.transitive,
+      scope: self.scope.index < other.scope.index ? self.scope : other.scope,
+      path: resolveOptionalString(other.path, props),
+      exclusions: self.exclusions.merge(other.exclusions, props),
+    );
   }
 }
 
 extension DirectoryExtension on Directory {
   Future<String?> toClasspath([Set<File> extraEntries = const {}]) async =>
       await exists()
-          ? list()
-              .where((f) =>
+      ? list()
+            .where(
+              (f) =>
                   FileSystemEntity.isFileSync(f.path) &&
-                  p.extension(f.path) == '.jar')
-              .map((f) => f.path)
-              .followedBy(extraEntries.map((f) => f.path))
-              .join(classpathSeparator)
-          : null;
+                  p.extension(f.path) == '.jar',
+            )
+            .map((f) => f.path)
+            .followedBy(extraEntries.map((f) => f.path))
+            .join(classpathSeparator)
+      : null;
 
   Future<void> copyContentsInto(String destinationDir) async {
     if (!await exists()) return;
     await for (final child in list(recursive: true)) {
       if (child is Directory) {
         await Directory(
-                p.join(destinationDir, p.relative(child.path, from: path)))
-            .create();
+          p.join(destinationDir, p.relative(child.path, from: path)),
+        ).create();
       } else if (child is File) {
-        await child
-            .copy(p.join(destinationDir, p.relative(child.path, from: path)));
+        await child.copy(
+          p.join(destinationDir, p.relative(child.path, from: path)),
+        );
       }
+    }
+  }
+}
+
+extension FileExtension on File {
+  Future<void> withSink(Future<void> Function(IOSink) action) async {
+    final handle = openWrite();
+    try {
+      await action(handle);
+    } finally {
+      await handle.flush();
+      await handle.close();
     }
   }
 }
