@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:actors/actors.dart';
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart'
     show
         Task,
@@ -67,7 +68,7 @@ Future<ExtensionProject?> loadExtensionProject(
   final extensionConfig = await withCurrentDirectory(rootDir, () async {
     return await defaultJbConfigSource.load();
   });
-  _verify(extensionConfig);
+  _verifyJBuildApiDependency(extensionConfig);
 
   final configContainer = await withCurrentDirectory(
     rootDir,
@@ -101,6 +102,8 @@ Future<ExtensionProject?> loadExtensionProject(
     jvmExecutor,
   );
 
+  _warnOnUnexpectedConfig(extensionModel, config.extras);
+
   // convert the [ExtensionTask]s and constructor data into Dartle [Task]s
   final tasks = extensionModel.extensionTasks
       .map((extensionTask) {
@@ -123,7 +126,7 @@ Future<ExtensionProject?> loadExtensionProject(
   return ExtensionProject(rootDir, absRootDir, extensionModel, tasks);
 }
 
-void _verify(JbConfiguration config) {
+void _verifyJBuildApiDependency(JbConfiguration config) {
   final hasJbApiDep = config.dependencies.keys.any(
     (dep) => dep.startsWith('$jbApi:'),
   );
@@ -132,6 +135,20 @@ void _verify(JbConfiguration config) {
       reason:
           'Extension project is missing dependency on jbuild-api.\n'
           "To fix that, add a dependency on '$jbApi:<version>'",
+    );
+  }
+}
+
+void _warnOnUnexpectedConfig(
+  JbExtensionModel extensionModel,
+  Map<String, Object?> extras,
+) {
+  final taskNames = extensionModel.extensionTasks.map((t) => t.name).toSet();
+  final unknownKeys = extras.keys.where(taskNames.contains.not$);
+  if (unknownKeys.isNotEmpty) {
+    logger.warning(
+      () =>
+          'jb configuration keys do not match any known parameter or extension task: $unknownKeys',
     );
   }
 }
