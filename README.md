@@ -49,7 +49,7 @@ main-class: my_group.my_app.Main
 
 # dependencies can be Maven artifacts or other jb projects
 dependencies:
-  - some.group:some.module:1.0.0
+  some.group:some.module:1.0.0:
 ```
 
 The `test` module is just a `jb` project which depends on a supported testing library API, and contains tests.
@@ -72,10 +72,10 @@ output-dir: build/classes
 
 # dependencies can be Maven artifacts or other jb projects
 dependencies:
-  - org.junit.jupiter:junit-jupiter-api:5.8.2
-  - org.assertj:assertj-core:3.22.0
-  - core-module:
-      path: ../
+  org.junit.jupiter:junit-jupiter-api:5.8.2:
+  org.assertj:assertj-core:3.22.0:
+  core-module:
+    path: ../
 ```
 
 > If you run `jb create` on an empty directory, a basic project with some Java code and a test module is created.
@@ -137,6 +137,9 @@ jb -s     # or e.g. 'jb -s run' to see which tasks 'run' would require
 
 # show a task dependency graph
 jb -g
+
+# show the full jb configuration
+jb show
 ```
 
 ## Extending jb
@@ -166,8 +169,8 @@ public final class ExampleTask implements JbTask {
 
 ## Demo Project
 
-A demo Java project (using the [Javalin Web Framework](https://javalin.io/)) is available in the
-[example/javalin-http-server-sample](example/javalin-http-server-sample) directory.
+A few demo Java projects, including one using the [Javalin Web Framework](https://javalin.io/), are available in the
+[example/](example/) directory.
 
 ## About `jb` (implementation)
 
@@ -179,17 +182,19 @@ compiling Java projects.
 **`jb`** builds on JBuild to provide a modern developer environment, similar to other languages like
 [Rust](https://www.rust-lang.org/) and [Dart](https://dart.dev/), whose great developer UX inspired `jb`.
 
-[JUnit5](https://junit.org/junit5/) is used for executing Java tests.
+[JUnit5](https://junit.org/junit5/) is used for executing Java tests that depend on the `org.junit.jupiter:junit-jupiter-api` module.
+See the [javalin-http-server-sample/test](example/javalin-http-server-sample/test/jbuild.yaml) example project for an example.
 
-> I hope to add support for other testing frameworks in the future, specially [Spock](https://spockframework.org/).
-> If you want your favourite framework to be supported, create an issue or upvote an existing one
-> ([Spock support issue](https://github.com/renatoathaydes/jb/issues/4))!
+[Spock](https://spockframework.org/) is also supported by adding a dependency on `org.spockframework:spock-core`.
+The [groovy-example/test](example/groovy-example/test/jbuild.yaml) example project shows how it can be configured.
+
+### About using Dart to implement the CLI
 
 [Dart](https://dart.dev/) may look like a weird choice of language to write a Java build system... so I think it's
 appropriate to explain the choice:
 
 * it supports building small, native, fast executables that do not require a JVM to run.
-* that makes it easier to avoid a common pitfall: tying the build system to certain version of the JDK.
-* [Dartle](https://github.com/renatoathaydes/dartle/), the task runner behind `jb`, is written in Dart, by me.
+* that makes it easier to avoid a common pitfall: tying the build system to certain versions of the JDK.
+* [Dartle](https://github.com/renatoathaydes/dartle/), the task runner/cache behind `jb`, is written in Dart, by me.
 * the possibility of writing a Flutter UI to manage `jb` projects in the future, which may be of great help to beginners.
-* I find it very easy to write code in Dart, and enjoy using it.
+* I find it straightforward to write code in Dart, and simply enjoy it. Also, it's fairly close to Java, so potential contributors shouldn't feel discouraged by this choice.
