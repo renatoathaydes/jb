@@ -1,13 +1,18 @@
 ## Next
 
+# 0.13.0
+
 - updated JBuild version to `0.12.0`.
 - automatically add jb config file as input of custom tasks requiring `JbConfig`.
 - write transitive dependency tree to JSON file and use that to download them later.
+- improved `dependencies` task output.
 - honour dependency exclusions per dependency and global exclusions.
 - updated SPDX licenses file.
 - fixed `-p` option so that working directory works in more scenarios.
 - allow specifying which Test library version to use with `jb create`.
 - several fixes to incremental builds.
+- show extension task configuration in `showJbConfiguration` task output.
+- warn if any configuration is not used by jb or any extensions.
 
 ## 0.12.0
 
