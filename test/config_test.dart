@@ -264,6 +264,91 @@ properties:
         jbuild: 0.12.0  
 ''';
 
+const _basicConfigWithExtensions = '''
+group: com.example
+module: basic-with-extensions
+extensionTask:
+  inputs: [a, b]
+  outputs: "foo"
+anotherTask:
+  verbose: true
+''';
+
+const _basicConfigWithExtensionsExpanded = '''
+######################## Full jb configuration ########################
+
+### For more information, visit https://github.com/renatoathaydes/jb
+
+# Maven artifact groupId
+group: "com.example"
+# Module name (Maven artifactId)
+module: "basic-with-extensions"
+# Human readable name of this project
+name: null
+# Maven version
+version: null
+# Description for this project
+description: null
+# URL of this project
+url: null
+# Licenses this project uses
+licenses: []
+# Developers who have contributed to this project
+developers: []
+# Source control management
+scm: null
+# List of source directories
+source-dirs: []
+# List of resource directories (assets)
+resource-dirs: []
+# Output directory (class files)
+output-dir: null
+# Output jar (may be used instead of output-dir)
+output-jar: null
+# Java Main class name
+main-class: null
+# Manifest file to include in the jar
+manifest: null
+# Java Compiler arguments
+javac-args: []
+# Java Compiler environment variables
+javac-env: {}
+# Java Runtime arguments
+run-java-args: []
+# Java Runtime environment variables
+run-java-env: {}
+# Java Test run arguments
+test-java-args: []
+# Java Test environment variables
+test-java-env: {}
+# Maven repositories (URLs or directories)
+repositories: []
+# Maven dependencies
+dependencies: {}
+# Dependency exclusions (regular expressions)
+dependency-exclusion-patterns: []
+# Annotation processor Maven dependencies
+processor-dependencies: {}
+# Annotation processor dependency exclusions (regular expressions)
+processor-dependency-exclusion-patterns: []
+# Compile-time libs output dir
+compile-libs-dir: "build/compile-libs"
+# Runtime libs output dir
+runtime-libs-dir: "build/runtime-libs"
+# Test reports output dir
+test-reports-dir: "build/test-reports"
+# jb extension project path (for custom tasks)
+extension-project: null
+############################
+# Custom tasks configuration
+############################
+"extensionTask":
+  "inputs": ["a", "b"]
+  "outputs": "foo"
+"anotherTask":
+  "verbose": true
+''';
+
 String _configImportingVersionsConfig(String importPath) =>
     '''
 imports:
@@ -359,6 +444,13 @@ void main() {
       expect(
         (await loadConfigString(_basicConfigWithDependencies)).toYaml(true),
         equals(_basicConfigWithDependenciesExpanded),
+      );
+    });
+
+    test('can print basic config with extensions as YAML', () async {
+      expect(
+        (await loadConfigString(_basicConfigWithExtensions)).toYaml(true),
+        equals(_basicConfigWithExtensionsExpanded),
       );
     });
 

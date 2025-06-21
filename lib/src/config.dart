@@ -11,6 +11,7 @@ import 'package:yaml/yaml.dart';
 import 'ansi.dart';
 import 'deps.dart';
 import 'properties.dart';
+import 'to_yaml.dart';
 import 'utils.dart';
 
 export 'jb_config.g.dart';
@@ -421,118 +422,8 @@ extension JbConfigExtension on JbConfiguration {
   }
 
   String toYaml(bool noColor) {
-    final color = createAnsiColor(noColor);
-    String quote(String? value) =>
-        value == null ? color('null', kwColor) : color('"$value"', strColor);
-
-    String multilineList(Iterable<String> lines, {bool isMap = false}) {
-      if (lines.isEmpty) {
-        if (isMap) return ' {}';
-        return ' []';
-      }
-      final dash = isMap ? '' : '- ';
-      return '\n${lines.map((line) => '  $dash$line').join('\n')}';
-    }
-
-    String depsToYaml(Iterable<MapEntry<String, DependencySpec>> deps) {
-      return multilineList(
-        deps.map(
-          (dep) => '${quote(dep.key)}:\n${dep.value.toYaml(color, '    ')}',
-        ),
-        isMap: true,
-      );
-    }
-
-    String developersToYaml(Iterable<Developer> developers) {
-      return multilineList(developers.map((dev) => dev.toYaml(color, '    ')));
-    }
-
-    String scmToYaml(SourceControlManagement? scm) {
-      if (scm == null) return color(' null', kwColor);
-      return '\n  ${scm.toYaml(color, '  ')}';
-    }
-
-    String mapToYaml(Map<String, String> map) {
-      if (map.isEmpty) return ' {}';
-      return '\n${map.entries.map((e) => '  ${quote(e.key)}: '
-          '${quote(e.value)}').join('\n')}';
-    }
-
-    return '''
-${color('''
-######################## Full jb configuration ########################
-
-### For more information, visit https://github.com/renatoathaydes/jb
-''', commentColor)}
-${color('# Maven artifact groupId', commentColor)}
-group: ${quote(group)}
-${color('# Module name (Maven artifactId)', commentColor)}
-module: ${quote(module)}
-${color('# Human readable name of this project', commentColor)}
-name: ${quote(name)}
-${color('# Maven version', commentColor)}
-version: ${quote(version)}
-${color('# Description for this project', commentColor)}
-description: ${quote(description)}
-${color('# URL of this project', commentColor)}
-url: ${quote(url)}
-${color('# Licenses this project uses', commentColor)}
-licenses: [${licenses.map((lic) => quote(lic)).join(', ')}]
-${color('# Developers who have contributed to this project', commentColor)}
-developers:${developersToYaml(developers)}
-${color('# Source control management', commentColor)}
-scm:${scmToYaml(scm)}
-${color('# List of source directories', commentColor)}
-source-dirs: [${sourceDirs.map(quote).join(', ')}]
-${color('# List of resource directories (assets)', commentColor)}
-resource-dirs: [${resourceDirs.map(quote).join(', ')}]
-${color('# Output directory (class files)', commentColor)}
-output-dir: ${quote(outputDir)}
-${color('# Output jar (may be used instead of output-dir)', commentColor)}
-output-jar: ${quote(outputJar)}
-${color('# Java Main class name', commentColor)}
-main-class: ${quote(mainClass)}
-${color('# Manifest file to include in the jar', commentColor)}
-manifest: ${quote(manifest)}
-${color('# Java Compiler arguments', commentColor)}
-javac-args: [${javacArgs.map(quote).join(', ')}]
-${color('# Java Compiler environment variables', commentColor)}
-javac-env:${mapToYaml(javacEnv)}
-${color('# Java Runtime arguments', commentColor)}
-run-java-args: [${runJavaArgs.map(quote).join(', ')}]
-${color('# Java Runtime environment variables', commentColor)}
-run-java-env:${mapToYaml(runJavaEnv)}
-${color('# Java Test run arguments', commentColor)}
-test-java-args: [${javacArgs.map(quote).join(', ')}]
-${color('# Java Test environment variables', commentColor)}
-test-java-env:${mapToYaml(testJavaEnv)}
-${color('# Maven repositories (URLs or directories)', commentColor)}
-repositories: [${repositories.map(quote).join(', ')}]
-${color('# Maven dependencies', commentColor)}
-dependencies:${depsToYaml(allDependencies)}
-${color('# Dependency exclusions (regular expressions)', commentColor)}
-dependency-exclusion-patterns:${multilineList(dependencyExclusionPatterns.map(quote))}
-${color('# Annotation processor Maven dependencies', commentColor)}
-processor-dependencies:${depsToYaml(allProcessorDependencies)}
-${color('# Annotation processor dependency exclusions (regular expressions)', commentColor)}
-processor-dependency-exclusion-patterns:${multilineList(processorDependencyExclusionPatterns.map(quote))}
-${color('# Compile-time libs output dir', commentColor)}
-compile-libs-dir: ${quote(compileLibsDir)}
-${color('# Runtime libs output dir', commentColor)}
-runtime-libs-dir: ${quote(runtimeLibsDir)}
-${color('# Test reports output dir', commentColor)}
-test-reports-dir: ${quote(testReportsDir)}
-${color('# jb extension project path (for custom tasks)', commentColor)}
-extension-project: ${quote(extensionProject)}
-${extras.isNotEmpty ? color(
-            //
-            '############################\n'
-            '# Custom tasks configuration\n'
-            '############################',
-            commentColor,
-          ) : ''}
-${[for (final e in extras.entries) "${quote(e.key)}: ${e.value}"].join('\n')}
-''';
+    final toYaml = ToYaml(noColor);
+    return toYaml(this);
   }
 }
 

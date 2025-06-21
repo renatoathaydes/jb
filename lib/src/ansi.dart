@@ -6,6 +6,9 @@ const strColor = ansi.blue;
 /// Keyword color.
 const kwColor = ansi.magenta;
 
+/// Number color.
+const numColor = ansi.lightMagenta;
+
 /// Comments color.
 const commentColor = ansi.darkGray;
 
