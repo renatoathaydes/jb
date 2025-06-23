@@ -1,5 +1,7 @@
 ## Next
 
+- changed `generatePom` task to emit POM without any transitive dependencies, so `jb`'s resolution is used, not Maven's.
+
 # 0.13.0
 
 - updated JBuild version to `0.12.0`.
