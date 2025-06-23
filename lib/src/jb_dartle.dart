@@ -201,12 +201,12 @@ class JbDartle {
     generateEclipse = createEclipseTask(_config);
     generatePom = createGeneratePomTask(
       artifact,
-      _config.allDependencies,
       localDependencies,
+      _files.dependenciesFile,
     );
     publish = createPublishTask(
       artifact,
-      _config.allDependencies,
+      _files.dependenciesFile,
       configContainer.output.when(dir: (_) => null, jar: (j) => j),
       localDependencies,
     );

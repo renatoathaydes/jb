@@ -30,11 +30,11 @@ class Publisher {
   );
 
   final Result<Artifact> artifact;
-  final Iterable<MapEntry<String, DependencySpec>> dependencies;
+  final File depsFile;
   final ResolvedLocalDependencies localDependencies;
   final String? jar;
 
-  Publisher(this.artifact, this.dependencies, this.localDependencies, this.jar);
+  Publisher(this.artifact, this.depsFile, this.localDependencies, this.jar);
 
   /// The `publish` task action.
   Future<void> call(List<String> args) async {
@@ -112,8 +112,6 @@ class Publisher {
     Artifact artifact,
     Stopwatch stopwatch,
   ) async {
-    stopwatch.reset();
-
     // ignore error intentionally
     await catching(() => destination.delete(recursive: true));
     // create an empty directory
@@ -122,7 +120,15 @@ class Publisher {
     // so this should never fail
     final jarFile = jar.ifBlank(() => 'Cannot publish, jar was not provided');
 
-    final pom = createPom(artifact, dependencies, localDependencies);
+    stopwatch.reset();
+    final deps = await parseDeps(depsFile);
+    logger.log(
+      profile,
+      'Parsed dependencies file in ${stopwatch.elapsedMilliseconds} ms',
+    );
+    stopwatch.reset();
+
+    final pom = createPom(artifact, deps, localDependencies);
 
     logger.log(
       profile,

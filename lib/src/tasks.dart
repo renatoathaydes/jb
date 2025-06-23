@@ -518,23 +518,15 @@ Task createEclipseTask(JbConfiguration config) {
 /// Create the generatePom task.
 Task createGeneratePomTask(
   Result<Artifact> artifact,
-  Iterable<MapEntry<String, DependencySpec>> dependencies,
   ResolvedLocalDependencies localDependencies,
+  File dependenciesFile,
 ) {
   return Task(
-    (List<String> args) => _pom(
-      args,
-      createPom(
-        switch (artifact) {
-          Ok(value: var theArtifact) => theArtifact,
-          Fail(exception: var e) => throw e,
-        },
-        dependencies,
-        localDependencies,
-      ),
-    ),
+    (List<String> args) =>
+        _generatePom(args, artifact, localDependencies, dependenciesFile),
     name: createPomTaskName,
     phase: publishPhase,
+    dependsOn: {writeDepsTaskName},
     runCondition: artifact.runCondition(),
     argsValidator: const OptionalArgValidator(
       'One argument may be provided: the POM destination',
@@ -543,27 +535,47 @@ Task createGeneratePomTask(
   );
 }
 
-Future<void> _pom(List<String> args, Object pom) async {
+Future<void> _generatePom(
+  List<String> args,
+  Result<Artifact> artifact,
+  ResolvedLocalDependencies localDependencies,
+  File dependenciesFile,
+) async {
+  final stopWatch = Stopwatch()..start();
+  final deps = await parseDeps(dependenciesFile);
+  logger.log(
+    profile,
+    'Parsed dependencies file in ${stopWatch.elapsedMilliseconds} ms',
+  );
+  stopWatch.reset();
+
+  final pom = createPom(
+    switch (artifact) {
+      Ok(value: var theArtifact) => theArtifact,
+      Fail(exception: var e) => throw e,
+    },
+    deps,
+    localDependencies,
+  );
+
+  logger.log(profile, 'Created POM in ${stopWatch.elapsedMilliseconds} ms');
+
   final destination = File(args.isEmpty ? 'pom.xml' : args[0]);
   await destination.parent.create(recursive: true);
+
   logger.fine(() => "Writing POM to $destination");
-  await destination.writeAsString(pom.toString(), flush: true);
+  await destination.writeAsString(pom, flush: true);
 }
 
 /// Create the publish task.
 Task createPublishTask(
   Result<Artifact> artifact,
-  Iterable<MapEntry<String, DependencySpec>> dependencies,
+  File depsFile,
   String? outputJar,
   ResolvedLocalDependencies localDependencies,
 ) {
   return Task(
-    Publisher(
-      artifact,
-      dependencies.toList(),
-      localDependencies,
-      outputJar,
-    ).call,
+    Publisher(artifact, depsFile, localDependencies, outputJar).call,
     name: publishTaskName,
     dependsOn: const {publicationCompileTaskName},
     runCondition: artifact.runCondition(),

@@ -1,3 +1,4 @@
+import 'dart:convert' show jsonDecode;
 import 'dart:io';
 
 import 'package:conveniently/conveniently.dart';
@@ -141,6 +142,12 @@ Future<List<BasicExtensionTask>> loadExtensionTaskConfigs(
           'but it is ${json?.runtimeType}',
     );
   }
+}
+
+/// Parse the file created by the [writeDepsTaskName].
+Future<Iterable<ResolvedDependency>> parseDeps(File file) async {
+  final text = await file.readAsString();
+  return (jsonDecode(text) as List).map(ResolvedDependency.fromJson);
 }
 
 class _Value<T> {

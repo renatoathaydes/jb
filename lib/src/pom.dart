@@ -55,7 +55,7 @@ Result<Artifact> createArtifact(JbConfiguration config) {
 /// source locations, Maven plugins for tests/compilation etc.
 String createPom(
   Artifact artifact,
-  Iterable<MapEntry<String, DependencySpec>> dependencies,
+  Iterable<ResolvedDependency> dependencies,
   ResolvedLocalDependencies localDependencies,
 ) {
   final xml = XmlBuilder();
@@ -76,13 +76,14 @@ String createPom(
         artifact.scm?.vmap(xml.scm);
         xml.addAll(artifact.licenses, 'licenses', xml.license);
         xml.addAll(artifact.developers, 'developers', xml.developer);
-        if (dependencies.isNotEmpty) {
+        if (dependencies.isNotEmpty || localDependencies.isNotEmpty) {
           xml.element(
             'dependencies',
             nest: () {
               for (final dep in dependencies) {
-                final spec = dep.value;
-                if (spec.path == null) xml.dependency(dep.key, spec);
+                if (dep.kind == DependencyKind.maven) {
+                  xml.dependency(dep.artifact, dep.spec);
+                }
               }
               for (final localDep in localDependencies.projectDependencies) {
                 xml.projectDependency(localDep);
@@ -139,23 +140,19 @@ extension on XmlBuilder {
         tag('artifactId', module);
         tag('version', version);
         tag('scope', dep.scope.toMaven());
-        if (!dep.transitive) {
-          element(
-            'exclusions',
-            nest: () {
-              element(
-                'exclusion',
-                nest: () {
-                  tag('groupId', '*');
-                  tag('artifactId', '*');
-                },
-              );
-            },
-          );
-        } else if (dep.exclusions.isNotEmpty) {
-          // TODO resolve the transitive dependencies, then exclude anything
-          // that matches the exclusion patterns.
-        }
+        // jb resolves transitive dependencies, Maven does not need to do it.
+        element(
+          'exclusions',
+          nest: () {
+            element(
+              'exclusion',
+              nest: () {
+                tag('groupId', '*');
+                tag('artifactId', '*');
+              },
+            );
+          },
+        );
       },
     );
   }

@@ -79,6 +79,8 @@ final class ResolvedLocalDependencies {
 
   bool get isEmpty => jars.isEmpty && projectDependencies.isEmpty;
 
+  bool get isNotEmpty => !isEmpty;
+
   LocalDependencies get unresolved => LocalDependencies(
     jars,
     projectDependencies.map((e) => e.projectDependency).toList(growable: false),

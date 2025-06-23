@@ -60,9 +60,9 @@ $pomHeader
         createPom(
           _artifact(group: 'foo', module: 'bar', name: 'Bar', version: '1.0'),
           {
-            'org.apache:json.parser:1.0.0': defaultSpec,
-            'com.junit.api:junit:4.12': defaultSpec,
-          }.entries,
+            _mavenDep('org.apache:json.parser:1.0.0'),
+            _mavenDep('com.junit.api:junit:4.12'),
+          },
           emptyLocalDependencies,
         ).toString(),
         equals('''\
@@ -77,12 +77,14 @@ $pomHeader
       <artifactId>json.parser</artifactId>
       <version>1.0.0</version>
       <scope>compile</scope>
+$nonTransitiveDependency
     </dependency>
     <dependency>
       <groupId>com.junit.api</groupId>
       <artifactId>junit</artifactId>
       <version>4.12</version>
       <scope>compile</scope>
+$nonTransitiveDependency
     </dependency>
   </dependencies>
 </project>'''),
@@ -94,15 +96,15 @@ $pomHeader
         createPom(
           _artifact(group: 'foo', module: 'bar', name: 'BAR', version: '1.0'),
           {
-            'org.apache:json.parser:1.0.0': DependencySpec(
-              scope: DependencyScope.runtimeOnly,
-              transitive: true,
+            _mavenDep(
+              'org.apache:json.parser:1.0.0',
+              DependencySpec(scope: DependencyScope.runtimeOnly),
             ),
-            'com.junit.api:junit:4.12': DependencySpec(
-              scope: DependencyScope.compileOnly,
-              transitive: false,
+            _mavenDep(
+              'com.junit.api:junit:4.12',
+              DependencySpec(scope: DependencyScope.compileOnly),
             ),
-          }.entries,
+          },
           emptyLocalDependencies,
         ).toString(),
         equals('''\
@@ -117,6 +119,7 @@ $pomHeader
       <artifactId>json.parser</artifactId>
       <version>1.0.0</version>
       <scope>runtime</scope>
+$nonTransitiveDependency
     </dependency>
     <dependency>
       <groupId>com.junit.api</groupId>
@@ -145,18 +148,18 @@ $nonTransitiveDependency
             name: 'My Module',
             version: '4.3.2.1',
           ),
-          {'org.apache:json.parser:1.0.0': defaultSpec}.entries,
+          {_mavenDep('org.apache:json.parser:1.0.0')},
           ResolvedLocalDependencies([], [
             ResolvedProjectDependency(
               ProjectDependency(
                 DependencySpec(
                   transitive: true,
                   scope: DependencyScope.compileOnly,
-                  path: 'jb-api',
+                  path: '../jb-api',
                 ),
-                'jb-api',
+                '../jb-api',
               ),
-              'jb-api',
+              '../jb-api',
               JbConfigContainer(jbApiConfig),
             ),
           ]),
@@ -173,12 +176,14 @@ $pomHeader
       <artifactId>json.parser</artifactId>
       <version>1.0.0</version>
       <scope>compile</scope>
+$nonTransitiveDependency
     </dependency>
     <dependency>
       <groupId>com.athaydes.jb</groupId>
       <artifactId>jb-api</artifactId>
       <version>0.1.0</version>
       <scope>provided</scope>
+$nonTransitiveDependency
     </dependency>
   </dependencies>
 </project>'''),
@@ -211,12 +216,12 @@ $pomHeader
             url: 'https://github.com/renatoathaydes/jbuild',
           ),
           {
-            'org.apache:json.parser:1.0.0': defaultSpec,
-            'junit:junit:4.12': DependencySpec(
-              transitive: true,
-              scope: DependencyScope.compileOnly,
+            _mavenDep('org.apache:json.parser:1.0.0'),
+            _mavenDep(
+              'junit:junit:4.12',
+              DependencySpec(scope: DependencyScope.compileOnly),
             ),
-          }.entries,
+          },
           const ResolvedLocalDependencies([], []),
         ).toString(),
         equals('''\
@@ -252,16 +257,33 @@ $pomHeader
       <artifactId>json.parser</artifactId>
       <version>1.0.0</version>
       <scope>compile</scope>
+$nonTransitiveDependency
     </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.12</version>
       <scope>provided</scope>
+$nonTransitiveDependency
     </dependency>
   </dependencies>
 </project>'''),
       );
     });
   });
+}
+
+ResolvedDependency _mavenDep(
+  String artifact, [
+  DependencySpec spec = defaultSpec,
+]) {
+  return ResolvedDependency(
+    artifact: artifact,
+    spec: spec,
+    sha1: '',
+    licenses: const [],
+    kind: DependencyKind.maven,
+    isDirect: false,
+    dependencies: const [],
+  );
 }

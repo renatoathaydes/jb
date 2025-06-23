@@ -1,6 +1,3 @@
-import 'dart:convert' show jsonDecode;
-import 'dart:io';
-
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
 import 'package:conveniently/conveniently.dart';
@@ -114,10 +111,10 @@ Future<void> printDependencies(
     config.allProcessorDependencies,
     scope: scope,
   ).toList(growable: false);
-  final mainDeps = (await _parseDeps(
+  final mainDeps = (await parseDeps(
     jbFiles.dependenciesFile,
   )).where((dep) => scope.includes(dep.spec.scope)).toList(growable: false);
-  final processorDeps = (await _parseDeps(
+  final processorDeps = (await parseDeps(
     jbFiles.processorDependenciesFile,
   )).where((dep) => scope.includes(dep.spec.scope)).toList(growable: false);
 
@@ -169,11 +166,6 @@ Iterable<_Dependency> _getLocalDependencies(
             .where((d) => scope.includes(d.spec.scope))
             .map((d) => _Dependency(d.path, d.spec, ' (local project)')),
       );
-}
-
-Future<Iterable<ResolvedDependency>> _parseDeps(File file) async {
-  final text = await file.readAsString();
-  return (jsonDecode(text) as List).map(ResolvedDependency.fromJson);
 }
 
 Artifact _createSimpleArtifact(JbConfiguration config) {

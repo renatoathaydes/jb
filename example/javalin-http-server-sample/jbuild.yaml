@@ -1,5 +1,6 @@
 group: my-group
 module: my-app
+name: My App
 version: '0.0.0'
 description: |
   This is an example Java HTTP Server built with jb.
