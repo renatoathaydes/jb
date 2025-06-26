@@ -225,7 +225,6 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
           scope: isDirect ? DependencyScope.all : scope,
           exclusions: node.exclusions,
         ),
-        kind: DependencyKind.maven,
         isDirect: isDirect,
         sha1: '',
         licenses: node.licenses,

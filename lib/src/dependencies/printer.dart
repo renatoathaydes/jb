@@ -233,10 +233,6 @@ class _JBuildDepsPrinter {
     _DepsArgs options, {
     String indent = _indentUnit,
   }) {
-    if (dependency.kind != DependencyKind.maven) {
-      return;
-    }
-
     if (!visited.add(dependency.artifact)) {
       _printVisited(dependency.artifact, indent: indent);
       return;

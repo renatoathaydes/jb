@@ -1142,7 +1142,6 @@ final class ResolvedDependency {
   final DependencySpec spec;
   final String sha1;
   final List<DependencyLicense>? licenses;
-  final DependencyKind kind;
   final bool isDirect;
   final List<String> dependencies;
   const ResolvedDependency({
@@ -1150,7 +1149,6 @@ final class ResolvedDependency {
     required this.spec,
     required this.sha1,
     this.licenses,
-    required this.kind,
     required this.isDirect,
     required this.dependencies,
   });
@@ -1161,7 +1159,6 @@ final class ResolvedDependency {
       'spec: $spec, '
       'sha1: "$sha1", '
       'licenses: $licenses, '
-      'kind: $kind, '
       'isDirect: $isDirect, '
       'dependencies: $dependencies'
       '}';
@@ -1177,7 +1174,6 @@ final class ResolvedDependency {
             licenses,
             other.licenses,
           ) &&
-          kind == other.kind &&
           isDirect == other.isDirect &&
           const ListEquality<String>().equals(dependencies, other.dependencies);
   @override
@@ -1186,7 +1182,6 @@ final class ResolvedDependency {
       spec.hashCode ^
       sha1.hashCode ^
       const ListEquality<DependencyLicense>().hash(licenses) ^
-      kind.hashCode ^
       isDirect.hashCode ^
       const ListEquality<String>().hash(dependencies);
   ResolvedDependency copyWith({
@@ -1194,7 +1189,6 @@ final class ResolvedDependency {
     DependencySpec? spec,
     String? sha1,
     List<DependencyLicense>? licenses,
-    DependencyKind? kind,
     bool? isDirect,
     List<String>? dependencies,
     bool unsetLicenses = false,
@@ -1206,7 +1200,6 @@ final class ResolvedDependency {
       licenses: unsetLicenses
           ? null
           : licenses ?? (this.licenses == null ? null : [...this.licenses!]),
-      kind: kind ?? this.kind,
       isDirect: isDirect ?? this.isDirect,
       dependencies: dependencies ?? [...this.dependencies],
     );
@@ -1223,7 +1216,6 @@ final class ResolvedDependency {
     'spec': spec,
     'sha1': sha1,
     if (licenses != null) 'licenses': licenses,
-    'kind': kind.name,
     'isDirect': isDirect,
     'dependencies': dependencies,
   };
@@ -1612,34 +1604,6 @@ final class DependencyLicense {
   Map<String, Object?> toJson() => {'name': name, 'url': url};
 }
 
-enum DependencyKind {
-  localJar,
-  localProject,
-  maven;
-
-  String get name => switch (this) {
-    localJar => 'localJar',
-    localProject => 'localProject',
-    maven => 'maven',
-  };
-  static DependencyKind from(String s) => switch (s) {
-    'localJar' => localJar,
-    'localProject' => localProject,
-    'maven' => maven,
-    _ => throw ValidationException([
-      'value not allowed for DependencyKind: "$s" - should be one of {localJar, localProject, maven}',
-    ]),
-  };
-}
-
-class _DependencyKindConverter extends Converter<Object?, DependencyKind> {
-  const _DependencyKindConverter();
-  @override
-  DependencyKind convert(Object? input) {
-    return DependencyKind.from(const Strings().convert(input));
-  }
-}
-
 class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
   const _ResolvedDependencyJsonReviver()
     : super(
@@ -1662,7 +1626,6 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
       'spec',
       'sha1',
       'licenses',
-      'kind',
       'isDirect',
       'dependencies',
     };
@@ -1688,7 +1651,6 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
         'licenses',
         value,
       ),
-      kind: convertProperty(const _DependencyKindConverter(), 'kind', value),
       isDirect: convertProperty(const Bools(), 'isDirect', value),
       dependencies: convertProperty(
         const Arrays<String, Strings>(Strings()),
@@ -1716,8 +1678,6 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
             _DependencyLicenseJsonReviver(),
           ),
         );
-      case 'kind':
-        return const _DependencyKindConverter();
       case 'isDirect':
         return const Bools();
       case 'dependencies':
@@ -1729,14 +1689,7 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
 
   @override
   Iterable<String> getRequiredProperties() {
-    return const {
-      'artifact',
-      'spec',
-      'sha1',
-      'kind',
-      'isDirect',
-      'dependencies',
-    };
+    return const {'artifact', 'spec', 'sha1', 'isDirect', 'dependencies'};
   }
 
   @override

@@ -81,9 +81,7 @@ String createPom(
             'dependencies',
             nest: () {
               for (final dep in dependencies) {
-                if (dep.kind == DependencyKind.maven) {
-                  xml.dependency(dep.artifact, dep.spec);
-                }
+                xml.dependency(dep.artifact, dep.spec);
               }
               for (final localDep in localDependencies.projectDependencies) {
                 xml.projectDependency(localDep);

@@ -35,10 +35,7 @@ final class FileDependencies extends Dependencies {
   @override
   Future<List<String>> resolveArtifacts() async {
     return (await parseDeps(file)).dependencies
-        .where(
-          (dep) =>
-              dep.kind == DependencyKind.maven && scopeFilter(dep.spec.scope),
-        )
+        .where((dep) => scopeFilter(dep.spec.scope))
         .map((dep) => dep.artifact)
         .toList(growable: false);
   }

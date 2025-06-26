@@ -282,7 +282,6 @@ ResolvedDependency _mavenDep(
     spec: spec,
     sha1: '',
     licenses: const [],
-    kind: DependencyKind.maven,
     isDirect: false,
     dependencies: const [],
   );
