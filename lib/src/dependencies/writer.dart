@@ -3,14 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:actors/actors.dart';
-import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 
 import '../config.dart';
 import '../java_tests.dart';
 import '../jvm_executor.dart';
-import '../path_dependency.dart';
 import '../tasks.dart' show writeDepsTaskName;
 import '../utils.dart';
 import 'parse.dart';
@@ -19,9 +17,7 @@ Future<void> writeDependencies(
   JBuildSender jBuildSender,
   List<String> preArgs,
   DartleCache cache,
-  LocalDependencies localDependencies,
   Set<String> exclusions,
-  LocalDependencies localProcessorDependencies,
   Set<String> procExclusions,
   List<String> args, {
   required Iterable<MapEntry<String, DependencySpec>> deps,
@@ -37,7 +33,6 @@ Future<void> writeDependencies(
     jBuildSender,
     preArgs,
     deps,
-    localDependencies,
     exclusions,
     depsFile,
   );
@@ -45,40 +40,25 @@ Future<void> writeDependencies(
     jBuildSender,
     preArgs,
     procDeps,
-    localProcessorDependencies,
     procExclusions,
     processorDepsFile,
   );
   final testRunnerLibs = [?findTestRunnerLib(mainDeps)].map(_testRunnerEntry);
-  await _write(
-    jBuildSender,
-    preArgs,
-    testRunnerLibs,
-    LocalDependencies.empty,
-    const {},
-    testDepsFile,
-  );
+  await _write(jBuildSender, preArgs, testRunnerLibs, const {}, testDepsFile);
 }
 
 MapEntry<String, DependencySpec> _testRunnerEntry(String lib) {
   return MapEntry(lib, DependencySpec(scope: DependencyScope.all));
 }
 
-Future<List<ResolvedDependency>> _write(
+Future<ResolvedDependencies> _write(
   JBuildSender jBuildSender,
   List<String> preArgs,
   Iterable<MapEntry<String, DependencySpec>> deps,
-  LocalDependencies localDeps,
   Set<String> exclusions,
   File depsFile,
 ) async {
-  if (deps.isEmpty && localDeps.isEmpty) {
-    await depsFile.withSink((sink) async {
-      sink.write('[]');
-    });
-    return const [];
-  }
-  final results = <ResolvedDependency>[];
+  ResolvedDependencies? results;
   if (deps.isNotEmpty) {
     _checkDependenciesAreNotExcludedDirectly(deps, exclusions);
     final collector = Actor.create(_CollectorActor.new);
@@ -96,11 +76,9 @@ Future<List<ResolvedDependency>> _write(
         ),
       ], _CollectorSendable(await collector.toSendable())),
     );
-    (await collector.send(const _Done()))?.vmap(results.addAll);
+    results = await collector.send(const _Done());
   }
-
-  results.addAll(localDeps.jars.map(_resolvedJar));
-  results.addAll(localDeps.projectDependencies.map(_resolvedProject));
+  results ??= const ResolvedDependencies(dependencies: [], warnings: []);
 
   await depsFile.withSink((sink) async {
     sink.write(jsonEncode(results));
@@ -146,12 +124,11 @@ final class _Line extends _CollectorMessage {
 
 /// Actor that collects lines and passes them to [JBuildDepsCollector]
 /// until a [_Done] message is received, when it returns the results.
-class _CollectorActor
-    with Handler<_CollectorMessage, List<ResolvedDependency>?> {
+class _CollectorActor with Handler<_CollectorMessage, ResolvedDependencies?> {
   final _collector = JBuildDepsCollector();
 
   @override
-  List<ResolvedDependency>? handle(_CollectorMessage message) {
+  ResolvedDependencies? handle(_CollectorMessage message) {
     return switch (message) {
       _Line(line: var line) => () {
         _collector(line);
@@ -159,7 +136,7 @@ class _CollectorActor
       }(),
       _Done() => () {
         _collector.done();
-        return _collector.results;
+        return _collector.resolvedDeps;
       }(),
     };
   }
@@ -167,7 +144,7 @@ class _CollectorActor
 
 /// Wrapper for [_CollectorActor]'s [Sendable] that has the necessary type.
 class _CollectorSendable with Sendable<String, void> {
-  final Sendable<_CollectorMessage, List<ResolvedDependency>?> delegate;
+  final Sendable<_CollectorMessage, ResolvedDependencies?> delegate;
 
   _CollectorSendable(this.delegate);
 
@@ -176,22 +153,3 @@ class _CollectorSendable with Sendable<String, void> {
     return delegate.send(_Line(message));
   }
 }
-
-ResolvedDependency _resolvedJar(JarDependency jar) => ResolvedDependency(
-  artifact: jar.path,
-  spec: jar.spec,
-  sha1: '',
-  kind: DependencyKind.localJar,
-  isDirect: true,
-  dependencies: const [],
-);
-
-ResolvedDependency _resolvedProject(ProjectDependency project) =>
-    ResolvedDependency(
-      artifact: project.path,
-      spec: project.spec,
-      sha1: '',
-      kind: DependencyKind.localProject,
-      isDirect: true,
-      dependencies: const [],
-    );

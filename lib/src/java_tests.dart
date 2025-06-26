@@ -55,7 +55,8 @@ void validateTestConfig(TestConfig config) {
 /// Attempts to find the most appropriate version based on the project deps.
 ///
 /// Returns `null` if cannot find a dependency on JUnit or Spock.
-String? findTestRunnerLib(List<ResolvedDependency> deps) {
+String? findTestRunnerLib(ResolvedDependencies resolvedDeps) {
+  final deps = resolvedDeps.dependencies;
   final platformLib = deps
       .where((dep) => dep.artifact.startsWith(_junitPlatformPrefix))
       .firstOrNull;

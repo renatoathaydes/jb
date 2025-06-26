@@ -145,9 +145,21 @@ Future<List<BasicExtensionTask>> loadExtensionTaskConfigs(
 }
 
 /// Parse the file created by the [writeDepsTaskName].
-Future<Iterable<ResolvedDependency>> parseDeps(File file) async {
+Future<ResolvedDependencies> parseDeps(File file) async {
   final text = await file.readAsString();
-  return (jsonDecode(text) as List).map(ResolvedDependency.fromJson);
+  try {
+    return ResolvedDependencies.fromJson(jsonDecode(text));
+  } catch (e) {
+    if (logger.isLoggable(log.Level.FINE)) {
+      rethrow;
+    }
+    failBuild(
+      reason:
+          'Cannot parse dependencies file ${file.path}. '
+          'This is likely to be due to the .jb-cache being from an older version of jb. '
+          'Try running again with the -z option to ignore the cache',
+    );
+  }
 }
 
 class _Value<T> {

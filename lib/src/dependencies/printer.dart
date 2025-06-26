@@ -111,12 +111,13 @@ Future<void> printDependencies(
     config.allProcessorDependencies,
     scope: scope,
   ).toList(growable: false);
-  final mainDeps = (await parseDeps(
-    jbFiles.dependenciesFile,
-  )).where((dep) => scope.includes(dep.spec.scope)).toList(growable: false);
-  final processorDeps = (await parseDeps(
-    jbFiles.processorDependenciesFile,
-  )).where((dep) => scope.includes(dep.spec.scope)).toList(growable: false);
+  final mainDeps = (await parseDeps(jbFiles.dependenciesFile)).dependencies
+      .where((dep) => scope.includes(dep.spec.scope))
+      .toList(growable: false);
+  final processorDeps = (await parseDeps(jbFiles.processorDependenciesFile))
+      .dependencies
+      .where((dep) => scope.includes(dep.spec.scope))
+      .toList(growable: false);
 
   final artifact = _createSimpleArtifact(config);
 

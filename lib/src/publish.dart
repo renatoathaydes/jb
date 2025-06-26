@@ -128,7 +128,7 @@ class Publisher {
     );
     stopwatch.reset();
 
-    final pom = createPom(artifact, deps, localDependencies);
+    final pom = createPom(artifact, deps.dependencies, localDependencies);
 
     logger.log(
       profile,

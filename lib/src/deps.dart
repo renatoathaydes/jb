@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'compile/groovy.dart';
@@ -35,8 +34,7 @@ final class FileDependencies extends Dependencies {
 
   @override
   Future<List<String>> resolveArtifacts() async {
-    return (jsonDecode(await file.readAsString()) as List)
-        .map(ResolvedDependency.fromJson)
+    return (await parseDeps(file)).dependencies
         .where(
           (dep) =>
               dep.kind == DependencyKind.maven && scopeFilter(dep.spec.scope),

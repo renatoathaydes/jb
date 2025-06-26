@@ -13,6 +13,12 @@ final _depPattern = RegExp(
   r'^(?<ind>\s+)\*\s(?<dep>\S+) \[[a-z]+](:exclusions:\[(?<exc>[^\]]+)\])?( ?(?<rep>\(-\))| ?\[(?<lic>\{.+?})])?$',
 );
 
+final _versionConflictHeaderPattern = RegExp(
+  r'^\s+The artifact (?<art>\S+) is required with more than one version:$',
+);
+
+final _versionRequestsPattern = RegExp(r'^\s+\* (?<ver>\S+) \((?<req>.+)\)$');
+
 class _DepNode {
   final _DepNode? parent;
   final String id;
@@ -50,20 +56,42 @@ class _DepNode {
   }
 }
 
+enum _ParserState { parsingDeps, parsingConflicts }
+
 class JBuildDepsCollector implements ProcessOutputConsumer {
   int pid = -1;
-  bool _enabled = true;
+  _ParserState _state = _ParserState.parsingDeps;
   DependencyScope? _currentScope;
   int? _currentIndentLevel;
   _DepNode? _currentDep;
-  final List<ResolvedDependency> results = [];
+  final List<ResolvedDependency> _resolvedDeps = [];
+  String? _currentWarningArtifact;
+  final List<VersionConflict> _currentWarnings = [];
+  final List<DependencyWarning> _allWarnings = [];
+
+  ResolvedDependencies get resolvedDeps => ResolvedDependencies(
+    dependencies: _resolvedDeps.toList(growable: false),
+    warnings: _allWarnings.toList(growable: false),
+  );
 
   @override
   void call(String line) {
-    if (!_enabled) return;
+    switch (_state) {
+      case _ParserState.parsingDeps:
+        _parseDep(line);
+        // if the state changed, we need to fallthrough
+        if (_state != _ParserState.parsingConflicts) {
+          break;
+        }
+      case _ParserState.parsingConflicts:
+        _parseConflicts(line);
+    }
+  }
+
+  void _parseDep(String line) {
     if (_currentDep != null && line.startsWith('  - scope ')) {
       // finalize the dependencies for this scope
-      if (_currentScope != null) done(emitRoot: false);
+      if (_currentScope != null) _doneDeps(emitRoot: false);
       _currentScope = _dependencyScopeFrom(line.substring('  - scope '.length));
       _currentIndentLevel = null;
       return;
@@ -75,7 +103,7 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
       // finalize the previous dep if any
       if (_currentDep != null) {
         _currentScope ??= DependencyScope.all;
-        done();
+        _doneDeps(emitRoot: true);
       }
       List<DependencyLicense> licenses = match
           .namedGroup('lic')
@@ -123,12 +151,36 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
       }
       currentDep!.add(dep, licenses, exclusions, indentationLevel);
       _currentIndentLevel = indentationLevel;
-    } else if (line.endsWith('is required with more than one version:')) {
-      _enabled = false;
+    } else if (_versionConflictHeaderPattern.hasMatch(line)) {
+      _state = _ParserState.parsingConflicts;
+    }
+  }
+
+  void _parseConflicts(String line) {
+    var match = _versionConflictHeaderPattern.firstMatch(line);
+    if (match != null) {
+      _doneWarnings();
+      _currentWarningArtifact = match.namedGroup('art');
+      return;
+    }
+    if (_currentWarningArtifact != null) {
+      match = _versionRequestsPattern.firstMatch(line);
+      if (match != null) {
+        final version = match.namedGroup('ver')!;
+        final requestedBy = match.namedGroup('req')!.split(' -> ');
+        _currentWarnings.add(
+          VersionConflict(version: version, requestedBy: requestedBy),
+        );
+      }
     }
   }
 
   void done({bool emitRoot = true}) {
+    _doneDeps(emitRoot: emitRoot);
+    _doneWarnings();
+  }
+
+  void _doneDeps({required bool emitRoot}) {
     final scope = _currentScope;
     var dep = _currentDep;
 
@@ -136,8 +188,11 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     while (dep?.parent != null) {
       dep = dep?.parent;
     }
-    if (dep == null) return;
-
+    if (dep == null || scope == null) return;
+    if (emitRoot) {
+      _currentDep = null;
+      _currentScope = null;
+    }
     if (emitRoot) {
       _resolveDependency(dep, scope, isDirect: dep.parent == null);
     } else {
@@ -147,16 +202,27 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     }
   }
 
+  void _doneWarnings() {
+    final artifact = _currentWarningArtifact;
+    if (artifact == null) return;
+    final warnings = _currentWarnings.toList(growable: false);
+    if (warnings.isEmpty) return;
+    _currentWarnings.clear();
+    _allWarnings.add(
+      DependencyWarning(artifact: artifact, versionConflicts: warnings),
+    );
+  }
+
   void _resolveDependency(
     _DepNode node,
-    DependencyScope? scope, {
+    DependencyScope scope, {
     required bool isDirect,
   }) {
-    results.add(
+    _resolvedDeps.add(
       ResolvedDependency(
         artifact: node.id,
         spec: DependencySpec(
-          scope: isDirect ? DependencyScope.all : scope!,
+          scope: isDirect ? DependencyScope.all : scope,
           exclusions: node.exclusions,
         ),
         kind: DependencyKind.maven,

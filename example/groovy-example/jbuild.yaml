@@ -1,5 +1,6 @@
 group: com.athaydes.jb.examples
 module: jb-groovy-example
+name: Groovy Example
 version: 0.0.0
 
 # Any jb project will use the Groovy compiler as long as it depends directly on

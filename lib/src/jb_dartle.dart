@@ -151,8 +151,6 @@ class JbDartle {
       _cache,
       jbFileInputs,
       _jvmExecutor,
-      unresolvedLocalDeps,
-      unresolvedLocalProcessorDeps,
     );
     installCompile = createInstallCompileDepsTask(
       _files,

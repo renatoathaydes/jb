@@ -225,8 +225,6 @@ Task createWriteDependenciesTask(
   DartleCache cache,
   FileCollection jbFileInputs,
   JBuildSender jbuildSender,
-  LocalDependencies localDependencies,
-  LocalDependencies localProcessorDeps,
 ) {
   final depsFile = jbFiles.dependenciesFile;
   final procDepsFile = jbFiles.processorDependenciesFile;
@@ -248,9 +246,7 @@ Task createWriteDependenciesTask(
       jbuildSender,
       preArgs,
       cache,
-      localDependencies,
       exclusions,
-      localProcessorDeps,
       procExclusions,
       args,
       deps: deps,
@@ -554,7 +550,7 @@ Future<void> _generatePom(
       Ok(value: var theArtifact) => theArtifact,
       Fail(exception: var e) => throw e,
     },
-    deps,
+    deps.dependencies,
     localDependencies,
   );
 
