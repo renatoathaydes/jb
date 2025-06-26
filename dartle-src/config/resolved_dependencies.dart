@@ -11,6 +11,16 @@ const dependencyLicense = Objects('DependencyLicense', {
   'url': Property(Strings()),
 });
 
+const versionConflict = Objects('VersionConflict', {
+  'version': Property(Strings()),
+  'requestedBy': Property(Arrays(Strings())),
+});
+
+const dependencyWarning = Objects('DependencyWarning', {
+  'artifact': Property(Strings()),
+  'versionConflicts': Property(Arrays(versionConflict)),
+});
+
 const resolvedDependency = Objects('ResolvedDependency', {
   'artifact': Property(Strings()),
   'spec': Property(dependency),
@@ -23,5 +33,5 @@ const resolvedDependency = Objects('ResolvedDependency', {
 
 const resolvedDependencies = Objects('ResolvedDependencies', {
   'dependencies': Property(Arrays(resolvedDependency)),
-  'instant': Property(Strings()),
+  'warnings': Property(Arrays(dependencyWarning)),
 });

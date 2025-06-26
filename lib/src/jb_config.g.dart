@@ -472,16 +472,16 @@ final class ExtensionTaskExtra {
 
 final class ResolvedDependencies {
   final List<ResolvedDependency> dependencies;
-  final String instant;
+  final List<DependencyWarning> warnings;
   const ResolvedDependencies({
     required this.dependencies,
-    required this.instant,
+    required this.warnings,
   });
   @override
   String toString() =>
       'ResolvedDependencies{'
       'dependencies: $dependencies, '
-      'instant: "$instant"'
+      'warnings: $warnings'
       '}';
   @override
   bool operator ==(Object other) =>
@@ -492,18 +492,21 @@ final class ResolvedDependencies {
             dependencies,
             other.dependencies,
           ) &&
-          instant == other.instant;
+          const ListEquality<DependencyWarning>().equals(
+            warnings,
+            other.warnings,
+          );
   @override
   int get hashCode =>
       const ListEquality<ResolvedDependency>().hash(dependencies) ^
-      instant.hashCode;
+      const ListEquality<DependencyWarning>().hash(warnings);
   ResolvedDependencies copyWith({
     List<ResolvedDependency>? dependencies,
-    String? instant,
+    List<DependencyWarning>? warnings,
   }) {
     return ResolvedDependencies(
       dependencies: dependencies ?? [...this.dependencies],
-      instant: instant ?? this.instant,
+      warnings: warnings ?? [...this.warnings],
     );
   }
 
@@ -515,7 +518,7 @@ final class ResolvedDependencies {
       });
   Map<String, Object?> toJson() => {
     'dependencies': dependencies,
-    'instant': instant,
+    'warnings': warnings,
   };
 }
 
@@ -1226,6 +1229,55 @@ final class ResolvedDependency {
   };
 }
 
+final class DependencyWarning {
+  final String artifact;
+  final List<VersionConflict> versionConflicts;
+  const DependencyWarning({
+    required this.artifact,
+    required this.versionConflicts,
+  });
+  @override
+  String toString() =>
+      'DependencyWarning{'
+      'artifact: "$artifact", '
+      'versionConflicts: $versionConflicts'
+      '}';
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DependencyWarning &&
+          runtimeType == other.runtimeType &&
+          artifact == other.artifact &&
+          const ListEquality<VersionConflict>().equals(
+            versionConflicts,
+            other.versionConflicts,
+          );
+  @override
+  int get hashCode =>
+      artifact.hashCode ^
+      const ListEquality<VersionConflict>().hash(versionConflicts);
+  DependencyWarning copyWith({
+    String? artifact,
+    List<VersionConflict>? versionConflicts,
+  }) {
+    return DependencyWarning(
+      artifact: artifact ?? this.artifact,
+      versionConflicts: versionConflicts ?? [...this.versionConflicts],
+    );
+  }
+
+  static DependencyWarning fromJson(Object? value) =>
+      const _DependencyWarningJsonReviver().convert(switch (value) {
+        String() => jsonDecode(value),
+        List<int>() => jsonDecode(utf8.decode(value)),
+        _ => value,
+      });
+  Map<String, Object?> toJson() => {
+    'artifact': artifact,
+    'versionConflicts': versionConflicts,
+  };
+}
+
 class _ResolvedDependenciesJsonReviver
     extends ObjectsBase<ResolvedDependencies> {
   const _ResolvedDependenciesJsonReviver()
@@ -1244,7 +1296,7 @@ class _ResolvedDependenciesJsonReviver
       return key;
     }).toSet();
     checkRequiredProperties(keys);
-    const knownProperties = {'dependencies', 'instant'};
+    const knownProperties = {'dependencies', 'warnings'};
     final unknownKey = keys
         .where((k) => !knownProperties.contains(k))
         .firstOrNull;
@@ -1259,7 +1311,13 @@ class _ResolvedDependenciesJsonReviver
         'dependencies',
         value,
       ),
-      instant: convertProperty(const Strings(), 'instant', value),
+      warnings: convertProperty(
+        const Arrays<DependencyWarning, _DependencyWarningJsonReviver>(
+          _DependencyWarningJsonReviver(),
+        ),
+        'warnings',
+        value,
+      ),
     );
   }
 
@@ -1270,8 +1328,10 @@ class _ResolvedDependenciesJsonReviver
         return const Arrays<ResolvedDependency, _ResolvedDependencyJsonReviver>(
           _ResolvedDependencyJsonReviver(),
         );
-      case 'instant':
-        return const Strings();
+      case 'warnings':
+        return const Arrays<DependencyWarning, _DependencyWarningJsonReviver>(
+          _DependencyWarningJsonReviver(),
+        );
       default:
         return null;
     }
@@ -1279,7 +1339,7 @@ class _ResolvedDependenciesJsonReviver
 
   @override
   Iterable<String> getRequiredProperties() {
-    return const {'dependencies', 'instant'};
+    return const {'dependencies', 'warnings'};
   }
 
   @override
@@ -1683,6 +1743,104 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
   String toString() => 'ResolvedDependency';
 }
 
+final class VersionConflict {
+  final String version;
+  final List<String> requestedBy;
+  const VersionConflict({required this.version, required this.requestedBy});
+  @override
+  String toString() =>
+      'VersionConflict{'
+      'version: "$version", '
+      'requestedBy: $requestedBy'
+      '}';
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VersionConflict &&
+          runtimeType == other.runtimeType &&
+          version == other.version &&
+          const ListEquality<String>().equals(requestedBy, other.requestedBy);
+  @override
+  int get hashCode =>
+      version.hashCode ^ const ListEquality<String>().hash(requestedBy);
+  VersionConflict copyWith({String? version, List<String>? requestedBy}) {
+    return VersionConflict(
+      version: version ?? this.version,
+      requestedBy: requestedBy ?? [...this.requestedBy],
+    );
+  }
+
+  static VersionConflict fromJson(Object? value) =>
+      const _VersionConflictJsonReviver().convert(switch (value) {
+        String() => jsonDecode(value),
+        List<int>() => jsonDecode(utf8.decode(value)),
+        _ => value,
+      });
+  Map<String, Object?> toJson() => {
+    'version': version,
+    'requestedBy': requestedBy,
+  };
+}
+
+class _DependencyWarningJsonReviver extends ObjectsBase<DependencyWarning> {
+  const _DependencyWarningJsonReviver()
+    : super(
+        "DependencyWarning",
+        unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid,
+      );
+
+  @override
+  DependencyWarning convert(Object? value) {
+    if (value is! Map) throw TypeException(DependencyWarning, value);
+    final keys = value.keys.map((key) {
+      if (key is! String) {
+        throw TypeException(String, key, "object key is not a String");
+      }
+      return key;
+    }).toSet();
+    checkRequiredProperties(keys);
+    const knownProperties = {'artifact', 'versionConflicts'};
+    final unknownKey = keys
+        .where((k) => !knownProperties.contains(k))
+        .firstOrNull;
+    if (unknownKey != null) {
+      throw UnknownPropertyException([unknownKey], DependencyWarning);
+    }
+    return DependencyWarning(
+      artifact: convertProperty(const Strings(), 'artifact', value),
+      versionConflicts: convertProperty(
+        const Arrays<VersionConflict, _VersionConflictJsonReviver>(
+          _VersionConflictJsonReviver(),
+        ),
+        'versionConflicts',
+        value,
+      ),
+    );
+  }
+
+  @override
+  Converter<Object?, Object?>? getPropertyConverter(String property) {
+    switch (property) {
+      case 'artifact':
+        return const Strings();
+      case 'versionConflicts':
+        return const Arrays<VersionConflict, _VersionConflictJsonReviver>(
+          _VersionConflictJsonReviver(),
+        );
+      default:
+        return null;
+    }
+  }
+
+  @override
+  Iterable<String> getRequiredProperties() {
+    return const {'artifact', 'versionConflicts'};
+  }
+
+  @override
+  String toString() => 'DependencyWarning';
+}
+
 class _DependencyLicenseJsonReviver extends ObjectsBase<DependencyLicense> {
   const _DependencyLicenseJsonReviver()
     : super(
@@ -1732,4 +1890,59 @@ class _DependencyLicenseJsonReviver extends ObjectsBase<DependencyLicense> {
 
   @override
   String toString() => 'DependencyLicense';
+}
+
+class _VersionConflictJsonReviver extends ObjectsBase<VersionConflict> {
+  const _VersionConflictJsonReviver()
+    : super(
+        "VersionConflict",
+        unknownPropertiesStrategy: UnknownPropertiesStrategy.forbid,
+      );
+
+  @override
+  VersionConflict convert(Object? value) {
+    if (value is! Map) throw TypeException(VersionConflict, value);
+    final keys = value.keys.map((key) {
+      if (key is! String) {
+        throw TypeException(String, key, "object key is not a String");
+      }
+      return key;
+    }).toSet();
+    checkRequiredProperties(keys);
+    const knownProperties = {'version', 'requestedBy'};
+    final unknownKey = keys
+        .where((k) => !knownProperties.contains(k))
+        .firstOrNull;
+    if (unknownKey != null) {
+      throw UnknownPropertyException([unknownKey], VersionConflict);
+    }
+    return VersionConflict(
+      version: convertProperty(const Strings(), 'version', value),
+      requestedBy: convertProperty(
+        const Arrays<String, Strings>(Strings()),
+        'requestedBy',
+        value,
+      ),
+    );
+  }
+
+  @override
+  Converter<Object?, Object?>? getPropertyConverter(String property) {
+    switch (property) {
+      case 'version':
+        return const Strings();
+      case 'requestedBy':
+        return const Arrays<String, Strings>(Strings());
+      default:
+        return null;
+    }
+  }
+
+  @override
+  Iterable<String> getRequiredProperties() {
+    return const {'version', 'requestedBy'};
+  }
+
+  @override
+  String toString() => 'VersionConflict';
 }
