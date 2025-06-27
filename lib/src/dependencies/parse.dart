@@ -61,7 +61,7 @@ enum _ParserState { parsingDeps, parsingConflicts }
 class JBuildDepsCollector implements ProcessOutputConsumer {
   int pid = -1;
   _ParserState _state = _ParserState.parsingDeps;
-  DependencyScope? _currentScope;
+  DependencyScope _currentScope = DependencyScope.all;
   int? _currentIndentLevel;
   _DepNode? _currentDep;
   final List<ResolvedDependency> _resolvedDeps = [];
@@ -77,21 +77,24 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
   @override
   void call(String line) {
     switch (_state) {
+      withDeps:
       case _ParserState.parsingDeps:
         _parseDep(line);
-        // if the state changed, we need to fallthrough
-        if (_state != _ParserState.parsingConflicts) {
-          break;
+        if (_state == _ParserState.parsingConflicts) {
+          continue withConflicts;
         }
+      withConflicts:
       case _ParserState.parsingConflicts:
         _parseConflicts(line);
+        if (_state == _ParserState.parsingDeps) {
+          continue withDeps;
+        }
     }
   }
 
   void _parseDep(String line) {
     if (_currentDep != null && line.startsWith('  - scope ')) {
-      // finalize the dependencies for this scope
-      if (_currentScope != null) _doneDeps(emitRoot: false);
+      _doneDeps(emitRoot: false);
       _currentScope = _dependencyScopeFrom(line.substring('  - scope '.length));
       _currentIndentLevel = null;
       return;
@@ -102,7 +105,6 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     if (match != null) {
       // finalize the previous dep if any
       if (_currentDep != null) {
-        _currentScope ??= DependencyScope.all;
         _doneDeps(emitRoot: true);
       }
       List<DependencyLicense> licenses = match
@@ -115,13 +117,11 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
         0,
         parent: null,
       );
-      _currentScope = null;
       _currentIndentLevel = null;
       return;
     }
     var currentDep = _currentDep;
     if (currentDep == null ||
-        _currentScope == null ||
         (currentDep.parent == null && line.endsWith('* no dependencies'))) {
       return;
     }
@@ -171,7 +171,12 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
         _currentWarnings.add(
           VersionConflict(version: version, requestedBy: requestedBy),
         );
+        return;
       }
+    }
+    if (_directDepPattern.hasMatch(line)) {
+      _doneWarnings();
+      _state = _ParserState.parsingDeps;
     }
   }
 
@@ -188,10 +193,9 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     while (dep?.parent != null) {
       dep = dep?.parent;
     }
-    if (dep == null || scope == null) return;
+    if (dep == null) return;
     if (emitRoot) {
       _currentDep = null;
-      _currentScope = null;
     }
     if (emitRoot) {
       _resolveDependency(dep, scope, isDirect: dep.parent == null);
@@ -205,6 +209,7 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
   void _doneWarnings() {
     final artifact = _currentWarningArtifact;
     if (artifact == null) return;
+    _currentWarningArtifact = null;
     final warnings = _currentWarnings.toList(growable: false);
     if (warnings.isEmpty) return;
     _currentWarnings.clear();
