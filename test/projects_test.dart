@@ -647,8 +647,11 @@ void main() {
         final jbProc = await startJb(
           Directory(emptyProjectDir),
           const ['create', '--no-color'],
-          // freeze the assertj version so the tests work on Java 11 forever
-          const {'ASSERTJ_VERSION': '3.27.3'},
+          // freeze the test lib versions so the tests work on Java 11 forever
+          const {
+            'ASSERTJ_VERSION': '3.27.3',
+            'JUNIT_JUPITER_API_VERSION': '5.8.2',
+          },
         );
         addTearDown(jbProc.kill);
         addTearDown(cleanupEmptyProjectDir);

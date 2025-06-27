@@ -43,7 +43,11 @@ Future<void> writeDependencies(
     procExclusions,
     processorDepsFile,
   );
-  final testRunnerLibs = [?findTestRunnerLib(mainDeps)].map(_testRunnerEntry);
+  final testRunnerLib = findTestRunnerLib(mainDeps);
+  if (testRunnerLib != null) {
+    logger.fine(() => 'Test runner library: $testRunnerLib');
+  }
+  final testRunnerLibs = [?testRunnerLib].map(_testRunnerEntry);
   await _write(jBuildSender, preArgs, testRunnerLibs, const {}, testDepsFile);
 }
 
