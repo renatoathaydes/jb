@@ -16,6 +16,7 @@ import 'file_tree.dart';
 import 'java_tests.dart';
 import 'jb_files.dart';
 import 'jbuild_update.dart';
+import 'jshell.dart';
 import 'jvm_executor.dart';
 import 'optional_arg_validator.dart';
 import 'pom.dart';
@@ -23,7 +24,6 @@ import 'publish.dart';
 import 'requirements.dart';
 import 'resolved_dependency.dart';
 import 'run_conditions.dart';
-import 'runner.dart';
 import 'utils.dart';
 
 const cleanTaskName = 'clean';
@@ -649,36 +649,12 @@ Task createJshellTask(
   DartleCache cache,
 ) {
   return Task(
-    (List<String> args) => _jshell(files.jbuildJar, config, args),
+    (List<String> args) => jshell(files.jbuildJar, config, args),
     dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
-    argsValidator: const AcceptAnyArgs(),
+    argsValidator: const JshellArgs(),
     name: jshellTaskName,
     description: 'Run jshell with all runtime dependencies available.',
   );
-}
-
-Future<void> _jshell(
-  File jbuildJar,
-  JbConfigContainer configContainer,
-  List<String> args,
-) async {
-  final config = configContainer.config;
-
-  final classpath = {
-    configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j),
-    config.runtimeLibsDir,
-    p.join(config.runtimeLibsDir, '*'),
-  }.join(classpathSeparator);
-  final runner = ProcessRunner();
-  final exitCode = await runner.run('jshell', [
-    '--class-path',
-    classpath,
-    ...args,
-  ]);
-
-  if (exitCode != 0) {
-    throw DartleException(message: 'jshell command failed', exitCode: exitCode);
-  }
 }
 
 /// Create the `downloadTestRunner` task.
