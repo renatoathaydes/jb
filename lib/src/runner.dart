@@ -1,6 +1,7 @@
 import 'package:actors/actors.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'dart:io';
 
 import 'config.dart';
 import 'jb_dartle.dart';
@@ -44,5 +45,17 @@ class JbRunner {
     await jb.init;
 
     return await runBasic(jb.tasks, jb.defaultTasks, options, cache);
+  }
+}
+
+class ProcessRunner {
+  /// Run a process inheriting stdin, stdout and stderr.
+  Future<int> run(String process, List<String> args) async {
+    final proc = await Process.start(
+      process,
+      args,
+      mode: ProcessStartMode.inheritStdio,
+    );
+    return proc.exitCode;
   }
 }

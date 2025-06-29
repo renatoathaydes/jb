@@ -40,6 +40,7 @@ class JbDartle {
       requirements,
       clean,
       run,
+      jshell,
       downloadTestRunner,
       test,
       showConfig,
@@ -174,6 +175,7 @@ class JbDartle {
       localProcessorDependencies,
     );
     run = createRunTask(_files, configContainer, _cache);
+    jshell = createJshellTask(_files, configContainer, _cache);
     downloadTestRunner = createDownloadTestRunnerTask(
       _files,
       configContainer,
@@ -228,6 +230,7 @@ class JbDartle {
       installRuntime,
       installProcessor,
       run,
+      jshell,
       downloadTestRunner,
       test,
       deps,
