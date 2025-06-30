@@ -653,7 +653,7 @@ Task createJshellTask(
     dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
     argsValidator: const JshellArgs(),
     name: jshellTaskName,
-    description: 'Run jshell with all runtime dependencies available.',
+    description: jshellHelp,
   );
 }
 
