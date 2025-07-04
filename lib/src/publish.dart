@@ -39,13 +39,8 @@ class Publisher {
   /// The `publish` task action.
   Future<void> call(List<String> args) async {
     final theArtifact = _getArtifact();
-    final home = homeDir().orThrow(
-      () => failBuild(reason: 'Cannot find home directory'),
-    );
 
-    final destination = args.isEmpty
-        ? p.join(home, '.m2', 'repository')
-        : args[0];
+    final destination = args.isEmpty ? _mavenHome() : args[0];
 
     final mavenClient = MavenClient(switch (destination) {
       '-m' => Sonatype.s01Oss,
@@ -66,6 +61,21 @@ class Publisher {
       return await _publishHttp(mavenClient, theArtifact, stopwatch);
     }
     await _publishLocal(theArtifact, destination, stopwatch);
+  }
+
+  String _mavenHome() {
+    final mavenHome = Platform.environment['MAVEN_HOME'];
+    if (mavenHome != null) {
+      return mavenHome;
+    }
+    logger.finer(
+      () =>
+          'MAVEN_HOME environment variable is not set, will use ~/.m2/repository',
+    );
+    final home = homeDir().orThrow(
+      () => failBuild(reason: 'Cannot find home directory'),
+    );
+    return p.join(home, '.m2', 'repository');
   }
 
   Artifact _getArtifact() {
