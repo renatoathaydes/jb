@@ -46,6 +46,7 @@ const publishTaskName = 'publish';
 const updateJBuildTaskName = 'updateJBuild';
 
 final depsPhase = TaskPhase.custom(TaskPhase.setup.index + 1, 'deps');
+final evaluatePhase = TaskPhase.custom(TaskPhase.build.index + 1, 'evaluate');
 
 const _reasonPublicationCompileCannotRun =
     'Cannot publish project because "output-jar" is not configured. '
@@ -654,6 +655,7 @@ Task createJshellTask(
     argsValidator: const JshellArgs(),
     name: jshellTaskName,
     description: jshellHelp,
+    phase: evaluatePhase,
   );
 }
 
@@ -703,6 +705,7 @@ Task createTestTask(
       installRuntimeDepsTaskName,
     },
     description: 'Run tests. JBuild automatically detects JUnit5 and Spock.',
+    phase: evaluatePhase,
   );
 }
 
