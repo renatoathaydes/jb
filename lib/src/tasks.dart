@@ -46,13 +46,13 @@ const publishTaskName = 'publish';
 const updateJBuildTaskName = 'updateJBuild';
 
 final depsPhase = TaskPhase.custom(TaskPhase.setup.index + 1, 'deps');
-final evaluatePhase = TaskPhase.custom(TaskPhase.build.index + 1, 'evaluate');
+final evaluatePhase = TaskPhase.custom(TaskPhase.build.index + 10, 'evaluate');
 
 const _reasonPublicationCompileCannotRun =
     'Cannot publish project because "output-jar" is not configured. '
     'Replace "output-dir" with "output-jar" to publish.';
 
-final publishPhase = TaskPhase.custom(TaskPhase.build.index + 1, 'publish');
+final publishPhase = TaskPhase.custom(evaluatePhase.index + 10, 'publish');
 
 /// Create run condition for the `compile` task.
 RunOnChanges _createCompileRunCondition(
@@ -594,6 +594,7 @@ Task createRunTask(JbFiles files, JbConfigContainer config, DartleCache cache) {
     argsValidator: const AcceptAnyArgs(),
     name: runTaskName,
     description: 'Run Java Main class.',
+    phase: evaluatePhase,
   );
 }
 
