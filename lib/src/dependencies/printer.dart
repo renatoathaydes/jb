@@ -11,7 +11,15 @@ import 'package:dartle/dartle.dart'
         PlainMessage;
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:io/ansi.dart'
-    show magenta, styleBold, yellow, styleItalic, resetBold, styleDim, red;
+    show
+        magenta,
+        styleBold,
+        yellow,
+        styleItalic,
+        resetBold,
+        styleDim,
+        red,
+        resetAll;
 
 import '../config.dart';
 import '../jb_files.dart';
@@ -111,11 +119,12 @@ Future<void> printDependencies(
     config.allProcessorDependencies,
     scope: scope,
   ).toList(growable: false);
-  final mainDeps = (await parseDeps(jbFiles.dependenciesFile)).dependencies
+  final mainResolved = await parseDeps(jbFiles.dependenciesFile);
+  final mainDeps = mainResolved.dependencies
       .where((dep) => scope.includes(dep.spec.scope))
       .toList(growable: false);
-  final processorDeps = (await parseDeps(jbFiles.processorDependenciesFile))
-      .dependencies
+  final processorResolved = await parseDeps(jbFiles.processorDependenciesFile);
+  final processorDeps = processorResolved.dependencies
       .where((dep) => scope.includes(dep.spec.scope))
       .toList(growable: false);
 
@@ -142,14 +151,16 @@ Future<void> printDependencies(
       ..header(artifact, scope)
       ..exclusions(config.dependencyExclusionPatterns)
       ..print(mainDeps, options)
-      ..printLocal(mainLocalDeps);
+      ..printLocal(mainLocalDeps)
+      ..printWarnings(mainResolved.warnings);
   }
   if (processorLocalDeps.isNotEmpty || processorDeps.isNotEmpty) {
     printer
       ..header(artifact, scope, forProcessor: true)
       ..exclusions(config.processorDependencyExclusionPatterns)
       ..print(processorDeps, options)
-      ..printLocal(processorLocalDeps);
+      ..printLocal(processorLocalDeps)
+      ..printWarnings(processorResolved.warnings);
   }
   printer.printSeenLicenses();
 }
@@ -289,6 +300,39 @@ class _JBuildDepsPrinter {
   void printLocal(List<_Dependency> localDeps) {
     for (var dep in localDeps.map((s) => '  * ${s.name} ${s.localSuffix}')) {
       logger.info(ColoredLogMessage(dep, LogColor.blue));
+    }
+  }
+
+  void printWarnings(List<DependencyWarning> warnings) {
+    logger.info(
+      ColoredLogMessage('Dependency tree contains conflicts:', LogColor.yellow),
+    );
+    for (final warning in warnings) {
+      logger.info(
+        AnsiMessage([
+          AnsiMessagePart.code(styleBold),
+          AnsiMessagePart.text('  * ${warning.artifact}:\n'),
+          AnsiMessagePart.code(resetBold),
+          ...warning.versionConflicts.expand(
+            (c) => [
+              AnsiMessagePart.code(styleBold),
+              AnsiMessagePart.code(yellow),
+              AnsiMessagePart.text('    - ${c.version}'),
+              AnsiMessagePart.code(resetAll),
+              AnsiMessagePart.text(': '),
+              ...c.requestedBy
+                  .map(AnsiMessagePart.text)
+                  .toList()
+                  .joinWith(const [
+                    AnsiMessagePart.code(styleDim),
+                    AnsiMessagePart.text(' -> '),
+                    AnsiMessagePart.code(resetAll),
+                  ]),
+              AnsiMessagePart.text('\n'),
+            ],
+          ),
+        ]),
+      );
     }
   }
 
@@ -445,4 +489,17 @@ extension _Mapper on Iterable<ResolvedDependency> {
 
 extension ArtifactExtension on Artifact {
   String get identifier => "$group:$module:$version";
+}
+
+extension<T> on List<T> {
+  Iterable<T> joinWith(List<T> joins) sync* {
+    final lastIndex = length - 1;
+    for (final e in indexed) {
+      final (index, item) = e;
+      yield item;
+      if (index != lastIndex) {
+        yield* joins;
+      }
+    }
+  }
 }
