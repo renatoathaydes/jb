@@ -63,7 +63,7 @@ String _struct(Map map) {
 }
 
 Future<dynamic> parseRpcResponse(Stream<List<int>> rpcResponse) async {
-  final message = await rpcResponse.text();
+  final message = await rpcResponse.textUtf8();
   rpcLogger.fine(() => 'Received RPC response: $message');
   final XmlDocument doc;
   try {

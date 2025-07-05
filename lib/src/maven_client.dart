@@ -312,7 +312,7 @@ class MavenClient {
       logger.fine(() => 'HTTP Request failed with statusCode $status');
       var reason = 'statusCode = $status';
       try {
-        var body = await response.lines().join('\n');
+        var body = await response.linesUtf8Encoding().join('\n');
         if (body.trim().isNotEmpty) {
           reason = body;
         }

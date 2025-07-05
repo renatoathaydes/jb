@@ -1,15 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:dartle/dartle.dart'
-    show DartleException, ColoredLogMessage, LogColor;
+import 'package:dartle/dartle.dart' show DartleException;
 import 'package:dartle/dartle_dart.dart' show AcceptAnyArgs;
-import 'package:path/path.dart' as p;
+import 'package:io/ansi.dart' show red;
 
 import 'config.dart' show JbConfigContainer, logger;
 import 'tasks.dart' show jshellTaskName;
-import 'utils.dart' show classpathSeparator, StringExtension;
+import 'utils.dart' show DirectoryExtension;
 
 const jshellHelp =
     '''Run jshell with this project's runtime classpath.
@@ -20,8 +20,11 @@ const jshellHelp =
       Use `/reset` to hot-reload the classpath into the REPL.
       
       If the --${JshellArgs.fileOption} option is used, the contents of the file
-      are passed to jshell. When the file changes, only the lines that have changed
-      are sent again.''';
+      are evaluated by jshell. When the file changes, only the lines that have changed
+      are evaluated again. Commands can also be entered directly into the shell,
+      but with reduced interactive functionality.''';
+
+final _newLine = '\n'.codeUnitAt(0);
 
 Future<void> jshell(
   File jbuildJar,
@@ -29,46 +32,90 @@ Future<void> jshell(
   List<String> args,
 ) async {
   final config = configContainer.config;
-  final classpath = {
-    configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j),
-    config.runtimeLibsDir,
-    p.join(config.runtimeLibsDir, '*'),
-  }.join(classpathSeparator);
+  final classpath = await Directory(config.runtimeLibsDir).toClasspath({
+    configContainer.output.when(dir: Directory.new, jar: File.new),
+  });
+  logger.fine(() => 'jshell classpath: $classpath');
 
   final options = JshellArgs().parse(args);
   final file = options.option(JshellArgs.fileOption);
 
+  Future<int> exitCodeFuture;
   if (file != null) {
-    await _runFromFile(file, options, configContainer);
+    exitCodeFuture = _runFromFile(
+      file,
+      options.rest,
+      configContainer,
+      classpath,
+    );
   } else {
-    await _runShell(options.rest, classpath);
+    exitCodeFuture = (await _runJShell(
+      options.rest,
+      classpath,
+      ProcessStartMode.inheritStdio,
+    )).exitCode;
   }
-}
-
-Future<void> _runShell(List<String> args, String classpath) async {
-  final exitCode = await _run('jshell', ['--class-path', classpath, ...args]);
+  final exitCode = await exitCodeFuture;
   if (exitCode != 0) {
     throw DartleException(message: 'jshell command failed', exitCode: exitCode);
   }
 }
 
-Future<void> _runFromFile(
+Future<Process> _runJShell(
+  List<String> args,
+  String? classpath,
+  ProcessStartMode mode,
+) async {
+  final proc = await Process.start(
+    'jshell',
+    [
+      if (classpath != null) ...['--class-path', classpath],
+      ...args,
+    ],
+    mode: mode,
+    runInShell: true,
+  );
+  return proc;
+}
+
+Future<int> _runFromFile(
   String file,
-  ArgResults options,
+  List<String> args,
   JbConfigContainer configContainer,
+  String? classpath,
 ) async {
   logger.fine('Running jshell with file $file');
+  logger.warning(
+    'jshell running in non-terminal mode (i.e. limited CLI '
+    'functionality) so that it can receive file updates.\n'
+    'Changing the file causes the lines below the first modified line to be '
+    're-evaluated.',
+  );
 
-  final proc = await Process.start('jshell', options.rest, runInShell: true);
-  proc.stdout.transform(utf8.decoder).listen(print);
-  proc.stderr.transform(utf8.decoder).listen(_printRed);
+  final proc = await _runJShell(
+    ['-q', ...args],
+    classpath,
+    ProcessStartMode.normal,
+  );
   final procDone = proc.exitCode.asStream().asBroadcastStream();
-  await _streamFromFile(file, procDone).pipe(proc.stdin);
+  final exitCodeFuture = procDone.first;
+  final stdinSubscription = stdin.listen(proc.stdin.add);
+  try {
+    proc.stdout.transform(const SystemEncoding().decoder).listen(stdout.write);
+    proc.stderr.transform(const SystemEncoding().decoder).listen(_writeStderr);
+    await _streamFromFile(file, procDone).listen(proc.stdin.add).asFuture();
+  } finally {
+    logger.finer('Cancelling stdin subscription');
+    await stdinSubscription.cancel();
+  }
+  logger.info('jshell process has exited');
+  return await exitCodeFuture;
 }
 
 Stream<List<int>> _streamFromFile(String path, Stream<int> onDone) async* {
   const notDone = 99999999;
   final file = File(path);
+  final toYield = <int>[];
   var firstRun = true;
   var prevLines = const <String>[];
   var prevStat = await file.stat();
@@ -86,19 +133,27 @@ Stream<List<int>> _streamFromFile(String path, Stream<int> onDone) async* {
       final lines = await file.readAsLines();
       final prevIter = prevLines.iterator;
       final iter = lines.iterator;
+      var lineCount = 0;
       var foundChange = false;
       while (prevIter.moveNext() && iter.moveNext()) {
         foundChange |= prevIter.current != iter.current;
         if (foundChange) {
           logger.finer(() => 'CHANGED LINE: ${iter.current}');
-          yield utf8.encode(iter.current);
-          yield ['\n'.codeUnitAt(0)];
+          toYield.addJavaCode(iter.current);
+          lineCount++;
         }
       }
       while (iter.moveNext()) {
         logger.finer(() => 'NEW LINE: ${iter.current}');
-        yield utf8.encode(iter.current);
-        yield ['\n'.codeUnitAt(0)];
+        toYield.addJavaCode(iter.current);
+        lineCount++;
+      }
+      if (toYield.isNotEmpty) {
+        toYield.add(_newLine);
+        yield toYield;
+        yield [_newLine];
+        logger.info(() => 'Evaluated $lineCount line(s) from file.');
+        toYield.clear();
       }
       prevLines = lines;
     } else {
@@ -109,19 +164,20 @@ Stream<List<int>> _streamFromFile(String path, Stream<int> onDone) async* {
   logger.fine(() => 'Stopped watching $path');
 }
 
-/// Run a process inheriting stdin, stdout and stderr.
-Future<int> _run(String process, List<String> args) async {
-  final proc = await Process.start(
-    process,
-    args,
-    mode: ProcessStartMode.inheritStdio,
-    runInShell: true,
-  );
-  return proc.exitCode;
+extension on List<int> {
+  void addJavaCode(String line) {
+    line = line.trim();
+    if (!line.startsWith('//')) {
+      addAll(utf8.encode(line));
+    }
+    if (line.endsWith(';')) {
+      add(_newLine);
+    }
+  }
 }
 
-void _printRed(String line) {
-  logger.info(ColoredLogMessage(line, LogColor.red));
+void _writeStderr(String text) {
+  stderr.writeln(red.wrap(text));
 }
 
 class JshellArgs extends AcceptAnyArgs {
