@@ -22,7 +22,9 @@ const jshellHelp =
       If the --${JshellArgs.fileOption} option is used, the contents of the file
       are evaluated by jshell. When the file changes, only the lines that have changed
       are evaluated again. Commands can also be entered directly into the shell,
-      but with reduced interactive functionality.''';
+      but with reduced interactive functionality.
+      
+      Any arguments after `--` will be passed to jshell.''';
 
 final _newLine = '\n'.codeUnitAt(0);
 
@@ -195,7 +197,8 @@ class JshellArgs extends AcceptAnyArgs {
   @override
   bool validate(List<String> args) {
     try {
-      return parse(args).rest.isEmpty;
+      parse(args);
+      return true;
     } on FormatException catch (e) {
       logger.warning('Invalid arguments for $jshellTaskName: ${e.message}');
       return false;
@@ -206,5 +209,6 @@ class JshellArgs extends AcceptAnyArgs {
   String helpMessage() =>
       'Acceptable options:\n'
       '        * --$fileOption\n'
-      '          -f <file>: file to send to jshell. File changes are re-sent.';
+      '          -f <file>: file to send to jshell. File changes are re-sent.\n'
+      'Any arguments after `--` are passed directly to jshell.';
 }
