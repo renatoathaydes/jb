@@ -11,11 +11,13 @@ import '../java_tests.dart';
 import '../jvm_executor.dart';
 import '../tasks.dart' show writeDepsTaskName;
 import '../utils.dart';
+import 'deps_cache.dart';
 import 'parse.dart';
 
 Future<void> writeDependencies(
   JBuildSender jBuildSender,
   List<String> preArgs,
+  DepsCache depsCache,
   DartleCache cache,
   Set<String> exclusions,
   Set<String> procExclusions,
@@ -32,6 +34,7 @@ Future<void> writeDependencies(
   final mainDeps = await _write(
     jBuildSender,
     preArgs,
+    depsCache,
     deps,
     exclusions,
     depsFile,
@@ -39,6 +42,7 @@ Future<void> writeDependencies(
   await _write(
     jBuildSender,
     preArgs,
+    depsCache,
     procDeps,
     procExclusions,
     processorDepsFile,
@@ -48,7 +52,14 @@ Future<void> writeDependencies(
     logger.fine(() => 'Test runner library: $testRunnerLib');
   }
   final testRunnerLibs = [?testRunnerLib].map(_testRunnerEntry);
-  await _write(jBuildSender, preArgs, testRunnerLibs, const {}, testDepsFile);
+  await _write(
+    jBuildSender,
+    preArgs,
+    depsCache,
+    testRunnerLibs,
+    const {},
+    testDepsFile,
+  );
 }
 
 MapEntry<String, DependencySpec> _testRunnerEntry(String lib) {
@@ -58,6 +69,7 @@ MapEntry<String, DependencySpec> _testRunnerEntry(String lib) {
 Future<ResolvedDependencies> _write(
   JBuildSender jBuildSender,
   List<String> preArgs,
+  DepsCache depsCache,
   Iterable<MapEntry<String, DependencySpec>> deps,
   Set<String> exclusions,
   File depsFile,
@@ -87,6 +99,7 @@ Future<ResolvedDependencies> _write(
   await depsFile.withSink((sink) async {
     sink.write(jsonEncode(results));
   });
+  await depsCache.send(AddDeps(depsFile.path, results));
   return results;
 }
 

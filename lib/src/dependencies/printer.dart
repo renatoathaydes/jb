@@ -27,6 +27,7 @@ import '../licenses.g.dart' show allLicenses;
 import '../maven_metadata.dart' show License;
 import '../pom.dart';
 import '../tasks.dart' show depsTaskName;
+import 'deps_cache.dart';
 
 final class _Dependency {
   final String name;
@@ -98,10 +99,16 @@ class DepsArgValidator with ArgsValidator {
       '          -l: show dependencies\' licenses.';
 }
 
+void printDepWarnings(List<DependencyWarning> warnings) {
+  final printer = _JBuildDepsPrinter(false);
+  printer.printWarnings(warnings);
+}
+
 Future<void> printDependencies(
   JbFiles jbFiles,
   JbConfiguration config,
   String workingDir,
+  DepsCache depsCache,
   DartleCache cache,
   LocalDependencies localDependencies,
   LocalDependencies localProcessorDependencies,
@@ -119,11 +126,15 @@ Future<void> printDependencies(
     config.allProcessorDependencies,
     scope: scope,
   ).toList(growable: false);
-  final mainResolved = await parseDeps(jbFiles.dependenciesFile);
+  final mainResolved = await depsCache.send(
+    GetDeps(jbFiles.dependenciesFile.path),
+  );
   final mainDeps = mainResolved.dependencies
       .where((dep) => scope.includes(dep.spec.scope))
       .toList(growable: false);
-  final processorResolved = await parseDeps(jbFiles.processorDependenciesFile);
+  final processorResolved = await depsCache.send(
+    GetDeps(jbFiles.processorDependenciesFile.path),
+  );
   final processorDeps = processorResolved.dependencies
       .where((dep) => scope.includes(dep.spec.scope))
       .toList(growable: false);

@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'config.dart';
 import 'config_source.dart';
 import 'create/create.dart';
+import 'dependencies/deps_cache.dart';
 import 'help.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart';
@@ -86,16 +87,20 @@ Future<void> _runJb(
     config.javacArgs.javaRuntimeArgs().toList(growable: false),
   );
 
+  final depsCache = createDepsActor();
+
   final runner = await JbRunner.create(
     jbFiles,
     config,
     await jvmExecutor.toSendable(),
+    await depsCache.toSendable(),
   );
 
   try {
     await runner.run(dartleOptions, stopwatch);
   } finally {
     await jvmExecutor.close();
+    await depsCache.close();
   }
 }
 

@@ -1,4 +1,3 @@
-import 'dart:convert' show jsonDecode;
 import 'dart:io';
 
 import 'package:conveniently/conveniently.dart';
@@ -140,24 +139,6 @@ Future<List<BasicExtensionTask>> loadExtensionTaskConfigs(
       message:
           '$yamlUri: Expecting jb extension to be a Map, '
           'but it is ${json?.runtimeType}',
-    );
-  }
-}
-
-/// Parse the file created by the [writeDepsTaskName].
-Future<ResolvedDependencies> parseDeps(File file) async {
-  final text = await file.readAsString();
-  try {
-    return ResolvedDependencies.fromJson(jsonDecode(text));
-  } catch (e) {
-    if (logger.isLoggable(log.Level.FINE)) {
-      rethrow;
-    }
-    failBuild(
-      reason:
-          'Cannot parse dependencies file ${file.path}. '
-          'This is likely to be due to the .jb-cache being from an older version of jb. '
-          'Try running again with the -z option to ignore the cache',
     );
   }
 }

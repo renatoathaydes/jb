@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 
 import 'compile/compile.dart';
 import 'config.dart';
+import 'dependencies/deps_cache.dart';
 import 'dependencies/printer.dart';
 import 'dependencies/writer.dart';
 import 'deps.dart';
@@ -37,6 +38,7 @@ const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const installProcessorDepsTaskName = 'installProcessorDependencies';
 const writeDepsTaskName = 'writeDependencies';
+const verifyDepsTaskName = 'verifyDependencies';
 const depsTaskName = 'dependencies';
 const showJbConfigTaskName = 'showJbConfiguration';
 const requirementsTaskName = 'requirements';
@@ -225,6 +227,7 @@ Future<void> _compile(
 Task createWriteDependenciesTask(
   JbFiles jbFiles,
   JbConfiguration config,
+  DepsCache depsCache,
   DartleCache cache,
   FileCollection jbFileInputs,
   JBuildSender jbuildSender,
@@ -248,6 +251,7 @@ Task createWriteDependenciesTask(
     (args) async => await writeDependencies(
       jbuildSender,
       preArgs,
+      depsCache,
       cache,
       exclusions,
       procExclusions,
@@ -265,11 +269,61 @@ Task createWriteDependenciesTask(
   );
 }
 
+Task createVerifyDependenciesTask(
+  JbFiles jbFiles,
+  DepsCache depsCache,
+  DartleCache cache,
+) {
+  const link =
+      'https://renatoathaydes.github.io/jb/pages/dependency-management.html';
+  return Task(
+    (List<String> _) async {
+      final deps = await depsCache.send(GetDeps(jbFiles.dependenciesFile.path));
+      final procDeps = await depsCache.send(
+        GetDeps(jbFiles.processorDependenciesFile.path),
+      );
+
+      if (procDeps.warnings.isNotEmpty) {
+        logger.warning(
+          'Annotation Processor dependencies contains version conflicts',
+        );
+      }
+      for (final entry in [(deps.warnings, false), (procDeps.warnings, true)]) {
+        final (warnings, forProcessor) = entry;
+        if (warnings.isNotEmpty) {
+          if (deps.warnings.isNotEmpty) {
+            final prefix = forProcessor ? 'Annotation Processor' : 'Project';
+            logger.warning('$prefix dependencies are problematic.');
+          }
+          printDepWarnings(warnings);
+          failBuild(
+            reason:
+                'Dependency graph contains version conflicts (see above)!\n'
+                'You must fix the conflicts as explained at $link',
+          );
+        }
+      }
+    },
+    name: verifyDepsTaskName,
+    runCondition: RunOnChanges(
+      inputs: files([
+        jbFiles.dependenciesFile.path,
+        jbFiles.processorDependenciesFile.path,
+      ]),
+      cache: cache,
+    ),
+    dependsOn: {writeDepsTaskName},
+    description:
+        'Fails the build if dependency version conflicts are detected.',
+  );
+}
+
 /// Create the `installCompileDependencies` task.
 Task createInstallCompileDepsTask(
   JbFiles files,
   JbConfiguration config,
   JBuildSender jBuildSender,
+  DepsCache depsCache,
   DartleCache cache,
   ResolvedLocalDependencies localDependencies,
 ) {
@@ -288,6 +342,7 @@ Task createInstallCompileDepsTask(
   Future<void> action(_) async {
     final deps = FileDependencies(
       File(depsFile),
+      depsCache,
       (scope) => scope.includedInCompilation(),
     );
     await _install(
@@ -318,6 +373,7 @@ Task createInstallRuntimeDepsTask(
   JbFiles files,
   JbConfiguration config,
   JBuildSender jBuildSender,
+  DepsCache depsCache,
   DartleCache cache,
   ResolvedLocalDependencies localDependencies,
 ) {
@@ -334,6 +390,7 @@ Task createInstallRuntimeDepsTask(
   Future<void> action(_) async {
     final deps = FileDependencies(
       File(depsFile),
+      depsCache,
       (scope) => scope.includedAtRuntime(),
     );
     await _install(
@@ -364,6 +421,7 @@ Task createInstallProcessorDepsTask(
   JbFiles files,
   JbConfiguration config,
   JBuildSender jBuildSender,
+  DepsCache depsCache,
   DartleCache cache,
   ResolvedLocalDependencies localDependencies,
 ) {
@@ -381,6 +439,7 @@ Task createInstallProcessorDepsTask(
   Future<void> action(_) async {
     final deps = FileDependencies(
       File(depsFile),
+      depsCache,
       (scope) => scope.includedAtRuntime(),
     );
     await _install(
@@ -437,7 +496,7 @@ Task _createInstallDepsTask(
   return Task(
     action,
     runCondition: runCondition,
-    dependsOn: const {writeDepsTaskName},
+    dependsOn: const {verifyDepsTaskName},
     name: taskName,
     description: 'Install $scopeName dependencies.',
   );
@@ -519,10 +578,16 @@ Task createGeneratePomTask(
   Result<Artifact> artifact,
   ResolvedLocalDependencies localDependencies,
   File dependenciesFile,
+  DepsCache depsCache,
 ) {
   return Task(
-    (List<String> args) =>
-        _generatePom(args, artifact, localDependencies, dependenciesFile),
+    (List<String> args) => _generatePom(
+      args,
+      artifact,
+      localDependencies,
+      dependenciesFile,
+      depsCache,
+    ),
     name: createPomTaskName,
     phase: publishPhase,
     dependsOn: {writeDepsTaskName},
@@ -539,9 +604,10 @@ Future<void> _generatePom(
   Result<Artifact> artifact,
   ResolvedLocalDependencies localDependencies,
   File dependenciesFile,
+  DepsCache depsCache,
 ) async {
   final stopWatch = Stopwatch()..start();
-  final deps = await parseDeps(dependenciesFile);
+  final deps = await depsCache.send(GetDeps(dependenciesFile.path));
   logger.log(
     profile,
     'Parsed dependencies file in ${stopWatch.elapsedMilliseconds} ms',
@@ -570,11 +636,12 @@ Future<void> _generatePom(
 Task createPublishTask(
   Result<Artifact> artifact,
   File depsFile,
+  DepsCache depsCache,
   String? outputJar,
   ResolvedLocalDependencies localDependencies,
 ) {
   return Task(
-    Publisher(artifact, depsFile, localDependencies, outputJar).call,
+    Publisher(artifact, depsFile, depsCache, localDependencies, outputJar).call,
     name: publishTaskName,
     dependsOn: const {publicationCompileTaskName},
     runCondition: artifact.runCondition(),
@@ -665,6 +732,7 @@ Task createDownloadTestRunnerTask(
   JbFiles files,
   JbConfigContainer configContainer,
   JBuildSender jBuildSender,
+  DepsCache depsCache,
   DartleCache cache,
   FileCollection jbFileInputs,
 ) {
@@ -675,6 +743,7 @@ Task createDownloadTestRunnerTask(
       jBuildSender,
       configContainer,
       workingDir,
+      depsCache,
       depsFile,
       cache,
     ),
@@ -714,6 +783,7 @@ Future<void> _downloadTestRunner(
   JBuildSender jBuildSender,
   JbConfigContainer configContainer,
   String workingDir,
+  DepsCache depsCache,
   String depsFile,
   DartleCache cache,
 ) async {
@@ -725,7 +795,11 @@ Future<void> _downloadTestRunner(
     downloadTestRunnerTaskName,
     jBuildSender,
     config.preArgs(workingDir),
-    FileDependencies(File(depsFile), (scope) => scope.includedAtRuntime()),
+    FileDependencies(
+      File(depsFile),
+      depsCache,
+      (scope) => scope.includedAtRuntime(),
+    ),
     outDir.path,
   );
 }
@@ -785,6 +859,7 @@ Future<void> _test(
 Task createDepsTask(
   JbFiles jbFiles,
   JbConfiguration config,
+  DepsCache depsCache,
   DartleCache cache,
   LocalDependencies localDependencies,
   LocalDependencies localProcessorDeps,
@@ -795,6 +870,7 @@ Task createDepsTask(
       jbFiles,
       config,
       workingDir,
+      depsCache,
       cache,
       localDependencies,
       localProcessorDeps,
@@ -811,6 +887,7 @@ Future<void> _deps(
   JbFiles jbFiles,
   JbConfiguration config,
   String workingDir,
+  DepsCache depsCache,
   DartleCache cache,
   LocalDependencies localDependencies,
   LocalDependencies localProcessorDependencies,
@@ -820,6 +897,7 @@ Future<void> _deps(
     jbFiles,
     config,
     workingDir,
+    depsCache,
     cache,
     localDependencies,
     localProcessorDependencies,
