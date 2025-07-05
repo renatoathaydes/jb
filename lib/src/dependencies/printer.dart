@@ -304,6 +304,7 @@ class _JBuildDepsPrinter {
   }
 
   void printWarnings(List<DependencyWarning> warnings) {
+    if (warnings.isEmpty) return;
     logger.info(
       ColoredLogMessage('Dependency tree contains conflicts:', LogColor.yellow),
     );
