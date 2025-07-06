@@ -3,15 +3,16 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:actors/actors.dart';
-import 'package:dartle/dartle.dart' show failBuild, profile;
+import 'package:dartle/dartle.dart' show failBuild, profile, activateLogging;
 import 'package:logging/logging.dart' as log;
+import 'package:logging/logging.dart' show Level;
 
-import '../config.dart';
+import '../config.dart' show ResolvedDependencies, logger;
 
 typedef DepsCache = Sendable<DepsCacheMessage, ResolvedDependencies>;
 
-Actor<DepsCacheMessage, ResolvedDependencies> createDepsActor() =>
-    Actor.create(_DepsCacheHandler.new);
+Actor<DepsCacheMessage, ResolvedDependencies> createDepsActor(Level level) =>
+    Actor.create(() => _DepsCacheHandler(level));
 
 sealed class DepsCacheMessage {
   final String file;
@@ -32,6 +33,14 @@ class GetDeps extends DepsCacheMessage {
 final class _DepsCacheHandler
     with Handler<DepsCacheMessage, ResolvedDependencies> {
   final Map<String, Future<ResolvedDependencies>> _cache = {};
+  final Level _level;
+
+  _DepsCacheHandler(this._level);
+
+  @override
+  void init() {
+    activateLogging(_level);
+  }
 
   @override
   FutureOr<ResolvedDependencies> handle(DepsCacheMessage message) {

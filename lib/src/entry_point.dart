@@ -87,7 +87,7 @@ Future<void> _runJb(
     config.javacArgs.javaRuntimeArgs().toList(growable: false),
   );
 
-  final depsCache = createDepsActor();
+  final depsCache = createDepsActor(logger.level);
 
   final runner = await JbRunner.create(
     jbFiles,
