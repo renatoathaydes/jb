@@ -17,9 +17,9 @@ import 'package:io/ansi.dart'
         yellow,
         styleItalic,
         resetBold,
-        styleDim,
         red,
-        resetAll;
+        resetAll,
+        darkGray;
 
 import '../config.dart';
 import '../jb_files.dart';
@@ -297,7 +297,7 @@ class _JBuildDepsPrinter {
       logger.info(
         AnsiMessage([
           AnsiMessagePart.code(red),
-          AnsiMessagePart.code(styleDim),
+          AnsiMessagePart.code(darkGray),
           AnsiMessagePart.text('$indent${_indentUnit}x $exclusion'),
         ]),
       );
@@ -342,7 +342,7 @@ class _JBuildDepsPrinter {
                 c.requestedBy,
                 directDepByArtifact,
               ).map(AnsiMessagePart.text).toList().joinWith(const [
-                AnsiMessagePart.code(styleDim),
+                AnsiMessagePart.code(darkGray),
                 AnsiMessagePart.text(' -> '),
                 AnsiMessagePart.code(resetAll),
               ]),
