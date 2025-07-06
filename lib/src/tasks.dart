@@ -288,14 +288,14 @@ Task createVerifyDependenciesTask(
           'Annotation Processor dependencies contains version conflicts',
         );
       }
-      for (final entry in [(deps.warnings, false), (procDeps.warnings, true)]) {
-        final (warnings, forProcessor) = entry;
-        if (warnings.isNotEmpty) {
+      for (final entry in [(deps, false), (procDeps, true)]) {
+        final (deps, forProcessor) = entry;
+        if (deps.warnings.isNotEmpty) {
           if (deps.warnings.isNotEmpty) {
             final prefix = forProcessor ? 'Annotation Processor' : 'Project';
             logger.warning('$prefix dependencies are problematic.');
           }
-          printDepWarnings(warnings);
+          printDepWarnings(deps);
           failBuild(
             reason:
                 'Dependency graph contains version conflicts (see above)!\n'

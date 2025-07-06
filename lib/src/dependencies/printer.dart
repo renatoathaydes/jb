@@ -99,9 +99,9 @@ class DepsArgValidator with ArgsValidator {
       '          -l: show dependencies\' licenses.';
 }
 
-void printDepWarnings(List<DependencyWarning> warnings) {
+void printDepWarnings(ResolvedDependencies deps) {
   final printer = _JBuildDepsPrinter(false);
-  printer.printWarnings(warnings);
+  printer.printWarnings(deps);
 }
 
 Future<void> printDependencies(
@@ -163,7 +163,7 @@ Future<void> printDependencies(
       ..exclusions(config.dependencyExclusionPatterns)
       ..print(mainDeps, options)
       ..printLocal(mainLocalDeps)
-      ..printWarnings(mainResolved.warnings);
+      ..printWarnings(mainResolved);
   }
   if (processorLocalDeps.isNotEmpty || processorDeps.isNotEmpty) {
     printer
@@ -171,7 +171,7 @@ Future<void> printDependencies(
       ..exclusions(config.processorDependencyExclusionPatterns)
       ..print(processorDeps, options)
       ..printLocal(processorLocalDeps)
-      ..printWarnings(processorResolved.warnings);
+      ..printWarnings(processorResolved);
   }
   printer.printSeenLicenses();
 }
@@ -314,8 +314,14 @@ class _JBuildDepsPrinter {
     }
   }
 
-  void printWarnings(List<DependencyWarning> warnings) {
+  void printWarnings(ResolvedDependencies deps) {
+    final warnings = deps.warnings;
     if (warnings.isEmpty) return;
+    final directDepByArtifact = Map.fromEntries(
+      deps.dependencies
+          .where((d) => d.isDirect)
+          .expand((d) => d.dependencies.map((e) => MapEntry(e, d))),
+    );
     logger.info(
       ColoredLogMessage('Dependency tree contains conflicts:', LogColor.yellow),
     );
@@ -332,14 +338,14 @@ class _JBuildDepsPrinter {
               AnsiMessagePart.text('    - ${c.version}'),
               AnsiMessagePart.code(resetAll),
               AnsiMessagePart.text(': '),
-              ...c.requestedBy
-                  .map(AnsiMessagePart.text)
-                  .toList()
-                  .joinWith(const [
-                    AnsiMessagePart.code(styleDim),
-                    AnsiMessagePart.text(' -> '),
-                    AnsiMessagePart.code(resetAll),
-                  ]),
+              ..._prefixWithDirectDep(
+                c.requestedBy,
+                directDepByArtifact,
+              ).map(AnsiMessagePart.text).toList().joinWith(const [
+                AnsiMessagePart.code(styleDim),
+                AnsiMessagePart.text(' -> '),
+                AnsiMessagePart.code(resetAll),
+              ]),
               AnsiMessagePart.text('\n'),
             ],
           ),
@@ -386,6 +392,21 @@ class _JBuildDepsPrinter {
       );
     }
   }
+}
+
+Iterable<String> _prefixWithDirectDep(
+  List<String> requestedBy,
+  Map<String, ResolvedDependency> directDepByArtifact,
+) {
+  // the first item in the requestedBy List is a dep of some direct dependency,
+  // we need to locate which one.
+  if (requestedBy.isEmpty) return requestedBy;
+  final dep = requestedBy.first;
+  final directDep = directDepByArtifact[dep];
+  if (directDep != null) {
+    return [directDep.artifact].followedBy(requestedBy);
+  }
+  return requestedBy;
 }
 
 _License _findLicense(DependencyLicense license) {
