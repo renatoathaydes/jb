@@ -5,61 +5,112 @@ import 'dart:io';
 import 'package:actors/actors.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
+import 'package:path/path.dart' as paths;
 
 import '../config.dart';
 import '../java_tests.dart';
+import '../jb_files.dart';
 import '../jvm_executor.dart';
+import '../resolved_dependency.dart';
 import '../tasks.dart' show writeDepsTaskName;
 import '../utils.dart';
 import 'deps_cache.dart';
 import 'parse.dart';
 
+typedef _ExclusionsAndProjectDeps = (
+  List<String>,
+  Future<ResolvedDependencies>,
+);
+
 Future<void> writeDependencies(
   JBuildSender jBuildSender,
   List<String> preArgs,
+  JbFiles jbFiles,
   DepsCache depsCache,
   DartleCache cache,
   Set<String> exclusions,
   Set<String> procExclusions,
   List<String> args, {
-  required Iterable<MapEntry<String, DependencySpec>> deps,
-  required Iterable<MapEntry<String, DependencySpec>> procDeps,
-  required File depsFile,
-  required File processorDepsFile,
-  required File testDepsFile,
+  required Map<String, DependencySpec> deps,
+  required Map<String, DependencySpec> procDeps,
+  required ResolvedLocalDependencies localDeps,
+  required ResolvedLocalDependencies localProcDeps,
 }) async {
+  final projectDeps = _directProjectDeps(
+    localDeps,
+    depsCache,
+    jbFiles,
+    forProcessor: false,
+  );
+  final procProjectDeps = _directProjectDeps(
+    localProcDeps,
+    depsCache,
+    jbFiles,
+    forProcessor: true,
+  );
+
   // TODO invoke 'jbuild fetch' to get SHA1:
   // e.g. jbuild fetch -d sha1-dir group:module:version:jar.sha1
   // and then read the file sha1-dir/<module>-<version>.jar.sha1
   final mainDeps = await _write(
     jBuildSender,
     preArgs,
+    jbFiles,
     depsCache,
     deps,
+    localDeps,
     exclusions,
-    depsFile,
+    projectDeps,
+    jbFiles.dependenciesFile,
   );
   await _write(
     jBuildSender,
     preArgs,
+    jbFiles,
     depsCache,
     procDeps,
+    localProcDeps,
     procExclusions,
-    processorDepsFile,
+    procProjectDeps,
+    jbFiles.processorDependenciesFile,
   );
   final testRunnerLib = findTestRunnerLib(mainDeps);
   if (testRunnerLib != null) {
     logger.fine(() => 'Test runner library: $testRunnerLib');
   }
-  final testRunnerLibs = [?testRunnerLib].map(_testRunnerEntry);
+  final testRunnerLibs = Map.fromEntries(
+    [?testRunnerLib].map(_testRunnerEntry),
+  );
+
   await _write(
     jBuildSender,
     preArgs,
+    jbFiles,
     depsCache,
     testRunnerLibs,
+    ResolvedLocalDependencies.empty,
     const {},
-    testDepsFile,
+    const [],
+    jbFiles.testRunnerDependenciesFile,
   );
+}
+
+Iterable<_ExclusionsAndProjectDeps> _directProjectDeps(
+  ResolvedLocalDependencies localDeps,
+  DepsCache depsCache,
+  JbFiles jbFiles, {
+  required bool forProcessor,
+}) sync* {
+  for (final pd in localDeps.projectDependencies) {
+    final futureDeps = depsCache.send(
+      GetDeps(paths.join(pd.projectDir, jbFiles.dependenciesFile.path)),
+    );
+    final exclusions = pd.spec.exclusions;
+    final rootExclusions = forProcessor ? pd.procExclusions : pd.exclusions;
+    // each item includes the root Exclusions as well as the dep's exclusions
+    // so that jb will resolve the exact same tree.
+    yield ([...rootExclusions, ...exclusions], futureDeps);
+  }
 }
 
 MapEntry<String, DependencySpec> _testRunnerEntry(String lib) {
@@ -69,14 +120,22 @@ MapEntry<String, DependencySpec> _testRunnerEntry(String lib) {
 Future<ResolvedDependencies> _write(
   JBuildSender jBuildSender,
   List<String> preArgs,
+  JbFiles jbFiles,
   DepsCache depsCache,
-  Iterable<MapEntry<String, DependencySpec>> deps,
+  Map<String, DependencySpec> deps,
+  ResolvedLocalDependencies localDeps,
   Set<String> exclusions,
+  Iterable<_ExclusionsAndProjectDeps> projectDeps,
   File depsFile,
 ) async {
   ResolvedDependencies? results;
-  if (deps.isNotEmpty) {
+  if (deps.isNotEmpty || projectDeps.isNotEmpty) {
     _checkDependenciesAreNotExcludedDirectly(deps, exclusions);
+
+    final allDepsOptions = deps.entries
+        .expand((d) => [d.key, ...d.value.exclusions.expand(_exclusionOption)])
+        .followedBy(await projectDeps.expandToJBuildOptions().toList());
+
     final collector = Actor.create(_CollectorActor.new);
     await jBuildSender.send(
       RunJBuild(writeDepsTaskName, [
@@ -87,9 +146,7 @@ Future<ResolvedDependencies> _write(
         '--scope',
         'runtime',
         ...exclusions.expand(_exclusionOption),
-        ...deps.expand(
-          (d) => [d.key, ...d.value.exclusions.expand(_exclusionOption)],
-        ),
+        ...allDepsOptions,
       ], _CollectorSendable(await collector.toSendable())),
     );
     results = await collector.send(const _Done());
@@ -104,15 +161,15 @@ Future<ResolvedDependencies> _write(
 }
 
 void _checkDependenciesAreNotExcludedDirectly(
-  Iterable<MapEntry<String, DependencySpec>> deps,
+  Map<String, DependencySpec> deps,
   Set<String> exclusions,
 ) {
   final exclusionPatterns = exclusions.map(RegExp.new).toList();
-  final directExclusions = deps
-      .where((e) => exclusionPatterns.any((rgx) => rgx.hasMatch(e.key)))
+  final directExclusions = deps.keys
+      .where((e) => exclusionPatterns.any((rgx) => rgx.hasMatch(e)))
       .toList();
   if (directExclusions.isNotEmpty) {
-    final listMsg = directExclusions.map((dep) => '  - ${dep.key}').join('\n');
+    final listMsg = directExclusions.map((dep) => '  - $dep').join('\n');
     failBuild(
       reason:
           'Direct dependenc${directExclusions.length == 1 ? 'y is' : 'ies are'}'
@@ -168,5 +225,20 @@ class _CollectorSendable with Sendable<String, void> {
   @override
   Future<void> send(String message) {
     return delegate.send(_Line(message));
+  }
+}
+
+extension on Iterable<_ExclusionsAndProjectDeps> {
+  Stream<String> expandToJBuildOptions() async* {
+    for (final entry in this) {
+      final (exclusions, depsFuture) = entry;
+      final resolvedDeps = await depsFuture;
+      for (final dep in resolvedDeps.dependencies) {
+        if (dep.isDirect) {
+          yield dep.artifact;
+          yield* Stream.fromIterable(exclusions.expand(_exclusionOption));
+        }
+      }
+    }
   }
 }

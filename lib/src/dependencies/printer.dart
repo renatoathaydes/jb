@@ -9,7 +9,6 @@ import 'package:dartle/dartle.dart'
         ColoredLogMessage,
         LogColor,
         PlainMessage;
-import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:io/ansi.dart'
     show
         magenta,
@@ -20,21 +19,26 @@ import 'package:io/ansi.dart'
         red,
         resetAll,
         darkGray;
+import 'package:path/path.dart' as paths;
 
 import '../config.dart';
 import '../jb_files.dart';
 import '../licenses.g.dart' show allLicenses;
 import '../maven_metadata.dart' show License;
 import '../pom.dart';
+import '../resolved_dependency.dart';
 import '../tasks.dart' show depsTaskName;
 import 'deps_cache.dart';
 
-final class _Dependency {
+final class _LocalDependency {
   final String name;
   final DependencySpec spec;
-  final String localSuffix;
+  final bool isJar; // is Jar or is Project
+  ResolvedDependencies? deps;
 
-  const _Dependency(this.name, this.spec, this.localSuffix);
+  _LocalDependency(this.name, this.spec, {required this.isJar, this.deps});
+
+  String get localSuffix => isJar ? ' (local jar)' : ' (local project)';
 }
 
 class _DepsArgs {
@@ -109,23 +113,24 @@ Future<void> printDependencies(
   JbConfiguration config,
   String workingDir,
   DepsCache depsCache,
-  DartleCache cache,
-  LocalDependencies localDependencies,
-  LocalDependencies localProcessorDependencies,
+  ResolvedLocalDependencies localDeps,
+  ResolvedLocalDependencies localProcDeps,
   List<String> args,
 ) async {
   final options = const DepsArgValidator()._parse(args);
   final scope = options.scope;
-  final mainLocalDeps = _getLocalDependencies(
-    localDependencies,
-    config.allDependencies,
+  final mainLocalDeps = await _getLocalDependencies(
+    jbFiles,
+    depsCache,
+    localDeps,
     scope: scope,
-  ).toList(growable: false);
-  final processorLocalDeps = _getLocalDependencies(
-    localProcessorDependencies,
-    config.allProcessorDependencies,
+  ).toList();
+  final processorLocalDeps = await _getLocalDependencies(
+    jbFiles,
+    depsCache,
+    localProcDeps,
     scope: scope,
-  ).toList(growable: false);
+  ).toList();
   final mainResolved = await depsCache.send(
     GetDeps(jbFiles.dependenciesFile.path),
   );
@@ -161,34 +166,45 @@ Future<void> printDependencies(
     printer
       ..header(artifact, scope)
       ..exclusions(config.dependencyExclusionPatterns)
-      ..print(mainDeps, options)
-      ..printLocal(mainLocalDeps)
+      ..print(mainDeps, mainLocalDeps, options)
       ..printWarnings(mainResolved);
   }
   if (processorLocalDeps.isNotEmpty || processorDeps.isNotEmpty) {
     printer
       ..header(artifact, scope, forProcessor: true)
       ..exclusions(config.processorDependencyExclusionPatterns)
-      ..print(processorDeps, options)
-      ..printLocal(processorLocalDeps)
+      ..print(processorDeps, processorLocalDeps, options)
       ..printWarnings(processorResolved);
   }
   printer.printSeenLicenses();
 }
 
-Iterable<_Dependency> _getLocalDependencies(
-  LocalDependencies localDependencies,
-  Iterable<MapEntry<String, DependencySpec>> dependencies, {
+Stream<_LocalDependency> _getLocalDependencies(
+  JbFiles jbFiles,
+  DepsCache depsCache,
+  ResolvedLocalDependencies localDependencies, {
   required DependencyScope scope,
-}) {
-  return localDependencies.jars
-      .where((j) => scope.includes(j.spec.scope))
-      .map((j) => _Dependency(j.path, j.spec, ' (local jar)'))
-      .followedBy(
-        localDependencies.projectDependencies
-            .where((d) => scope.includes(d.spec.scope))
-            .map((d) => _Dependency(d.path, d.spec, ' (local project)')),
+}) async* {
+  for (final jar in localDependencies.jars) {
+    if (scope.includes(jar.spec.scope)) {
+      yield _LocalDependency(jar.path, jar.spec, isJar: true);
+    }
+  }
+  for (final projectDep in localDependencies.projectDependencies) {
+    if (scope.includes(projectDep.spec.scope)) {
+      final deps = await depsCache.send(
+        GetDeps(
+          paths.join(projectDep.projectDir, jbFiles.dependenciesFile.path),
+        ),
       );
+      yield _LocalDependency(
+        projectDep.path,
+        projectDep.spec,
+        isJar: false,
+        deps: deps,
+      );
+    }
+  }
 }
 
 Artifact _createSimpleArtifact(JbConfiguration config) {
@@ -237,12 +253,39 @@ class _JBuildDepsPrinter {
     _printExclusions(exclusions);
   }
 
-  void print(List<ResolvedDependency> deps, _DepsArgs options) {
-    final map = deps.toMap();
+  void print(
+    List<ResolvedDependency> deps,
+    Iterable<_LocalDependency> localDeps,
+    _DepsArgs options,
+  ) async {
+    var map = deps.toMap();
     final visited = <String>{};
     for (final dep
         in deps.where((d) => d.isDirect).sortedBy((d) => d.artifact)) {
       _printTree(dep, map, visited, options);
+    }
+    map = localDeps
+        .expand((d) => d.deps?.dependencies ?? const <ResolvedDependency>[])
+        .toMap();
+    for (final dep in localDeps.sortedBy((d) => d.name)) {
+      logger.info(
+        ColoredLogMessage(
+          '$_indentUnit* ${dep.name} ${dep.localSuffix}',
+          LogColor.blue,
+        ),
+      );
+      final ddeps = dep.deps;
+      if (ddeps != null && ddeps.dependencies.isNotEmpty) {
+        for (final d in ddeps.dependencies.sortedBy((e) => e.artifact)) {
+          _printTree(
+            d,
+            map,
+            visited,
+            options,
+            indent: "$_indentUnit$_indentUnit",
+          );
+        }
+      }
     }
   }
 
@@ -306,12 +349,6 @@ class _JBuildDepsPrinter {
 
   void _printVisited(String dep, {required String indent}) {
     logger.info(ColoredLogMessage("$indent* $dep (-)", LogColor.gray));
-  }
-
-  void printLocal(List<_Dependency> localDeps) {
-    for (var dep in localDeps.map((s) => '  * ${s.name} ${s.localSuffix}')) {
-      logger.info(ColoredLogMessage(dep, LogColor.blue));
-    }
   }
 
   void printWarnings(ResolvedDependencies deps) {

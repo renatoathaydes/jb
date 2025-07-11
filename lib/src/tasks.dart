@@ -227,30 +227,36 @@ Future<void> _compile(
 Task createWriteDependenciesTask(
   JbFiles jbFiles,
   JbConfiguration config,
+  ResolvedLocalDependencies localDependencies,
+  ResolvedLocalDependencies localProcessorDependencies,
   DepsCache depsCache,
   DartleCache cache,
   FileCollection jbFileInputs,
   JBuildSender jbuildSender,
 ) {
-  final depsFile = jbFiles.dependenciesFile;
-  final procDepsFile = jbFiles.processorDependenciesFile;
-  final testDepsFile = jbFiles.testRunnerDependenciesFile;
-  final deps = config.allDependencies.where((d) => d.value.path == null);
-  final procDeps = config.allProcessorDependencies.where(
-    (d) => d.value.path == null,
+  final deps = Map.fromEntries(
+    config.allDependencies.where((d) => d.value.path == null),
+  );
+  final procDeps = Map.fromEntries(
+    config.allProcessorDependencies.where((d) => d.value.path == null),
   );
   final preArgs = config.preArgs(Directory.current.path);
   final exclusions = config.dependencyExclusionPatterns.toSet();
   final procExclusions = config.processorDependencyExclusionPatterns.toSet();
   final runCondition = RunOnChanges(
     inputs: jbFileInputs,
-    outputs: files([depsFile.path, procDepsFile.path, testDepsFile.path]),
+    outputs: files([
+      jbFiles.dependenciesFile.path,
+      jbFiles.processorDependenciesFile.path,
+      jbFiles.testRunnerDependenciesFile.path,
+    ]),
     cache: cache,
   );
   return Task(
     (args) async => await writeDependencies(
       jbuildSender,
       preArgs,
+      jbFiles,
       depsCache,
       cache,
       exclusions,
@@ -258,9 +264,8 @@ Task createWriteDependenciesTask(
       args,
       deps: deps,
       procDeps: procDeps,
-      depsFile: depsFile,
-      processorDepsFile: procDepsFile,
-      testDepsFile: testDepsFile,
+      localDeps: localDependencies,
+      localProcDeps: localProcessorDependencies,
     ),
     runCondition: runCondition,
     name: writeDepsTaskName,
@@ -861,47 +866,24 @@ Task createDepsTask(
   JbConfiguration config,
   DepsCache depsCache,
   DartleCache cache,
-  LocalDependencies localDependencies,
-  LocalDependencies localProcessorDeps,
+  ResolvedLocalDependencies localDeps,
+  ResolvedLocalDependencies localProcDeps,
 ) {
   final workingDir = Directory.current.path;
   return Task(
-    (List<String> args) => _deps(
+    (List<String> args) => printDependencies(
       jbFiles,
       config,
       workingDir,
       depsCache,
-      cache,
-      localDependencies,
-      localProcessorDeps,
+      localDeps,
+      localProcDeps,
       args,
     ),
     name: depsTaskName,
     dependsOn: {writeDepsTaskName},
     argsValidator: const DepsArgValidator(),
     description: 'Shows information about project dependencies.',
-  );
-}
-
-Future<void> _deps(
-  JbFiles jbFiles,
-  JbConfiguration config,
-  String workingDir,
-  DepsCache depsCache,
-  DartleCache cache,
-  LocalDependencies localDependencies,
-  LocalDependencies localProcessorDependencies,
-  List<String> args,
-) async {
-  await printDependencies(
-    jbFiles,
-    config,
-    workingDir,
-    depsCache,
-    cache,
-    localDependencies,
-    localProcessorDependencies,
-    args,
   );
 }
 

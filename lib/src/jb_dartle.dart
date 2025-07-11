@@ -139,8 +139,6 @@ class JbDartle {
     Stopwatch stopwatch,
   ) async {
     final configContainer = JbConfigContainer(_config);
-    final unresolvedLocalDeps = localDependencies.unresolved;
-    final unresolvedLocalProcessorDeps = localProcessorDependencies.unresolved;
 
     final FileCollection jbFileInputs;
     final configSource = _files.configSource;
@@ -163,6 +161,8 @@ class JbDartle {
     writeDeps = createWriteDependenciesTask(
       _files,
       _config,
+      localDependencies,
+      localProcessorDependencies,
       _depsCache,
       _cache,
       jbFileInputs,
@@ -214,8 +214,8 @@ class JbDartle {
       _config,
       _depsCache,
       _cache,
-      unresolvedLocalDeps,
-      unresolvedLocalProcessorDeps,
+      localDependencies,
+      localProcessorDependencies,
     );
     showConfig = createShowConfigTask(_config, !_options.colorfulLog);
     requirements = createRequirementsTask(_files.jbuildJar, configContainer);

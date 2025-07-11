@@ -30,6 +30,11 @@ final class ResolvedProjectDependency {
 
   String? get version => _config.config.version;
 
+  List<String> get exclusions => _config.config.dependencyExclusionPatterns;
+
+  List<String> get procExclusions =>
+      _config.config.processorDependencyExclusionPatterns;
+
   DependencyScope get scope => projectDependency.spec.scope;
 
   CompileOutput get output => _config.output.when(
@@ -75,6 +80,8 @@ final class ResolvedProjectDependency {
 }
 
 final class ResolvedLocalDependencies {
+  static const empty = ResolvedLocalDependencies([], []);
+
   final List<JarDependency> jars;
   final List<ResolvedProjectDependency> projectDependencies;
 
@@ -83,11 +90,6 @@ final class ResolvedLocalDependencies {
   bool get isEmpty => jars.isEmpty && projectDependencies.isEmpty;
 
   bool get isNotEmpty => !isEmpty;
-
-  LocalDependencies get unresolved => LocalDependencies(
-    jars,
-    projectDependencies.map((e) => e.projectDependency).toList(growable: false),
-  );
 }
 
 extension Resolver on ProjectDependency {
