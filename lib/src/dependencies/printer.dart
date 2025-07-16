@@ -18,7 +18,8 @@ import 'package:io/ansi.dart'
         resetBold,
         red,
         resetAll,
-        darkGray;
+        darkGray,
+        blue;
 import 'package:path/path.dart' as paths;
 
 import '../config.dart';
@@ -225,6 +226,9 @@ class _JBuildDepsPrinter {
   bool showLicenses;
   Set<_License> seenLicenses = {};
 
+  static const _indentUnit = '    ';
+  static const _indentAdd = '│   ';
+
   _JBuildDepsPrinter(this.showLicenses);
 
   void header(
@@ -236,12 +240,12 @@ class _JBuildDepsPrinter {
         ? ''
         : 'with scope ${scope.name}';
     final prefix = forProcessor
-        ? 'Annotation processor dependencies'
-        : 'Dependencies';
+        ? 'Annotation processor dependencies:\n'
+        : 'Project Dependencies:\n';
     logger.info(
       AnsiMessage([
         AnsiMessagePart.code(styleItalic),
-        AnsiMessagePart.text('$prefix of '),
+        AnsiMessagePart.text(prefix),
         AnsiMessagePart.code(styleBold),
         AnsiMessagePart.code(magenta),
         AnsiMessagePart.text('${artifact.identifier}$scopeMsg:'),
@@ -250,7 +254,7 @@ class _JBuildDepsPrinter {
   }
 
   void exclusions(List<String> exclusions) {
-    _printExclusions(exclusions);
+    _printExclusions(exclusions, indent: _indentAdd);
   }
 
   void print(
@@ -258,48 +262,63 @@ class _JBuildDepsPrinter {
     Iterable<_LocalDependency> localDeps,
     _DepsArgs options,
   ) async {
-    var map = deps.toMap();
     final visited = <String>{};
-    for (final dep
-        in deps.where((d) => d.isDirect).sortedBy((d) => d.artifact)) {
-      _printTree(dep, map, visited, options);
-    }
-    map = localDeps
+    var map = localDeps
         .expand((d) => d.deps?.dependencies ?? const <ResolvedDependency>[])
         .toMap();
-    for (final dep in localDeps.sortedBy((d) => d.name)) {
+    var finalIndex = localDeps.length - 1;
+    if (deps.isNotEmpty) {
+      // the finalIndex is not reached by the local deps
+      finalIndex++;
+    }
+    for (final (i, dep) in localDeps.sortedBy((d) => d.name).indexed) {
       logger.info(
-        ColoredLogMessage(
-          '$_indentUnit* ${dep.name} ${dep.localSuffix}',
-          LogColor.blue,
-        ),
+        AnsiMessage([
+          AnsiMessagePart.text(_depPoint(i == finalIndex)),
+          AnsiMessagePart.code(blue),
+          AnsiMessagePart.text(' ${dep.name} ${dep.localSuffix}'),
+          AnsiMessagePart.code(resetAll),
+        ]),
       );
       final ddeps = dep.deps;
       if (ddeps != null && ddeps.dependencies.isNotEmpty) {
-        for (final d in ddeps.dependencies.sortedBy((e) => e.artifact)) {
+        finalIndex = ddeps.dependencies.length - 1;
+        for (final (i, d)
+            in ddeps.dependencies.sortedBy((e) => e.artifact).indexed) {
+          final isLast = i == finalIndex;
           _printTree(
             d,
             map,
             visited,
             options,
-            indent: "$_indentUnit$_indentUnit",
+            indent: "$_indentUnit${isLast ? '' : _indentAdd}",
+            isLast: isLast,
           );
         }
       }
     }
-  }
 
-  static const _indentUnit = '  ';
+    map = deps.toMap();
+    final directDeps = deps
+        .where((d) => d.isDirect)
+        .sortedBy((d) => d.artifact)
+        .toList();
+    finalIndex = directDeps.length - 1;
+    for (final (i, dep) in directDeps.indexed) {
+      _printTree(dep, map, visited, options, isLast: i == finalIndex);
+    }
+  }
 
   void _printTree(
     ResolvedDependency dependency,
     Map<String, ResolvedDependency> map,
     Set<String> visited,
     _DepsArgs options, {
-    String indent = _indentUnit,
+    String indent = '',
+    required bool isLast,
   }) {
     if (!visited.add(dependency.artifact)) {
-      _printVisited(dependency.artifact, indent: indent);
+      _printVisited(dependency.artifact, indent: indent, isLast: isLast);
       return;
     }
 
@@ -321,17 +340,28 @@ class _JBuildDepsPrinter {
 
     logger.info(
       AnsiMessage([
+        AnsiMessagePart.text("$indent${_depPoint(isLast)} "),
         AnsiMessagePart.code(styleBold),
-        AnsiMessagePart.text("$indent* ${dependency.artifact}"),
+        AnsiMessagePart.text(dependency.artifact),
         ...licenseParts,
       ]),
     );
 
-    _printExclusions(dependency.spec.exclusions, indent: indent);
+    final nextIndent = '$indent${isLast ? _indentUnit : _indentAdd}';
+    _printExclusions(dependency.spec.exclusions, indent: nextIndent);
 
-    for (final ddep in dependency.dependencies.sorted()) {
+    final finalIndex = dependency.dependencies.length - 1;
+    for (final (i, ddep) in dependency.dependencies.sorted().indexed) {
       final dep = map[ddep]!;
-      _printTree(dep, map, visited, options, indent: '$_indentUnit$indent');
+      final isLast = i == finalIndex;
+      _printTree(
+        dep,
+        map,
+        visited,
+        options,
+        indent: nextIndent,
+        isLast: isLast,
+      );
     }
   }
 
@@ -339,16 +369,27 @@ class _JBuildDepsPrinter {
     for (final exclusion in exclusions.sorted()) {
       logger.info(
         AnsiMessage([
+          AnsiMessagePart.text(indent),
           AnsiMessagePart.code(red),
-          AnsiMessagePart.code(darkGray),
-          AnsiMessagePart.text('$indent${_indentUnit}x $exclusion'),
+          AnsiMessagePart.text('x $exclusion'),
         ]),
       );
     }
   }
 
-  void _printVisited(String dep, {required String indent}) {
-    logger.info(ColoredLogMessage("$indent* $dep (-)", LogColor.gray));
+  void _printVisited(
+    String dep, {
+    required String indent,
+    required bool isLast,
+  }) {
+    final point = _depPoint(isLast);
+    logger.info(
+      AnsiMessage([
+        AnsiMessagePart.text("$indent$point "),
+        AnsiMessagePart.code(darkGray),
+        AnsiMessagePart.text("$dep (-)"),
+      ]),
+    );
   }
 
   void printWarnings(ResolvedDependencies deps) {
@@ -429,6 +470,11 @@ class _JBuildDepsPrinter {
       );
     }
   }
+}
+
+String _depPoint(bool isLast) {
+  if (isLast) return '└──';
+  return '├──';
 }
 
 Iterable<String> _prefixWithDirectDep(
