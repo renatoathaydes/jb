@@ -272,27 +272,32 @@ class _JBuildDepsPrinter {
       finalIndex++;
     }
     for (final (i, dep) in localDeps.sortedBy((d) => d.name).indexed) {
+      final isLast = i == finalIndex;
       logger.info(
         AnsiMessage([
-          AnsiMessagePart.text(_depPoint(i == finalIndex)),
+          AnsiMessagePart.text(_depPoint(isLast)),
           AnsiMessagePart.code(blue),
           AnsiMessagePart.text(' ${dep.name} ${dep.localSuffix}'),
           AnsiMessagePart.code(resetAll),
         ]),
       );
-      final ddeps = dep.deps;
-      if (ddeps != null && ddeps.dependencies.isNotEmpty) {
-        finalIndex = ddeps.dependencies.length - 1;
-        for (final (i, d)
-            in ddeps.dependencies.sortedBy((e) => e.artifact).indexed) {
-          final isLast = i == finalIndex;
+      final ddeps =
+          dep.deps?.dependencies
+              .where((d) => d.isDirect)
+              .sortedBy((d) => d.artifact)
+              .toList() ??
+          const [];
+      if (ddeps.isNotEmpty) {
+        final nextIndent = isLast ? _indentUnit : _indentAdd;
+        finalIndex = ddeps.length - 1;
+        for (final (i, d) in ddeps.indexed) {
           _printTree(
             d,
             map,
             visited,
             options,
-            indent: "$_indentUnit${isLast ? '' : _indentAdd}",
-            isLast: isLast,
+            indent: nextIndent,
+            isLast: i == finalIndex,
           );
         }
       }
