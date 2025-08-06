@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart' show Task, TaskPhase;
-import 'package:dartle/dartle_dart.dart' show DartleDart, RunOnChanges, file;
+import 'package:dartle/dartle_dart.dart'
+    show DartleDart, DirectoryEntry, RunOnChanges, files, entities;
 import 'package:schemake/dart_gen.dart';
+import 'package:schemake/json_schema.dart';
 
 import 'config/jb_config_schema.dart';
 import 'config/jb_extension_schema.dart';
@@ -16,23 +18,30 @@ void setupTaskDependencies(DartleDart dartleDart) {
   dartleDart.analyzeCode.dependsOn(const {generateJbConfigModelTaskName});
 }
 
-const outputFile = configFile;
-
 String _finalPrefix(String _) => '\nfinal ';
 
 Task generateJbConfigModelTask = Task(
-  (_) => _generateJbConfigModel(File(outputFile)),
+  (_) => _generateJbConfigModel(File(configFile), File(jsonSchemaFile)),
   name: generateJbConfigModelTaskName,
   phase: TaskPhase.setup,
   description: 'Generate the jb configuration model from the Schemake schema',
   runCondition: RunOnChanges(
-    inputs: file('pubspec.yaml'),
-    outputs: file(outputFile),
+    inputs: entities(
+      ['pubspec.yaml'],
+      [
+        DirectoryEntry(path: 'dartle-src/config', fileExtensions: {'.dart'}),
+      ],
+    ),
+    outputs: files([configFile, jsonSchemaFile]),
   ),
 );
 
-Future<void> _generateJbConfigModel(File output) async {
-  final writer = output.openWrite();
+Future<void> _generateJbConfigModel(File dartFile, File jsonSchema) async {
+  await jsonSchema.parent.create(recursive: true);
+  await jsonSchema.writeAsString(
+    generateJsonSchema(jbConfig, schemaId: jsonSchemaUri).toString(),
+  );
+  final writer = dartFile.openWrite();
   try {
     writer.write(
       generateDartClasses(
@@ -52,10 +61,5 @@ Future<void> _generateJbConfigModel(File output) async {
   }
 
   // format the generated code to avoid making the 'analyse' task to run
-  await formatDart(outputFile);
-}
-
-main() async {
-  final out = File('jb_model.dart');
-  await _generateJbConfigModel(out);
+  await formatDart(configFile);
 }
