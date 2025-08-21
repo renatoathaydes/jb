@@ -20,7 +20,6 @@ import 'package:io/ansi.dart'
         resetAll,
         darkGray,
         blue;
-import 'package:path/path.dart' as paths;
 
 import '../config.dart';
 import '../jb_files.dart';
@@ -30,17 +29,6 @@ import '../pom.dart';
 import '../resolved_dependency.dart';
 import '../tasks.dart' show depsTaskName;
 import 'deps_cache.dart';
-
-final class _LocalDependency {
-  final String name;
-  final DependencySpec spec;
-  final bool isJar; // is Jar or is Project
-  ResolvedDependencies? deps;
-
-  _LocalDependency(this.name, this.spec, {required this.isJar, this.deps});
-
-  String get localSuffix => isJar ? ' (local jar)' : ' (local project)';
-}
 
 class _DepsArgs {
   final DependencyScope scope;
@@ -106,7 +94,7 @@ class DepsArgValidator with ArgsValidator {
 
 void printDepWarnings(ResolvedDependencies deps) {
   final printer = _JBuildDepsPrinter(false);
-  printer.printWarnings(deps);
+  printer.printWarnings(deps.warnings, deps.dependencies.toMap());
 }
 
 Future<void> printDependencies(
@@ -120,18 +108,6 @@ Future<void> printDependencies(
 ) async {
   final options = const DepsArgValidator()._parse(args);
   final scope = options.scope;
-  final mainLocalDeps = await _getLocalDependencies(
-    jbFiles,
-    depsCache,
-    localDeps,
-    scope: scope,
-  ).toList();
-  final processorLocalDeps = await _getLocalDependencies(
-    jbFiles,
-    depsCache,
-    localProcDeps,
-    scope: scope,
-  ).toList();
   final mainResolved = await depsCache.send(
     GetDeps(jbFiles.dependenciesFile.path),
   );
@@ -147,12 +123,7 @@ Future<void> printDependencies(
 
   final artifact = _createSimpleArtifact(config);
 
-  if ([
-    mainLocalDeps,
-    processorLocalDeps,
-    mainDeps,
-    processorDeps,
-  ].every((d) => d.isEmpty)) {
+  if ([mainDeps, processorDeps].every((d) => d.isEmpty)) {
     logger.info(
       PlainMessage(
         'Project ${artifact.identifier} does not have any dependencies'
@@ -163,49 +134,23 @@ Future<void> printDependencies(
   }
 
   final printer = _JBuildDepsPrinter(options.showLicenses);
-  if (mainDeps.isNotEmpty || mainLocalDeps.isNotEmpty) {
+  if (mainDeps.isNotEmpty) {
+    final depByArtifact = mainDeps.toMap();
     printer
       ..header(artifact, scope)
       ..exclusions(config.dependencyExclusionPatterns)
-      ..print(mainDeps, mainLocalDeps, options)
-      ..printWarnings(mainResolved);
+      ..print(mainDeps, depByArtifact, options)
+      ..printWarnings(mainResolved.warnings, depByArtifact);
   }
-  if (processorLocalDeps.isNotEmpty || processorDeps.isNotEmpty) {
+  if (processorDeps.isNotEmpty) {
+    final depByArtifact = processorDeps.toMap();
     printer
       ..header(artifact, scope, forProcessor: true)
       ..exclusions(config.processorDependencyExclusionPatterns)
-      ..print(processorDeps, processorLocalDeps, options)
-      ..printWarnings(processorResolved);
+      ..print(processorDeps, depByArtifact, options)
+      ..printWarnings(processorResolved.warnings, depByArtifact);
   }
   printer.printSeenLicenses();
-}
-
-Stream<_LocalDependency> _getLocalDependencies(
-  JbFiles jbFiles,
-  DepsCache depsCache,
-  ResolvedLocalDependencies localDependencies, {
-  required DependencyScope scope,
-}) async* {
-  for (final jar in localDependencies.jars) {
-    if (scope.includes(jar.spec.scope)) {
-      yield _LocalDependency(jar.path, jar.spec, isJar: true);
-    }
-  }
-  for (final projectDep in localDependencies.projectDependencies) {
-    if (scope.includes(projectDep.spec.scope)) {
-      final deps = await depsCache.send(
-        GetDeps(
-          paths.join(projectDep.projectDir, jbFiles.dependenciesFile.path),
-        ),
-      );
-      yield _LocalDependency(
-        projectDep.path,
-        projectDep.spec,
-        isJar: false,
-        deps: deps,
-      );
-    }
-  }
 }
 
 Artifact _createSimpleArtifact(JbConfiguration config) {
@@ -259,58 +204,17 @@ class _JBuildDepsPrinter {
 
   void print(
     List<ResolvedDependency> deps,
-    Iterable<_LocalDependency> localDeps,
+    Map<String, ResolvedDependency> depByArtifact,
     _DepsArgs options,
   ) async {
     final visited = <String>{};
-    var map = localDeps
-        .expand((d) => d.deps?.dependencies ?? const <ResolvedDependency>[])
-        .toMap();
-    var finalIndex = localDeps.length - 1;
-    if (deps.isNotEmpty) {
-      // the finalIndex is not reached by the local deps
-      finalIndex++;
-    }
-    for (final (i, dep) in localDeps.sortedBy((d) => d.name).indexed) {
-      final isLast = i == finalIndex;
-      logger.info(
-        AnsiMessage([
-          AnsiMessagePart.text(_depPoint(isLast)),
-          AnsiMessagePart.code(blue),
-          AnsiMessagePart.text(' ${dep.name} ${dep.localSuffix}'),
-          AnsiMessagePart.code(resetAll),
-        ]),
-      );
-      final ddeps =
-          dep.deps?.dependencies
-              .where((d) => d.isDirect)
-              .sortedBy((d) => d.artifact)
-              .toList() ??
-          const [];
-      if (ddeps.isNotEmpty) {
-        final nextIndent = isLast ? _indentUnit : _indentAdd;
-        finalIndex = ddeps.length - 1;
-        for (final (i, d) in ddeps.indexed) {
-          _printTree(
-            d,
-            map,
-            visited,
-            options,
-            indent: nextIndent,
-            isLast: i == finalIndex,
-          );
-        }
-      }
-    }
-
-    map = deps.toMap();
     final directDeps = deps
         .where((d) => d.isDirect)
         .sortedBy((d) => d.artifact)
         .toList();
-    finalIndex = directDeps.length - 1;
+    final finalIndex = directDeps.length - 1;
     for (final (i, dep) in directDeps.indexed) {
-      _printTree(dep, map, visited, options, isLast: i == finalIndex);
+      _printTree(dep, depByArtifact, visited, options, isLast: i == finalIndex);
     }
   }
 
@@ -323,7 +227,7 @@ class _JBuildDepsPrinter {
     required bool isLast,
   }) {
     if (!visited.add(dependency.artifact)) {
-      _printVisited(dependency.artifact, indent: indent, isLast: isLast);
+      _printVisited(dependency, indent: indent, isLast: isLast);
       return;
     }
 
@@ -342,12 +246,14 @@ class _JBuildDepsPrinter {
         ];
       }
     }
-
+    final isLocal = dependency.spec.path != null;
     logger.info(
       AnsiMessage([
         AnsiMessagePart.text("$indent${_depPoint(isLast)} "),
         AnsiMessagePart.code(styleBold),
-        AnsiMessagePart.text(dependency.artifact),
+        if (isLocal) AnsiMessagePart.code(blue),
+        AnsiMessagePart.text(dependency.artifact + (isLocal ? ' (local)' : '')),
+        AnsiMessagePart.code(resetAll),
         ...licenseParts,
       ]),
     );
@@ -383,28 +289,26 @@ class _JBuildDepsPrinter {
   }
 
   void _printVisited(
-    String dep, {
+    ResolvedDependency dep, {
     required String indent,
     required bool isLast,
   }) {
     final point = _depPoint(isLast);
+    final local = dep.spec.path == null ? '' : ' (local)';
     logger.info(
       AnsiMessage([
         AnsiMessagePart.text("$indent$point "),
         AnsiMessagePart.code(darkGray),
-        AnsiMessagePart.text("$dep (-)"),
+        AnsiMessagePart.text("${dep.artifact}$local (-)"),
       ]),
     );
   }
 
-  void printWarnings(ResolvedDependencies deps) {
-    final warnings = deps.warnings;
+  void printWarnings(
+    List<DependencyWarning> warnings,
+    Map<String, ResolvedDependency> depByArtifact,
+  ) {
     if (warnings.isEmpty) return;
-    final directDepByArtifact = Map.fromEntries(
-      deps.dependencies
-          .where((d) => d.isDirect)
-          .expand((d) => d.dependencies.map((e) => MapEntry(e, d))),
-    );
     logger.info(
       ColoredLogMessage('Dependency tree contains conflicts:', LogColor.yellow),
     );
@@ -423,7 +327,7 @@ class _JBuildDepsPrinter {
               AnsiMessagePart.text(': '),
               ..._prefixWithDirectDep(
                 c.requestedBy,
-                directDepByArtifact,
+                depByArtifact,
               ).map(AnsiMessagePart.text).toList().joinWith(const [
                 AnsiMessagePart.code(darkGray),
                 AnsiMessagePart.text(' -> '),
@@ -484,13 +388,13 @@ String _depPoint(bool isLast) {
 
 Iterable<String> _prefixWithDirectDep(
   List<String> requestedBy,
-  Map<String, ResolvedDependency> directDepByArtifact,
+  Map<String, ResolvedDependency> depByArtifact,
 ) {
   // the first item in the requestedBy List is a dep of some direct dependency,
   // we need to locate which one.
   if (requestedBy.isEmpty) return requestedBy;
   final dep = requestedBy.first;
-  final directDep = directDepByArtifact[dep];
+  final directDep = depByArtifact[dep]?.vmap((d) => d.isDirect ? d : null);
   if (directDep != null) {
     return [directDep.artifact].followedBy(requestedBy);
   }

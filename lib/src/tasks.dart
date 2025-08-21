@@ -234,10 +234,10 @@ Task createWriteDependenciesTask(
   FileCollection jbFileInputs,
   JBuildSender jbuildSender,
 ) {
-  final deps = Map.fromEntries(
+  final nonLocalDeps = Map.fromEntries(
     config.allDependencies.where((d) => d.value.path == null),
   );
-  final procDeps = Map.fromEntries(
+  final nonLocalProcDeps = Map.fromEntries(
     config.allProcessorDependencies.where((d) => d.value.path == null),
   );
   final preArgs = config.preArgs(Directory.current.path);
@@ -262,8 +262,8 @@ Task createWriteDependenciesTask(
       exclusions,
       procExclusions,
       args,
-      deps: deps,
-      procDeps: procDeps,
+      nonLocalDeps: nonLocalDeps,
+      nonLocalProcDeps: nonLocalProcDeps,
       localDeps: localDependencies,
       localProcDeps: localProcessorDependencies,
     ),
@@ -293,8 +293,7 @@ Task createVerifyDependenciesTask(
           'Annotation Processor dependencies contains version conflicts',
         );
       }
-      for (final entry in [(deps, false), (procDeps, true)]) {
-        final (deps, forProcessor) = entry;
+      for (final (deps, forProcessor) in [(deps, false), (procDeps, true)]) {
         if (deps.warnings.isNotEmpty) {
           if (deps.warnings.isNotEmpty) {
             final prefix = forProcessor ? 'Annotation Processor' : 'Project';
@@ -304,7 +303,7 @@ Task createVerifyDependenciesTask(
           failBuild(
             reason:
                 'Dependency graph contains version conflicts (see above)!\n'
-                'You must fix the conflicts as explained at $link',
+                'You need to fix the conflicts as explained at $link',
           );
         }
       }
@@ -514,7 +513,7 @@ Future<void> _install(
   Dependencies dependencies,
   String outputDir,
 ) async {
-  final deps = await dependencies.resolveArtifacts();
+  final deps = await dependencies.resolveArtifacts(includeLocal: false);
   if (deps.isEmpty) {
     return logger.fine("No dependencies to install for '$taskName'.");
   }

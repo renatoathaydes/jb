@@ -21,7 +21,7 @@ KnownDependencies createKnownDeps(
 }
 
 sealed class Dependencies {
-  FutureOr<List<String>> resolveArtifacts();
+  FutureOr<List<String>> resolveArtifacts({required bool includeLocal});
 
   const Dependencies();
 }
@@ -34,21 +34,14 @@ final class FileDependencies extends Dependencies {
   const FileDependencies(this.file, this.depsCache, this.scopeFilter);
 
   @override
-  Future<List<String>> resolveArtifacts() async {
+  Future<List<String>> resolveArtifacts({required bool includeLocal}) async {
     return (await depsCache.send(GetDeps(file.path))).dependencies
-        .where((dep) => scopeFilter(dep.spec.scope))
+        .where(
+          (dep) =>
+              scopeFilter(dep.spec.scope) &&
+              (includeLocal || dep.spec.path == null),
+        )
         .map((dep) => dep.artifact)
         .toList(growable: false);
-  }
-}
-
-final class SimpleDependencies extends Dependencies {
-  final List<String> artifacts;
-
-  const SimpleDependencies(this.artifacts);
-
-  @override
-  List<String> resolveArtifacts() {
-    return artifacts;
   }
 }

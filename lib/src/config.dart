@@ -532,14 +532,12 @@ const DependencySpec defaultSpec = DependencySpec(
 );
 
 extension DependencySpecExtension on DependencySpec {
-  Future<PathDependency>? toPathDependency() {
+  PathDependency? toPathDependency(String artifact) {
     final thisPath = path;
     if (thisPath == null) return null;
-    return FileSystemEntity.isFile(thisPath).then(
-      (isFile) => isFile
-          ? PathDependency.jar(this, thisPath)
-          : PathDependency.jbuildProject(this, thisPath),
-    );
+    return thisPath.endsWith('.jar')
+        ? PathDependency.jar(artifact, this, thisPath)
+        : PathDependency.jbuildProject(artifact, this, thisPath);
   }
 
   DependencySpec resolveProperties(Properties props) {

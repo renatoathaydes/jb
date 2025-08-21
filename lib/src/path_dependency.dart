@@ -2,18 +2,23 @@ import 'config.dart' show DependencySpec;
 
 /// A dependency that refers to a local path.
 sealed class PathDependency {
+  final String artifact;
   DependencySpec get spec;
 
   String get path;
 
-  const PathDependency();
+  const PathDependency(this.artifact);
 
-  static PathDependency jar(DependencySpec spec, String path) {
-    return JarDependency(spec, path);
+  static PathDependency jar(String artifact, DependencySpec spec, String path) {
+    return JarDependency(artifact, spec, path);
   }
 
-  static PathDependency jbuildProject(DependencySpec spec, String path) {
-    return ProjectDependency(spec, path);
+  static PathDependency jbuildProject(
+    String artifact,
+    DependencySpec spec,
+    String path,
+  ) {
+    return ProjectDependency(artifact, spec, path);
   }
 
   T when<T>({
@@ -28,7 +33,7 @@ final class ProjectDependency extends PathDependency {
   @override
   final String path;
 
-  const ProjectDependency(this.spec, this.path);
+  const ProjectDependency(super.artifact, this.spec, this.path);
 
   @override
   T when<T>({
@@ -43,7 +48,7 @@ final class JarDependency extends PathDependency {
   @override
   final String path;
 
-  const JarDependency(this.spec, this.path);
+  const JarDependency(super.artifact, this.spec, this.path);
 
   @override
   T when<T>({

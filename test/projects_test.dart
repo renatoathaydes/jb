@@ -103,6 +103,33 @@ void main() {
       expectSuccess(javaResult);
       expect(javaResult.stdout, equals(const ['Minimal jb project[1, 2, 3]']));
     });
+
+    test('can print dependencies', () async {
+      final jbResult = await runJb(Directory(withDepsProjectDir), [
+        'dependencies',
+        '--no-color',
+      ]);
+      expectSuccess(jbResult);
+      final lines = jbResult.stdout as List<String>;
+      final runningTaskIndex = lines.indexWhere(
+        (line) => line.endsWith("INFO - Running task 'dependencies'"),
+      );
+      expect(runningTaskIndex, greaterThan(0));
+
+      final endIndex = lines.indexWhere(
+        (line) => line.startsWith("Build succeeded in "),
+      );
+      expect(endIndex, greaterThan(runningTaskIndex));
+
+      expect(
+        lines.sublist(runningTaskIndex + 1, endIndex).join('\n'),
+        equals('''\
+Project Dependencies:
+com.example:with-deps:1.2.3:
+├── com.example:lists:1.0
+└── minimal-sample (local)'''),
+      );
+    });
   });
 
   projectGroup(withSubProjectDir, 'with-sub-project project', () {

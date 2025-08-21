@@ -107,14 +107,13 @@ class JbDartle {
     required String name,
   }) async {
     final pathDependencies = dependencies
-        .map((e) => e.value.toPathDependency())
-        .whereNonNull()
-        .toStream();
+        .map((e) => e.value.toPathDependency(e.key))
+        .nonNulls;
 
     final projectDeps = <ProjectDependency>[];
     final jars = <JarDependency>[];
 
-    await for (final pathDep in pathDependencies) {
+    for (final pathDep in pathDependencies) {
       pathDep.when(jar: jars.add, jbuildProject: projectDeps.add);
     }
 

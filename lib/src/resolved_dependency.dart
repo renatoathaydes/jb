@@ -22,6 +22,13 @@ final class ResolvedProjectDependency {
 
   DependencySpec get spec => projectDependency.spec;
 
+  String get artifact => "$group:$module:$version";
+
+  Map<String, DependencySpec?> get dependencies => _config.config.dependencies;
+
+  Map<String, DependencySpec?> get processorDependencies =>
+      _config.config.processorDependencies;
+
   String get path => projectDependency.path;
 
   String? get group => _config.config.group;
@@ -77,6 +84,15 @@ final class ResolvedProjectDependency {
 
     logger.fine(() => "Project dependency '$projectDir' initialized");
   }
+
+  ResolvedDependency toResolvedDependency({required bool isDirect}) =>
+      ResolvedDependency(
+        artifact: artifact,
+        spec: spec,
+        sha1: '',
+        isDirect: isDirect,
+        dependencies: dependencies.keys.toList(growable: false),
+      );
 }
 
 final class ResolvedLocalDependencies {
@@ -94,6 +110,10 @@ final class ResolvedLocalDependencies {
 
 extension Resolver on ProjectDependency {
   /// Resolve a [ProjectDependency]'s [JbConfiguration].
+  ///
+  /// The `path` may be one of the following:
+  ///   * directory containing a jb project.
+  ///   * file expected to be the jb config file.
   Future<ResolvedProjectDependency> resolve() async {
     final dir = Directory(path);
     FileConfigSource configSource;
@@ -103,8 +123,16 @@ extension Resolver on ProjectDependency {
       projectDir = p.canonicalize(dir.absolute.path);
     } else {
       // maybe it's a dependency on a particular jb file
-      configSource = FileConfigSource([path]);
-      projectDir = p.canonicalize(p.dirname(path));
+      if (const {jsonJbFile, yamlJbFile}.contains(p.basename(path))) {
+        configSource = FileConfigSource([path]);
+        projectDir = p.canonicalize(p.dirname(path));
+      } else {
+        throw DartleException(
+          message:
+              'Cannot load project dependency at path "$path": '
+              'not a jb project directory or jb config file.',
+        );
+      }
     }
     JbConfigContainer config;
     try {

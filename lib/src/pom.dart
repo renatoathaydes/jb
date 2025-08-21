@@ -80,7 +80,9 @@ String createPom(
           xml.element(
             'dependencies',
             nest: () {
-              for (final dep in dependencies) {
+              for (final dep in dependencies.where(
+                (d) => d.spec.path == null,
+              )) {
                 xml.dependency(dep.artifact, dep.spec);
               }
               for (final localDep in localDependencies.projectDependencies) {

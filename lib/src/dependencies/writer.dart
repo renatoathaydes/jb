@@ -17,10 +17,7 @@ import '../utils.dart';
 import 'deps_cache.dart';
 import 'parse.dart';
 
-typedef _ExclusionsAndProjectDeps = (
-  List<String>,
-  Future<ResolvedDependencies>,
-);
+typedef _ExclusionsAndProjectDeps = (List<String>, ResolvedDependency);
 
 Future<void> writeDependencies(
   JBuildSender jBuildSender,
@@ -31,8 +28,8 @@ Future<void> writeDependencies(
   Set<String> exclusions,
   Set<String> procExclusions,
   List<String> args, {
-  required Map<String, DependencySpec> deps,
-  required Map<String, DependencySpec> procDeps,
+  required Map<String, DependencySpec> nonLocalDeps,
+  required Map<String, DependencySpec> nonLocalProcDeps,
   required ResolvedLocalDependencies localDeps,
   required ResolvedLocalDependencies localProcDeps,
 }) async {
@@ -57,10 +54,9 @@ Future<void> writeDependencies(
     preArgs,
     jbFiles,
     depsCache,
-    deps,
-    localDeps,
+    nonLocalDeps,
     exclusions,
-    projectDeps,
+    await projectDeps.toList(),
     jbFiles.dependenciesFile,
   );
   await _write(
@@ -68,10 +64,9 @@ Future<void> writeDependencies(
     preArgs,
     jbFiles,
     depsCache,
-    procDeps,
-    localProcDeps,
+    nonLocalProcDeps,
     procExclusions,
-    procProjectDeps,
+    await procProjectDeps.toList(),
     jbFiles.processorDependenciesFile,
   );
   final testRunnerLib = findTestRunnerLib(mainDeps);
@@ -88,28 +83,46 @@ Future<void> writeDependencies(
     jbFiles,
     depsCache,
     testRunnerLibs,
-    ResolvedLocalDependencies.empty,
     const {},
     const [],
     jbFiles.testRunnerDependenciesFile,
   );
 }
 
-Iterable<_ExclusionsAndProjectDeps> _directProjectDeps(
+Stream<_ExclusionsAndProjectDeps> _directProjectDeps(
   ResolvedLocalDependencies localDeps,
   DepsCache depsCache,
   JbFiles jbFiles, {
   required bool forProcessor,
-}) sync* {
+}) async* {
   for (final pd in localDeps.projectDependencies) {
-    final futureDeps = depsCache.send(
+    final projectDeps = await depsCache.send(
       GetDeps(paths.join(pd.projectDir, jbFiles.dependenciesFile.path)),
     );
     final exclusions = pd.spec.exclusions;
     final rootExclusions = forProcessor ? pd.procExclusions : pd.exclusions;
-    // each item includes the root Exclusions as well as the dep's exclusions
-    // so that jb will resolve the exact same tree.
-    yield ([...rootExclusions, ...exclusions], futureDeps);
+    yield (
+      [...rootExclusions, ...exclusions],
+      pd.toResolvedDependency(isDirect: true),
+    );
+
+    for (final dep in projectDeps.dependencies.where((d) => d.isDirect)) {
+      yield (
+        [...rootExclusions, ...exclusions, ...dep.spec.exclusions],
+        dep.copyWith(isDirect: false),
+      );
+    }
+  }
+
+  for (final jar in localDeps.jars) {
+    final rd = ResolvedDependency(
+      artifact: jar.artifact,
+      spec: jar.spec,
+      sha1: '',
+      isDirect: true,
+      dependencies: const [],
+    );
+    yield (const [], rd);
   }
 }
 
@@ -122,19 +135,23 @@ Future<ResolvedDependencies> _write(
   List<String> preArgs,
   JbFiles jbFiles,
   DepsCache depsCache,
-  Map<String, DependencySpec> deps,
-  ResolvedLocalDependencies localDeps,
+  Map<String, DependencySpec> nonLocalDeps,
   Set<String> exclusions,
-  Iterable<_ExclusionsAndProjectDeps> projectDeps,
+  List<_ExclusionsAndProjectDeps> projectDeps,
   File depsFile,
 ) async {
   ResolvedDependencies? results;
-  if (deps.isNotEmpty || projectDeps.isNotEmpty) {
-    _checkDependenciesAreNotExcludedDirectly(deps, exclusions);
+  if (nonLocalDeps.isNotEmpty || projectDeps.isNotEmpty) {
+    _checkDependenciesAreNotExcludedDirectly(nonLocalDeps, exclusions);
 
-    final allDepsOptions = deps.entries
-        .expand((d) => [d.key, ...d.value.exclusions.expand(_exclusionOption)])
-        .followedBy(await projectDeps.expandToJBuildOptions().toList());
+    final nonLocalDepsOptions = nonLocalDeps.entries
+        .map((e) => (e.key, e.value.exclusions))
+        .followedBy(
+          projectDeps
+              .where((e) => e.$2.spec.path == null)
+              .map((e) => (e.$2.artifact, e.$1)),
+        )
+        .expand((e) => [e.$1, ...e.$2.expand(_exclusionOption)]);
 
     final collector = Actor.create(_CollectorActor.new);
     await jBuildSender.send(
@@ -146,10 +163,20 @@ Future<ResolvedDependencies> _write(
         '--scope',
         'runtime',
         ...exclusions.expand(_exclusionOption),
-        ...allDepsOptions,
+        ...nonLocalDepsOptions,
       ], _CollectorSendable(await collector.toSendable())),
     );
-    results = await collector.send(const _Done());
+
+    // the Done response must NOT be null
+    final allDeps = [...(await collector.send(const _Done()))!];
+
+    // allDeps only contains the non-local deps so far, so add the local ones
+    for (final (_, dep) in projectDeps) {
+      if (dep.spec.path != null) {
+        allDeps.add(dep);
+      }
+    }
+    results = ResolvedDependencies(dependencies: allDeps, warnings: const []);
   }
   results ??= const ResolvedDependencies(dependencies: [], warnings: []);
 
@@ -198,11 +225,12 @@ final class _Line extends _CollectorMessage {
 
 /// Actor that collects lines and passes them to [JBuildDepsCollector]
 /// until a [_Done] message is received, when it returns the results.
-class _CollectorActor with Handler<_CollectorMessage, ResolvedDependencies?> {
+class _CollectorActor
+    with Handler<_CollectorMessage, List<ResolvedDependency>?> {
   final _collector = JBuildDepsCollector();
 
   @override
-  ResolvedDependencies? handle(_CollectorMessage message) {
+  List<ResolvedDependency>? handle(_CollectorMessage message) {
     return switch (message) {
       _Line(line: var line) => () {
         _collector(line);
@@ -210,7 +238,7 @@ class _CollectorActor with Handler<_CollectorMessage, ResolvedDependencies?> {
       }(),
       _Done() => () {
         _collector.done();
-        return _collector.resolvedDeps;
+        return _collector.resolvedDeps.dependencies;
       }(),
     };
   }
@@ -218,27 +246,12 @@ class _CollectorActor with Handler<_CollectorMessage, ResolvedDependencies?> {
 
 /// Wrapper for [_CollectorActor]'s [Sendable] that has the necessary type.
 class _CollectorSendable with Sendable<String, void> {
-  final Sendable<_CollectorMessage, ResolvedDependencies?> delegate;
+  final Sendable<_CollectorMessage, List<ResolvedDependency>?> delegate;
 
   _CollectorSendable(this.delegate);
 
   @override
   Future<void> send(String message) {
     return delegate.send(_Line(message));
-  }
-}
-
-extension on Iterable<_ExclusionsAndProjectDeps> {
-  Stream<String> expandToJBuildOptions() async* {
-    for (final entry in this) {
-      final (exclusions, depsFuture) = entry;
-      final resolvedDeps = await depsFuture;
-      for (final dep in resolvedDeps.dependencies) {
-        if (dep.isDirect) {
-          yield dep.artifact;
-          yield* Stream.fromIterable(exclusions.expand(_exclusionOption));
-        }
-      }
-    }
   }
 }
