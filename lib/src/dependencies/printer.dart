@@ -263,7 +263,13 @@ class _JBuildDepsPrinter {
 
     final finalIndex = dependency.dependencies.length - 1;
     for (final (i, ddep) in dependency.dependencies.sorted().indexed) {
-      final dep = map[ddep]!;
+      final dep = map[ddep];
+      if (dep == null) {
+        // this happens when a local dependency has a name that does not match
+        // the artifact (e.g. "greeting:" when the artifact is "tests:greetings-app:1.0").
+        logger.finest(() => 'Dependency not found in the mapping: $ddep');
+        continue;
+      }
       final isLast = i == finalIndex;
       _printTree(
         dep,

@@ -33,13 +33,13 @@ Future<void> writeDependencies(
   required ResolvedLocalDependencies localDeps,
   required ResolvedLocalDependencies localProcDeps,
 }) async {
-  final projectDeps = _directProjectDeps(
+  final projectDeps = _projectDepsAndExclusions(
     localDeps,
     depsCache,
     jbFiles,
     forProcessor: false,
   );
-  final procProjectDeps = _directProjectDeps(
+  final procProjectDeps = _projectDepsAndExclusions(
     localProcDeps,
     depsCache,
     jbFiles,
@@ -89,7 +89,7 @@ Future<void> writeDependencies(
   );
 }
 
-Stream<_ExclusionsAndProjectDeps> _directProjectDeps(
+Stream<_ExclusionsAndProjectDeps> _projectDepsAndExclusions(
   ResolvedLocalDependencies localDeps,
   DepsCache depsCache,
   JbFiles jbFiles, {
@@ -146,11 +146,6 @@ Future<ResolvedDependencies> _write(
 
     final nonLocalDepsOptions = nonLocalDeps.entries
         .map((e) => (e.key, e.value.exclusions))
-        .followedBy(
-          projectDeps
-              .where((e) => e.$2.spec.path == null)
-              .map((e) => (e.$2.artifact, e.$1)),
-        )
         .expand((e) => [e.$1, ...e.$2.expand(_exclusionOption)]);
 
     final collector = Actor.create(_CollectorActor.new);
@@ -170,11 +165,8 @@ Future<ResolvedDependencies> _write(
     // the Done response must NOT be null
     final allDeps = [...(await collector.send(const _Done()))!];
 
-    // allDeps only contains the non-local deps so far, so add the local ones
     for (final (_, dep) in projectDeps) {
-      if (dep.spec.path != null) {
-        allDeps.add(dep);
-      }
+      allDeps.add(dep);
     }
     results = ResolvedDependencies(dependencies: allDeps, warnings: const []);
   }
