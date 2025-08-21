@@ -2800,7 +2800,7 @@ const allLicenses = <String, License>{
   ),
   "libpng-1.6.35": License(
     licenseId: "libpng-1.6.35",
-    name: "PNG Reference Library License v1 (for libpng 0.5 through 1.6.35",
+    name: "PNG Reference Library License v1 (for libpng 0.5 through 1.6.35)",
     uri: "https://spdx.org/licenses/libpng-1.6.35.html",
     isOsiApproved: false,
     isFsfLibre: null,
@@ -4366,6 +4366,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "SUL-1.0": License(
+    licenseId: "SUL-1.0",
+    name: "Sustainable Use License v1.0",
+    uri: "https://spdx.org/licenses/SUL-1.0.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "Sun-PPP": License(
     licenseId: "Sun-PPP",
     name: "Sun PPP License",
@@ -4693,6 +4700,13 @@ const allLicenses = <String, License>{
     name: "Widget Workshop License",
     uri: "https://spdx.org/licenses/Widget-Workshop.html",
     isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "WordNet": License(
+    licenseId: "WordNet",
+    name: "WordNet License",
+    uri: "https://spdx.org/licenses/WordNet.html",
+    isOsiApproved: true,
     isFsfLibre: null,
   ),
   "Wsuipa": License(
