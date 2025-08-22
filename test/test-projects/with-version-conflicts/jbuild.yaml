@@ -1,0 +1,31 @@
+group: com.athaydes.tests
+module: my-app
+version: '0.0.0'
+
+# default is src
+source-dirs: [ src ]
+
+# default is resources
+resource-dirs: [ resources ]
+
+# The following options use the default values and could be omitted
+compile-libs-dir: build/compile-libs
+runtime-libs-dir: build/runtime-libs
+test-reports-dir: build/test-reports
+
+# Specify a jar to package this project into.
+# Use `output-dir` instead to keep class files unpacked.
+# default is `build/<project-dir>.jar`.
+output-jar: build/my-app.jar
+
+# To be able to use the 'run' task without arguments, specify the main-class to run.
+# You can also run any class by invoking `jb run :--main-class=some.other.Class`.
+main-class: app.Main
+
+# dependencies can be Maven artifacts or other jb projects
+dependencies:
+    org.slf4j:slf4j-api:2.0.16:
+    with-sub-project: # tests:greetings-app
+      path: ../with-sub-project
+    with-deps: # com.example:with-deps
+      path: ../with-deps
