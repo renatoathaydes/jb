@@ -331,19 +331,25 @@ class _JBuildDepsPrinter {
               AnsiMessagePart.text('    - ${c.version}'),
               AnsiMessagePart.code(resetAll),
               AnsiMessagePart.text(': '),
-              ..._prefixWithDirectDep(
-                c.requestedBy,
-                depByArtifact,
-              ).map(AnsiMessagePart.text).toList().joinWith(const [
-                AnsiMessagePart.code(darkGray),
-                AnsiMessagePart.text(' -> '),
-                AnsiMessagePart.code(resetAll),
-              ]),
+              ..._requirementChain(c.requestedBy),
               AnsiMessagePart.text('\n'),
             ],
           ),
         ]),
       );
+    }
+  }
+
+  Iterable<AnsiMessagePart> _requirementChain(List<String> requestedBy) sync* {
+    if (requestedBy.isEmpty) {
+      yield AnsiMessagePart.code(darkGray);
+      yield AnsiMessagePart.text('(direct dependency)');
+    } else {
+      yield* requestedBy.map(AnsiMessagePart.text).toList().joinWith(const [
+        AnsiMessagePart.code(darkGray),
+        AnsiMessagePart.text(' -> '),
+        AnsiMessagePart.code(resetAll),
+      ]);
     }
   }
 
@@ -390,21 +396,6 @@ class _JBuildDepsPrinter {
 String _depPoint(bool isLast) {
   if (isLast) return '└──';
   return '├──';
-}
-
-Iterable<String> _prefixWithDirectDep(
-  List<String> requestedBy,
-  Map<String, ResolvedDependency> depByArtifact,
-) {
-  // the first item in the requestedBy List is a dep of some direct dependency,
-  // we need to locate which one.
-  if (requestedBy.isEmpty) return requestedBy;
-  final dep = requestedBy.first;
-  final directDep = depByArtifact[dep]?.vmap((d) => d.isDirect ? d : null);
-  if (directDep != null) {
-    return [directDep.artifact].followedBy(requestedBy);
-  }
-  return requestedBy;
 }
 
 _License _findLicense(DependencyLicense license) {

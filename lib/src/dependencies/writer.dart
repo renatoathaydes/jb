@@ -16,6 +16,7 @@ import '../tasks.dart' show writeDepsTaskName;
 import '../utils.dart';
 import 'deps_cache.dart';
 import 'parse.dart';
+import 'warnings.dart';
 
 typedef _ExclusionsAndProjectDeps = (List<String>, ResolvedDependency);
 
@@ -50,6 +51,7 @@ Future<void> writeDependencies(
   // e.g. jbuild fetch -d sha1-dir group:module:version:jar.sha1
   // and then read the file sha1-dir/<module>-<version>.jar.sha1
   final mainDeps = await _write(
+    'Project dependencies',
     jBuildSender,
     preArgs,
     jbFiles,
@@ -60,6 +62,7 @@ Future<void> writeDependencies(
     jbFiles.dependenciesFile,
   );
   await _write(
+    'Annotation processor dependencies',
     jBuildSender,
     preArgs,
     jbFiles,
@@ -78,6 +81,7 @@ Future<void> writeDependencies(
   );
 
   await _write(
+    'Test runner dependencies',
     jBuildSender,
     preArgs,
     jbFiles,
@@ -131,6 +135,7 @@ MapEntry<String, DependencySpec> _testRunnerEntry(String lib) {
 }
 
 Future<ResolvedDependencies> _write(
+  String description,
   JBuildSender jBuildSender,
   List<String> preArgs,
   JbFiles jbFiles,
@@ -168,7 +173,18 @@ Future<ResolvedDependencies> _write(
     for (final (_, dep) in projectDeps) {
       allDeps.add(dep);
     }
-    results = ResolvedDependencies(dependencies: allDeps, warnings: const []);
+
+    logger.fine(() => '$description: found ${allDeps.length} dependencies');
+
+    final stopwatch = Stopwatch()..start();
+    final warnings = computeWarnings(allDeps).toList(growable: false);
+    logger.log(
+      profile,
+      () =>
+          '$description: computed ${warnings.length} '
+          'warnings in ${elapsedTime(stopwatch)}',
+    );
+    results = ResolvedDependencies(dependencies: allDeps, warnings: warnings);
   }
   results ??= const ResolvedDependencies(dependencies: [], warnings: []);
 
