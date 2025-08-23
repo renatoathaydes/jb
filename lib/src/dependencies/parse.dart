@@ -166,11 +166,14 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     if (_currentWarningArtifact != null) {
       match = _versionRequestsPattern.firstMatch(line);
       if (match != null) {
-        final version = match.namedGroup('ver')!;
-        final requestedBy = match.namedGroup('req')!.split(' -> ');
-        _currentWarnings.add(
-          VersionConflict(version: version, requestedBy: requestedBy),
-        );
+        // Stop actually parsing version conflicts from JBuild... we need to do
+        // it in jb because of the way jb resolves dependencies across projects.
+        //
+        // final version = match.namedGroup('ver')!;
+        // final requestedBy = match.namedGroup('req')!.split(' -> ');
+        // _currentWarnings.add(
+        //   VersionConflict(version: version, requestedBy: requestedBy),
+        // );
         return;
       }
     }

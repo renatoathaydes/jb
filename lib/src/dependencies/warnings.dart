@@ -18,7 +18,9 @@ Iterable<DependencyWarning> computeWarnings(
     final parts = dep.artifact.split(':');
     if (parts.length < 3) {
       logger.warning(
-        () => 'Invalid dependency artfifact: ${dep.artifact} ($dep)',
+        () =>
+            'Invalid dependency declaration (should be <group:module:version>): '
+            '${dep.artifact} ($dep)',
       );
     } else {
       final artifact = parts.sublist(0, 2).join(':');

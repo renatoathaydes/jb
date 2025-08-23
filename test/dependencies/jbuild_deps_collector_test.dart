@@ -1092,257 +1092,261 @@ JBuild success in 415 ms!
         expect(actual, equals(expected));
       }
 
-      expect(
-        collector.resolvedDeps.warnings,
-        equals([
-          DependencyWarning(
-            artifact: 'org.slf4j:slf4j-api',
-            versionConflicts: [
-              VersionConflict(
-                version: '2.0.16',
-                requestedBy: [
-                  'org.springframework.boot:spring-boot-starter:3.5.3',
-                  'org.springframework.boot:spring-boot-starter-logging:3.5.3',
-                  'org.apache.logging.log4j:log4j-to-slf4j:2.24.3',
-                  'org.slf4j:slf4j-api:2.0.16',
-                ],
-              ),
-              VersionConflict(
-                version: '2.0.17',
-                requestedBy: [
-                  'org.springframework.boot:spring-boot-starter:3.5.3',
-                  'org.springframework.boot:spring-boot-starter-logging:3.5.3',
-                  'ch.qos.logback:logback-classic:1.5.18',
-                  'org.slf4j:slf4j-api:2.0.17',
-                ],
-              ),
-            ],
-          ),
-          DependencyWarning(
-            artifact: 'org.springframework:spring-jcl',
-            versionConflicts: [
-              VersionConflict(
-                version: '6.2.8',
-                requestedBy: [
-                  'org.springframework.boot:spring-boot-starter:3.5.3',
-                  'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
-                  'org.springframework.boot:spring-boot:3.5.3',
-                  'org.springframework:spring-context:6.2.8',
-                  'org.springframework:spring-aop:6.2.8',
-                  'org.springframework:spring-beans:6.2.8',
-                  'org.springframework:spring-core:6.2.8',
-                  'org.springframework:spring-jcl:6.2.8',
-                ],
-              ),
-              VersionConflict(
-                version: '6.2.7',
-                requestedBy: [
-                  'org.springframework.security:spring-security-config:6.5.1',
-                  'org.springframework.security:spring-security-core:6.5.1',
-                  'org.springframework:spring-aop:6.2.7',
-                  'org.springframework:spring-beans:6.2.7',
-                  'org.springframework:spring-core:6.2.7',
-                  'org.springframework:spring-jcl:6.2.7',
-                ],
-              ),
-            ],
-          ),
-          DependencyWarning(
-            artifact: 'org.springframework:spring-context',
-            versionConflicts: [
-              VersionConflict(
-                version: '6.2.8',
-                requestedBy: [
-                  'org.springframework.boot:spring-boot-starter:3.5.3',
-                  'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
-                  'org.springframework.boot:spring-boot:3.5.3',
-                  'org.springframework:spring-context:6.2.8',
-                ],
-              ),
-              VersionConflict(
-                version: '6.2.7',
-                requestedBy: [
-                  'org.springframework.security:spring-security-config:6.5.1',
-                  'org.springframework.security:spring-security-core:6.5.1',
-                  'org.springframework:spring-context:6.2.7',
-                ],
-              ),
-            ],
-          ),
-          DependencyWarning(
-            artifact: 'io.micrometer:micrometer-commons',
-            versionConflicts: [
-              VersionConflict(
-                version: '1.14.8',
-                requestedBy: [
-                  'org.springframework.boot:spring-boot-starter:3.5.3',
-                  'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
-                  'org.springframework.boot:spring-boot:3.5.3',
-                  'org.springframework:spring-context:6.2.8',
-                  'io.micrometer:micrometer-observation:1.14.8',
-                  'io.micrometer:micrometer-commons:1.14.8',
-                ],
-              ),
-              VersionConflict(
-                version: '1.14.7',
-                requestedBy: [
-                  'org.springframework.security:spring-security-config:6.5.1',
-                  'org.springframework.security:spring-security-core:6.5.1',
-                  'org.springframework:spring-context:6.2.7',
-                  'io.micrometer:micrometer-observation:1.14.7',
-                  'io.micrometer:micrometer-commons:1.14.7',
-                ],
-              ),
-            ],
-          ),
-          DependencyWarning(
-            artifact: 'org.springframework:spring-aop',
-            versionConflicts: [
-              VersionConflict(
-                version: '6.2.8',
-                requestedBy: [
-                  'org.springframework.boot:spring-boot-starter:3.5.3',
-                  'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
-                  'org.springframework.boot:spring-boot:3.5.3',
-                  'org.springframework:spring-context:6.2.8',
-                  'org.springframework:spring-aop:6.2.8',
-                ],
-              ),
-              VersionConflict(
-                version: '6.2.7',
-                requestedBy: [
-                  'org.springframework.security:spring-security-config:6.5.1',
-                  'org.springframework.security:spring-security-core:6.5.1',
-                  'org.springframework:spring-aop:6.2.7',
-                ],
-              ),
-            ],
-          ),
-          DependencyWarning(
-            artifact: 'org.slf4j:slf4j-api',
-            versionConflicts: [
-              VersionConflict(
-                version: '2.0.16',
-                requestedBy: [
-                  'org.springframework.boot:spring-boot-starter:3.5.3',
-                  'org.springframework.boot:spring-boot-starter-logging:3.5.3',
-                  'org.apache.logging.log4j:log4j-to-slf4j:2.24.3',
-                  'org.slf4j:slf4j-api:2.0.16',
-                ],
-              ),
-              VersionConflict(
-                version: '2.0.17',
-                requestedBy: [
-                  'org.springframework.boot:spring-boot-starter:3.5.3',
-                  'org.springframework.boot:spring-boot-starter-logging:3.5.3',
-                  'ch.qos.logback:logback-classic:1.5.18',
-                  'org.slf4j:slf4j-api:2.0.17',
-                ],
-              ),
-            ],
-          ),
-          DependencyWarning(
-            artifact: 'org.springframework:spring-core',
-            versionConflicts: [
-              VersionConflict(
-                version: '6.2.8',
-                requestedBy: [
-                  'org.springframework.boot:spring-boot-starter:3.5.3',
-                  'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
-                  'org.springframework.boot:spring-boot:3.5.3',
-                  'org.springframework:spring-context:6.2.8',
-                  'org.springframework:spring-aop:6.2.8',
-                  'org.springframework:spring-beans:6.2.8',
-                  'org.springframework:spring-core:6.2.8',
-                ],
-              ),
-              VersionConflict(
-                version: '6.2.7',
-                requestedBy: [
-                  'org.springframework.security:spring-security-config:6.5.1',
-                  'org.springframework.security:spring-security-core:6.5.1',
-                  'org.springframework:spring-aop:6.2.7',
-                  'org.springframework:spring-beans:6.2.7',
-                  'org.springframework:spring-core:6.2.7',
-                ],
-              ),
-            ],
-          ),
-          DependencyWarning(
-            artifact: 'org.springframework:spring-beans',
-            versionConflicts: [
-              VersionConflict(
-                version: '6.2.8',
-                requestedBy: [
-                  'org.springframework.boot:spring-boot-starter:3.5.3',
-                  'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
-                  'org.springframework.boot:spring-boot:3.5.3',
-                  'org.springframework:spring-context:6.2.8',
-                  'org.springframework:spring-aop:6.2.8',
-                  'org.springframework:spring-beans:6.2.8',
-                ],
-              ),
-              VersionConflict(
-                version: '6.2.7',
-                requestedBy: [
-                  'org.springframework.security:spring-security-config:6.5.1',
-                  'org.springframework.security:spring-security-core:6.5.1',
-                  'org.springframework:spring-aop:6.2.7',
-                  'org.springframework:spring-beans:6.2.7',
-                ],
-              ),
-            ],
-          ),
-          DependencyWarning(
-            artifact: 'org.springframework:spring-expression',
-            versionConflicts: [
-              VersionConflict(
-                version: '6.2.8',
-                requestedBy: [
-                  'org.springframework.boot:spring-boot-starter:3.5.3',
-                  'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
-                  'org.springframework.boot:spring-boot:3.5.3',
-                  'org.springframework:spring-context:6.2.8',
-                  'org.springframework:spring-expression:6.2.8',
-                ],
-              ),
-              VersionConflict(
-                version: '6.2.7',
-                requestedBy: [
-                  'org.springframework.security:spring-security-config:6.5.1',
-                  'org.springframework.security:spring-security-core:6.5.1',
-                  'org.springframework:spring-context:6.2.7',
-                  'org.springframework:spring-expression:6.2.7',
-                ],
-              ),
-            ],
-          ),
-          DependencyWarning(
-            artifact: 'io.micrometer:micrometer-observation',
-            versionConflicts: [
-              VersionConflict(
-                version: '1.14.8',
-                requestedBy: [
-                  'org.springframework.boot:spring-boot-starter:3.5.3',
-                  'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
-                  'org.springframework.boot:spring-boot:3.5.3',
-                  'org.springframework:spring-context:6.2.8',
-                  'io.micrometer:micrometer-observation:1.14.8',
-                ],
-              ),
-              VersionConflict(
-                version: '1.14.7',
-                requestedBy: [
-                  'org.springframework.security:spring-security-config:6.5.1',
-                  'org.springframework.security:spring-security-core:6.5.1',
-                  'org.springframework:spring-context:6.2.7',
-                  'io.micrometer:micrometer-observation:1.14.7',
-                ],
-              ),
-            ],
-          ),
-        ]),
-      );
+      // We stopped parsing warnings from JBuild as we need to compute the
+      // warnings in jb instead.
+      expect(collector.resolvedDeps.warnings, isEmpty);
+
+      // expect(
+      //   collector.resolvedDeps.warnings,
+      //   equals([
+      //     DependencyWarning(
+      //       artifact: 'org.slf4j:slf4j-api',
+      //       versionConflicts: [
+      //         VersionConflict(
+      //           version: '2.0.16',
+      //           requestedBy: [
+      //             'org.springframework.boot:spring-boot-starter:3.5.3',
+      //             'org.springframework.boot:spring-boot-starter-logging:3.5.3',
+      //             'org.apache.logging.log4j:log4j-to-slf4j:2.24.3',
+      //             'org.slf4j:slf4j-api:2.0.16',
+      //           ],
+      //         ),
+      //         VersionConflict(
+      //           version: '2.0.17',
+      //           requestedBy: [
+      //             'org.springframework.boot:spring-boot-starter:3.5.3',
+      //             'org.springframework.boot:spring-boot-starter-logging:3.5.3',
+      //             'ch.qos.logback:logback-classic:1.5.18',
+      //             'org.slf4j:slf4j-api:2.0.17',
+      //           ],
+      //         ),
+      //       ],
+      //     ),
+      //     DependencyWarning(
+      //       artifact: 'org.springframework:spring-jcl',
+      //       versionConflicts: [
+      //         VersionConflict(
+      //           version: '6.2.8',
+      //           requestedBy: [
+      //             'org.springframework.boot:spring-boot-starter:3.5.3',
+      //             'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
+      //             'org.springframework.boot:spring-boot:3.5.3',
+      //             'org.springframework:spring-context:6.2.8',
+      //             'org.springframework:spring-aop:6.2.8',
+      //             'org.springframework:spring-beans:6.2.8',
+      //             'org.springframework:spring-core:6.2.8',
+      //             'org.springframework:spring-jcl:6.2.8',
+      //           ],
+      //         ),
+      //         VersionConflict(
+      //           version: '6.2.7',
+      //           requestedBy: [
+      //             'org.springframework.security:spring-security-config:6.5.1',
+      //             'org.springframework.security:spring-security-core:6.5.1',
+      //             'org.springframework:spring-aop:6.2.7',
+      //             'org.springframework:spring-beans:6.2.7',
+      //             'org.springframework:spring-core:6.2.7',
+      //             'org.springframework:spring-jcl:6.2.7',
+      //           ],
+      //         ),
+      //       ],
+      //     ),
+      //     DependencyWarning(
+      //       artifact: 'org.springframework:spring-context',
+      //       versionConflicts: [
+      //         VersionConflict(
+      //           version: '6.2.8',
+      //           requestedBy: [
+      //             'org.springframework.boot:spring-boot-starter:3.5.3',
+      //             'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
+      //             'org.springframework.boot:spring-boot:3.5.3',
+      //             'org.springframework:spring-context:6.2.8',
+      //           ],
+      //         ),
+      //         VersionConflict(
+      //           version: '6.2.7',
+      //           requestedBy: [
+      //             'org.springframework.security:spring-security-config:6.5.1',
+      //             'org.springframework.security:spring-security-core:6.5.1',
+      //             'org.springframework:spring-context:6.2.7',
+      //           ],
+      //         ),
+      //       ],
+      //     ),
+      //     DependencyWarning(
+      //       artifact: 'io.micrometer:micrometer-commons',
+      //       versionConflicts: [
+      //         VersionConflict(
+      //           version: '1.14.8',
+      //           requestedBy: [
+      //             'org.springframework.boot:spring-boot-starter:3.5.3',
+      //             'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
+      //             'org.springframework.boot:spring-boot:3.5.3',
+      //             'org.springframework:spring-context:6.2.8',
+      //             'io.micrometer:micrometer-observation:1.14.8',
+      //             'io.micrometer:micrometer-commons:1.14.8',
+      //           ],
+      //         ),
+      //         VersionConflict(
+      //           version: '1.14.7',
+      //           requestedBy: [
+      //             'org.springframework.security:spring-security-config:6.5.1',
+      //             'org.springframework.security:spring-security-core:6.5.1',
+      //             'org.springframework:spring-context:6.2.7',
+      //             'io.micrometer:micrometer-observation:1.14.7',
+      //             'io.micrometer:micrometer-commons:1.14.7',
+      //           ],
+      //         ),
+      //       ],
+      //     ),
+      //     DependencyWarning(
+      //       artifact: 'org.springframework:spring-aop',
+      //       versionConflicts: [
+      //         VersionConflict(
+      //           version: '6.2.8',
+      //           requestedBy: [
+      //             'org.springframework.boot:spring-boot-starter:3.5.3',
+      //             'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
+      //             'org.springframework.boot:spring-boot:3.5.3',
+      //             'org.springframework:spring-context:6.2.8',
+      //             'org.springframework:spring-aop:6.2.8',
+      //           ],
+      //         ),
+      //         VersionConflict(
+      //           version: '6.2.7',
+      //           requestedBy: [
+      //             'org.springframework.security:spring-security-config:6.5.1',
+      //             'org.springframework.security:spring-security-core:6.5.1',
+      //             'org.springframework:spring-aop:6.2.7',
+      //           ],
+      //         ),
+      //       ],
+      //     ),
+      //     DependencyWarning(
+      //       artifact: 'org.slf4j:slf4j-api',
+      //       versionConflicts: [
+      //         VersionConflict(
+      //           version: '2.0.16',
+      //           requestedBy: [
+      //             'org.springframework.boot:spring-boot-starter:3.5.3',
+      //             'org.springframework.boot:spring-boot-starter-logging:3.5.3',
+      //             'org.apache.logging.log4j:log4j-to-slf4j:2.24.3',
+      //             'org.slf4j:slf4j-api:2.0.16',
+      //           ],
+      //         ),
+      //         VersionConflict(
+      //           version: '2.0.17',
+      //           requestedBy: [
+      //             'org.springframework.boot:spring-boot-starter:3.5.3',
+      //             'org.springframework.boot:spring-boot-starter-logging:3.5.3',
+      //             'ch.qos.logback:logback-classic:1.5.18',
+      //             'org.slf4j:slf4j-api:2.0.17',
+      //           ],
+      //         ),
+      //       ],
+      //     ),
+      //     DependencyWarning(
+      //       artifact: 'org.springframework:spring-core',
+      //       versionConflicts: [
+      //         VersionConflict(
+      //           version: '6.2.8',
+      //           requestedBy: [
+      //             'org.springframework.boot:spring-boot-starter:3.5.3',
+      //             'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
+      //             'org.springframework.boot:spring-boot:3.5.3',
+      //             'org.springframework:spring-context:6.2.8',
+      //             'org.springframework:spring-aop:6.2.8',
+      //             'org.springframework:spring-beans:6.2.8',
+      //             'org.springframework:spring-core:6.2.8',
+      //           ],
+      //         ),
+      //         VersionConflict(
+      //           version: '6.2.7',
+      //           requestedBy: [
+      //             'org.springframework.security:spring-security-config:6.5.1',
+      //             'org.springframework.security:spring-security-core:6.5.1',
+      //             'org.springframework:spring-aop:6.2.7',
+      //             'org.springframework:spring-beans:6.2.7',
+      //             'org.springframework:spring-core:6.2.7',
+      //           ],
+      //         ),
+      //       ],
+      //     ),
+      //     DependencyWarning(
+      //       artifact: 'org.springframework:spring-beans',
+      //       versionConflicts: [
+      //         VersionConflict(
+      //           version: '6.2.8',
+      //           requestedBy: [
+      //             'org.springframework.boot:spring-boot-starter:3.5.3',
+      //             'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
+      //             'org.springframework.boot:spring-boot:3.5.3',
+      //             'org.springframework:spring-context:6.2.8',
+      //             'org.springframework:spring-aop:6.2.8',
+      //             'org.springframework:spring-beans:6.2.8',
+      //           ],
+      //         ),
+      //         VersionConflict(
+      //           version: '6.2.7',
+      //           requestedBy: [
+      //             'org.springframework.security:spring-security-config:6.5.1',
+      //             'org.springframework.security:spring-security-core:6.5.1',
+      //             'org.springframework:spring-aop:6.2.7',
+      //             'org.springframework:spring-beans:6.2.7',
+      //           ],
+      //         ),
+      //       ],
+      //     ),
+      //     DependencyWarning(
+      //       artifact: 'org.springframework:spring-expression',
+      //       versionConflicts: [
+      //         VersionConflict(
+      //           version: '6.2.8',
+      //           requestedBy: [
+      //             'org.springframework.boot:spring-boot-starter:3.5.3',
+      //             'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
+      //             'org.springframework.boot:spring-boot:3.5.3',
+      //             'org.springframework:spring-context:6.2.8',
+      //             'org.springframework:spring-expression:6.2.8',
+      //           ],
+      //         ),
+      //         VersionConflict(
+      //           version: '6.2.7',
+      //           requestedBy: [
+      //             'org.springframework.security:spring-security-config:6.5.1',
+      //             'org.springframework.security:spring-security-core:6.5.1',
+      //             'org.springframework:spring-context:6.2.7',
+      //             'org.springframework:spring-expression:6.2.7',
+      //           ],
+      //         ),
+      //       ],
+      //     ),
+      //     DependencyWarning(
+      //       artifact: 'io.micrometer:micrometer-observation',
+      //       versionConflicts: [
+      //         VersionConflict(
+      //           version: '1.14.8',
+      //           requestedBy: [
+      //             'org.springframework.boot:spring-boot-starter:3.5.3',
+      //             'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
+      //             'org.springframework.boot:spring-boot:3.5.3',
+      //             'org.springframework:spring-context:6.2.8',
+      //             'io.micrometer:micrometer-observation:1.14.8',
+      //           ],
+      //         ),
+      //         VersionConflict(
+      //           version: '1.14.7',
+      //           requestedBy: [
+      //             'org.springframework.security:spring-security-config:6.5.1',
+      //             'org.springframework.security:spring-security-core:6.5.1',
+      //             'org.springframework:spring-context:6.2.7',
+      //             'io.micrometer:micrometer-observation:1.14.7',
+      //           ],
+      //         ),
+      //       ],
+      //     ),
+      //   ]),
+      // );
     });
   });
 }
