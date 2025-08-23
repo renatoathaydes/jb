@@ -25,6 +25,12 @@ final String testMavenRepoSrc = path.join(
   'test-repo-src',
 );
 
+final String testMavenRepoPreBuilt = path.join(
+  'test',
+  'test-projects',
+  'test-repo-prebuilt',
+);
+
 final String listsMavenRepoProjectSrc = path.join(testMavenRepoSrc, 'lists');
 
 File? _generatedJBuildJar;

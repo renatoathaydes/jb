@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dartle/dartle_dart.dart';
 import 'package:path/path.dart' as path;
 
+// for copyContentsInto
+import '../lib/src/utils.dart' show DirectoryExtension;
 import 'paths.dart';
 
 final setupTestsPhase = TaskPhase.custom(
@@ -45,7 +47,10 @@ final setupTestMvnRepoTask = Task(
   description: 'Creates a simple Maven repository to be used during tests.',
   dependsOn: const {buildMvnRepoListsProjectTaskName},
   runCondition: RunOnChanges(
-    inputs: files([_listsPom, _listsJar]),
+    inputs: entities(
+      [_listsPom, _listsJar],
+      [DirectoryEntry(path: testMavenRepoPreBuilt)],
+    ),
     outputs: dir(testMavenRepo, fileExtensions: const {'.pom', '.jar'}),
   ),
 );
@@ -54,6 +59,8 @@ Future<void> _setupTestMvnRepo(_) async {
   await Directory(_listsRepoDir).create(recursive: true);
   await File(_listsJar).copy(path.join(_listsRepoDir, 'lists-1.0.jar'));
   await File(_listsPom).copy(path.join(_listsRepoDir, 'lists-1.0.pom'));
+
+  await Directory(testMavenRepoPreBuilt).copyContentsInto(testMavenRepo);
 }
 
 Future<void> _buildMvnRepoListsProject(_) async {
