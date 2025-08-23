@@ -139,7 +139,7 @@ Future<void> printDependencies(
     printer
       ..header(artifact, scope)
       ..exclusions(config.dependencyExclusionPatterns)
-      ..print(mainDeps, depByArtifact, options)
+      ..print(mainDeps, depByArtifact, mainResolved.warnings, options)
       ..printWarnings(mainResolved.warnings, depByArtifact);
   }
   if (processorDeps.isNotEmpty) {
@@ -147,7 +147,7 @@ Future<void> printDependencies(
     printer
       ..header(artifact, scope, forProcessor: true)
       ..exclusions(config.processorDependencyExclusionPatterns)
-      ..print(processorDeps, depByArtifact, options)
+      ..print(processorDeps, depByArtifact, processorResolved.warnings, options)
       ..printWarnings(processorResolved.warnings, depByArtifact);
   }
   printer.printSeenLicenses();
@@ -205,8 +205,10 @@ class _JBuildDepsPrinter {
   void print(
     List<ResolvedDependency> deps,
     Map<String, ResolvedDependency> depByArtifact,
+    List<DependencyWarning> warnings,
     _DepsArgs options,
   ) async {
+    var artifactsWithWarnings = warnings.map((w) => "${w.artifact}:").toSet();
     final visited = <String>{};
     final directDeps = deps
         .where((d) => d.isDirect)
@@ -214,13 +216,21 @@ class _JBuildDepsPrinter {
         .toList();
     final finalIndex = directDeps.length - 1;
     for (final (i, dep) in directDeps.indexed) {
-      _printTree(dep, depByArtifact, visited, options, isLast: i == finalIndex);
+      _printTree(
+        dep,
+        depByArtifact,
+        artifactsWithWarnings,
+        visited,
+        options,
+        isLast: i == finalIndex,
+      );
     }
   }
 
   void _printTree(
     ResolvedDependency dependency,
     Map<String, ResolvedDependency> map,
+    Set<String> artifactsWithWarnings,
     Set<String> visited,
     _DepsArgs options, {
     String indent = '',
@@ -251,7 +261,10 @@ class _JBuildDepsPrinter {
       AnsiMessage([
         AnsiMessagePart.text("$indent${_depPoint(isLast)} "),
         AnsiMessagePart.code(styleBold),
-        if (isLocal) AnsiMessagePart.code(blue),
+        if (artifactsWithWarnings.contains(dependency.artifact.noVersion()))
+          AnsiMessagePart.code(red)
+        else if (isLocal)
+          AnsiMessagePart.code(blue),
         AnsiMessagePart.text(dependency.artifact + (isLocal ? ' (local)' : '')),
         AnsiMessagePart.code(resetAll),
         ...licenseParts,
@@ -274,6 +287,7 @@ class _JBuildDepsPrinter {
       _printTree(
         dep,
         map,
+        artifactsWithWarnings,
         visited,
         options,
         indent: nextIndent,
@@ -390,6 +404,16 @@ class _JBuildDepsPrinter {
         ]),
       );
     }
+  }
+}
+
+extension on String {
+  String noVersion() {
+    var index = indexOf(':');
+    if (index < 0 || index == length - 1) return this;
+    index = indexOf(':', index + 1);
+    if (index < 0) return this;
+    return substring(0, index + 1);
   }
 }
 
