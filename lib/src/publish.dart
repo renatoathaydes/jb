@@ -15,6 +15,7 @@ import 'package:dartle/dartle.dart'
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
+import 'dependencies/deps_cache.dart';
 import 'maven_client.dart';
 import 'optional_arg_validator.dart';
 import 'pom.dart';
@@ -30,22 +31,24 @@ class Publisher {
   );
 
   final Result<Artifact> artifact;
+  final DepsCache depsCache;
   final File depsFile;
   final ResolvedLocalDependencies localDependencies;
   final String? jar;
 
-  Publisher(this.artifact, this.depsFile, this.localDependencies, this.jar);
+  Publisher(
+    this.artifact,
+    this.depsFile,
+    this.depsCache,
+    this.localDependencies,
+    this.jar,
+  );
 
   /// The `publish` task action.
   Future<void> call(List<String> args) async {
     final theArtifact = _getArtifact();
-    final home = homeDir().orThrow(
-      () => failBuild(reason: 'Cannot find home directory'),
-    );
 
-    final destination = args.isEmpty
-        ? p.join(home, '.m2', 'repository')
-        : args[0];
+    final destination = args.isEmpty ? _mavenHome() : args[0];
 
     final mavenClient = MavenClient(switch (destination) {
       '-m' => Sonatype.s01Oss,
@@ -65,7 +68,22 @@ class Publisher {
         destination.startsWith('https://')) {
       return await _publishHttp(mavenClient, theArtifact, stopwatch);
     }
-    await _publishLocal(theArtifact, destination, stopwatch);
+    await _publishLocal(theArtifact, destination, depsCache, stopwatch);
+  }
+
+  String _mavenHome() {
+    final mavenHome = Platform.environment['MAVEN_HOME'];
+    if (mavenHome != null) {
+      return mavenHome;
+    }
+    logger.finer(
+      () =>
+          'MAVEN_HOME environment variable is not set, will use ~/.m2/repository',
+    );
+    final home = homeDir().orThrow(
+      () => failBuild(reason: 'Cannot find home directory'),
+    );
+    return p.join(home, '.m2', 'repository');
   }
 
   Artifact _getArtifact() {
@@ -78,11 +96,12 @@ class Publisher {
   Future<void> _publishLocal(
     Artifact theArtifact,
     String repoPath,
+    DepsCache depsCache,
     Stopwatch stopwatch,
   ) async {
     final destination = Directory(_pathFor(theArtifact, repoPath));
     logger.info(() => 'Publishing artifacts to ${destination.path}');
-    await _publishArtifactToDir(destination, theArtifact, stopwatch);
+    await _publishArtifactToDir(destination, theArtifact, depsCache, stopwatch);
   }
 
   Future<void> _publishHttp(
@@ -96,7 +115,12 @@ class Publisher {
           'Creating publication artifacts at ${destination.path}, '
           'will publish to ${mavenClient.repo.url}',
     );
-    await _publishArtifactToDir(destination, _getArtifact(), stopwatch);
+    await _publishArtifactToDir(
+      destination,
+      _getArtifact(),
+      depsCache,
+      stopwatch,
+    );
     logger.fine(() => 'Creating bundle.jar with publication artifacts');
     final bundle = await _createBundleJar(destination, stopwatch);
     logger.info(() => 'Publishing artifacts to ${mavenClient.repo.url}');
@@ -110,6 +134,7 @@ class Publisher {
   Future<void> _publishArtifactToDir(
     Directory destination,
     Artifact artifact,
+    DepsCache depsCache,
     Stopwatch stopwatch,
   ) async {
     // ignore error intentionally
@@ -121,7 +146,7 @@ class Publisher {
     final jarFile = jar.ifBlank(() => 'Cannot publish, jar was not provided');
 
     stopwatch.reset();
-    final deps = await parseDeps(depsFile);
+    final deps = await depsCache.send(GetDeps(depsFile.path));
     logger.log(
       profile,
       'Parsed dependencies file in ${stopwatch.elapsedMilliseconds} ms',

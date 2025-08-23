@@ -14,6 +14,7 @@ const helloProjectDir = '$projectsDir/hello';
 const emptyProjectDir = '$projectsDir/empty';
 const withDepsProjectDir = '$projectsDir/with-deps';
 const withSubProjectDir = '$projectsDir/with-sub-project';
+const withConflictsProjectDir = '$projectsDir/with-version-conflicts';
 const exampleExtensionDir = '$projectsDir/example-extension';
 const usesExtensionDir = '$projectsDir/uses-extension';
 const testsProjectDir = '$projectsDir/tests';
@@ -87,6 +88,7 @@ void main() {
           'compile-libs',
           p.join('compile-libs', 'lists-1.0.jar'),
           p.join('compile-libs', 'minimal-java-project.jar'),
+          p.join('compile-libs', 'slf4j-api-1.7.36.jar'),
         ],
         reason:
             'Did not create all artifacts.\n\n'
@@ -102,6 +104,82 @@ void main() {
 
       expectSuccess(javaResult);
       expect(javaResult.stdout, equals(const ['Minimal jb project[1, 2, 3]']));
+    });
+
+    test('can print dependencies', () async {
+      final jbResult = await runJb(Directory(withDepsProjectDir), [
+        'dependencies',
+        '--no-color',
+      ]);
+      expectSuccess(jbResult);
+      final lines = jbResult.stdout as List<String>;
+      final runningTaskIndex = lines.indexWhere(
+        (line) => line.endsWith("INFO - Running task 'dependencies'"),
+      );
+      expect(runningTaskIndex, greaterThan(0));
+
+      final endIndex = lines.indexWhere(
+        (line) => line.startsWith("Build succeeded in "),
+      );
+      expect(endIndex, greaterThan(runningTaskIndex));
+
+      expect(
+        lines.sublist(runningTaskIndex + 1, endIndex).join('\n'),
+        equals(
+          'Project Dependencies:\n'
+          'com.example:with-deps:1.2.3:\n'
+          '├── com.example:lists:1.0\n'
+          '├── minimal-sample (local)\n'
+          '└── org.slf4j:slf4j-api:1.7.36',
+        ),
+      );
+    });
+  });
+
+  projectGroup(withConflictsProjectDir, 'with-version-conflicts project', () {
+    tearDown(() async {
+      await deleteAll(
+        dirs([
+          '$withConflictsProjectDir/.jb-cache',
+          '$withConflictsProjectDir/build',
+        ], includeHidden: true),
+      );
+    });
+    test('can print dependencies', () async {
+      final jbResult = await runJb(Directory(withConflictsProjectDir), [
+        'dependencies',
+        '--no-color',
+      ]);
+      expectSuccess(jbResult);
+      final lines = jbResult.stdout as List<String>;
+      final runningTaskIndex = lines.indexWhere(
+        (line) => line.endsWith("INFO - Running task 'dependencies'"),
+      );
+      expect(runningTaskIndex, greaterThan(0));
+
+      final endIndex = lines.indexWhere(
+        (line) => line.startsWith("Build succeeded in "),
+      );
+      expect(endIndex, greaterThan(runningTaskIndex));
+
+      expect(
+        lines.sublist(runningTaskIndex + 1, endIndex).join('\n'),
+        equals(
+          'Project Dependencies:\n'
+          'com.athaydes.tests:my-app:0.0.0:\n'
+          '├── com.example:with-deps:1.2.3 (local)\n'
+          '│   ├── com.example:lists:1.0\n'
+          '│   ├── minimal-sample (local)\n'
+          '│   └── org.slf4j:slf4j-api:1.7.36\n'
+          '├── org.slf4j:slf4j-api:2.0.16\n'
+          '└── tests:greetings-app:1.0 (local)\n'
+          '    └── tests:greetings:1.0 (local)\n'
+          'Dependency tree contains conflicts:\n'
+          '  * org.slf4j:slf4j-api:\n'
+          '    - 1.7.36: com.example:with-deps:1.2.3\n'
+          '    - 2.0.16: (direct dependency)\n',
+        ),
+      );
     });
   });
 

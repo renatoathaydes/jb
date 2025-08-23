@@ -18,11 +18,10 @@ dependencies:
   archive: ^4.0.7
   xml: ^6.2.2
   actors: ^0.11.0
-  #    path: ../actors
   conveniently: ^1.2.0
   structured_async: ^0.3.2
   crypto: ^3.0.3
-  schemake: ^0.6.5
+  schemake: ^0.6.6
 dev_dependencies:
   build_runner: ^2.4.11
   lints: ^6.0.0

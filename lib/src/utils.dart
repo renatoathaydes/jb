@@ -222,8 +222,9 @@ extension on DependencySpec? {
 }
 
 extension DirectoryExtension on Directory {
-  Future<String?> toClasspath([Set<File> extraEntries = const {}]) async =>
-      await exists()
+  Future<String?> toClasspath([
+    Set<FileSystemEntity> extraEntries = const {},
+  ]) async => await exists()
       ? list()
             .where(
               (f) =>
@@ -310,8 +311,11 @@ extension NullableStringExtension on String? {
 }
 
 extension BinaryStreamExtension on Stream<List<int>> {
-  Future<String> text() => transform(utf8.decoder).join();
+  Future<String> textUtf8() => transform(utf8.decoder).join();
 
-  Stream<String> lines() =>
+  Stream<String> linesDefaultEncoding() =>
+      transform(const SystemEncoding().decoder).transform(const LineSplitter());
+
+  Stream<String> linesUtf8Encoding() =>
       transform(utf8.decoder).transform(const LineSplitter());
 }

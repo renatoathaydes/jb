@@ -6,8 +6,11 @@ import 'package:schemake/schemake.dart';
 import 'jb_extension_schema.dart';
 
 const configFile = 'lib/src/jb_config.g.dart';
+const jsonSchemaFile = 'website/source/static/schemas/jb-schema.json';
+const jsonSchemaUri =
+    'https://renatoathaydes.github.io/jb/schemas/jb-schema.json';
 
-const _anyMap = Maps<String, Strings>('Map', valueType: Strings());
+const _anyMap = Maps<String, Strings>('StringMap', valueType: Strings());
 
 const _scm = Objects('SourceControlManagement', {
   'connection': Property(Strings()),
@@ -20,7 +23,7 @@ const _developer = Objects('Developer', {
   'email': Property(Strings()),
   'organization': Property(Strings()),
   'organization-url': Property(Strings()),
-}, description: 'Developers that have contributed to this project.');
+}, description: 'A developer entry.');
 
 String _enumComments(String name) => switch (name) {
   'all' => '/// dependency is required both at compile-time and runtime.\n  ',
@@ -40,6 +43,13 @@ const scope = Enums(
     ],
   ),
 );
+
+const dependencyMap =
+    Maps<Map<String, Object?>?, Nullable<Map<String, Object?>, Objects>>(
+      'DependencyMap',
+      valueType: Nullable(dependency),
+      description: 'Map from a dependency coordinates to its specification.',
+    );
 
 const dependency = Objects('DependencySpec', {
   'transitive': Property(Bools(), defaultValue: true),
@@ -115,18 +125,12 @@ const jbConfig = Objects(
       description: 'Maven repositories to use for obtaining dependencies',
     ),
     'dependencies': Property(
-      Maps<Map<String, Object?>?, Nullable<Map<String, Object?>, Objects>>(
-        'Map',
-        valueType: Nullable(dependency),
-      ),
+      dependencyMap,
       defaultValue: <String, Object?>{},
       description: 'Main dependencies of the project.',
     ),
     'processor-dependencies': Property(
-      Maps<Map<String, Object?>?, Nullable<Map<String, Object?>, Objects>>(
-        'Map',
-        valueType: Nullable(dependency),
-      ),
+      dependencyMap,
       defaultValue: <String, Object?>{},
       description: 'Java annotation processor dependencies of the project.',
     ),

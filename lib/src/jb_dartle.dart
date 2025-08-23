@@ -6,6 +6,7 @@ import 'package:dartle/dartle_cache.dart';
 
 import 'config.dart';
 import 'config_source.dart';
+import 'dependencies/deps_cache.dart';
 import 'extension/jb_extension.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart' show JavaCommand;
@@ -25,6 +26,7 @@ class JbDartle {
   final DartleCache _cache;
   final Options _options;
   final Sendable<JavaCommand, Object?> _jvmExecutor;
+  final Sendable<DepsCacheMessage, ResolvedDependencies> _depsCache;
 
   /// Whether this project is the root project being executed.
   final bool isRoot;
@@ -32,6 +34,7 @@ class JbDartle {
   late final Task compile,
       publicationCompile,
       writeDeps,
+      verifyDeps,
       installCompile,
       installRuntime,
       installProcessor,
@@ -40,6 +43,7 @@ class JbDartle {
       requirements,
       clean,
       run,
+      jshell,
       downloadTestRunner,
       test,
       showConfig,
@@ -59,6 +63,7 @@ class JbDartle {
     this._cache,
     this._options,
     this._jvmExecutor,
+    this._depsCache,
     this.isRoot,
     Stopwatch stopwatch,
   ) {
@@ -78,9 +83,19 @@ class JbDartle {
     DartleCache cache,
     Options options,
     Sendable<JavaCommand, Object?> jvmExecutor,
+    Sendable<DepsCacheMessage, ResolvedDependencies> depsCache,
     Stopwatch stopWatch, {
     required bool isRoot,
-  }) : this._(files, config, cache, options, jvmExecutor, isRoot, stopWatch);
+  }) : this._(
+         files,
+         config,
+         cache,
+         options,
+         jvmExecutor,
+         depsCache,
+         isRoot,
+         stopWatch,
+       );
 
   /// Get the default tasks (`{ compile }`).
   Set<Task> get defaultTasks {
@@ -92,14 +107,13 @@ class JbDartle {
     required String name,
   }) async {
     final pathDependencies = dependencies
-        .map((e) => e.value.toPathDependency())
-        .whereNonNull()
-        .toStream();
+        .map((e) => e.value.toPathDependency(e.key))
+        .nonNulls;
 
     final projectDeps = <ProjectDependency>[];
     final jars = <JarDependency>[];
 
-    await for (final pathDep in pathDependencies) {
+    for (final pathDep in pathDependencies) {
       pathDep.when(jar: jars.add, jbuildProject: projectDeps.add);
     }
 
@@ -124,8 +138,6 @@ class JbDartle {
     Stopwatch stopwatch,
   ) async {
     final configContainer = JbConfigContainer(_config);
-    final unresolvedLocalDeps = localDependencies.unresolved;
-    final unresolvedLocalProcessorDeps = localProcessorDependencies.unresolved;
 
     final FileCollection jbFileInputs;
     final configSource = _files.configSource;
@@ -148,14 +160,19 @@ class JbDartle {
     writeDeps = createWriteDependenciesTask(
       _files,
       _config,
+      localDependencies,
+      localProcessorDependencies,
+      _depsCache,
       _cache,
       jbFileInputs,
       _jvmExecutor,
     );
+    verifyDeps = createVerifyDependenciesTask(_files, _depsCache, _cache);
     installCompile = createInstallCompileDepsTask(
       _files,
       _config,
       _jvmExecutor,
+      _depsCache,
       _cache,
       localDependencies,
     );
@@ -163,6 +180,7 @@ class JbDartle {
       _files,
       _config,
       _jvmExecutor,
+      _depsCache,
       _cache,
       localDependencies,
     );
@@ -170,14 +188,17 @@ class JbDartle {
       _files,
       _config,
       _jvmExecutor,
+      _depsCache,
       _cache,
       localProcessorDependencies,
     );
     run = createRunTask(_files, configContainer, _cache);
+    jshell = createJshellTask(_files, configContainer, _cache);
     downloadTestRunner = createDownloadTestRunnerTask(
       _files,
       configContainer,
       _jvmExecutor,
+      _depsCache,
       _cache,
       jbFileInputs,
     );
@@ -190,9 +211,10 @@ class JbDartle {
     deps = createDepsTask(
       _files,
       _config,
+      _depsCache,
       _cache,
-      unresolvedLocalDeps,
-      unresolvedLocalProcessorDeps,
+      localDependencies,
+      localProcessorDependencies,
     );
     showConfig = createShowConfigTask(_config, !_options.colorfulLog);
     requirements = createRequirementsTask(_files.jbuildJar, configContainer);
@@ -201,10 +223,12 @@ class JbDartle {
       artifact,
       localDependencies,
       _files.dependenciesFile,
+      _depsCache,
     );
     publish = createPublishTask(
       artifact,
       _files.dependenciesFile,
+      _depsCache,
       configContainer.output.when(dir: (_) => null, jar: (j) => j),
       localDependencies,
     );
@@ -213,6 +237,7 @@ class JbDartle {
     final extensionProject = await loadExtensionProject(
       _jvmExecutor,
       _files,
+      _depsCache,
       _options,
       _config,
       _cache,
@@ -224,10 +249,12 @@ class JbDartle {
       compile,
       publicationCompile,
       writeDeps,
+      verifyDeps,
       installCompile,
       installRuntime,
       installProcessor,
       run,
+      jshell,
       downloadTestRunner,
       test,
       deps,
@@ -270,7 +297,7 @@ class JbDartle {
     List<ResolvedProjectDependency> projectDeps,
   ) async {
     for (var dep in projectDeps) {
-      await dep.initialize(_options, _files, _jvmExecutor);
+      await dep.initialize(_options, _files, _jvmExecutor, _depsCache);
     }
   }
 }

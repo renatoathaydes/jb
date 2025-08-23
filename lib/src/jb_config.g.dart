@@ -643,7 +643,7 @@ final class SourceControlManagement {
   };
 }
 
-/// Developers that have contributed to this project.
+/// A developer entry.
 
 final class Developer {
   final String name;
@@ -800,7 +800,7 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
       ),
       dependencies: convertPropertyOrDefault(
         const Maps(
-          'Map',
+          'DependencyMap',
           valueType: Nullable<DependencySpec, _DependencySpecJsonReviver>(
             _DependencySpecJsonReviver(),
           ),
@@ -811,7 +811,7 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
       ),
       processorDependencies: convertPropertyOrDefault(
         const Maps(
-          'Map',
+          'DependencyMap',
           valueType: Nullable<DependencySpec, _DependencySpecJsonReviver>(
             _DependencySpecJsonReviver(),
           ),
@@ -869,19 +869,19 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
         const [],
       ),
       javacEnv: convertPropertyOrDefault(
-        const Maps('Map', valueType: Strings()),
+        const Maps('StringMap', valueType: Strings()),
         'javac-env',
         value,
         const {},
       ),
       runJavaEnv: convertPropertyOrDefault(
-        const Maps('Map', valueType: Strings()),
+        const Maps('StringMap', valueType: Strings()),
         'run-java-env',
         value,
         const {},
       ),
       testJavaEnv: convertPropertyOrDefault(
-        const Maps('Map', valueType: Strings()),
+        const Maps('StringMap', valueType: Strings()),
         'test-java-env',
         value,
         const {},
@@ -953,14 +953,14 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
         return const Arrays<String, Strings>(Strings());
       case 'dependencies':
         return const Maps(
-          'Map',
+          'DependencyMap',
           valueType: Nullable<DependencySpec, _DependencySpecJsonReviver>(
             _DependencySpecJsonReviver(),
           ),
         );
       case 'processor-dependencies':
         return const Maps(
-          'Map',
+          'DependencyMap',
           valueType: Nullable<DependencySpec, _DependencySpecJsonReviver>(
             _DependencySpecJsonReviver(),
           ),
@@ -982,11 +982,11 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
       case 'test-java-args':
         return const Arrays<String, Strings>(Strings());
       case 'javac-env':
-        return const Maps('Map', valueType: Strings());
+        return const Maps('StringMap', valueType: Strings());
       case 'run-java-env':
-        return const Maps('Map', valueType: Strings());
+        return const Maps('StringMap', valueType: Strings());
       case 'test-java-env':
-        return const Maps('Map', valueType: Strings());
+        return const Maps('StringMap', valueType: Strings());
       case 'scm':
         return const Nullable<
           SourceControlManagement,

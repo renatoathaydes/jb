@@ -20,6 +20,7 @@ import 'package:path/path.dart' as p;
 
 import '../config.dart';
 import '../config_source.dart';
+import '../dependencies/deps_cache.dart';
 import '../jb_files.dart';
 import '../jvm_executor.dart';
 import '../options.dart';
@@ -43,6 +44,7 @@ class ExtensionProject {
 Future<ExtensionProject?> loadExtensionProject(
   Sendable<JavaCommand, Object?> jvmExecutor,
   JbFiles files,
+  DepsCache depsCache,
   Options options,
   JbConfiguration config,
   DartleCache cache,
@@ -74,7 +76,7 @@ Future<ExtensionProject?> loadExtensionProject(
     rootDir,
     () => JbConfigContainer(config),
   );
-  final runner = JbRunner(files, extensionConfig, jvmExecutor);
+  final runner = JbRunner(files, extensionConfig, jvmExecutor, depsCache);
 
   // run the extension project's compile task so that its
   // jb tasks can be executed later

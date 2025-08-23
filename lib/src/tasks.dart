@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 
 import 'compile/compile.dart';
 import 'config.dart';
+import 'dependencies/deps_cache.dart';
 import 'dependencies/printer.dart';
 import 'dependencies/writer.dart';
 import 'deps.dart';
@@ -16,6 +17,7 @@ import 'file_tree.dart';
 import 'java_tests.dart';
 import 'jb_files.dart';
 import 'jbuild_update.dart';
+import 'jshell.dart';
 import 'jvm_executor.dart';
 import 'optional_arg_validator.dart';
 import 'pom.dart';
@@ -31,10 +33,12 @@ const publicationCompileTaskName = 'publicationCompile';
 const testTaskName = 'test';
 const downloadTestRunnerTaskName = 'downloadTestRunner';
 const runTaskName = 'runJavaMainClass';
+const jshellTaskName = 'jshell';
 const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const installProcessorDepsTaskName = 'installProcessorDependencies';
 const writeDepsTaskName = 'writeDependencies';
+const verifyDepsTaskName = 'verifyDependencies';
 const depsTaskName = 'dependencies';
 const showJbConfigTaskName = 'showJbConfiguration';
 const requirementsTaskName = 'requirements';
@@ -44,12 +48,13 @@ const publishTaskName = 'publish';
 const updateJBuildTaskName = 'updateJBuild';
 
 final depsPhase = TaskPhase.custom(TaskPhase.setup.index + 1, 'deps');
+final evaluatePhase = TaskPhase.custom(TaskPhase.build.index + 10, 'evaluate');
 
 const _reasonPublicationCompileCannotRun =
     'Cannot publish project because "output-jar" is not configured. '
     'Replace "output-dir" with "output-jar" to publish.';
 
-final publishPhase = TaskPhase.custom(TaskPhase.build.index + 1, 'publish');
+final publishPhase = TaskPhase.custom(evaluatePhase.index + 10, 'publish');
 
 /// Create run condition for the `compile` task.
 RunOnChanges _createCompileRunCondition(
@@ -222,38 +227,45 @@ Future<void> _compile(
 Task createWriteDependenciesTask(
   JbFiles jbFiles,
   JbConfiguration config,
+  ResolvedLocalDependencies localDependencies,
+  ResolvedLocalDependencies localProcessorDependencies,
+  DepsCache depsCache,
   DartleCache cache,
   FileCollection jbFileInputs,
   JBuildSender jbuildSender,
 ) {
-  final depsFile = jbFiles.dependenciesFile;
-  final procDepsFile = jbFiles.processorDependenciesFile;
-  final testDepsFile = jbFiles.testRunnerDependenciesFile;
-  final deps = config.allDependencies.where((d) => d.value.path == null);
-  final procDeps = config.allProcessorDependencies.where(
-    (d) => d.value.path == null,
+  final nonLocalDeps = Map.fromEntries(
+    config.allDependencies.where((d) => d.value.path == null),
+  );
+  final nonLocalProcDeps = Map.fromEntries(
+    config.allProcessorDependencies.where((d) => d.value.path == null),
   );
   final preArgs = config.preArgs(Directory.current.path);
   final exclusions = config.dependencyExclusionPatterns.toSet();
   final procExclusions = config.processorDependencyExclusionPatterns.toSet();
   final runCondition = RunOnChanges(
     inputs: jbFileInputs,
-    outputs: files([depsFile.path, procDepsFile.path, testDepsFile.path]),
+    outputs: files([
+      jbFiles.dependenciesFile.path,
+      jbFiles.processorDependenciesFile.path,
+      jbFiles.testRunnerDependenciesFile.path,
+    ]),
     cache: cache,
   );
   return Task(
     (args) async => await writeDependencies(
       jbuildSender,
       preArgs,
+      jbFiles,
+      depsCache,
       cache,
       exclusions,
       procExclusions,
       args,
-      deps: deps,
-      procDeps: procDeps,
-      depsFile: depsFile,
-      processorDepsFile: procDepsFile,
-      testDepsFile: testDepsFile,
+      nonLocalDeps: nonLocalDeps,
+      nonLocalProcDeps: nonLocalProcDeps,
+      localDeps: localDependencies,
+      localProcDeps: localProcessorDependencies,
     ),
     runCondition: runCondition,
     name: writeDepsTaskName,
@@ -262,11 +274,60 @@ Task createWriteDependenciesTask(
   );
 }
 
+Task createVerifyDependenciesTask(
+  JbFiles jbFiles,
+  DepsCache depsCache,
+  DartleCache cache,
+) {
+  const link =
+      'https://renatoathaydes.github.io/jb/pages/dependency-management.html';
+  return Task(
+    (List<String> _) async {
+      final deps = await depsCache.send(GetDeps(jbFiles.dependenciesFile.path));
+      final procDeps = await depsCache.send(
+        GetDeps(jbFiles.processorDependenciesFile.path),
+      );
+
+      if (procDeps.warnings.isNotEmpty) {
+        logger.warning(
+          'Annotation Processor dependencies contains version conflicts',
+        );
+      }
+      for (final (deps, forProcessor) in [(deps, false), (procDeps, true)]) {
+        if (deps.warnings.isNotEmpty) {
+          if (deps.warnings.isNotEmpty) {
+            final prefix = forProcessor ? 'Annotation Processor' : 'Project';
+            logger.warning('$prefix dependencies are problematic.');
+          }
+          printDepWarnings(deps);
+          failBuild(
+            reason:
+                'Dependency graph contains version conflicts (see above)!\n'
+                'You need to fix the conflicts as explained at $link',
+          );
+        }
+      }
+    },
+    name: verifyDepsTaskName,
+    runCondition: RunOnChanges(
+      inputs: files([
+        jbFiles.dependenciesFile.path,
+        jbFiles.processorDependenciesFile.path,
+      ]),
+      cache: cache,
+    ),
+    dependsOn: {writeDepsTaskName},
+    description:
+        'Fails the build if dependency version conflicts are detected.',
+  );
+}
+
 /// Create the `installCompileDependencies` task.
 Task createInstallCompileDepsTask(
   JbFiles files,
   JbConfiguration config,
   JBuildSender jBuildSender,
+  DepsCache depsCache,
   DartleCache cache,
   ResolvedLocalDependencies localDependencies,
 ) {
@@ -285,6 +346,7 @@ Task createInstallCompileDepsTask(
   Future<void> action(_) async {
     final deps = FileDependencies(
       File(depsFile),
+      depsCache,
       (scope) => scope.includedInCompilation(),
     );
     await _install(
@@ -315,6 +377,7 @@ Task createInstallRuntimeDepsTask(
   JbFiles files,
   JbConfiguration config,
   JBuildSender jBuildSender,
+  DepsCache depsCache,
   DartleCache cache,
   ResolvedLocalDependencies localDependencies,
 ) {
@@ -331,6 +394,7 @@ Task createInstallRuntimeDepsTask(
   Future<void> action(_) async {
     final deps = FileDependencies(
       File(depsFile),
+      depsCache,
       (scope) => scope.includedAtRuntime(),
     );
     await _install(
@@ -361,6 +425,7 @@ Task createInstallProcessorDepsTask(
   JbFiles files,
   JbConfiguration config,
   JBuildSender jBuildSender,
+  DepsCache depsCache,
   DartleCache cache,
   ResolvedLocalDependencies localDependencies,
 ) {
@@ -378,6 +443,7 @@ Task createInstallProcessorDepsTask(
   Future<void> action(_) async {
     final deps = FileDependencies(
       File(depsFile),
+      depsCache,
       (scope) => scope.includedAtRuntime(),
     );
     await _install(
@@ -434,7 +500,7 @@ Task _createInstallDepsTask(
   return Task(
     action,
     runCondition: runCondition,
-    dependsOn: const {writeDepsTaskName},
+    dependsOn: const {verifyDepsTaskName},
     name: taskName,
     description: 'Install $scopeName dependencies.',
   );
@@ -447,7 +513,7 @@ Future<void> _install(
   Dependencies dependencies,
   String outputDir,
 ) async {
-  final deps = await dependencies.resolveArtifacts();
+  final deps = await dependencies.resolveArtifacts(includeLocal: false);
   if (deps.isEmpty) {
     return logger.fine("No dependencies to install for '$taskName'.");
   }
@@ -516,10 +582,16 @@ Task createGeneratePomTask(
   Result<Artifact> artifact,
   ResolvedLocalDependencies localDependencies,
   File dependenciesFile,
+  DepsCache depsCache,
 ) {
   return Task(
-    (List<String> args) =>
-        _generatePom(args, artifact, localDependencies, dependenciesFile),
+    (List<String> args) => _generatePom(
+      args,
+      artifact,
+      localDependencies,
+      dependenciesFile,
+      depsCache,
+    ),
     name: createPomTaskName,
     phase: publishPhase,
     dependsOn: {writeDepsTaskName},
@@ -536,9 +608,10 @@ Future<void> _generatePom(
   Result<Artifact> artifact,
   ResolvedLocalDependencies localDependencies,
   File dependenciesFile,
+  DepsCache depsCache,
 ) async {
   final stopWatch = Stopwatch()..start();
-  final deps = await parseDeps(dependenciesFile);
+  final deps = await depsCache.send(GetDeps(dependenciesFile.path));
   logger.log(
     profile,
     'Parsed dependencies file in ${stopWatch.elapsedMilliseconds} ms',
@@ -567,11 +640,12 @@ Future<void> _generatePom(
 Task createPublishTask(
   Result<Artifact> artifact,
   File depsFile,
+  DepsCache depsCache,
   String? outputJar,
   ResolvedLocalDependencies localDependencies,
 ) {
   return Task(
-    Publisher(artifact, depsFile, localDependencies, outputJar).call,
+    Publisher(artifact, depsFile, depsCache, localDependencies, outputJar).call,
     name: publishTaskName,
     dependsOn: const {publicationCompileTaskName},
     runCondition: artifact.runCondition(),
@@ -591,6 +665,7 @@ Task createRunTask(JbFiles files, JbConfigContainer config, DartleCache cache) {
     argsValidator: const AcceptAnyArgs(),
     name: runTaskName,
     description: 'Run Java Main class.',
+    phase: evaluatePhase,
   );
 }
 
@@ -640,11 +715,28 @@ Future<void> _run(
   }
 }
 
+/// Create the `jshell` task.
+Task createJshellTask(
+  JbFiles files,
+  JbConfigContainer config,
+  DartleCache cache,
+) {
+  return Task(
+    (List<String> args) => jshell(files.jbuildJar, config, args),
+    dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
+    argsValidator: const JshellArgs(),
+    name: jshellTaskName,
+    description: jshellHelp,
+    phase: evaluatePhase,
+  );
+}
+
 /// Create the `downloadTestRunner` task.
 Task createDownloadTestRunnerTask(
   JbFiles files,
   JbConfigContainer configContainer,
   JBuildSender jBuildSender,
+  DepsCache depsCache,
   DartleCache cache,
   FileCollection jbFileInputs,
 ) {
@@ -655,6 +747,7 @@ Task createDownloadTestRunnerTask(
       jBuildSender,
       configContainer,
       workingDir,
+      depsCache,
       depsFile,
       cache,
     ),
@@ -686,6 +779,7 @@ Task createTestTask(
       installRuntimeDepsTaskName,
     },
     description: 'Run tests. JBuild automatically detects JUnit5 and Spock.',
+    phase: evaluatePhase,
   );
 }
 
@@ -693,6 +787,7 @@ Future<void> _downloadTestRunner(
   JBuildSender jBuildSender,
   JbConfigContainer configContainer,
   String workingDir,
+  DepsCache depsCache,
   String depsFile,
   DartleCache cache,
 ) async {
@@ -704,7 +799,11 @@ Future<void> _downloadTestRunner(
     downloadTestRunnerTaskName,
     jBuildSender,
     config.preArgs(workingDir),
-    FileDependencies(File(depsFile), (scope) => scope.includedAtRuntime()),
+    FileDependencies(
+      File(depsFile),
+      depsCache,
+      (scope) => scope.includedAtRuntime(),
+    ),
     outDir.path,
   );
 }
@@ -764,45 +863,26 @@ Future<void> _test(
 Task createDepsTask(
   JbFiles jbFiles,
   JbConfiguration config,
+  DepsCache depsCache,
   DartleCache cache,
-  LocalDependencies localDependencies,
-  LocalDependencies localProcessorDeps,
+  ResolvedLocalDependencies localDeps,
+  ResolvedLocalDependencies localProcDeps,
 ) {
   final workingDir = Directory.current.path;
   return Task(
-    (List<String> args) => _deps(
+    (List<String> args) => printDependencies(
       jbFiles,
       config,
       workingDir,
-      cache,
-      localDependencies,
-      localProcessorDeps,
+      depsCache,
+      localDeps,
+      localProcDeps,
       args,
     ),
     name: depsTaskName,
     dependsOn: {writeDepsTaskName},
     argsValidator: const DepsArgValidator(),
     description: 'Shows information about project dependencies.',
-  );
-}
-
-Future<void> _deps(
-  JbFiles jbFiles,
-  JbConfiguration config,
-  String workingDir,
-  DartleCache cache,
-  LocalDependencies localDependencies,
-  LocalDependencies localProcessorDependencies,
-  List<String> args,
-) async {
-  await printDependencies(
-    jbFiles,
-    config,
-    workingDir,
-    cache,
-    localDependencies,
-    localProcessorDependencies,
-    args,
   );
 }
 

@@ -1,11 +1,13 @@
 import 'dart:io';
 
+import 'package:actors/actors.dart';
 import 'package:dartle/dartle.dart';
 import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
 import 'config_source.dart';
+import 'dependencies/deps_cache.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart';
 import 'options.dart';
@@ -20,6 +22,13 @@ final class ResolvedProjectDependency {
 
   DependencySpec get spec => projectDependency.spec;
 
+  String get artifact => "$group:$module:$version";
+
+  Map<String, DependencySpec?> get dependencies => _config.config.dependencies;
+
+  Map<String, DependencySpec?> get processorDependencies =>
+      _config.config.processorDependencies;
+
   String get path => projectDependency.path;
 
   String? get group => _config.config.group;
@@ -27,6 +36,11 @@ final class ResolvedProjectDependency {
   String? get module => _config.config.module;
 
   String? get version => _config.config.version;
+
+  List<String> get exclusions => _config.config.dependencyExclusionPatterns;
+
+  List<String> get procExclusions =>
+      _config.config.processorDependencyExclusionPatterns;
 
   DependencyScope get scope => projectDependency.spec.scope;
 
@@ -53,8 +67,9 @@ final class ResolvedProjectDependency {
     Options options,
     JbFiles files,
     JBuildSender jvmExecutor,
+    Sendable<DepsCacheMessage, ResolvedDependencies> depsCache,
   ) async {
-    final runner = JbRunner(files, _config.config, jvmExecutor);
+    final runner = JbRunner(files, _config.config, jvmExecutor, depsCache);
     logger.info(() => "Initializing project dependency at '$projectDir'");
     await withCurrentDirectory(
       projectDir,
@@ -69,9 +84,20 @@ final class ResolvedProjectDependency {
 
     logger.fine(() => "Project dependency '$projectDir' initialized");
   }
+
+  ResolvedDependency toResolvedDependency({required bool isDirect}) =>
+      ResolvedDependency(
+        artifact: artifact,
+        spec: spec,
+        sha1: '',
+        isDirect: isDirect,
+        dependencies: dependencies.keys.toList(growable: false),
+      );
 }
 
 final class ResolvedLocalDependencies {
+  static const empty = ResolvedLocalDependencies([], []);
+
   final List<JarDependency> jars;
   final List<ResolvedProjectDependency> projectDependencies;
 
@@ -80,15 +106,14 @@ final class ResolvedLocalDependencies {
   bool get isEmpty => jars.isEmpty && projectDependencies.isEmpty;
 
   bool get isNotEmpty => !isEmpty;
-
-  LocalDependencies get unresolved => LocalDependencies(
-    jars,
-    projectDependencies.map((e) => e.projectDependency).toList(growable: false),
-  );
 }
 
 extension Resolver on ProjectDependency {
   /// Resolve a [ProjectDependency]'s [JbConfiguration].
+  ///
+  /// The `path` may be one of the following:
+  ///   * directory containing a jb project.
+  ///   * file expected to be the jb config file.
   Future<ResolvedProjectDependency> resolve() async {
     final dir = Directory(path);
     FileConfigSource configSource;
@@ -98,8 +123,16 @@ extension Resolver on ProjectDependency {
       projectDir = p.canonicalize(dir.absolute.path);
     } else {
       // maybe it's a dependency on a particular jb file
-      configSource = FileConfigSource([path]);
-      projectDir = p.canonicalize(p.dirname(path));
+      if (const {jsonJbFile, yamlJbFile}.contains(p.basename(path))) {
+        configSource = FileConfigSource([path]);
+        projectDir = p.canonicalize(p.dirname(path));
+      } else {
+        throw DartleException(
+          message:
+              'Cannot load project dependency at path "$path": '
+              'not a jb project directory or jb config file.',
+        );
+      }
     }
     JbConfigContainer config;
     try {

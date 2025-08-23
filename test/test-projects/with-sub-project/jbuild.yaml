@@ -13,5 +13,5 @@ output-dir: build/out
 javac-args: ["--release", "11"]
 
 dependencies:
-  greetings:
+  tests:greetings:1.0:
     path: greeting

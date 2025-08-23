@@ -632,6 +632,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "BSD-3-Clause-Tso": License(
+    licenseId: "BSD-3-Clause-Tso",
+    name: "BSD 3-Clause Tso variant",
+    uri: "https://spdx.org/licenses/BSD-3-Clause-Tso.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "BSD-4-Clause": License(
     licenseId: "BSD-4-Clause",
     name: "BSD 4-Clause \"Original\" or \"Old\" License",
@@ -1695,6 +1702,14 @@ const allLicenses = <String, License>{
     licenseId: "ErlPL-1.1",
     name: "Erlang Public License v1.1",
     uri: "https://spdx.org/licenses/ErlPL-1.1.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "ESA-PL-weak-copyleft-2.4": License(
+    licenseId: "ESA-PL-weak-copyleft-2.4",
+    name:
+        "European Space Agency Public License – v2.4 – Weak Copyleft (Type 2)",
+    uri: "https://spdx.org/licenses/ESA-PL-weak-copyleft-2.4.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
@@ -2800,7 +2815,7 @@ const allLicenses = <String, License>{
   ),
   "libpng-1.6.35": License(
     licenseId: "libpng-1.6.35",
-    name: "PNG Reference Library License v1 (for libpng 0.5 through 1.6.35",
+    name: "PNG Reference Library License v1 (for libpng 0.5 through 1.6.35)",
     uri: "https://spdx.org/licenses/libpng-1.6.35.html",
     isOsiApproved: false,
     isFsfLibre: null,
@@ -4366,6 +4381,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "SUL-1.0": License(
+    licenseId: "SUL-1.0",
+    name: "Sustainable Use License v1.0",
+    uri: "https://spdx.org/licenses/SUL-1.0.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "Sun-PPP": License(
     licenseId: "Sun-PPP",
     name: "Sun PPP License",
@@ -4695,10 +4717,24 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "WordNet": License(
+    licenseId: "WordNet",
+    name: "WordNet License",
+    uri: "https://spdx.org/licenses/WordNet.html",
+    isOsiApproved: true,
+    isFsfLibre: null,
+  ),
   "Wsuipa": License(
     licenseId: "Wsuipa",
     name: "Wsuipa License",
     uri: "https://spdx.org/licenses/Wsuipa.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "WTFNMFPL": License(
+    licenseId: "WTFNMFPL",
+    name: "Do What The F*ck You Want To But It's Not My Fault Public License",
+    uri: "https://spdx.org/licenses/WTFNMFPL.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),

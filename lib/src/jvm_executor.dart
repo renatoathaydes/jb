@@ -89,7 +89,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
       workingDirectory: Directory.current.path,
     );
 
-    final pout = proc.stdout.lines().asBroadcastStream();
+    final pout = proc.stdout.linesDefaultEncoding().asBroadcastStream();
     final lines = await pout.take(2).toList();
     final port = lines.isEmpty ? '' : lines.first;
     final token = lines.length == 2 ? lines[1] : '';
@@ -104,7 +104,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
         throw DartleException(
           message:
               'Failed to start JVM (exit code: $exitCode). Stderr:\n'
-              '${await proc.stderr.lines().join('\n')}',
+              '${await proc.stderr.linesDefaultEncoding().join('\n')}',
         );
       }
       throw DartleException(
@@ -122,7 +122,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     stopwatch.stop();
     logger.log(profile, () => 'Initialized JVM in ${elapsedTime(stopwatch)}');
 
-    final perr = proc.stderr.lines();
+    final perr = proc.stderr.linesDefaultEncoding();
     final stdoutLogger = _RpcExecLogger('stdout', proc.pid);
     final stderrLogger = _RpcExecLogger('stderr', proc.pid);
     pout.listen(stdoutLogger.call);
@@ -353,7 +353,7 @@ class _JBuildRpc {
       }
       throw DartleException(
         message:
-            'RPC request failed (code=${resp.statusCode}): ${await resp.text()}',
+            'RPC request failed (code=${resp.statusCode}): ${await resp.textUtf8()}',
       );
     } on DartleException {
       rethrow;

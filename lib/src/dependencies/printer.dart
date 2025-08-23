@@ -9,24 +9,26 @@ import 'package:dartle/dartle.dart'
         ColoredLogMessage,
         LogColor,
         PlainMessage;
-import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:io/ansi.dart'
-    show magenta, styleBold, yellow, styleItalic, resetBold, styleDim, red;
+    show
+        magenta,
+        styleBold,
+        yellow,
+        styleItalic,
+        resetBold,
+        red,
+        resetAll,
+        darkGray,
+        blue;
 
 import '../config.dart';
 import '../jb_files.dart';
 import '../licenses.g.dart' show allLicenses;
 import '../maven_metadata.dart' show License;
 import '../pom.dart';
+import '../resolved_dependency.dart';
 import '../tasks.dart' show depsTaskName;
-
-final class _Dependency {
-  final String name;
-  final DependencySpec spec;
-  final String localSuffix;
-
-  const _Dependency(this.name, this.spec, this.localSuffix);
-}
+import 'deps_cache.dart';
 
 class _DepsArgs {
   final DependencyScope scope;
@@ -90,43 +92,38 @@ class DepsArgValidator with ArgsValidator {
       '          -l: show dependencies\' licenses.';
 }
 
+void printDepWarnings(ResolvedDependencies deps) {
+  final printer = _JBuildDepsPrinter(false);
+  printer.printWarnings(deps.warnings, deps.dependencies.toMap());
+}
+
 Future<void> printDependencies(
   JbFiles jbFiles,
   JbConfiguration config,
   String workingDir,
-  DartleCache cache,
-  LocalDependencies localDependencies,
-  LocalDependencies localProcessorDependencies,
+  DepsCache depsCache,
+  ResolvedLocalDependencies localDeps,
+  ResolvedLocalDependencies localProcDeps,
   List<String> args,
 ) async {
   final options = const DepsArgValidator()._parse(args);
   final scope = options.scope;
-  final mainLocalDeps = _getLocalDependencies(
-    localDependencies,
-    config.allDependencies,
-    scope: scope,
-  ).toList(growable: false);
-  final processorLocalDeps = _getLocalDependencies(
-    localProcessorDependencies,
-    config.allProcessorDependencies,
-    scope: scope,
-  ).toList(growable: false);
-  final mainDeps = (await parseDeps(jbFiles.dependenciesFile)).dependencies
+  final mainResolved = await depsCache.send(
+    GetDeps(jbFiles.dependenciesFile.path),
+  );
+  final mainDeps = mainResolved.dependencies
       .where((dep) => scope.includes(dep.spec.scope))
       .toList(growable: false);
-  final processorDeps = (await parseDeps(jbFiles.processorDependenciesFile))
-      .dependencies
+  final processorResolved = await depsCache.send(
+    GetDeps(jbFiles.processorDependenciesFile.path),
+  );
+  final processorDeps = processorResolved.dependencies
       .where((dep) => scope.includes(dep.spec.scope))
       .toList(growable: false);
 
   final artifact = _createSimpleArtifact(config);
 
-  if ([
-    mainLocalDeps,
-    processorLocalDeps,
-    mainDeps,
-    processorDeps,
-  ].every((d) => d.isEmpty)) {
+  if ([mainDeps, processorDeps].every((d) => d.isEmpty)) {
     logger.info(
       PlainMessage(
         'Project ${artifact.identifier} does not have any dependencies'
@@ -137,36 +134,23 @@ Future<void> printDependencies(
   }
 
   final printer = _JBuildDepsPrinter(options.showLicenses);
-  if (mainDeps.isNotEmpty || mainLocalDeps.isNotEmpty) {
+  if (mainDeps.isNotEmpty) {
+    final depByArtifact = mainDeps.toMap();
     printer
       ..header(artifact, scope)
       ..exclusions(config.dependencyExclusionPatterns)
-      ..print(mainDeps, options)
-      ..printLocal(mainLocalDeps);
+      ..print(mainDeps, depByArtifact, mainResolved.warnings, options)
+      ..printWarnings(mainResolved.warnings, depByArtifact);
   }
-  if (processorLocalDeps.isNotEmpty || processorDeps.isNotEmpty) {
+  if (processorDeps.isNotEmpty) {
+    final depByArtifact = processorDeps.toMap();
     printer
       ..header(artifact, scope, forProcessor: true)
       ..exclusions(config.processorDependencyExclusionPatterns)
-      ..print(processorDeps, options)
-      ..printLocal(processorLocalDeps);
+      ..print(processorDeps, depByArtifact, processorResolved.warnings, options)
+      ..printWarnings(processorResolved.warnings, depByArtifact);
   }
   printer.printSeenLicenses();
-}
-
-Iterable<_Dependency> _getLocalDependencies(
-  LocalDependencies localDependencies,
-  Iterable<MapEntry<String, DependencySpec>> dependencies, {
-  required DependencyScope scope,
-}) {
-  return localDependencies.jars
-      .where((j) => scope.includes(j.spec.scope))
-      .map((j) => _Dependency(j.path, j.spec, ' (local jar)'))
-      .followedBy(
-        localDependencies.projectDependencies
-            .where((d) => scope.includes(d.spec.scope))
-            .map((d) => _Dependency(d.path, d.spec, ' (local project)')),
-      );
 }
 
 Artifact _createSimpleArtifact(JbConfiguration config) {
@@ -187,6 +171,9 @@ class _JBuildDepsPrinter {
   bool showLicenses;
   Set<_License> seenLicenses = {};
 
+  static const _indentUnit = '    ';
+  static const _indentAdd = '│   ';
+
   _JBuildDepsPrinter(this.showLicenses);
 
   void header(
@@ -198,12 +185,12 @@ class _JBuildDepsPrinter {
         ? ''
         : 'with scope ${scope.name}';
     final prefix = forProcessor
-        ? 'Annotation processor dependencies'
-        : 'Dependencies';
+        ? 'Annotation processor dependencies:\n'
+        : 'Project Dependencies:\n';
     logger.info(
       AnsiMessage([
         AnsiMessagePart.code(styleItalic),
-        AnsiMessagePart.text('$prefix of '),
+        AnsiMessagePart.text(prefix),
         AnsiMessagePart.code(styleBold),
         AnsiMessagePart.code(magenta),
         AnsiMessagePart.text('${artifact.identifier}$scopeMsg:'),
@@ -212,29 +199,45 @@ class _JBuildDepsPrinter {
   }
 
   void exclusions(List<String> exclusions) {
-    _printExclusions(exclusions);
+    _printExclusions(exclusions, indent: _indentAdd);
   }
 
-  void print(List<ResolvedDependency> deps, _DepsArgs options) {
-    final map = deps.toMap();
+  void print(
+    List<ResolvedDependency> deps,
+    Map<String, ResolvedDependency> depByArtifact,
+    List<DependencyWarning> warnings,
+    _DepsArgs options,
+  ) async {
+    var artifactsWithWarnings = warnings.map((w) => "${w.artifact}:").toSet();
     final visited = <String>{};
-    for (final dep
-        in deps.where((d) => d.isDirect).sortedBy((d) => d.artifact)) {
-      _printTree(dep, map, visited, options);
+    final directDeps = deps
+        .where((d) => d.isDirect)
+        .sortedBy((d) => d.artifact)
+        .toList();
+    final finalIndex = directDeps.length - 1;
+    for (final (i, dep) in directDeps.indexed) {
+      _printTree(
+        dep,
+        depByArtifact,
+        artifactsWithWarnings,
+        visited,
+        options,
+        isLast: i == finalIndex,
+      );
     }
   }
-
-  static const _indentUnit = '  ';
 
   void _printTree(
     ResolvedDependency dependency,
     Map<String, ResolvedDependency> map,
+    Set<String> artifactsWithWarnings,
     Set<String> visited,
     _DepsArgs options, {
-    String indent = _indentUnit,
+    String indent = '',
+    required bool isLast,
   }) {
     if (!visited.add(dependency.artifact)) {
-      _printVisited(dependency.artifact, indent: indent);
+      _printVisited(dependency, indent: indent, isLast: isLast);
       return;
     }
 
@@ -253,20 +256,43 @@ class _JBuildDepsPrinter {
         ];
       }
     }
-
+    final isLocal = dependency.spec.path != null;
     logger.info(
       AnsiMessage([
+        AnsiMessagePart.text("$indent${_depPoint(isLast)} "),
         AnsiMessagePart.code(styleBold),
-        AnsiMessagePart.text("$indent* ${dependency.artifact}"),
+        if (artifactsWithWarnings.contains(dependency.artifact.noVersion()))
+          AnsiMessagePart.code(red)
+        else if (isLocal)
+          AnsiMessagePart.code(blue),
+        AnsiMessagePart.text(dependency.artifact + (isLocal ? ' (local)' : '')),
+        AnsiMessagePart.code(resetAll),
         ...licenseParts,
       ]),
     );
 
-    _printExclusions(dependency.spec.exclusions, indent: indent);
+    final nextIndent = '$indent${isLast ? _indentUnit : _indentAdd}';
+    _printExclusions(dependency.spec.exclusions, indent: nextIndent);
 
-    for (final ddep in dependency.dependencies.sorted()) {
-      final dep = map[ddep]!;
-      _printTree(dep, map, visited, options, indent: '$_indentUnit$indent');
+    final finalIndex = dependency.dependencies.length - 1;
+    for (final (i, ddep) in dependency.dependencies.sorted().indexed) {
+      final dep = map[ddep];
+      if (dep == null) {
+        // this happens when a local dependency has a name that does not match
+        // the artifact (e.g. "greeting:" when the artifact is "tests:greetings-app:1.0").
+        logger.finest(() => 'Dependency not found in the mapping: $ddep');
+        continue;
+      }
+      final isLast = i == finalIndex;
+      _printTree(
+        dep,
+        map,
+        artifactsWithWarnings,
+        visited,
+        options,
+        indent: nextIndent,
+        isLast: isLast,
+      );
     }
   }
 
@@ -274,21 +300,70 @@ class _JBuildDepsPrinter {
     for (final exclusion in exclusions.sorted()) {
       logger.info(
         AnsiMessage([
+          AnsiMessagePart.text(indent),
           AnsiMessagePart.code(red),
-          AnsiMessagePart.code(styleDim),
-          AnsiMessagePart.text('$indent${_indentUnit}x $exclusion'),
+          AnsiMessagePart.text('x $exclusion'),
         ]),
       );
     }
   }
 
-  void _printVisited(String dep, {required String indent}) {
-    logger.info(ColoredLogMessage("$indent* $dep (-)", LogColor.gray));
+  void _printVisited(
+    ResolvedDependency dep, {
+    required String indent,
+    required bool isLast,
+  }) {
+    final point = _depPoint(isLast);
+    final local = dep.spec.path == null ? '' : ' (local)';
+    logger.info(
+      AnsiMessage([
+        AnsiMessagePart.text("$indent$point "),
+        AnsiMessagePart.code(darkGray),
+        AnsiMessagePart.text("${dep.artifact}$local (-)"),
+      ]),
+    );
   }
 
-  void printLocal(List<_Dependency> localDeps) {
-    for (var dep in localDeps.map((s) => '  * ${s.name} ${s.localSuffix}')) {
-      logger.info(ColoredLogMessage(dep, LogColor.blue));
+  void printWarnings(
+    List<DependencyWarning> warnings,
+    Map<String, ResolvedDependency> depByArtifact,
+  ) {
+    if (warnings.isEmpty) return;
+    logger.info(
+      ColoredLogMessage('Dependency tree contains conflicts:', LogColor.yellow),
+    );
+    for (final warning in warnings) {
+      logger.info(
+        AnsiMessage([
+          AnsiMessagePart.code(styleBold),
+          AnsiMessagePart.text('  * ${warning.artifact}:\n'),
+          AnsiMessagePart.code(resetBold),
+          ...warning.versionConflicts.expand(
+            (c) => [
+              AnsiMessagePart.code(styleBold),
+              AnsiMessagePart.code(yellow),
+              AnsiMessagePart.text('    - ${c.version}'),
+              AnsiMessagePart.code(resetAll),
+              AnsiMessagePart.text(': '),
+              ..._requirementChain(c.requestedBy),
+              AnsiMessagePart.text('\n'),
+            ],
+          ),
+        ]),
+      );
+    }
+  }
+
+  Iterable<AnsiMessagePart> _requirementChain(List<String> requestedBy) sync* {
+    if (requestedBy.isEmpty) {
+      yield AnsiMessagePart.code(darkGray);
+      yield AnsiMessagePart.text('(direct dependency)');
+    } else {
+      yield* requestedBy.map(AnsiMessagePart.text).toList().joinWith(const [
+        AnsiMessagePart.code(darkGray),
+        AnsiMessagePart.text(' -> '),
+        AnsiMessagePart.code(resetAll),
+      ]);
     }
   }
 
@@ -330,6 +405,21 @@ class _JBuildDepsPrinter {
       );
     }
   }
+}
+
+extension on String {
+  String noVersion() {
+    var index = indexOf(':');
+    if (index < 0 || index == length - 1) return this;
+    index = indexOf(':', index + 1);
+    if (index < 0) return this;
+    return substring(0, index + 1);
+  }
+}
+
+String _depPoint(bool isLast) {
+  if (isLast) return '└──';
+  return '├──';
 }
 
 _License _findLicense(DependencyLicense license) {
@@ -445,4 +535,17 @@ extension _Mapper on Iterable<ResolvedDependency> {
 
 extension ArtifactExtension on Artifact {
   String get identifier => "$group:$module:$version";
+}
+
+extension<T> on List<T> {
+  Iterable<T> joinWith(List<T> joins) sync* {
+    final lastIndex = length - 1;
+    for (final e in indexed) {
+      final (index, item) = e;
+      yield item;
+      if (index != lastIndex) {
+        yield* joins;
+      }
+    }
+  }
 }

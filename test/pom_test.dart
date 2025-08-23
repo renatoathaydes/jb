@@ -152,6 +152,7 @@ $nonTransitiveDependency
           ResolvedLocalDependencies([], [
             ResolvedProjectDependency(
               ProjectDependency(
+                'jb-api',
                 DependencySpec(
                   transitive: true,
                   scope: DependencyScope.compileOnly,
