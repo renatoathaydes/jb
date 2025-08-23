@@ -164,16 +164,21 @@ void main() {
 
       expect(
         lines.sublist(runningTaskIndex + 1, endIndex).join('\n'),
-        equals('''\
-Project Dependencies:
-com.athaydes.tests:my-app:0.0.0:
-├── com.example:with-deps:1.2.3 (local)
-│   ├── com.example:lists:1.0
-│   ├── minimal-sample (local)
-│   └── org.slf4j:slf4j-api:1.7.36
-├── org.slf4j:slf4j-api:2.0.16
-└── tests:greetings-app:1.0 (local)
-    └── tests:greetings:1.0 (local)'''),
+        equals(
+          'Project Dependencies:\n'
+          'com.athaydes.tests:my-app:0.0.0:\n'
+          '├── com.example:with-deps:1.2.3 (local)\n'
+          '│   ├── com.example:lists:1.0\n'
+          '│   ├── minimal-sample (local)\n'
+          '│   └── org.slf4j:slf4j-api:1.7.36\n'
+          '├── org.slf4j:slf4j-api:2.0.16\n'
+          '└── tests:greetings-app:1.0 (local)\n'
+          '    └── tests:greetings:1.0 (local)\n'
+          'Dependency tree contains conflicts:\n'
+          '  * org.slf4j:slf4j-api:\n'
+          '    - 1.7.36: com.example:with-deps:1.2.3\n'
+          '    - 2.0.16: (direct dependency)\n',
+        ),
       );
     });
   });
