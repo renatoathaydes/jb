@@ -1,6 +1,13 @@
 ## Next
 
+# 0.14.0
+
+- added the `jshell` task, which allows running a Java shell with the project's classpath easily.
 - changed `generatePom` task to emit POM without any transitive dependencies, so `jb`'s resolution is used, not Maven's.
+- improved the `dependencies` task so its output is much nicer to look at.
+- `dependencies` task output now shows local dependencies' transitive dependencies.
+- `dependencies` task output now shows proper version conflicts that take into account the full dependency graph, including local dependencies.
+- added `verifyDependencies` task which fails if the project has version conflicts, causing compilation to not even start.
 
 # 0.13.0
 
