@@ -40,8 +40,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   final String jbuildJar;
   final String jvmCdsFile;
   final List<String> _javaRuntimeArgs;
-  Future<_JBuildRpc>? _rpc;
-  bool _started = false;
+  final Map<String, Future<_JBuildRpc>> _rpc = {};
 
   _JBuildActor(
     this._level,
@@ -59,6 +58,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     String jbuildJar,
     String jvmCdsFile,
     List<String> javaRuntimeArgs,
+    String workingDirectory,
   ) async {
     final stopwatch = Stopwatch()..start();
 
@@ -79,6 +79,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     rpcLogger.fine(
       () =>
           'Starting JBuild RPC on Isolate ${Isolate.current.debugName} '
+          'on directory $workingDirectory '
           'with args: $args',
     );
 
@@ -86,7 +87,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
       'java',
       args,
       runInShell: true,
-      workingDirectory: Directory.current.path,
+      workingDirectory: workingDirectory,
     );
 
     final pout = proc.stdout.linesDefaultEncoding().asBroadcastStream();
@@ -131,17 +132,18 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     return _JBuildRpc(_Proc(proc, portNumber, token), stdoutLogger);
   }
 
-  Future<_JBuildRpc> _getOrStartRpc() async {
-    if (!_started) {
-      _started = true;
-      _rpc = _startRpc(jbuildJar, jvmCdsFile, _javaRuntimeArgs);
-    }
-    return _rpc!;
+  Future<_JBuildRpc> _getOrStartRpc(String workingDir) async {
+    return _rpc.update(
+      workingDir,
+      (rpc) => rpc,
+      ifAbsent: () =>
+          _startRpc(jbuildJar, jvmCdsFile, _javaRuntimeArgs, workingDir),
+    );
   }
 
   @override
   Future<Object?> handle(JavaCommand command) async {
-    final rpc = await _getOrStartRpc();
+    final rpc = await _getOrStartRpc(command.workingDir);
     final stopwatch = Stopwatch()..start();
     final Future<Object?> result = _run(command, rpc);
 
@@ -155,23 +157,28 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
 
   @override
   Future<void> close() async {
-    if (!_started) {
+    if (_rpc.isEmpty) {
       logger.finest(
         'JBuild Actor did not use JVM Executor, no need to stop it',
       );
       return;
     }
-
-    logger.fine('Stopping JVM Executor');
-
-    final rpc = await _rpc;
-
-    try {
-      await rpc!.stop();
-      logger.fine('JVM Executor stopped');
-    } catch (e) {
-      logger.warning(() => 'Error closing JVM Executor: $e');
-    }
+    await CancellableFuture.group(
+      debugName: 'JVM Executors Stopper',
+      _rpc.entries.map(
+        (entry) => () async {
+          final workingDir = entry.key;
+          final rpc = await entry.value;
+          logger.fine(() => 'Stopping JVM Executor at workingDir: $workingDir');
+          try {
+            await rpc.stop();
+          } catch (e) {
+            logger.warning(() => 'Error closing JVM Executor: $e');
+          }
+        },
+      ),
+    );
+    logger.fine('All JVM Executors stopped');
   }
 }
 
@@ -200,6 +207,10 @@ Future<Object?> _run(JavaCommand command, _JBuildRpc rpc) {
 sealed class JavaCommand {
   final String taskName;
   final String classpath;
+
+  // This is instantiated when we create the JavaCommand, but NOT when
+  // an Actor de-serializes the value.
+  final String workingDir = Directory.current.path;
 
   JavaCommand(this.taskName, this.classpath);
 
@@ -244,7 +255,9 @@ Actor<JavaCommand, Object?> createJavaActor(
   List<String> javaRuntimeArgs,
 ) {
   return Actor.create(
-    () => _JBuildActor(level, jbuildJar, jvmCdsFile, javaRuntimeArgs),
+    wrapHandlerWithCurrentDir(
+      () => _JBuildActor(level, jbuildJar, jvmCdsFile, javaRuntimeArgs),
+    ),
   );
 }
 

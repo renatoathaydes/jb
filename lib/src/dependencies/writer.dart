@@ -153,7 +153,9 @@ Future<ResolvedDependencies> _write(
         .map((e) => (e.key, e.value.exclusions))
         .expand((e) => [e.$1, ...e.$2.expand(_exclusionOption)]);
 
-    final collector = Actor.create(_CollectorActor.new);
+    final collector = Actor.create(
+      wrapHandlerWithCurrentDir(_CollectorActor.new),
+    );
     await jBuildSender.send(
       RunJBuild(writeDepsTaskName, [
         ...preArgs.where((n) => n != '-V'),

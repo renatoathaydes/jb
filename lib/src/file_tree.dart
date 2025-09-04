@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 
 import 'config.dart';
 import 'jvm_executor.dart';
+import 'utils.dart';
 
 final _newLine = utf8.encode(Platform.isWindows ? "\r\n" : '\n');
 
@@ -298,7 +299,9 @@ Future<void> storeNewFileTree(
   File fileTreeFile,
 ) async {
   final fileTreePath = fileTreeFile.absolute.path;
-  final outputConsumer = Actor.create(() => _FileOutput(fileTreePath));
+  final outputConsumer = Actor.create(
+    wrapHandlerWithCurrentDir(() => _FileOutput(fileTreePath)),
+  );
   try {
     await jBuildSender.send(
       RunJBuild('requirements', [

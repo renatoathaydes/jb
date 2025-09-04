@@ -301,10 +301,10 @@ packages:
     dependency: "direct main"
     description:
       name: isolate_current_directory
-      sha256: "38803416b7d9a499ee1549e16c73115b55863d643ff6c24a56904b1d835f88c1"
+      sha256: "692204fab9214268c0fdb9edbc3d010f35478428413a281862b91825e3640d59"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.0"
+    version: "2.2.0"
   js:
     dependency: transitive
     description:

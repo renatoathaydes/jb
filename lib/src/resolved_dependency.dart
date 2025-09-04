@@ -14,6 +14,7 @@ import 'options.dart';
 import 'path_dependency.dart';
 import 'runner.dart';
 import 'tasks.dart';
+import 'utils.dart' show changedDirectoryOnError;
 
 final class ResolvedProjectDependency {
   final ProjectDependency projectDependency;
@@ -73,6 +74,7 @@ final class ResolvedProjectDependency {
     logger.info(() => "Initializing project dependency at '$projectDir'");
     await withCurrentDirectory(
       projectDir,
+      onError: changedDirectoryOnError(projectDir),
       () async => await runner.run(
         options.copy(
           tasksInvocation: const [compileTaskName, installRuntimeDepsTaskName],
@@ -140,6 +142,7 @@ extension Resolver on ProjectDependency {
       // so we must load it from the right dir.
       config = await withCurrentDirectory(
         projectDir,
+        onError: changedDirectoryOnError(projectDir),
         () async => JbConfigContainer(await configSource.load()),
       );
     } catch (e) {

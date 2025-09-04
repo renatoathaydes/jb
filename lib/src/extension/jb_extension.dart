@@ -69,11 +69,12 @@ Future<ExtensionProject?> loadExtensionProject(
 
   final extensionConfig = await withCurrentDirectory(rootDir, () async {
     return await defaultJbConfigSource.load();
-  });
+  }, onError: changedDirectoryOnError(rootDir));
   _verifyJBuildApiDependency(extensionConfig);
 
   final configContainer = await withCurrentDirectory(
     rootDir,
+    onError: changedDirectoryOnError(rootDir),
     () => JbConfigContainer(config),
   );
   final runner = JbRunner(files, extensionConfig, jvmExecutor, depsCache);
@@ -82,6 +83,7 @@ Future<ExtensionProject?> loadExtensionProject(
   // jb tasks can be executed later
   await withCurrentDirectory(
     rootDir,
+    onError: changedDirectoryOnError(rootDir),
     () async => await runner.run(
       options.copy(
         tasksInvocation: const [compileTaskName, installRuntimeDepsTaskName],
@@ -193,7 +195,8 @@ Future<void> Function(List<String>, [ChangeSet?]) _taskAction(
           'className=${extensionTask.className}, '
           'method=${extensionTask.methodName}, '
           'args=$taskArgs, '
-          'changes=$changes',
+          'changes=$changes '
+          'on directory ${Directory.current.path}',
     );
     await jvmExecutor.send(
       RunJava(

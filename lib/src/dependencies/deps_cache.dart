@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:path/path.dart' as p;
 
 import 'package:actors/actors.dart';
 import 'package:dartle/dartle.dart' show failBuild, profile, activateLogging;
@@ -8,13 +9,17 @@ import 'package:logging/logging.dart' as log;
 import 'package:logging/logging.dart' show Level;
 
 import '../config.dart' show ResolvedDependencies, logger;
+import '../utils.dart';
 
 typedef DepsCache = Sendable<DepsCacheMessage, ResolvedDependencies>;
 
 Actor<DepsCacheMessage, ResolvedDependencies> createDepsActor(Level level) =>
-    Actor.create(() => _DepsCacheHandler(level));
+    Actor.create(wrapHandlerWithCurrentDir(() => _DepsCacheHandler(level)));
 
 sealed class DepsCacheMessage {
+  // This is instantiated when we create the DepsCacheMessage, but NOT when
+  // an Actor de-serializes the value.
+  final String workingDirectory = Directory.current.path;
   final String file;
 
   DepsCacheMessage(this.file);
@@ -45,28 +50,30 @@ final class _DepsCacheHandler
   @override
   FutureOr<ResolvedDependencies> handle(DepsCacheMessage message) {
     switch (message) {
-      case AddDeps(file: var file, deps: var deps):
-        cache(file, deps);
+      case AddDeps(file: var file, deps: var deps, workingDirectory: var dir):
+        cache(dir, file, deps);
         return deps;
-      case GetDeps(file: var file):
-        return parseIfAbsent(file);
+      case GetDeps(file: var file, workingDirectory: var dir):
+        return parseIfAbsent(dir, file);
     }
   }
 
-  void cache(String file, ResolvedDependencies deps) {
-    logger.fine(() => 'Caching resolved dependencies stored in $file');
-    _cache[file] = Future.value(deps);
+  void cache(String dir, String file, ResolvedDependencies deps) {
+    final path = p.isRelative(file) ? p.join(dir, file) : file;
+    logger.fine(() => 'Caching resolved dependencies stored in $path');
+    _cache[path] = Future.value(deps);
   }
 
-  Future<ResolvedDependencies> parseIfAbsent(String file) {
-    final cachedValue = _cache[file];
+  Future<ResolvedDependencies> parseIfAbsent(String dir, String file) {
+    final path = p.isRelative(file) ? p.join(dir, file) : file;
+    final cachedValue = _cache[path];
     if (cachedValue != null) {
-      logger.finer(() => 'Dependencies Cache hit: $file');
+      logger.finer(() => 'Dependencies Cache hit: $path');
       return cachedValue;
     }
-    logger.finer(() => 'Dependencies Cache miss: $file');
-    final future = _parse(File(file));
-    _cache[file] = future;
+    logger.finer(() => 'Dependencies Cache miss: $path');
+    final future = _parse(File(path));
+    _cache[path] = future;
     return future;
   }
 }

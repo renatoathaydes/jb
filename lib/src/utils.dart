@@ -2,11 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:actors/actors.dart' show Handler;
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
+import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:jb/jb.dart';
 import 'package:path/path.dart' as p;
 
+import 'errors.dart';
 import 'jbuild_jar.g.dart';
 import 'properties.dart';
 
@@ -27,6 +30,10 @@ Future<void> _createJBuildJar(File jar) async {
   await jar.parent.create(recursive: true);
   await jar.writeAsBytes(base64Decode(jbuildJarB64));
   logger.info(() => PlainMessage('JBuild jar saved at ${jar.path}'));
+}
+
+Function changedDirectoryOnError(String directory) {
+  return (e, st) => throw NestedDirectoryException(directory, e, st);
 }
 
 extension NullIterable<T> on Iterable<T?> {
@@ -318,4 +325,15 @@ extension BinaryStreamExtension on Stream<List<int>> {
 
   Stream<String> linesUtf8Encoding() =>
       transform(utf8.decoder).transform(const LineSplitter());
+}
+
+Handler<M, A> Function() wrapHandlerWithCurrentDir<M, A>(
+  Handler<M, A> Function() createHandler,
+) {
+  final wrappedCreator = wrapWithCurrentDirectory(createHandler);
+  return () {
+    final result = wrappedCreator();
+    // the function cannot return a Future, so this is safe
+    return result as Handler<M, A>;
+  };
 }
