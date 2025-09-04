@@ -141,3 +141,10 @@ List<T> lastItems<T>(int count, List<T> list) {
   assert(list.length >= count);
   return list.sublist(list.length - count);
 }
+
+String toCurrentOsPath(String path) {
+  if (!Platform.isWindows) {
+    return path;
+  }
+  return path.replaceAll('/', '\\');
+}
