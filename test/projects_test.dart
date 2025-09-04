@@ -423,7 +423,7 @@ void main() {
         );
         expect(jbResult.stdout, hasLength(greaterThan(2)));
         expect(lastItems(2, jbResult.stdout), [
-          'Everything is up-to-date!',
+          endsWith('$usesExtensionDir is up-to-date'),
           startsWith('Build succeeded in '),
         ]);
 
@@ -568,7 +568,7 @@ void main() {
         );
         expect(jbResult.stdout, hasLength(greaterThan(2)));
         expect(lastItems(2, jbResult.stdout), [
-          'Everything is up-to-date!',
+          endsWith('$usesExtensionDir is up-to-date'),
           startsWith('Build succeeded in '),
         ]);
 

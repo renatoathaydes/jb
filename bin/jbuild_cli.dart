@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 void main(List<String> arguments) async {
   final stopWatch = Stopwatch()..start();
   var loggingEnabled = false;
+  onEverythingUpToDate = _onEverythingUpToDate;
   Options? dartleOptions;
   try {
     final jbOptions = JbCliOptions.parseArgs(arguments);
@@ -67,6 +68,15 @@ Never _logAndExit(
     }
   }
   exit(code);
+}
+
+void _onEverythingUpToDate() {
+  logger.info(
+    ColoredLogMessage(
+      'Project at ${Directory.current.path} is up-to-date',
+      LogColor.green,
+    ),
+  );
 }
 
 String _elapsedTime(Stopwatch stopwatch) {
