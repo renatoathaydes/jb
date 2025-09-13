@@ -38,6 +38,7 @@ class JbDartle {
       installCompile,
       installRuntime,
       installProcessor,
+      createCompilationPath,
       generateEclipse,
       generatePom,
       requirements,
@@ -192,6 +193,12 @@ class JbDartle {
       _cache,
       localProcessorDependencies,
     );
+    createCompilationPath = createJavaCompilationPathTask(
+      _files,
+      _config,
+      _jvmExecutor,
+      _cache,
+    );
     run = createRunTask(_files, configContainer, _cache);
     jshell = createJshellTask(_files, configContainer, _cache);
     downloadTestRunner = createDownloadTestRunnerTask(
@@ -253,6 +260,7 @@ class JbDartle {
       installCompile,
       installRuntime,
       installProcessor,
+      createCompilationPath,
       run,
       jshell,
       downloadTestRunner,

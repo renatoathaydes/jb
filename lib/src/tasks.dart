@@ -6,6 +6,7 @@ import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:path/path.dart' as p;
 
 import 'compile/compile.dart';
+import 'compute_compilation_path.dart';
 import 'config.dart';
 import 'dependencies/deps_cache.dart';
 import 'dependencies/printer.dart';
@@ -37,6 +38,7 @@ const jshellTaskName = 'jshell';
 const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const installProcessorDepsTaskName = 'installProcessorDependencies';
+const createJavaCompilationPathTaskName = 'createJavaCompilationPath';
 const writeDepsTaskName = 'writeDependencies';
 const verifyDepsTaskName = 'verifyDependencies';
 const depsTaskName = 'dependencies';
@@ -559,6 +561,32 @@ Future<void> _copyOutput(CompileOutput out, String destinationDir) {
   return out.when(
     dir: (d) => Directory(d).copyContentsInto(destinationDir),
     jar: (j) => File(j).copy(p.join(destinationDir, p.basename(j))),
+  );
+}
+
+/// Create the createJavaCompilationPath task.
+Task createJavaCompilationPathTask(
+  JbFiles files,
+  JbConfiguration config,
+  JBuildSender jBuildSender,
+  DartleCache cache,
+) {
+  final modulesOutput = p.join(cache.rootDir, 'compilation-path.json');
+  final workingDir = Directory.current.path;
+  return Task(
+    (_) async {
+      await computeCompilationPath(
+        createJavaCompilationPathTaskName,
+        config,
+        workingDir,
+        jBuildSender,
+        config.runtimeLibsDir,
+        File(modulesOutput),
+      );
+    },
+    name: createJavaCompilationPathTaskName,
+    dependsOn: {installRuntimeDepsTaskName},
+    runCondition: RunOnChanges(outputs: file(modulesOutput)),
   );
 }
 
