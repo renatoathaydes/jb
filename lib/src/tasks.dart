@@ -6,7 +6,7 @@ import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:path/path.dart' as p;
 
 import 'compile/compile.dart';
-import 'compute_compilation_path.dart';
+import 'compute_compilation_path.dart' as cp;
 import 'config.dart';
 import 'dependencies/deps_cache.dart';
 import 'dependencies/printer.dart';
@@ -115,7 +115,10 @@ Task createCompileTask(
     runCondition: _createCompileRunCondition(config, cache),
     name: compileTaskName,
     argsValidator: const AcceptAnyArgs(),
-    dependsOn: const {installCompileDepsTaskName, installProcessorDepsTaskName},
+    dependsOn: const {
+      createJavaCompilationPathTaskName,
+      installProcessorDepsTaskName,
+    },
     description: 'Compile Java source code.',
   );
 }
@@ -571,22 +574,23 @@ Task createJavaCompilationPathTask(
   JBuildSender jBuildSender,
   DartleCache cache,
 ) {
-  final modulesOutput = p.join(cache.rootDir, 'compilation-path.json');
+  final compilationFiles = cp.CompilationPathFiles(cache);
   final workingDir = Directory.current.path;
   return Task(
     (_) async {
-      await computeCompilationPath(
+      await cp.computeCompilationPath(
         createJavaCompilationPathTaskName,
         config,
         workingDir,
         jBuildSender,
+        config.compileLibsDir,
         config.runtimeLibsDir,
-        File(modulesOutput),
+        compilationFiles,
       );
     },
     name: createJavaCompilationPathTaskName,
-    dependsOn: {installRuntimeDepsTaskName},
-    runCondition: RunOnChanges(outputs: file(modulesOutput)),
+    dependsOn: {installCompileDepsTaskName, installRuntimeDepsTaskName},
+    runCondition: RunOnChanges(outputs: compilationFiles.asFileCollection()),
   );
 }
 

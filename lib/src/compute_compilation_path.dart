@@ -1,21 +1,74 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:actors/actors.dart';
-import 'package:jb/src/compilation_path.g.dart';
+import 'package:dartle/dartle_cache.dart';
 import 'package:path/path.dart' as p;
 
+import 'compilation_path.g.dart';
 import 'config.dart';
 import 'jvm_executor.dart';
 import 'utils.dart';
 
+class CompilationPathFiles {
+  final String compileClassPath,
+      compileModulePath,
+      runtimeClassPath,
+      runtimeModulePath;
+
+  CompilationPathFiles(DartleCache cache)
+    : compileClassPath = p.join(cache.rootDir, 'compile-class-path.txt'),
+      compileModulePath = p.join(cache.rootDir, 'compile-module-path.txt'),
+      runtimeClassPath = p.join(cache.rootDir, 'runtime-class-path.txt'),
+      runtimeModulePath = p.join(cache.rootDir, 'runtime-module-path.txt');
+
+  FileCollection asFileCollection() => files([
+    compileClassPath,
+    compileModulePath,
+    runtimeClassPath,
+    runtimeModulePath,
+  ]);
+}
+
+/// Implementation of the 'createJavaCompilationPath' task.
 Future<void> computeCompilationPath(
   String taskName,
   JbConfiguration config,
   String workingDir,
   JBuildSender jBuildSender,
+  String compileLibsDir,
+  String runtimeLibsDir,
+  CompilationPathFiles files,
+) async {
+  final preArgs = config.preArgs(workingDir);
+  final outputConsumer = Actor.create(
+    wrapHandlerWithCurrentDir(() => _FileOutput()),
+  );
+  try {
+    await _computePaths(
+      taskName,
+      preArgs,
+      jBuildSender,
+      compileLibsDir,
+      outputConsumer,
+    ).then(_writePaths.curry(files.compileClassPath, files.compileModulePath));
+    await _computePaths(
+      taskName,
+      preArgs,
+      jBuildSender,
+      runtimeLibsDir,
+      outputConsumer,
+    ).then(_writePaths.curry(files.runtimeClassPath, files.runtimeModulePath));
+  } finally {
+    await outputConsumer.close();
+  }
+}
+
+Future<CompilationPath> _computePaths(
+  String taskName,
+  List<String> preArgs,
+  JBuildSender jBuildSender,
   String libsDir,
-  File output,
+  Actor<Object, CompilationPath?> outputConsumer,
 ) async {
   final jars = await Directory(libsDir)
       .list()
@@ -23,23 +76,27 @@ Future<void> computeCompilationPath(
       .map((f) => f.path)
       .toList();
 
-  final outputConsumer = Actor.create(
-    wrapHandlerWithCurrentDir(() => _FileOutput()),
+  await jBuildSender.send(
+    RunJBuild(taskName, [
+      ...preArgs,
+      'module',
+      ...jars,
+    ], _Sender(await outputConsumer.toSendable())),
   );
-  CompilationPath compilationPath;
-  try {
-    await jBuildSender.send(
-      RunJBuild(taskName, [
-        ...config.preArgs(workingDir),
-        'module',
-        ...jars,
-      ], _Sender(await outputConsumer.toSendable())),
-    );
-    compilationPath = (await outputConsumer.send(_sendContentsBack))!;
-  } finally {
-    await outputConsumer.close();
-  }
-  await output.writeAsString(jsonEncode(compilationPath.toJson()));
+  return (await outputConsumer.send(_sendContentsBack))!;
+}
+
+Future<void> _writePaths(
+  String classPathFile,
+  String modulePathFile,
+  CompilationPath paths,
+) async {
+  await File(
+    classPathFile,
+  ).writeAsString(paths.jars.map((j) => j.path).join(classpathSeparator));
+  await File(
+    modulePathFile,
+  ).writeAsString(paths.modules.map((j) => j.path).join(classpathSeparator));
 }
 
 /// Converts messages of type [String] to [Object].
@@ -60,7 +117,11 @@ class _FileOutput with Handler<Object, CompilationPath?> {
   @override
   CompilationPath? handle(Object message) {
     if (message == _sendContentsBack) {
-      return parseModules(_lines);
+      try {
+        return parseModules(_lines);
+      } finally {
+        _lines.clear();
+      }
     }
     _lines.add(message as String);
     return null;
