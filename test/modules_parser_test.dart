@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 void main() {
   test('can parse simple jar', () {
     final compilationPath = parseModules([
-      'Jar junit-platform-console-standalone-1.9.1.jar is not a module.',
+      'File junit-platform-console-standalone-1.9.1.jar is not a module.',
       '  JavaVersion: 17',
     ]);
     expect(
@@ -22,7 +22,7 @@ void main() {
 
   test('can parse Automatic-Module', () {
     final compilationPath = parseModules([
-      'Jar build/compile-libs/commons-io-2.11.0.jar is an automatic module: org.apache.commons.io',
+      'File build/compile-libs/commons-io-2.11.0.jar is an automatic-module: org.apache.commons.io',
       '  JavaVersion: 8',
     ]);
 
@@ -93,9 +93,9 @@ void main() {
 
   test('can parse all variations together', () {
     final compilationPath = parseModules([
-      'Jar junit-platform-console-standalone-1.9.1.jar is not a module.',
+      'File junit-platform-console-standalone-1.9.1.jar is not a module.',
       '  JavaVersion: 17',
-      'Jar build/compile-libs/commons-io-2.11.0.jar is an automatic module: org.apache.commons.io',
+      'File build/compile-libs/commons-io-2.11.0.jar is an automatic-module: org.apache.commons.io',
       '  JavaVersion: 8',
       'File ../libs/slf4j-simple-2.0.16.jar contains a Java module:',
       '  JavaVersion: 9',
@@ -110,7 +110,7 @@ void main() {
       '      Version: 2.0.16',
       '      Flags: none',
       '  Exports:',
-      'Jar my.jar is not a module.',
+      'File my.jar is not a module.',
       '  JavaVersion: 1.5',
     ]);
     expect(

@@ -67,10 +67,10 @@ class _FileOutput with Handler<Object, CompilationPath?> {
   }
 }
 
-final _simpleJar = RegExp('Jar (.*) is not a module.\$');
+final _simpleJar = RegExp('File (.*) is not a module.\$');
 
 final _automaticModule = RegExp(
-  'Jar (.*) is an automatic module: ([a-zA-Z0-9_.]+)\$',
+  'File (.*) is an automatic-module: ([a-zA-Z0-9_.]+)\$',
 );
 
 // File ../libs/slf4j-simple-2.0.16.jar contains a Java module:
