@@ -70,7 +70,11 @@ Future<CompilationPath> _computePaths(
   String libsDir,
   Actor<Object, CompilationPath?> outputConsumer,
 ) async {
-  final jars = await Directory(libsDir)
+  final directory = Directory(libsDir);
+  if (!await directory.exists()) {
+    return const CompilationPath(modules: [], jars: []);
+  }
+  final jars = await directory
       .list()
       .where((f) => p.extension(f.path) == '.jar')
       .map((f) => f.path)
