@@ -8,7 +8,7 @@ const jbExtension = 'jb-extension';
 
 /// Files and directories used by jb.
 class JbFiles {
-  final String jbCache;
+  static const String jbCache = '.jb-cache';
   final File jbuildJar;
   final ConfigSource configSource;
   final String processorLibsDir;
@@ -26,9 +26,6 @@ class JbFiles {
 
   File get jvmCdsFile => File(p.join(jbCache, 'jvm.cds'));
 
-  JbFiles(
-    this.jbuildJar, {
-    required this.configSource,
-    this.jbCache = '.jb-cache',
-  }) : processorLibsDir = p.join(jbCache, 'processor-dependencies');
+  JbFiles(this.jbuildJar, {required this.configSource})
+    : processorLibsDir = p.join(jbCache, 'processor-dependencies');
 }

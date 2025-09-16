@@ -590,7 +590,10 @@ Task createJavaCompilationPathTask(
     },
     name: createJavaCompilationPathTaskName,
     dependsOn: {installCompileDepsTaskName, installRuntimeDepsTaskName},
-    runCondition: RunOnChanges(outputs: compilationFiles.asFileCollection()),
+    runCondition: RunOnChanges(
+      outputs: compilationFiles.asFileCollection(),
+      cache: cache,
+    ),
   );
 }
 

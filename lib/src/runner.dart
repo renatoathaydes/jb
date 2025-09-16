@@ -32,7 +32,7 @@ class JbRunner {
     Stopwatch stopWatch, {
     bool isRoot = true,
   }) async {
-    final cache = DartleCache(files.jbCache);
+    final cache = DartleCache(JbFiles.jbCache);
 
     final jb = JbDartle.create(
       files,
