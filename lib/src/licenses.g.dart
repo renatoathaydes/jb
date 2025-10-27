@@ -629,7 +629,7 @@ const allLicenses = <String, License>{
     licenseId: "BSD-3-Clause-Open-MPI",
     name: "BSD 3-Clause Open MPI variant",
     uri: "https://spdx.org/licenses/BSD-3-Clause-Open-MPI.html",
-    isOsiApproved: false,
+    isOsiApproved: true,
     isFsfLibre: null,
   ),
   "BSD-3-Clause-Sun": License(
@@ -1726,6 +1726,14 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "ESA-PL-strong-copyleft-2.4": License(
+    licenseId: "ESA-PL-strong-copyleft-2.4",
+    name:
+        "European Space Agency Public License (ESA-PL) - V2.4 - Strong Copyleft (Type 1)",
+    uri: "https://spdx.org/licenses/ESA-PL-strong-copyleft-2.4.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "ESA-PL-weak-copyleft-2.4": License(
     licenseId: "ESA-PL-weak-copyleft-2.4",
     name:
@@ -2489,6 +2497,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "HPND-SMC": License(
+    licenseId: "HPND-SMC",
+    name: "Historical Permission Notice and Disclaimer - SMC variant",
+    uri: "https://spdx.org/licenses/HPND-SMC.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "HPND-UC": License(
     licenseId: "HPND-UC",
     name:
@@ -2509,6 +2524,13 @@ const allLicenses = <String, License>{
     licenseId: "HTMLTIDY",
     name: "HTML Tidy License",
     uri: "https://spdx.org/licenses/HTMLTIDY.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "hyphen-bulgarian": License(
+    licenseId: "hyphen-bulgarian",
+    name: "hyphen-bulgarian License",
+    uri: "https://spdx.org/licenses/hyphen-bulgarian.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
@@ -3436,6 +3458,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "NIST-PD-TNT": License(
+    licenseId: "NIST-PD-TNT",
+    name: "NIST    Public Domain Notice TNT variant",
+    uri: "https://spdx.org/licenses/NIST-PD-TNT.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "NIST-Software": License(
     licenseId: "NIST-Software",
     name: "NIST Software License",
@@ -3898,6 +3927,13 @@ const allLicenses = <String, License>{
     isOsiApproved: true,
     isFsfLibre: true,
   ),
+  "OSSP": License(
+    licenseId: "OSSP",
+    name: "OSSP License",
+    uri: "https://spdx.org/licenses/OSSP.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "PADL": License(
     licenseId: "PADL",
     name: "PADL License",
@@ -4210,6 +4246,13 @@ const allLicenses = <String, License>{
     licenseId: "SGI-OpenGL",
     name: "SGI OpenGL License",
     uri: "https://spdx.org/licenses/SGI-OpenGL.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "SGMLUG-PM": License(
+    licenseId: "SGMLUG-PM",
+    name: "SGMLUG Parser Materials License",
+    uri: "https://spdx.org/licenses/SGMLUG-PM.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
