@@ -39,6 +39,7 @@ const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const installProcessorDepsTaskName = 'installProcessorDependencies';
 const createJavaCompilationPathTaskName = 'createJavaCompilationPath';
+const createJavaRuntimePathTaskName = 'createJavaRuntimePath';
 const writeDepsTaskName = 'writeDependencies';
 const verifyDepsTaskName = 'verifyDependencies';
 const depsTaskName = 'dependencies';
@@ -567,14 +568,12 @@ Future<void> _copyOutput(CompileOutput out, String destinationDir) {
   );
 }
 
-/// Create the createJavaCompilationPath task.
 Task createJavaCompilationPathTask(
   JbFiles files,
   JbConfiguration config,
   JBuildSender jBuildSender,
-  DartleCache cache,
+  cp.CompilationPathFiles compilationFiles,
 ) {
-  final compilationFiles = cp.CompilationPathFiles(cache);
   final workingDir = Directory.current.path;
   return Task(
     (_) async {
@@ -584,15 +583,41 @@ Task createJavaCompilationPathTask(
         workingDir,
         jBuildSender,
         config.compileLibsDir,
-        config.runtimeLibsDir,
         compilationFiles,
       );
     },
     name: createJavaCompilationPathTaskName,
-    dependsOn: {installCompileDepsTaskName, installRuntimeDepsTaskName},
+    dependsOn: {installCompileDepsTaskName},
     runCondition: RunOnChanges(
       outputs: compilationFiles.asFileCollection(),
-      cache: cache,
+      cache: compilationFiles.cache,
+    ),
+  );
+}
+
+Task createJavaRuntimePathTask(
+  JbFiles files,
+  JbConfiguration config,
+  JBuildSender jBuildSender,
+  cp.CompilationPathFiles compilationFiles,
+) {
+  final workingDir = Directory.current.path;
+  return Task(
+    (_) async {
+      await cp.computeRuntimePath(
+        createJavaRuntimePathTaskName,
+        config,
+        workingDir,
+        jBuildSender,
+        config.runtimeLibsDir,
+        compilationFiles,
+      );
+    },
+    name: createJavaRuntimePathTaskName,
+    dependsOn: {installRuntimeDepsTaskName},
+    runCondition: RunOnChanges(
+      outputs: compilationFiles.asFileCollection(runtime: true),
+      cache: compilationFiles.cache,
     ),
   );
 }

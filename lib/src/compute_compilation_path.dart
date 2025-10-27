@@ -10,23 +10,21 @@ import 'jvm_executor.dart';
 import 'utils.dart';
 
 class CompilationPathFiles {
+  final DartleCache cache;
   final String compileClassPath,
       compileModulePath,
       runtimeClassPath,
       runtimeModulePath;
 
-  CompilationPathFiles(DartleCache cache)
+  CompilationPathFiles(this.cache)
     : compileClassPath = p.join(cache.rootDir, 'compile-class-path.txt'),
       compileModulePath = p.join(cache.rootDir, 'compile-module-path.txt'),
       runtimeClassPath = p.join(cache.rootDir, 'runtime-class-path.txt'),
       runtimeModulePath = p.join(cache.rootDir, 'runtime-module-path.txt');
 
-  FileCollection asFileCollection() => files([
-    compileClassPath,
-    compileModulePath,
-    runtimeClassPath,
-    runtimeModulePath,
-  ]);
+  FileCollection asFileCollection({bool runtime = false}) => runtime
+      ? files([runtimeClassPath, runtimeModulePath])
+      : files([compileClassPath, compileModulePath]);
 }
 
 /// Implementation of the 'createJavaCompilationPath' task.
@@ -36,7 +34,6 @@ Future<void> computeCompilationPath(
   String workingDir,
   JBuildSender jBuildSender,
   String compileLibsDir,
-  String runtimeLibsDir,
   CompilationPathFiles files,
 ) async {
   final preArgs = config.preArgs(workingDir);
@@ -51,6 +48,24 @@ Future<void> computeCompilationPath(
       compileLibsDir,
       outputConsumer,
     ).then(_writePaths.curry(files.compileClassPath, files.compileModulePath));
+  } finally {
+    await outputConsumer.close();
+  }
+}
+
+Future<void> computeRuntimePath(
+  String taskName,
+  JbConfiguration config,
+  String workingDir,
+  JBuildSender jBuildSender,
+  String runtimeLibsDir,
+  CompilationPathFiles files,
+) async {
+  final preArgs = config.preArgs(workingDir);
+  final outputConsumer = Actor.create(
+    wrapHandlerWithCurrentDir(() => _FileOutput()),
+  );
+  try {
     await _computePaths(
       taskName,
       preArgs,

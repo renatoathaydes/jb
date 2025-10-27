@@ -4,6 +4,7 @@ import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 
+import 'compute_compilation_path.dart';
 import 'config.dart';
 import 'config_source.dart';
 import 'dependencies/deps_cache.dart';
@@ -39,6 +40,7 @@ class JbDartle {
       installRuntime,
       installProcessor,
       createCompilationPath,
+      createRuntimePath,
       generateEclipse,
       generatePom,
       requirements,
@@ -193,11 +195,18 @@ class JbDartle {
       _cache,
       localProcessorDependencies,
     );
+    final compilationFiles = CompilationPathFiles(_cache);
     createCompilationPath = createJavaCompilationPathTask(
       _files,
       _config,
       _jvmExecutor,
-      _cache,
+      compilationFiles,
+    );
+    createRuntimePath = createJavaRuntimePathTask(
+      _files,
+      _config,
+      _jvmExecutor,
+      compilationFiles,
     );
     run = createRunTask(_files, configContainer, _cache);
     jshell = createJshellTask(_files, configContainer, _cache);
@@ -261,6 +270,7 @@ class JbDartle {
       installRuntime,
       installProcessor,
       createCompilationPath,
+      createRuntimePath,
       run,
       jshell,
       downloadTestRunner,
