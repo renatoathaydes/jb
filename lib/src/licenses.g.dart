@@ -751,6 +751,13 @@ const allLicenses = <String, License>{
     isOsiApproved: true,
     isFsfLibre: true,
   ),
+  "Buddy": License(
+    licenseId: "Buddy",
+    name: "Buddy License",
+    uri: "https://spdx.org/licenses/Buddy.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "BUSL-1.1": License(
     licenseId: "BUSL-1.1",
     name: "Business Source License 1.1",
@@ -3199,6 +3206,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "MIT-STK": License(
+    licenseId: "MIT-STK",
+    name: "MIT-STK License",
+    uri: "https://spdx.org/licenses/MIT-STK.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "MIT-testregex": License(
     licenseId: "MIT-testregex",
     name: "MIT testregex Variant",
@@ -4834,6 +4848,13 @@ const allLicenses = <String, License>{
     licenseId: "X11-distribute-modifications-variant",
     name: "X11 License Distribution Modification Variant",
     uri: "https://spdx.org/licenses/X11-distribute-modifications-variant.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "X11-no-permit-persons": License(
+    licenseId: "X11-no-permit-persons",
+    name: "X11 no permit persons clause",
+    uri: "https://spdx.org/licenses/X11-no-permit-persons.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
