@@ -149,10 +149,10 @@ packages:
     dependency: "direct main"
     description:
       name: conveniently
-      sha256: a497c69c3f8127a301b4c8d8d5d8432758cec5778e89ebe9a5bdf88bc953624f
+      sha256: d416893c1775e05727d63dc61388c07399e5330749511d26ce95948bad38bd67
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.0"
+    version: "1.3.0"
   convert:
     dependency: transitive
     description:
@@ -405,10 +405,10 @@ packages:
     dependency: "direct main"
     description:
       name: schemake
-      sha256: "0ab18db5b48fd96b0389d9731dce1e7a5e63d9199fcfbe2a8b2c1569eb943fb7"
+      sha256: "113abf3688986b76643227c8733cb14bff2bad7651b7bc14808c59874fa8fd58"
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.7"
+    version: "0.6.8"
   shelf:
     dependency: transitive
     description:
@@ -626,4 +626,4 @@ packages:
     source: hosted
     version: "3.1.3"
 sdks:
-  dart: ">=3.9.0 <4.0.0"
+  dart: ">=3.10.0 <4.0.0"

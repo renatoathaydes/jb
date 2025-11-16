@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:actors/actors.dart';
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle_cache.dart';
 import 'package:path/path.dart' as p;
 
@@ -47,7 +48,7 @@ Future<void> computeCompilationPath(
       jBuildSender,
       compileLibsDir,
       outputConsumer,
-    ).then(_writePaths.curry(files.compileClassPath, files.compileModulePath));
+    ).then(_writePaths.curry2(files.compileClassPath, files.compileModulePath));
   } finally {
     await outputConsumer.close();
   }
@@ -72,7 +73,7 @@ Future<void> computeRuntimePath(
       jBuildSender,
       runtimeLibsDir,
       outputConsumer,
-    ).then(_writePaths.curry(files.runtimeClassPath, files.runtimeModulePath));
+    ).then(_writePaths.curry2(files.runtimeClassPath, files.runtimeModulePath));
   } finally {
     await outputConsumer.close();
   }
@@ -176,7 +177,7 @@ CompilationPath parseModules(List<String> lines) {
       modules.add(
         _parse(
           iterator,
-          _autoModule.curry(moduleName, path),
+          _autoModule.curry2(moduleName, path),
           expectedLine: 'JavaVersion',
         ),
       );
@@ -225,10 +226,10 @@ T _parse<T>(
 }
 
 Module _parseModule(String path, Iterator<String> iterator) {
-  final javaVersion = _parse(iterator, _identity, expectedLine: 'JavaVersion');
-  final name = _parse(iterator, _identity, expectedLine: 'Name');
-  final version = _parse(iterator, _identity, expectedLine: 'Version');
-  final flags = _parse(iterator, _identity, expectedLine: 'Flags');
+  final javaVersion = _parse(iterator, identity, expectedLine: 'JavaVersion');
+  final name = _parse(iterator, identity, expectedLine: 'Name');
+  final version = _parse(iterator, identity, expectedLine: 'Version');
+  final flags = _parse(iterator, identity, expectedLine: 'Flags');
   final requires = _parseRequires(iterator);
 
   return Module(
@@ -244,7 +245,7 @@ Module _parseModule(String path, Iterator<String> iterator) {
 
 List<Requirement> _parseRequires(Iterator<String> iterator) {
   final result = <Requirement>[];
-  final requires = _parse(iterator, _identity, expectedLine: 'Requires');
+  final requires = _parse(iterator, identity, expectedLine: 'Requires');
   if (requires.isNotEmpty) {
     throw JBuildModuleOutputParserError(
       'Requires line should have no content, but got "$requires"',
@@ -258,7 +259,7 @@ List<Requirement> _parseRequires(Iterator<String> iterator) {
     }
     final name = _parse(
       iterator,
-      _identity,
+      identity,
       expectedLine: 'Module',
       indentation: '    ',
       // we already moved above to check if this is a Module
@@ -266,13 +267,13 @@ List<Requirement> _parseRequires(Iterator<String> iterator) {
     );
     final version = _parse(
       iterator,
-      _identity,
+      identity,
       expectedLine: 'Version',
       indentation: '      ',
     );
     final flags = _parse(
       iterator,
-      _identity,
+      identity,
       expectedLine: 'Flags',
       indentation: '      ',
     );
@@ -289,22 +290,5 @@ class JBuildModuleOutputParserError extends Error {
   @override
   String toString() {
     return 'JBuildModuleOutputError{message: $message}';
-  }
-}
-
-// TODO move to conveniently lib
-String _identity(String s) => s;
-
-// TODO move to conveniently lib
-extension<A, B, R> on R Function(A, B) {
-  R Function(B) curry(A a) {
-    return (b) => this(a, b);
-  }
-}
-
-// TODO move to conveniently lib
-extension<A, B, C, R> on R Function(A, B, C) {
-  R Function(C) curry(A a, B b) {
-    return (c) => this(a, b, c);
   }
 }
