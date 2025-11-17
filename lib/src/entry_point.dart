@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:dartle/dartle.dart';
 import 'package:path/path.dart' as p;
 
+import 'compute_compilation_path.dart';
 import 'config.dart';
 import 'config_source.dart';
 import 'create/create.dart';
 import 'dependencies/deps_cache.dart';
 import 'help.dart';
+import 'jb_actors.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart';
 import 'options.dart';
@@ -87,13 +89,20 @@ Future<void> _runJb(
     config.javacArgs.javaRuntimeArgs().toList(growable: false),
   );
 
-  final depsCache = createDepsActor(logger.level);
+  final depsCache = createDepsActor(dartleOptions.logLevel);
+
+  final compilationPathActor = createCompilationPathActor(
+    dartleOptions.logLevel,
+  );
 
   final runner = await JbRunner.create(
     jbFiles,
     config,
-    await jvmExecutor.toSendable(),
-    await depsCache.toSendable(),
+    JbActors(
+      await jvmExecutor.toSendable(),
+      await depsCache.toSendable(),
+      await compilationPathActor.toSendable(),
+    ),
   );
 
   try {
@@ -101,6 +110,7 @@ Future<void> _runJb(
   } finally {
     await jvmExecutor.close();
     await depsCache.close();
+    await compilationPathActor.close();
   }
 }
 

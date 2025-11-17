@@ -1,6 +1,6 @@
 package m2;
 
-import m1;
+import m1.M1;
 
 public class M2 {
     final M1 m1;

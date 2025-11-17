@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:actors/actors.dart';
 import 'package:conveniently/conveniently.dart';
+import 'package:dartle/dartle.dart' show activateLogging;
 import 'package:dartle/dartle_cache.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 
 import 'compilation_path.g.dart';
@@ -28,30 +30,46 @@ class CompilationPathFiles {
       : files([compileClassPath, compileModulePath]);
 }
 
+sealed class CompilationPathMessage {
+  final String libsDir;
+
+  const CompilationPathMessage(this.libsDir);
+}
+
+final class JBuildModuleOutputLine extends CompilationPathMessage {
+  final String line;
+
+  const JBuildModuleOutputLine(super.libsDir, this.line);
+}
+
+final class ReturnCompilationPath extends CompilationPathMessage {
+  const ReturnCompilationPath(super.libsDir);
+}
+
+/// Creates the actor that will consume the output of JBuild's command to
+/// obtain the project's compilation path.
+Actor<CompilationPathMessage, CompilationPath?> createCompilationPathActor(
+  Level level,
+) => Actor.create(() => _CompilePathsHandler(level));
+
 /// Implementation of the 'createJavaCompilationPath' task.
 Future<void> computeCompilationPath(
   String taskName,
   JbConfiguration config,
   String workingDir,
   JBuildSender jBuildSender,
+  Sendable<CompilationPathMessage, CompilationPath?> compPath,
   String compileLibsDir,
   CompilationPathFiles files,
 ) async {
   final preArgs = config.preArgs(workingDir);
-  final outputConsumer = Actor.create(
-    wrapHandlerWithCurrentDir(() => _FileOutput()),
-  );
-  try {
-    await _computePaths(
-      taskName,
-      preArgs,
-      jBuildSender,
-      compileLibsDir,
-      outputConsumer,
-    ).then(_writePaths.curry2(files.compileClassPath, files.compileModulePath));
-  } finally {
-    await outputConsumer.close();
-  }
+  await _computePaths(
+    taskName,
+    preArgs,
+    jBuildSender,
+    compileLibsDir,
+    compPath,
+  ).then(_writePaths.curry2(files.compileClassPath, files.compileModulePath));
 }
 
 Future<void> computeRuntimePath(
@@ -60,23 +78,17 @@ Future<void> computeRuntimePath(
   String workingDir,
   JBuildSender jBuildSender,
   String runtimeLibsDir,
+  Sendable<CompilationPathMessage, CompilationPath?> compPath,
   CompilationPathFiles files,
 ) async {
   final preArgs = config.preArgs(workingDir);
-  final outputConsumer = Actor.create(
-    wrapHandlerWithCurrentDir(() => _FileOutput()),
-  );
-  try {
-    await _computePaths(
-      taskName,
-      preArgs,
-      jBuildSender,
-      runtimeLibsDir,
-      outputConsumer,
-    ).then(_writePaths.curry2(files.runtimeClassPath, files.runtimeModulePath));
-  } finally {
-    await outputConsumer.close();
-  }
+  await _computePaths(
+    taskName,
+    preArgs,
+    jBuildSender,
+    runtimeLibsDir,
+    compPath,
+  ).then(_writePaths.curry2(files.runtimeClassPath, files.runtimeModulePath));
 }
 
 Future<CompilationPath> _computePaths(
@@ -84,7 +96,7 @@ Future<CompilationPath> _computePaths(
   List<String> preArgs,
   JBuildSender jBuildSender,
   String libsDir,
-  Actor<Object, CompilationPath?> outputConsumer,
+  Sendable<CompilationPathMessage, CompilationPath?> compPath,
 ) async {
   final directory = Directory(libsDir);
   if (!await directory.exists()) {
@@ -101,9 +113,9 @@ Future<CompilationPath> _computePaths(
       ...preArgs,
       'module',
       ...jars,
-    ], _Sender(await outputConsumer.toSendable())),
+    ], _Sender(compPath, libsDir)),
   );
-  return (await outputConsumer.send(_sendContentsBack))!;
+  return (await compPath.send(ReturnCompilationPath(libsDir)))!;
 }
 
 Future<void> _writePaths(
@@ -111,6 +123,8 @@ Future<void> _writePaths(
   String modulePathFile,
   CompilationPath paths,
 ) async {
+  // TODO write jars and modules as JSON to the files to enable more advanced
+  // features later, like checking module and required Java versions.
   await File(
     classPathFile,
   ).writeAsString(paths.jars.map((j) => j.path).join(classpathSeparator));
@@ -119,32 +133,62 @@ Future<void> _writePaths(
   ).writeAsString(paths.modules.map((j) => j.path).join(classpathSeparator));
 }
 
-/// Converts messages of type [String] to [Object].
+/// Converts messages of type [String] to [JBuildModuleOutputLine].
 class _Sender with Sendable<String, void> {
-  final Sendable<Object, void> _actor;
+  final Sendable<CompilationPathMessage, void> _actor;
+  final String _libsDir;
 
-  _Sender(this._actor);
+  _Sender(this._actor, this._libsDir);
 
   @override
-  Future<void> send(String message) async => await _actor.send(message);
+  Future<void> send(String message) async =>
+      await _actor.send(JBuildModuleOutputLine(_libsDir, message));
 }
 
-const _sendContentsBack = #sendContentsBack;
+class _CompilePathsState {
+  /// lines being parsed
+  List<String>? lines = [];
 
-class _FileOutput with Handler<Object, CompilationPath?> {
-  final List<String> _lines = [];
+  /// final result (lines must be null after this is set)
+  CompilationPath? result;
+
+  void addLine(String line) => lines!.add(line);
+}
+
+class _CompilePathsHandler
+    with Handler<CompilationPathMessage, CompilationPath?> {
+  final Map<String, _CompilePathsState> _stateByLibsDir = {};
+  final Level _level;
+
+  _CompilePathsHandler(this._level);
 
   @override
-  CompilationPath? handle(Object message) {
-    if (message == _sendContentsBack) {
-      try {
-        return parseModules(_lines);
-      } finally {
-        _lines.clear();
-      }
-    }
-    _lines.add(message as String);
+  void init() {
+    activateLogging(_level);
+  }
+
+  @override
+  CompilationPath? handle(CompilationPathMessage message) {
+    return switch (message) {
+      JBuildModuleOutputLine(libsDir: var d, line: var l) => _addLine(d, l),
+      ReturnCompilationPath(libsDir: var d) => _returnCompilationPath(d),
+    };
+  }
+
+  CompilationPath? _addLine(String dir, String line) {
+    _stateByLibsDir.putIfAbsent(dir, () => _CompilePathsState()).addLine(line);
     return null;
+  }
+
+  CompilationPath _returnCompilationPath(String libsDir) {
+    return _stateByLibsDir[libsDir].vmapOr((state) {
+      var result = state.result;
+      if (result != null) return result;
+      result = parseModules(state.lines!);
+      state.result = result;
+      state.lines = null;
+      return result;
+    }, () => const CompilationPath(modules: [], jars: []));
   }
 }
 
@@ -167,6 +211,7 @@ CompilationPath parseModules(List<String> lines) {
     var match = _simpleJar.matchAsPrefix(line);
     if (match != null) {
       final path = match.group(1)!;
+      logger.fine(() => 'Simple jar: $path');
       jars.add(_parse(iterator, _jar.curry(path), expectedLine: 'JavaVersion'));
       continue;
     }
@@ -174,6 +219,7 @@ CompilationPath parseModules(List<String> lines) {
     if (match != null) {
       final path = match.group(1)!;
       final moduleName = match.group(2)!;
+      logger.fine(() => 'Automatic-module: $moduleName, path: $path');
       modules.add(
         _parse(
           iterator,
@@ -231,6 +277,8 @@ Module _parseModule(String path, Iterator<String> iterator) {
   final version = _parse(iterator, identity, expectedLine: 'Version');
   final flags = _parse(iterator, identity, expectedLine: 'Flags');
   final requires = _parseRequires(iterator);
+
+  logger.fine(() => 'Java module: $name, path: $path');
 
   return Module(
     javaVersion: javaVersion,

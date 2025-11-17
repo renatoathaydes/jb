@@ -1,10 +1,12 @@
 import 'dart:io';
 
+import 'package:actors/actors.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:path/path.dart' as p;
 
+import 'compilation_path.g.dart';
 import 'compile/compile.dart';
 import 'compute_compilation_path.dart' as cp;
 import 'config.dart';
@@ -572,6 +574,7 @@ Task createJavaCompilationPathTask(
   JbFiles files,
   JbConfiguration config,
   JBuildSender jBuildSender,
+  Sendable<cp.CompilationPathMessage, CompilationPath?> compPath,
   cp.CompilationPathFiles compilationFiles,
 ) {
   final workingDir = Directory.current.path;
@@ -582,6 +585,7 @@ Task createJavaCompilationPathTask(
         config,
         workingDir,
         jBuildSender,
+        compPath,
         config.compileLibsDir,
         compilationFiles,
       );
@@ -599,6 +603,7 @@ Task createJavaRuntimePathTask(
   JbFiles files,
   JbConfiguration config,
   JBuildSender jBuildSender,
+  Sendable<cp.CompilationPathMessage, CompilationPath?> compPath,
   cp.CompilationPathFiles compilationFiles,
 ) {
   final workingDir = Directory.current.path;
@@ -610,6 +615,7 @@ Task createJavaRuntimePathTask(
         workingDir,
         jBuildSender,
         config.runtimeLibsDir,
+        compPath,
         compilationFiles,
       );
     },

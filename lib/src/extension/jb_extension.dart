@@ -20,7 +20,7 @@ import 'package:path/path.dart' as p;
 
 import '../config.dart';
 import '../config_source.dart';
-import '../dependencies/deps_cache.dart';
+import '../jb_actors.dart';
 import '../jb_files.dart';
 import '../jvm_executor.dart';
 import '../options.dart';
@@ -42,9 +42,8 @@ class ExtensionProject {
 
 /// Load an extension project from the given projectPath, if given, or from the default location otherwise.
 Future<ExtensionProject?> loadExtensionProject(
-  Sendable<JavaCommand, Object?> jvmExecutor,
   JbFiles files,
-  DepsCache depsCache,
+  JbActors actors,
   Options options,
   JbConfiguration config,
   DartleCache cache,
@@ -77,7 +76,7 @@ Future<ExtensionProject?> loadExtensionProject(
     onError: changedDirectoryOnError(rootDir),
     () => JbConfigContainer(config),
   );
-  final runner = JbRunner(files, extensionConfig, jvmExecutor, depsCache);
+  final runner = JbRunner(files, extensionConfig, actors);
 
   // run the extension project's compile task so that its
   // jb tasks can be executed later
@@ -103,7 +102,7 @@ Future<ExtensionProject?> loadExtensionProject(
     rootDir,
     classpath,
     cache,
-    jvmExecutor,
+    actors.jvmExecutor,
   );
 
   _warnOnUnexpectedConfig(extensionModel, config.extras);
@@ -112,7 +111,7 @@ Future<ExtensionProject?> loadExtensionProject(
   final tasks = extensionModel.extensionTasks
       .map((extensionTask) {
         return _createTask(
-          jvmExecutor,
+          actors.jvmExecutor,
           classpath,
           extensionTask,
           absRootDir,
