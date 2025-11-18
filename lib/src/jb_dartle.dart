@@ -140,15 +140,22 @@ class JbDartle {
       jbFileInputs = FileCollection.empty;
     }
     final artifact = createArtifact(_config);
-
+    final compilationFiles = CompilationPathFiles(_cache);
     final projectTasks = <Task>{};
 
-    compile = createCompileTask(_files, configContainer, _cache, jvmExecutor);
+    compile = createCompileTask(
+      _files,
+      configContainer,
+      compilationFiles,
+      _cache,
+      _actors,
+    );
     publicationCompile = createPublicationCompileTask(
       _files,
       configContainer,
+      compilationFiles,
       _cache,
-      jvmExecutor,
+      _actors,
     );
     writeDeps = createWriteDependenciesTask(
       _files,
@@ -185,17 +192,16 @@ class JbDartle {
       _cache,
       localProcessorDependencies,
     );
-    final compilationFiles = CompilationPathFiles(_cache);
     createCompilationPath = createJavaCompilationPathTask(
       _files,
-      _config,
+      configContainer,
       jvmExecutor,
       compPath,
       compilationFiles,
     );
     createRuntimePath = createJavaRuntimePathTask(
       _files,
-      _config,
+      configContainer,
       jvmExecutor,
       compPath,
       compilationFiles,

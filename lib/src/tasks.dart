@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'compilation_path.g.dart';
 import 'compile/compile.dart';
 import 'compute_compilation_path.dart' as cp;
+import 'compute_compilation_path.dart';
 import 'config.dart';
 import 'dependencies/deps_cache.dart';
 import 'dependencies/printer.dart';
@@ -18,6 +19,7 @@ import 'eclipse.dart';
 import 'exec.dart';
 import 'file_tree.dart';
 import 'java_tests.dart';
+import 'jb_actors.dart';
 import 'jb_files.dart';
 import 'jbuild_update.dart';
 import 'jshell.dart';
@@ -101,19 +103,21 @@ RunCondition _createPublicationCompileRunCondition(
 Task createCompileTask(
   JbFiles jbFiles,
   JbConfigContainer config,
+  cp.CompilationPathFiles compPathFiles,
   DartleCache cache,
-  JBuildSender jBuildSender,
+  JbActors actors,
 ) {
   final workingDir = Directory.current.path;
   return Task(
     (List<String> args, [ChangeSet? changes]) => _compile(
       jbFiles,
       config,
+      compPathFiles,
       workingDir,
       changes,
       args,
       cache,
-      jBuildSender,
+      actors,
     ),
     runCondition: _createCompileRunCondition(config, cache),
     name: compileTaskName,
@@ -130,13 +134,21 @@ Task createCompileTask(
 Task createPublicationCompileTask(
   JbFiles jbFiles,
   JbConfigContainer config,
+  cp.CompilationPathFiles compPathFiles,
   DartleCache cache,
-  JBuildSender jBuildSender,
+  JbActors actors,
 ) {
   final workingDir = Directory.current.path;
   return Task(
-    (List<String> args) =>
-        _publishCompile(jbFiles, config, workingDir, args, cache, jBuildSender),
+    (List<String> args) => _publishCompile(
+      jbFiles,
+      config,
+      compPathFiles,
+      workingDir,
+      args,
+      cache,
+      actors,
+    ),
     runCondition: _createPublicationCompileRunCondition(config, cache),
     name: publicationCompileTaskName,
     argsValidator: const AcceptAnyArgs(),
@@ -148,10 +160,11 @@ Task createPublicationCompileTask(
 Future<void> _publishCompile(
   JbFiles jbFiles,
   JbConfigContainer config,
+  cp.CompilationPathFiles compPathFiles,
   String workingDir,
   List<String> args,
   DartleCache cache,
-  JBuildSender jBuildSender,
+  JbActors actors,
 ) async {
   config.output.when(
     dir: (_) => failBuild(reason: _reasonPublicationCompileCannotRun),
@@ -160,11 +173,12 @@ Future<void> _publishCompile(
   await _compile(
     jbFiles,
     config,
+    compPathFiles,
     workingDir,
     null,
     args,
     cache,
-    jBuildSender,
+    actors,
     publication: true,
   );
 }
@@ -172,11 +186,12 @@ Future<void> _publishCompile(
 Future<void> _compile(
   JbFiles jbFiles,
   JbConfigContainer configContainer,
+  cp.CompilationPathFiles compPathFiles,
   String workingDir,
   ChangeSet? changeSet,
   List<String> args,
   DartleCache cache,
-  JBuildSender jBuildSender, {
+  JbActors actors, {
   bool publication = false,
 }) async {
   final config = configContainer.config;
@@ -194,13 +209,20 @@ Future<void> _compile(
     );
   }
   stopwatch.reset();
+  final compilationPath = await getCompilationPath(
+    actors.compPath,
+    compPathFiles,
+    configContainer.artifactId,
+    config.compileLibsDir,
+  );
   final isGroovyEnabled =
       configContainer.knownDeps.groovy ||
       configContainer.testConfig.spockVersion != null;
-  await jBuildSender.send(
+  await actors.jvmExecutor.send(
     await compileCommand(
       jbFiles,
       config,
+      compilationPath,
       isGroovyEnabled,
       workingDir,
       publication,
@@ -221,7 +243,7 @@ Future<void> _compile(
     compileTaskName,
     config,
     workingDir,
-    jBuildSender,
+    actors.jvmExecutor,
     output,
     jbFiles.javaSrcFileTreeFile,
   );
@@ -572,7 +594,7 @@ Future<void> _copyOutput(CompileOutput out, String destinationDir) {
 
 Task createJavaCompilationPathTask(
   JbFiles files,
-  JbConfiguration config,
+  JbConfigContainer config,
   JBuildSender jBuildSender,
   Sendable<cp.CompilationPathMessage, CompilationPath?> compPath,
   cp.CompilationPathFiles compilationFiles,
@@ -586,7 +608,7 @@ Task createJavaCompilationPathTask(
         workingDir,
         jBuildSender,
         compPath,
-        config.compileLibsDir,
+        config.config.compileLibsDir,
         compilationFiles,
       );
     },
@@ -601,7 +623,7 @@ Task createJavaCompilationPathTask(
 
 Task createJavaRuntimePathTask(
   JbFiles files,
-  JbConfiguration config,
+  JbConfigContainer config,
   JBuildSender jBuildSender,
   Sendable<cp.CompilationPathMessage, CompilationPath?> compPath,
   cp.CompilationPathFiles compilationFiles,
@@ -614,7 +636,7 @@ Task createJavaRuntimePathTask(
         config,
         workingDir,
         jBuildSender,
-        config.runtimeLibsDir,
+        config.config.runtimeLibsDir,
         compPath,
         compilationFiles,
       );

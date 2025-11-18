@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:actors/actors.dart';
@@ -10,40 +11,34 @@ import 'package:path/path.dart' as p;
 import 'compilation_path.g.dart';
 import 'config.dart';
 import 'jvm_executor.dart';
-import 'utils.dart';
 
 class CompilationPathFiles {
   final DartleCache cache;
-  final String compileClassPath,
-      compileModulePath,
-      runtimeClassPath,
-      runtimeModulePath;
+  final String compilePath, runtimePath;
 
   CompilationPathFiles(this.cache)
-    : compileClassPath = p.join(cache.rootDir, 'compile-class-path.txt'),
-      compileModulePath = p.join(cache.rootDir, 'compile-module-path.txt'),
-      runtimeClassPath = p.join(cache.rootDir, 'runtime-class-path.txt'),
-      runtimeModulePath = p.join(cache.rootDir, 'runtime-module-path.txt');
+    : compilePath = p.join(cache.rootDir, 'compilation-path.json'),
+      runtimePath = p.join(cache.rootDir, 'runtime-path.json');
 
-  FileCollection asFileCollection({bool runtime = false}) => runtime
-      ? files([runtimeClassPath, runtimeModulePath])
-      : files([compileClassPath, compileModulePath]);
+  FileCollection asFileCollection({bool runtime = false}) =>
+      file(runtime ? runtimePath : compilePath);
 }
 
 sealed class CompilationPathMessage {
-  final String libsDir;
+  final String key;
 
-  const CompilationPathMessage(this.libsDir);
+  const CompilationPathMessage(String artifactId, String libsDir)
+    : key = "$artifactId:$libsDir";
 }
 
 final class JBuildModuleOutputLine extends CompilationPathMessage {
   final String line;
 
-  const JBuildModuleOutputLine(super.libsDir, this.line);
+  const JBuildModuleOutputLine(super.artifactId, super.libsDir, this.line);
 }
 
 final class ReturnCompilationPath extends CompilationPathMessage {
-  const ReturnCompilationPath(super.libsDir);
+  const ReturnCompilationPath(super.artifactId, super.libsDir);
 }
 
 /// Creates the actor that will consume the output of JBuild's command to
@@ -52,47 +47,76 @@ Actor<CompilationPathMessage, CompilationPath?> createCompilationPathActor(
   Level level,
 ) => Actor.create(() => _CompilePathsHandler(level));
 
+/// Get the compilation path either from the Actor (which writes the file)
+/// or directly from the file.
+Future<CompilationPath> getCompilationPath(
+  Sendable<CompilationPathMessage, CompilationPath?> compPathActor,
+  CompilationPathFiles compPathFiles,
+  String artifactId,
+  String libsDir,
+) async {
+  final actorResponse = await compPathActor.send(
+    ReturnCompilationPath(artifactId, libsDir),
+  );
+  if (actorResponse != null) {
+    return actorResponse;
+  }
+  logger.fine(
+    () =>
+        'CompilationPath not available for $artifactId, '
+        'reading it from cached file',
+  );
+  return CompilationPath.fromJson(
+    jsonDecode(await File(compPathFiles.compilePath).readAsString()),
+  );
+}
+
 /// Implementation of the 'createJavaCompilationPath' task.
 Future<void> computeCompilationPath(
   String taskName,
-  JbConfiguration config,
+  JbConfigContainer config,
   String workingDir,
   JBuildSender jBuildSender,
   Sendable<CompilationPathMessage, CompilationPath?> compPath,
   String compileLibsDir,
   CompilationPathFiles files,
 ) async {
-  final preArgs = config.preArgs(workingDir);
+  final artifactId = config.artifactId;
+  final preArgs = config.config.preArgs(workingDir);
   await _computePaths(
     taskName,
+    artifactId,
     preArgs,
     jBuildSender,
     compileLibsDir,
     compPath,
-  ).then(_writePaths.curry2(files.compileClassPath, files.compileModulePath));
+  ).then(_writePaths.curry(files.compilePath));
 }
 
 Future<void> computeRuntimePath(
   String taskName,
-  JbConfiguration config,
+  JbConfigContainer config,
   String workingDir,
   JBuildSender jBuildSender,
   String runtimeLibsDir,
   Sendable<CompilationPathMessage, CompilationPath?> compPath,
   CompilationPathFiles files,
 ) async {
-  final preArgs = config.preArgs(workingDir);
+  final artifactId = config.artifactId;
+  final preArgs = config.config.preArgs(workingDir);
   await _computePaths(
     taskName,
+    artifactId,
     preArgs,
     jBuildSender,
     runtimeLibsDir,
     compPath,
-  ).then(_writePaths.curry2(files.runtimeClassPath, files.runtimeModulePath));
+  ).then(_writePaths.curry(files.runtimePath));
 }
 
 Future<CompilationPath> _computePaths(
   String taskName,
+  String artifactId,
   List<String> preArgs,
   JBuildSender jBuildSender,
   String libsDir,
@@ -113,36 +137,28 @@ Future<CompilationPath> _computePaths(
       ...preArgs,
       'module',
       ...jars,
-    ], _Sender(compPath, libsDir)),
+    ], _Sender(artifactId, compPath, libsDir)),
   );
-  return (await compPath.send(ReturnCompilationPath(libsDir)))!;
+  return (await compPath
+      .send(ReturnCompilationPath(artifactId, libsDir))
+      .timeout(const Duration(seconds: 5)))!;
 }
 
-Future<void> _writePaths(
-  String classPathFile,
-  String modulePathFile,
-  CompilationPath paths,
-) async {
-  // TODO write jars and modules as JSON to the files to enable more advanced
-  // features later, like checking module and required Java versions.
-  await File(
-    classPathFile,
-  ).writeAsString(paths.jars.map((j) => j.path).join(classpathSeparator));
-  await File(
-    modulePathFile,
-  ).writeAsString(paths.modules.map((j) => j.path).join(classpathSeparator));
+Future<void> _writePaths(String classPathFile, CompilationPath paths) async {
+  await File(classPathFile).writeAsString(jsonEncode(paths.toJson()));
 }
 
 /// Converts messages of type [String] to [JBuildModuleOutputLine].
 class _Sender with Sendable<String, void> {
+  final String _artifactId;
   final Sendable<CompilationPathMessage, void> _actor;
   final String _libsDir;
 
-  _Sender(this._actor, this._libsDir);
+  _Sender(this._artifactId, this._actor, this._libsDir);
 
   @override
   Future<void> send(String message) async =>
-      await _actor.send(JBuildModuleOutputLine(_libsDir, message));
+      await _actor.send(JBuildModuleOutputLine(_artifactId, _libsDir, message));
 }
 
 class _CompilePathsState {
@@ -152,12 +168,18 @@ class _CompilePathsState {
   /// final result (lines must be null after this is set)
   CompilationPath? result;
 
-  void addLine(String line) => lines!.add(line);
+  void addLine(String line) {
+    final currentLines = lines;
+    if (currentLines == null) {
+      throw StateError('Not expecting JBuild module output');
+    }
+    currentLines.add(line);
+  }
 }
 
 class _CompilePathsHandler
     with Handler<CompilationPathMessage, CompilationPath?> {
-  final Map<String, _CompilePathsState> _stateByLibsDir = {};
+  final Map<String, _CompilePathsState> _stateByKey = {};
   final Level _level;
 
   _CompilePathsHandler(this._level);
@@ -170,25 +192,35 @@ class _CompilePathsHandler
   @override
   CompilationPath? handle(CompilationPathMessage message) {
     return switch (message) {
-      JBuildModuleOutputLine(libsDir: var d, line: var l) => _addLine(d, l),
-      ReturnCompilationPath(libsDir: var d) => _returnCompilationPath(d),
+      JBuildModuleOutputLine(key: var k, line: var l) => _addLine(k, l),
+      ReturnCompilationPath(key: var k) => _returnCompilationPath(k),
     };
   }
 
-  CompilationPath? _addLine(String dir, String line) {
-    _stateByLibsDir.putIfAbsent(dir, () => _CompilePathsState()).addLine(line);
+  CompilationPath? _addLine(String key, String line) {
+    _stateByKey.putIfAbsent(key, () => _CompilePathsState()).addLine(line);
     return null;
   }
 
-  CompilationPath _returnCompilationPath(String libsDir) {
-    return _stateByLibsDir[libsDir].vmapOr((state) {
+  CompilationPath? _returnCompilationPath(String key) {
+    return _stateByKey[key]?.vmap((state) {
       var result = state.result;
-      if (result != null) return result;
+      if (result != null) {
+        logger.fine(() => 'CompilationPath already computed for $key');
+        return result;
+      }
+      if (state.lines == null) {
+        throw StateError(
+          'CompilationPath cannot be computed for $key (no JBuild output)',
+        );
+      }
+      logger.fine(() => 'CompilationPath will be computed for $key');
       result = parseModules(state.lines!);
+      logger.fine(() => 'CompilationPath was computed successfully for $key');
       state.result = result;
       state.lines = null;
       return result;
-    }, () => const CompilationPath(modules: [], jars: []));
+    });
   }
 }
 
