@@ -613,6 +613,7 @@ Task createJavaCompilationPathTask(
       );
     },
     name: createJavaCompilationPathTaskName,
+    description: 'Computes the Java compile classpath and modulepath.',
     dependsOn: {installCompileDepsTaskName},
     runCondition: RunOnChanges(
       outputs: compilationFiles.asFileCollection(),
@@ -642,6 +643,7 @@ Task createJavaRuntimePathTask(
       );
     },
     name: createJavaRuntimePathTaskName,
+    description: 'Computes the Java runtime classpath and modulepath.',
     dependsOn: {installRuntimeDepsTaskName},
     runCondition: RunOnChanges(
       outputs: compilationFiles.asFileCollection(runtime: true),
