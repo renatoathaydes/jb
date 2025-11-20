@@ -26,7 +26,7 @@ Future<JavaCommand> compileCommand(
     allArgs = ['-g', groovyJar, ...args];
   } else {
     logger.finer('No Groovy dependencies found. Using javac compiler.');
-    allArgs = args;
+    allArgs = [...args];
   }
   if (compPath.jars.isNotEmpty) {
     allArgs.addAll([
