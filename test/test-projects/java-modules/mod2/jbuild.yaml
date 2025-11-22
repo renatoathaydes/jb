@@ -6,3 +6,4 @@ dependencies:
     path: ../mod1
 javacArgs:
   - --release=11
+main-class: m2.M2

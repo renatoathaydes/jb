@@ -21,12 +21,12 @@ Future<JavaCommand> jbuildCompileCommand(
   bool isGroovyEnabled,
 ) async {
   final commandArgs = [
+    ...args,
     ...await config.compileArgs(
       jbFiles.processorLibsDir,
       changes,
       isGroovyEnabled,
     ),
-    ...args,
   ];
 
   return RunJBuild(compileTaskName, [

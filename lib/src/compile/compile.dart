@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+
 import '../compilation_path.g.dart';
 import '../config.dart';
 import '../file_tree.dart';
@@ -28,15 +32,22 @@ Future<JavaCommand> compileCommand(
     logger.finer('No Groovy dependencies found. Using javac compiler.');
     allArgs = [...args];
   }
+
+  // to support local dependencies that do not produce a jar,
+  // we always add the libs dir itself to the classpath
+  allArgs.addAll(['-cp', config.compileLibsDir]);
+
   if (compPath.jars.isNotEmpty) {
     allArgs.addAll([
       '-cp',
       compPath.jars.map((j) => j.path).join(classpathSeparator),
     ]);
   }
+
   if (compPath.modules.isNotEmpty) {
+    final isModule = await config.isModule;
     allArgs.addAll([
-      '-mp',
+      isModule ? '-mp' : '-cp',
       compPath.modules.map((m) => m.path).join(classpathSeparator),
     ]);
   }
@@ -50,4 +61,15 @@ Future<JavaCommand> compileCommand(
     allArgs,
     isGroovyEnabled,
   );
+}
+
+extension on JbConfiguration {
+  Future<bool> get isModule async {
+    for (var dir in sourceDirs) {
+      if (await File(p.join(dir, 'module-info.java')).exists()) {
+        return true;
+      }
+    }
+    return false;
+  }
 }
