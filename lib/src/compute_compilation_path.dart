@@ -61,13 +61,18 @@ Future<CompilationPath> getCompilationPath(
   if (actorResponse != null) {
     return actorResponse;
   }
+  var compPathFile = File(compPathFiles.compilePath);
+  if (!await compPathFile.exists()) {
+    logger.fine('CompilationPath is empty');
+    return const CompilationPath(modules: [], jars: []);
+  }
   logger.fine(
     () =>
         'CompilationPath not available for $artifactId, '
         'reading it from cached file',
   );
   return CompilationPath.fromJson(
-    jsonDecode(await File(compPathFiles.compilePath).readAsString()),
+    jsonDecode(await compPathFile.readAsString()),
   );
 }
 
