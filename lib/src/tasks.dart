@@ -928,13 +928,17 @@ Future<void> _test(
       ? null
       : '.*Spec|.*Specification|.*Specifications|.*Test|.*Tests|.*TestSuite|.*TestCase';
 
+  final junitSubcommand = await junitTestSubcommand(
+    p.join(cache.rootDir, junitRunnerLibsDir),
+  );
+
   final exitCode = await execJava(testTaskName, [
     ...config.testJavaArgs,
     '-ea',
     '-cp',
     p.join(cache.rootDir, junitRunnerLibsDir, '*'),
     mainClass,
-    'execute',
+    ?junitSubcommand,
     '--classpath=$classpath',
     if (!hasCustomSelect)
       '--scan-classpath=${configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j)}',
