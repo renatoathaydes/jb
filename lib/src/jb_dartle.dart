@@ -206,7 +206,13 @@ class JbDartle {
       compPath,
       compilationFiles,
     );
-    run = createRunTask(_files, configContainer, _cache);
+    run = createRunTask(
+      _files,
+      configContainer,
+      _cache,
+      _actors,
+      compilationFiles,
+    );
     jshell = createJshellTask(_files, configContainer, _cache);
     downloadTestRunner = createDownloadTestRunnerTask(
       _files,

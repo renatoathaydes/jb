@@ -24,6 +24,7 @@ import 'jb_files.dart';
 import 'jbuild_update.dart';
 import 'jshell.dart';
 import 'jvm_executor.dart';
+import 'jvm_run.dart';
 import 'optional_arg_validator.dart';
 import 'pom.dart';
 import 'publish.dart';
@@ -748,61 +749,22 @@ Task createPublishTask(
 }
 
 /// Create the `run` task.
-Task createRunTask(JbFiles files, JbConfigContainer config, DartleCache cache) {
+Task createRunTask(
+  JbFiles files,
+  JbConfigContainer config,
+  DartleCache cache,
+  JbActors actors,
+  cp.CompilationPathFiles compilationFiles,
+) {
   return Task(
-    (List<String> args) => _run(files.jbuildJar, config, args),
+    (List<String> args) =>
+        javaRun(files.jbuildJar, config, args, actors, compilationFiles),
     dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
     argsValidator: const AcceptAnyArgs(),
     name: runTaskName,
     description: 'Run Java Main class.',
     phase: evaluatePhase,
   );
-}
-
-Future<void> _run(
-  File jbuildJar,
-  JbConfigContainer configContainer,
-  List<String> args,
-) async {
-  final config = configContainer.config;
-  var mainClass = config.mainClass ?? '';
-  if (mainClass.isEmpty) {
-    const mainClassArg = '--main-class=';
-    final mainClassArgIndex = args.indexWhere(
-      (arg) => arg.startsWith(mainClassArg),
-    );
-    if (mainClassArgIndex >= 0) {
-      mainClass = args
-          .removeAt(mainClassArgIndex)
-          .substring(mainClassArg.length);
-    }
-  }
-  if (mainClass.isEmpty) {
-    throw DartleException(
-      message:
-          'cannot run Java application as '
-          'no main-class has been configured or provided.\n'
-          'To configure one, add "main-class: your.Main" to your jb config file.',
-    );
-  }
-
-  final classpath = {
-    configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j),
-    config.runtimeLibsDir,
-    p.join(config.runtimeLibsDir, '*'),
-  }.join(classpathSeparator);
-
-  final exitCode = await execJava(runTaskName, [
-    ...config.runJavaArgs,
-    '-cp',
-    classpath,
-    mainClass,
-    ...args,
-  ], env: config.runJavaEnv);
-
-  if (exitCode != 0) {
-    throw DartleException(message: 'java command failed', exitCode: exitCode);
-  }
 }
 
 /// Create the `jshell` task.

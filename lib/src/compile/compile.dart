@@ -21,36 +21,19 @@ Future<JavaCommand> compileCommand(
   TransitiveChanges? changes,
   List<String> args,
 ) async {
-  List<String> allArgs;
+  final allArgs = <String>[];
   if (isGroovyEnabled) {
     logger.fine(
       'Project has Groovy or Spock dependencies. Using Groovy compiler.',
     );
     final groovyJar = await findGroovyJar(config);
-    allArgs = ['-g', groovyJar, ...args];
+    allArgs.addAll(['-g', groovyJar]);
   } else {
     logger.finer('No Groovy dependencies found. Using javac compiler.');
-    allArgs = [...args];
   }
 
-  // to support local dependencies that do not produce a jar,
-  // we always add the libs dir itself to the classpath
-  allArgs.addAll(['-cp', config.compileLibsDir]);
-
-  if (compPath.jars.isNotEmpty) {
-    allArgs.addAll([
-      '-cp',
-      compPath.jars.map((j) => j.path).join(classpathSeparator),
-    ]);
-  }
-
-  if (compPath.modules.isNotEmpty) {
-    final isModule = await config.isModule;
-    allArgs.addAll([
-      isModule ? '-mp' : '-cp',
-      compPath.modules.map((m) => m.path).join(classpathSeparator),
-    ]);
-  }
+  await addCompilationPathsTo(allArgs, config, compPath, forJava: false);
+  allArgs.addAll(args);
 
   return jbuildCompileCommand(
     jbFiles,
@@ -61,6 +44,39 @@ Future<JavaCommand> compileCommand(
     allArgs,
     isGroovyEnabled,
   );
+}
+
+/// Adds classpath and modulepath options to the args.
+///
+/// Returns whether this config represents a module.
+Future<bool> addCompilationPathsTo(
+  List<String> args,
+  JbConfiguration config,
+  CompilationPath compPath, {
+  required bool forJava,
+}) async {
+  // to support local dependencies that do not produce a jar,
+  // we always add the libs dir itself to the classpath
+  // TODO if !forJava, JBuild expands that jars in the dir,
+  // which means it includes modules in it
+  args.addAll(['-cp', config.compileLibsDir]);
+
+  if (compPath.jars.isNotEmpty) {
+    args.addAll([
+      '-cp',
+      compPath.jars.map((j) => j.path).join(classpathSeparator),
+    ]);
+  }
+
+  final isModule = await config.isModule;
+  if (compPath.modules.isNotEmpty) {
+    args.addAll([
+      isModule ? (forJava ? '-p' : '-mp') : '-cp',
+      compPath.modules.map((m) => m.path).join(classpathSeparator),
+    ]);
+  }
+
+  return isModule;
 }
 
 extension on JbConfiguration {

@@ -677,7 +677,6 @@ void main() {
         expect(jbResult.stdout.join('\n'), contains("M1{value=This is M1}"));
       },
       timeout: const Timeout(Duration(seconds: 10)),
-      skip: 'Until run tasks uses CompilationPath to get classpath',
     );
   }, ['mod1', 'mod2']);
 
