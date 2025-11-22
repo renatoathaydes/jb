@@ -65,7 +65,14 @@ Future<JavaCommand> compileCommand(
 
 extension on JbConfiguration {
   Future<bool> get isModule async {
-    for (var dir in sourceDirs) {
+    final dirs = sourceDirs.isEmpty
+        ? ['src', p.join('src', 'main', 'java')]
+        : sourceDirs;
+    for (var dir in dirs) {
+      logger.finer(
+        () =>
+            'Checking if module file exists in: ${p.join(Directory.current.path, dir)}',
+      );
       if (await File(p.join(dir, 'module-info.java')).exists()) {
         return true;
       }
