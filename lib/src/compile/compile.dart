@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:conveniently/conveniently.dart';
 import 'package:path/path.dart' as p;
 
 import '../compilation_path.g.dart';
@@ -49,31 +50,37 @@ Future<JavaCommand> compileCommand(
 /// Adds classpath and modulepath options to the args.
 ///
 /// Returns whether this config represents a module.
+///
+/// If `forJava` is `true`, options for the java command are used, otherwise
+///  options for the jbuild command are used.
 Future<bool> addCompilationPathsTo(
   List<String> args,
   JbConfiguration config,
   CompilationPath compPath, {
   required bool forJava,
+  String? output,
 }) async {
   // to support local dependencies that do not produce a jar,
   // we always add the libs dir itself to the classpath
-  // TODO if !forJava, JBuild expands that jars in the dir,
-  // which means it includes modules in it
-  args.addAll(['-cp', config.compileLibsDir]);
+  final cp = [config.compileLibsDir];
+
+  final mp = <String>[];
 
   if (compPath.jars.isNotEmpty) {
-    args.addAll([
-      '-cp',
-      compPath.jars.map((j) => j.path).join(classpathSeparator),
-    ]);
+    cp.addAll(compPath.jars.map((j) => j.path));
   }
 
   final isModule = await config.isModule;
-  if (compPath.modules.isNotEmpty) {
-    args.addAll([
-      isModule ? (forJava ? '-p' : '-mp') : '-cp',
-      compPath.modules.map((m) => m.path).join(classpathSeparator),
-    ]);
+
+  (isModule ? mp : cp).vmap((paths) {
+    paths.addAll(compPath.modules.map((m) => m.path));
+    if (output != null) paths.add(output);
+  });
+
+  args.addAll(['-cp', cp.join(classpathSeparator)]);
+
+  if (mp.isNotEmpty) {
+    args.addAll([if (forJava) '-p' else '-mp', mp.join(classpathSeparator)]);
   }
 
   return isModule;

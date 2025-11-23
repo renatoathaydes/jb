@@ -759,7 +759,7 @@ Task createRunTask(
   return Task(
     (List<String> args) =>
         javaRun(files.jbuildJar, config, args, actors, compilationFiles),
-    dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
+    dependsOn: const {compileTaskName, createJavaRuntimePathTaskName},
     argsValidator: const AcceptAnyArgs(),
     name: runTaskName,
     description: 'Run Java Main class.',

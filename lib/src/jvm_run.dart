@@ -61,6 +61,7 @@ Future<void> javaRun(
     config,
     compilationPath,
     forJava: true,
+    output: output,
   );
 
   // add the jar itself to the module-path
@@ -73,14 +74,10 @@ Future<void> javaRun(
       );
     }
 
-    _includeInModulePath(jvmArgs, output);
-
     // we need to specify which module to run...
     jvmArgs.addAll(['-m', await getJavaModuleName(actors.jvmExecutor, output)]);
   } else if (isJar) {
     jvmArgs.addAll(['-jar', output]);
-  } else {
-    jvmArgs.addAll(['-cp', output]);
   }
 
   final exitCode = await execJava(runTaskName, [
@@ -93,16 +90,6 @@ Future<void> javaRun(
   if (exitCode != 0) {
     throw DartleException(message: 'java command failed', exitCode: exitCode);
   }
-}
-
-void _includeInModulePath(List<String> jvmArgs, String jar) {
-  final modulePathOptionIndex = jvmArgs.indexOf('-p');
-  if (modulePathOptionIndex < 0) {
-    jvmArgs.addAll(['-p', jar]);
-    return;
-  }
-  final pathValue = jvmArgs[modulePathOptionIndex + 1];
-  jvmArgs[modulePathOptionIndex + 1] = "$pathValue$classpathSeparator$jar";
 }
 
 Future<String> getJavaModuleName(
