@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dartle/dartle.dart'
@@ -27,7 +29,7 @@ class Publisher {
   static final ArgsValidator argsValidator = const OptionalArgValidator(
     'One argument may be provided: '
     'a local dir, a http(s) URL, or '
-    ':-m (or :-n for the older repo) for Maven Central',
+    ':-m for Maven Central',
   );
 
   final Result<Artifact> artifact;
@@ -52,16 +54,12 @@ class Publisher {
 
     final mavenClient = MavenClient(switch (destination) {
       '-m' => Sonatype.s01Oss,
-      '-n' => Sonatype.oss,
       _ => CustomMavenRepo(destination),
     }, credentials: _mavenCredentials());
 
     final stopwatch = Stopwatch()..start();
 
     if (destination == '-m') {
-      return await _publishHttp(mavenClient, theArtifact, stopwatch);
-    }
-    if (destination == '-n') {
       return await _publishHttp(mavenClient, theArtifact, stopwatch);
     }
     if (destination.startsWith('http://') ||
@@ -177,6 +175,7 @@ class Publisher {
     String pom,
     String jarFile,
   ) async {
+    // TODO MD5 checksum is now mandatory!
     await File(
       p.join(destination.path, _fileFor(artifact, extension: '.pom')),
     ).writeAsString(pom).then(_signFile).then(_shaFile);
@@ -202,40 +201,54 @@ class Publisher {
     Directory directory,
     Stopwatch stopwatch,
   ) async {
-    // jar --create --file target/bundle.jar -C target/deploy .
-    final bundleJar = tempFile(extension: '.jar');
-    logger.fine(() => 'Creating publication bundle jar at ${bundleJar.path}');
+    final bundle = tempFile(extension: '.zip');
+    logger.fine(() => 'Creating publication bundle at ${bundle.path}');
     stopwatch.reset();
-    await execProc(
-      Process.start('jar', [
-        '--create',
-        '--file',
-        bundleJar.path,
-        '-C',
-        directory.path,
-        '.',
-      ]),
-    );
+
+    final encoder = ZipFileEncoder();
+    encoder.create(bundle.path);
+
+    try {
+      await for (final entity in directory.list()) {
+        if (entity is File) {
+          await encoder.addFile(entity, p.basename(entity.path));
+        }
+      }
+    } finally {
+      await encoder.close();
+    }
+
     logger.log(
       profile,
       () =>
-          'Created publication bundle jar at ${bundleJar.path} in '
+          'Created publication bundle at ${bundle.path} in '
           '${stopwatch.elapsedMilliseconds} ms.',
     );
-    return bundleJar;
+
+    return bundle;
   }
 }
 
 HttpClientCredentials? _mavenCredentials() {
   final mavenUser = Platform.environment['MAVEN_USER'];
   final mavenPassword = Platform.environment['MAVEN_PASSWORD'];
+  String? token;
   if (mavenUser != null && mavenPassword != null) {
     logger.info('Using MAVEN_USER and MAVEN_PASSWORD for HTTP credentials');
-    return HttpClientBasicCredentials(mavenUser, mavenPassword);
+    token = base64Encode(utf8.encode("$mavenUser:$mavenPassword"));
+  }
+  if (token == null) {
+    token = Platform.environment['SONATYPE_USER_TOKEN'];
+    if (token != null) {
+      logger.info('Using SONATYPE_USER_TOKEN for HTTP credentials');
+    }
+  }
+  if (token != null) {
+    return HttpClientBearerCredentials(token);
   }
   logger.info(
-    'No HTTP credentials provided '
-    '(set MAVEN_USER and MAVEN_PASSWORD to provide it)',
+    'No HTTP credentials provided (set either SONATYPE_USER_TOKEN '
+    'or MAVEN_USER and MAVEN_PASSWORD to provide it)',
   );
   return null;
 }
