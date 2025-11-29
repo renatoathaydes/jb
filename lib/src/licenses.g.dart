@@ -170,6 +170,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: false,
   ),
+  "ALGLIB-Documentation": License(
+    licenseId: "ALGLIB-Documentation",
+    name: "ALGLIB Documentation License",
+    uri: "https://spdx.org/licenses/ALGLIB-Documentation.html",
+    isOsiApproved: true,
+    isFsfLibre: null,
+  ),
   "AMD-newlib": License(
     licenseId: "AMD-newlib",
     name: "AMD newlib License",
@@ -2667,6 +2674,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "ISO-permission": License(
+    licenseId: "ISO-permission",
+    name: "ISO permission notice",
+    uri: "https://spdx.org/licenses/ISO-permission.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "Jam": License(
     licenseId: "Jam",
     name: "Jam License",
@@ -4526,6 +4540,13 @@ const allLicenses = <String, License>{
     licenseId: "TCP-wrappers",
     name: "TCP Wrappers License",
     uri: "https://spdx.org/licenses/TCP-wrappers.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "TekHVC": License(
+    licenseId: "TekHVC",
+    name: "TekHVC License",
+    uri: "https://spdx.org/licenses/TekHVC.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
