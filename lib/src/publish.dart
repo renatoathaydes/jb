@@ -97,7 +97,7 @@ class Publisher {
     DepsCache depsCache,
     Stopwatch stopwatch,
   ) async {
-    final destination = Directory(_pathFor(theArtifact, repoPath));
+    final destination = Directory(_pathFor(theArtifact, parent: repoPath));
     logger.info(() => 'Publishing artifacts to ${destination.path}');
     await _publishArtifactToDir(destination, theArtifact, depsCache, stopwatch);
   }
@@ -120,7 +120,7 @@ class Publisher {
       stopwatch,
     );
     logger.fine(() => 'Creating bundle.jar with publication artifacts');
-    final bundle = await _createBundleJar(destination, stopwatch);
+    final bundle = await _createBundle(_getArtifact(), destination, stopwatch);
     logger.info(() => 'Publishing artifacts to ${mavenClient.repo.url}');
     try {
       await mavenClient.publish(theArtifact, bundle);
@@ -175,29 +175,34 @@ class Publisher {
     String pom,
     String jarFile,
   ) async {
-    // TODO MD5 checksum is now mandatory!
     await File(
       p.join(destination.path, _fileFor(artifact, extension: '.pom')),
-    ).writeAsString(pom).then(_signFile).then(_shaFile);
+    ).writeAsString(pom).then(_createChecksumsAndSign);
     await File(jarFile)
         .copy(p.join(destination.path, _fileFor(artifact)))
-        .then(_signFile)
-        .then(_shaFile);
+        .then(_createChecksumsAndSign);
     await File(jarFile.replaceExtension('-sources.jar'))
         .rename(
           p.join(destination.path, _fileFor(artifact, qualifier: '-sources')),
         )
-        .then(_signFile)
-        .then(_shaFile);
+        .then(_createChecksumsAndSign);
     await File(jarFile.replaceExtension('-javadoc.jar'))
         .rename(
           p.join(destination.path, _fileFor(artifact, qualifier: '-javadoc')),
         )
-        .then(_signFile)
-        .then(_shaFile);
+        .then(_createChecksumsAndSign);
   }
 
-  Future<File> _createBundleJar(
+  Future<void> _createChecksumsAndSign(File file) async {
+    final bytes = await file.readAsBytes();
+    final f1 = _signFile(file);
+    final f2 = _shaFile(file.path, bytes);
+    final f3 = _md5File(file.path, bytes);
+    await Future.wait(<Future<Object?>>[f1, f2, f3]);
+  }
+
+  Future<File> _createBundle(
+    Artifact artifact,
     Directory directory,
     Stopwatch stopwatch,
   ) async {
@@ -208,10 +213,14 @@ class Publisher {
     final encoder = ZipFileEncoder();
     encoder.create(bundle.path);
 
+    final zipRootDir = _pathFor(artifact, osSeparator: false);
     try {
       await for (final entity in directory.list()) {
         if (entity is File) {
-          await encoder.addFile(entity, p.basename(entity.path));
+          await encoder.addFile(
+            entity,
+            '$zipRootDir/${p.basename(entity.path)}',
+          );
         }
       }
     } finally {
@@ -253,12 +262,16 @@ HttpClientCredentials? _mavenCredentials() {
   return null;
 }
 
-Future<void> _shaFile(File file) async {
-  logger.finer(() => 'Computing SHA1 of ${file.path}');
-  await File(
-    '${file.path}.sha1',
-  ).writeAsString(sha1.convert(await file.readAsBytes()).toString());
-  logger.finer(() => 'Computed SHA1 of ${file.path}');
+Future<void> _shaFile(String file, List<int> bytes) async {
+  logger.finer(() => 'Computing SHA1 of $file');
+  await File('$file.sha1').writeAsString(sha1.convert(bytes).toString());
+  logger.finer(() => 'Computed SHA1 of $file');
+}
+
+Future<void> _md5File(String file, List<int> bytes) async {
+  logger.finer(() => 'Computing MD5 of $file');
+  await File('$file.md5').writeAsString(md5.convert(bytes).toString());
+  logger.finer(() => 'Computed MD5 of $file');
 }
 
 // remember if GPG fails so we don't try again
@@ -288,13 +301,13 @@ Future<File> _signFile(File file) async {
   return file;
 }
 
-String _pathFor(Artifact artifact, String parent) {
-  return p.joinAll([
-    parent,
+String _pathFor(Artifact artifact, {String? parent, bool osSeparator = true}) {
+  return [
+    ?parent,
     ...artifact.group.split('.'),
     artifact.module,
     artifact.version,
-  ]);
+  ].join(osSeparator ? Platform.pathSeparator : '/');
 }
 
 String _fileFor(

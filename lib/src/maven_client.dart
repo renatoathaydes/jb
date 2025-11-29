@@ -208,17 +208,31 @@ class MavenClient {
   }
 
   Future<dynamic> _getJson(Uri uri, String error) async {
-    final request = await _client.getUrl(uri);
-    request.headers.add('Accept', 'application/json');
-    final response = await request.close();
-    await _verifySuccess(response, error: error, consumeBody: false);
-    return await response.jsonBody();
+    bool retry = true;
+    while (true) {
+      final request = await _client.postUrl(uri);
+      request.headers.add('Accept', 'application/json');
+      final response = await request.close();
+      final isSuccess = await _verifySuccess(
+        response,
+        error: error,
+        consumeBody: false,
+        fail: !retry,
+      );
+      if (isSuccess) {
+        return await response.jsonBody();
+      }
+      retry = false;
+      logger.fine('Status request failed, retrying in a few seconds...');
+      await Future.delayed(const Duration(seconds: 3));
+    }
   }
 
-  Future<void> _verifySuccess(
+  Future<bool> _verifySuccess(
     HttpClientResponse response, {
     required String error,
     bool consumeBody = true,
+    bool fail = true,
   }) async {
     final status = response.statusCode;
     if (_successCodes.contains(status)) {
@@ -226,19 +240,22 @@ class MavenClient {
       if (consumeBody) {
         await response.toList();
       }
-    } else {
-      logger.fine(() => 'HTTP Request failed with statusCode $status');
-      var reason = 'statusCode = $status';
-      try {
-        var body = await response.linesUtf8Encoding().join('\n');
-        if (body.trim().isNotEmpty) {
-          reason = body;
-        }
-      } catch (e) {
-        logger.fine(() => 'Unable to read error response body: $e');
+      return true;
+    }
+    logger.fine(() => 'HTTP Request failed with statusCode $status');
+    var reason = 'statusCode = $status';
+    try {
+      var body = await response.linesUtf8Encoding().join('\n');
+      if (body.trim().isNotEmpty) {
+        reason = body;
       }
+    } catch (e) {
+      logger.fine(() => 'Unable to read error response body: $e');
+    }
+    if (fail) {
       failBuild(reason: '$error: $reason');
     }
+    return false;
   }
 
   Future<T> _tryUntil<T>(
