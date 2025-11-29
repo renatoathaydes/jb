@@ -19,13 +19,14 @@ class _Proc {
   final Process _process;
   final int port;
   final String authorizationHeader;
+  final String javaVersion;
   bool _closed = false;
 
   bool get isClosed => _closed;
 
   Future<int> get exit => _process.exitCode;
 
-  _Proc(this._process, this.port, String token)
+  _Proc(this._process, this.port, this.javaVersion, String token)
     : authorizationHeader = 'Bearer $token';
 
   bool destroy() {
@@ -91,9 +92,10 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     );
 
     final pout = proc.stdout.linesDefaultEncoding().asBroadcastStream();
-    final lines = await pout.take(2).toList();
+    final lines = await pout.take(3).toList();
     final port = lines.isEmpty ? '' : lines.first;
-    final token = lines.length == 2 ? lines[1] : '';
+    final token = lines.length >= 2 ? lines[1] : '';
+    final javaVersion = lines.length == 3 ? lines[2] : '';
     final portNumber = int.tryParse(port);
     if (portNumber == null) {
       // could be that the JVM process failed to start, so have a look
@@ -121,7 +123,11 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     }
 
     stopwatch.stop();
-    logger.log(profile, () => 'Initialized JVM in ${elapsedTime(stopwatch)}');
+    logger.log(
+      profile,
+      () =>
+          'Initialized JVM version "$javaVersion" in ${elapsedTime(stopwatch)}',
+    );
 
     final perr = proc.stderr.linesDefaultEncoding();
     final stdoutLogger = _RpcExecLogger('stdout', proc.pid);
@@ -129,7 +135,10 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     pout.listen(stdoutLogger.call);
     perr.listen(stderrLogger.call);
 
-    return _JBuildRpc(_Proc(proc, portNumber, token), stdoutLogger);
+    return _JBuildRpc(
+      _Proc(proc, portNumber, javaVersion, token),
+      stdoutLogger,
+    );
   }
 
   Future<_JBuildRpc> _getOrStartRpc(String workingDir) async {

@@ -21,12 +21,12 @@ Future<JavaCommand> jbuildCompileCommand(
   bool isGroovyEnabled,
 ) async {
   final commandArgs = [
+    ...args,
     ...await config.compileArgs(
       jbFiles.processorLibsDir,
       changes,
       isGroovyEnabled,
     ),
-    ...args,
   ];
 
   return RunJBuild(compileTaskName, [
@@ -46,9 +46,6 @@ extension _JbConfig on JbConfiguration {
     bool isGroovyEnabled,
   ) async {
     final result = <String>[];
-    if (compileLibsDir.isNotEmpty) {
-      result.addAll(['-cp', compileLibsDir.asDirPath()]);
-    }
     outputDir?.vmap((d) => result.addAll(['-d', d.asDirPath()]));
     outputJar?.vmap((jar) => result.addAll(['-j', jar]));
     for (final r in resourceDirs.toSet()) {

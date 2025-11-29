@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
 import 'package:dartle/dartle.dart';
+import 'package:jb/jb.dart' show CompilationPath;
 import 'package:jb/src/utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
@@ -13,13 +15,23 @@ final jbuildExecutable = p.join(
   Platform.isWindows ? 'jb.exe' : 'jb',
 );
 
-void projectGroup(String projectDir, String name, Function() definition) {
+void projectGroup(
+  String projectDir,
+  String name,
+  Function() definition, [
+  List<String> subDirectories = const [],
+]) {
+  final rootDirs = subDirectories.isEmpty
+      ? [projectDir]
+      : subDirectories.map((d) => p.join(projectDir, d));
   final outputDirs = dirs([
-    p.join(projectDir, '.jb-cache'),
-    p.join(projectDir, 'out'),
-    p.join(projectDir, 'build'),
-    p.join(projectDir, 'compile-libs'),
-    p.join(projectDir, 'runtime-libs'),
+    for (final d in rootDirs) ...[
+      p.join(d, '.jb-cache'),
+      p.join(d, 'out'),
+      p.join(d, 'build'),
+      p.join(d, 'compile-libs'),
+      p.join(d, 'runtime-libs'),
+    ],
   ], includeHidden: true);
 
   setUp(() async {
@@ -147,4 +159,20 @@ String toCurrentOsPath(String path) {
     return path;
   }
   return path.replaceAll('/', '\\');
+}
+
+void expectCompilationPath(
+  String dir, {
+  Set<String> jars = const {},
+  Set<String> modules = const {},
+}) async {
+  final compPath = CompilationPath.fromJson(
+    jsonDecode(
+      await File(
+        p.join(dir, '.jb-cache', 'compilation-path.json'),
+      ).readAsString(),
+    ),
+  );
+  expect(compPath.jars.map((j) => j.path).toSet(), equals(jars));
+  expect(compPath.modules.map((j) => j.name).toSet(), equals(modules));
 }

@@ -129,6 +129,8 @@ If you change that file, you will need to re-run the `generateJbConfigModel` tas
 dartle generateJbConfigModel
 ```
 
+> A JSON Schema is created at [jb-schema.json](website/source/static/schemas/jb-schema.json).
+
 ## Publishing
 
 To publish `jb` to [pub.dev](https://pub.dev/):

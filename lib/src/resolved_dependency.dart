@@ -1,15 +1,13 @@
 import 'dart:io';
 
-import 'package:actors/actors.dart';
 import 'package:dartle/dartle.dart';
 import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
 import 'config_source.dart';
-import 'dependencies/deps_cache.dart';
+import 'jb_actors.dart';
 import 'jb_files.dart';
-import 'jvm_executor.dart';
 import 'options.dart';
 import 'path_dependency.dart';
 import 'runner.dart';
@@ -67,10 +65,9 @@ final class ResolvedProjectDependency {
   Future<void> initialize(
     Options options,
     JbFiles files,
-    JBuildSender jvmExecutor,
-    Sendable<DepsCacheMessage, ResolvedDependencies> depsCache,
+    JbActors actors,
   ) async {
-    final runner = JbRunner(files, _config.config, jvmExecutor, depsCache);
+    final runner = JbRunner(files, _config.config, actors);
     logger.info(() => "Initializing project dependency at '$projectDir'");
     await withCurrentDirectory(
       projectDir,

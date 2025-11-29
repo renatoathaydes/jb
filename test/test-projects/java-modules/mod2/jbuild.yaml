@@ -1,0 +1,9 @@
+group: modules
+module: mod2
+version: "1.0"
+dependencies:
+  modules:mod1:1.0:
+    path: ../mod1
+javacArgs:
+  - --release=11
+main-class: m2.M2

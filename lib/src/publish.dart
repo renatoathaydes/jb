@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dartle/dartle.dart'
@@ -27,7 +29,7 @@ class Publisher {
   static final ArgsValidator argsValidator = const OptionalArgValidator(
     'One argument may be provided: '
     'a local dir, a http(s) URL, or '
-    ':-m (or :-n for the older repo) for Maven Central',
+    ':-m for Maven Central',
   );
 
   final Result<Artifact> artifact;
@@ -52,16 +54,12 @@ class Publisher {
 
     final mavenClient = MavenClient(switch (destination) {
       '-m' => Sonatype.s01Oss,
-      '-n' => Sonatype.oss,
       _ => CustomMavenRepo(destination),
     }, credentials: _mavenCredentials());
 
     final stopwatch = Stopwatch()..start();
 
     if (destination == '-m') {
-      return await _publishHttp(mavenClient, theArtifact, stopwatch);
-    }
-    if (destination == '-n') {
       return await _publishHttp(mavenClient, theArtifact, stopwatch);
     }
     if (destination.startsWith('http://') ||
@@ -99,7 +97,7 @@ class Publisher {
     DepsCache depsCache,
     Stopwatch stopwatch,
   ) async {
-    final destination = Directory(_pathFor(theArtifact, repoPath));
+    final destination = Directory(_pathFor(theArtifact, parent: repoPath));
     logger.info(() => 'Publishing artifacts to ${destination.path}');
     await _publishArtifactToDir(destination, theArtifact, depsCache, stopwatch);
   }
@@ -122,7 +120,7 @@ class Publisher {
       stopwatch,
     );
     logger.fine(() => 'Creating bundle.jar with publication artifacts');
-    final bundle = await _createBundleJar(destination, stopwatch);
+    final bundle = await _createBundle(_getArtifact(), destination, stopwatch);
     logger.info(() => 'Publishing artifacts to ${mavenClient.repo.url}');
     try {
       await mavenClient.publish(theArtifact, bundle);
@@ -179,73 +177,101 @@ class Publisher {
   ) async {
     await File(
       p.join(destination.path, _fileFor(artifact, extension: '.pom')),
-    ).writeAsString(pom).then(_signFile).then(_shaFile);
+    ).writeAsString(pom).then(_createChecksumsAndSign);
     await File(jarFile)
         .copy(p.join(destination.path, _fileFor(artifact)))
-        .then(_signFile)
-        .then(_shaFile);
+        .then(_createChecksumsAndSign);
     await File(jarFile.replaceExtension('-sources.jar'))
         .rename(
           p.join(destination.path, _fileFor(artifact, qualifier: '-sources')),
         )
-        .then(_signFile)
-        .then(_shaFile);
+        .then(_createChecksumsAndSign);
     await File(jarFile.replaceExtension('-javadoc.jar'))
         .rename(
           p.join(destination.path, _fileFor(artifact, qualifier: '-javadoc')),
         )
-        .then(_signFile)
-        .then(_shaFile);
+        .then(_createChecksumsAndSign);
   }
 
-  Future<File> _createBundleJar(
+  Future<void> _createChecksumsAndSign(File file) async {
+    final bytes = await file.readAsBytes();
+    final f1 = _signFile(file);
+    final f2 = _shaFile(file.path, bytes);
+    final f3 = _md5File(file.path, bytes);
+    await Future.wait(<Future<Object?>>[f1, f2, f3]);
+  }
+
+  Future<File> _createBundle(
+    Artifact artifact,
     Directory directory,
     Stopwatch stopwatch,
   ) async {
-    // jar --create --file target/bundle.jar -C target/deploy .
-    final bundleJar = tempFile(extension: '.jar');
-    logger.fine(() => 'Creating publication bundle jar at ${bundleJar.path}');
+    final bundle = tempFile(extension: '.zip');
+    logger.fine(() => 'Creating publication bundle at ${bundle.path}');
     stopwatch.reset();
-    await execProc(
-      Process.start('jar', [
-        '--create',
-        '--file',
-        bundleJar.path,
-        '-C',
-        directory.path,
-        '.',
-      ]),
-    );
+
+    final encoder = ZipFileEncoder();
+    encoder.create(bundle.path);
+
+    final zipRootDir = _pathFor(artifact, osSeparator: false);
+    try {
+      await for (final entity in directory.list()) {
+        if (entity is File) {
+          await encoder.addFile(
+            entity,
+            '$zipRootDir/${p.basename(entity.path)}',
+          );
+        }
+      }
+    } finally {
+      await encoder.close();
+    }
+
     logger.log(
       profile,
       () =>
-          'Created publication bundle jar at ${bundleJar.path} in '
+          'Created publication bundle at ${bundle.path} in '
           '${stopwatch.elapsedMilliseconds} ms.',
     );
-    return bundleJar;
+
+    return bundle;
   }
 }
 
 HttpClientCredentials? _mavenCredentials() {
   final mavenUser = Platform.environment['MAVEN_USER'];
   final mavenPassword = Platform.environment['MAVEN_PASSWORD'];
+  String? token;
   if (mavenUser != null && mavenPassword != null) {
     logger.info('Using MAVEN_USER and MAVEN_PASSWORD for HTTP credentials');
-    return HttpClientBasicCredentials(mavenUser, mavenPassword);
+    token = base64Encode(utf8.encode("$mavenUser:$mavenPassword"));
+  }
+  if (token == null) {
+    token = Platform.environment['SONATYPE_USER_TOKEN'];
+    if (token != null) {
+      logger.info('Using SONATYPE_USER_TOKEN for HTTP credentials');
+    }
+  }
+  if (token != null) {
+    return HttpClientBearerCredentials(token);
   }
   logger.info(
-    'No HTTP credentials provided '
-    '(set MAVEN_USER and MAVEN_PASSWORD to provide it)',
+    'No HTTP credentials provided (set either SONATYPE_USER_TOKEN '
+    'or MAVEN_USER and MAVEN_PASSWORD to provide it)',
   );
   return null;
 }
 
-Future<void> _shaFile(File file) async {
-  logger.finer(() => 'Computing SHA1 of ${file.path}');
-  await File(
-    '${file.path}.sha1',
-  ).writeAsString(sha1.convert(await file.readAsBytes()).toString());
-  logger.finer(() => 'Computed SHA1 of ${file.path}');
+Future<void> _shaFile(String file, List<int> bytes) async {
+  logger.finer(() => 'Computing SHA1 of $file');
+  await File('$file.sha1').writeAsString(sha1.convert(bytes).toString());
+  logger.finer(() => 'Computed SHA1 of $file');
+}
+
+Future<void> _md5File(String file, List<int> bytes) async {
+  logger.finer(() => 'Computing MD5 of $file');
+  await File('$file.md5').writeAsString(md5.convert(bytes).toString());
+  logger.finer(() => 'Computed MD5 of $file');
 }
 
 // remember if GPG fails so we don't try again
@@ -275,13 +301,13 @@ Future<File> _signFile(File file) async {
   return file;
 }
 
-String _pathFor(Artifact artifact, String parent) {
-  return p.joinAll([
-    parent,
+String _pathFor(Artifact artifact, {String? parent, bool osSeparator = true}) {
+  return [
+    ?parent,
     ...artifact.group.split('.'),
     artifact.module,
     artifact.version,
-  ]);
+  ].join(osSeparator ? Platform.pathSeparator : '/');
 }
 
 String _fileFor(

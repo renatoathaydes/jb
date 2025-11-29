@@ -1,11 +1,15 @@
 import 'dart:io';
 
+import 'package:actors/actors.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:path/path.dart' as p;
 
+import 'compilation_path.g.dart';
 import 'compile/compile.dart';
+import 'compute_compilation_path.dart' as cp;
+import 'compute_compilation_path.dart';
 import 'config.dart';
 import 'dependencies/deps_cache.dart';
 import 'dependencies/printer.dart';
@@ -15,10 +19,12 @@ import 'eclipse.dart';
 import 'exec.dart';
 import 'file_tree.dart';
 import 'java_tests.dart';
+import 'jb_actors.dart';
 import 'jb_files.dart';
 import 'jbuild_update.dart';
 import 'jshell.dart';
 import 'jvm_executor.dart';
+import 'jvm_run.dart';
 import 'optional_arg_validator.dart';
 import 'pom.dart';
 import 'publish.dart';
@@ -37,6 +43,8 @@ const jshellTaskName = 'jshell';
 const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const installProcessorDepsTaskName = 'installProcessorDependencies';
+const createJavaCompilationPathTaskName = 'createJavaCompilationPath';
+const createJavaRuntimePathTaskName = 'createJavaRuntimePath';
 const writeDepsTaskName = 'writeDependencies';
 const verifyDepsTaskName = 'verifyDependencies';
 const depsTaskName = 'dependencies';
@@ -96,24 +104,29 @@ RunCondition _createPublicationCompileRunCondition(
 Task createCompileTask(
   JbFiles jbFiles,
   JbConfigContainer config,
+  cp.CompilationPathFiles compPathFiles,
   DartleCache cache,
-  JBuildSender jBuildSender,
+  JbActors actors,
 ) {
   final workingDir = Directory.current.path;
   return Task(
     (List<String> args, [ChangeSet? changes]) => _compile(
       jbFiles,
       config,
+      compPathFiles,
       workingDir,
       changes,
       args,
       cache,
-      jBuildSender,
+      actors,
     ),
     runCondition: _createCompileRunCondition(config, cache),
     name: compileTaskName,
     argsValidator: const AcceptAnyArgs(),
-    dependsOn: const {installCompileDepsTaskName, installProcessorDepsTaskName},
+    dependsOn: const {
+      createJavaCompilationPathTaskName,
+      installProcessorDepsTaskName,
+    },
     description: 'Compile Java source code.',
   );
 }
@@ -122,13 +135,21 @@ Task createCompileTask(
 Task createPublicationCompileTask(
   JbFiles jbFiles,
   JbConfigContainer config,
+  cp.CompilationPathFiles compPathFiles,
   DartleCache cache,
-  JBuildSender jBuildSender,
+  JbActors actors,
 ) {
   final workingDir = Directory.current.path;
   return Task(
-    (List<String> args) =>
-        _publishCompile(jbFiles, config, workingDir, args, cache, jBuildSender),
+    (List<String> args) => _publishCompile(
+      jbFiles,
+      config,
+      compPathFiles,
+      workingDir,
+      args,
+      cache,
+      actors,
+    ),
     runCondition: _createPublicationCompileRunCondition(config, cache),
     name: publicationCompileTaskName,
     argsValidator: const AcceptAnyArgs(),
@@ -140,10 +161,11 @@ Task createPublicationCompileTask(
 Future<void> _publishCompile(
   JbFiles jbFiles,
   JbConfigContainer config,
+  cp.CompilationPathFiles compPathFiles,
   String workingDir,
   List<String> args,
   DartleCache cache,
-  JBuildSender jBuildSender,
+  JbActors actors,
 ) async {
   config.output.when(
     dir: (_) => failBuild(reason: _reasonPublicationCompileCannotRun),
@@ -152,11 +174,12 @@ Future<void> _publishCompile(
   await _compile(
     jbFiles,
     config,
+    compPathFiles,
     workingDir,
     null,
     args,
     cache,
-    jBuildSender,
+    actors,
     publication: true,
   );
 }
@@ -164,11 +187,12 @@ Future<void> _publishCompile(
 Future<void> _compile(
   JbFiles jbFiles,
   JbConfigContainer configContainer,
+  cp.CompilationPathFiles compPathFiles,
   String workingDir,
   ChangeSet? changeSet,
   List<String> args,
   DartleCache cache,
-  JBuildSender jBuildSender, {
+  JbActors actors, {
   bool publication = false,
 }) async {
   final config = configContainer.config;
@@ -186,13 +210,20 @@ Future<void> _compile(
     );
   }
   stopwatch.reset();
+  final compilationPath = await getCompilationPath(
+    actors.compPath,
+    compPathFiles,
+    configContainer.artifactId,
+    config.compileLibsDir,
+  );
   final isGroovyEnabled =
       configContainer.knownDeps.groovy ||
       configContainer.testConfig.spockVersion != null;
-  await jBuildSender.send(
+  await actors.jvmExecutor.send(
     await compileCommand(
       jbFiles,
       config,
+      compilationPath,
       isGroovyEnabled,
       workingDir,
       publication,
@@ -213,7 +244,7 @@ Future<void> _compile(
     compileTaskName,
     config,
     workingDir,
-    jBuildSender,
+    actors.jvmExecutor,
     output,
     jbFiles.javaSrcFileTreeFile,
   );
@@ -562,6 +593,66 @@ Future<void> _copyOutput(CompileOutput out, String destinationDir) {
   );
 }
 
+Task createJavaCompilationPathTask(
+  JbFiles files,
+  JbConfigContainer config,
+  JBuildSender jBuildSender,
+  Sendable<cp.CompilationPathMessage, CompilationPath?> compPath,
+  cp.CompilationPathFiles compilationFiles,
+) {
+  final workingDir = Directory.current.path;
+  return Task(
+    (_) async {
+      await cp.computeCompilationPath(
+        createJavaCompilationPathTaskName,
+        config,
+        workingDir,
+        jBuildSender,
+        compPath,
+        config.config.compileLibsDir,
+        compilationFiles,
+      );
+    },
+    name: createJavaCompilationPathTaskName,
+    description: 'Computes the Java compile classpath and modulepath.',
+    dependsOn: {installCompileDepsTaskName},
+    runCondition: RunOnChanges(
+      outputs: compilationFiles.asFileCollection(),
+      cache: compilationFiles.cache,
+    ),
+  );
+}
+
+Task createJavaRuntimePathTask(
+  JbFiles files,
+  JbConfigContainer config,
+  JBuildSender jBuildSender,
+  Sendable<cp.CompilationPathMessage, CompilationPath?> compPath,
+  cp.CompilationPathFiles compilationFiles,
+) {
+  final workingDir = Directory.current.path;
+  return Task(
+    (_) async {
+      await cp.computeRuntimePath(
+        createJavaRuntimePathTaskName,
+        config,
+        workingDir,
+        jBuildSender,
+        config.config.runtimeLibsDir,
+        compPath,
+        compilationFiles,
+      );
+    },
+    name: createJavaRuntimePathTaskName,
+    description: 'Computes the Java runtime classpath and modulepath.',
+    dependsOn: {installRuntimeDepsTaskName},
+    runCondition: RunOnChanges(
+      outputs: compilationFiles.asFileCollection(runtime: true),
+      cache: compilationFiles.cache,
+    ),
+  );
+}
+
 /// Create the eclipse task.
 Task createEclipseTask(JbConfiguration config) {
   return Task(
@@ -658,61 +749,22 @@ Task createPublishTask(
 }
 
 /// Create the `run` task.
-Task createRunTask(JbFiles files, JbConfigContainer config, DartleCache cache) {
+Task createRunTask(
+  JbFiles files,
+  JbConfigContainer config,
+  DartleCache cache,
+  JbActors actors,
+  cp.CompilationPathFiles compilationFiles,
+) {
   return Task(
-    (List<String> args) => _run(files.jbuildJar, config, args),
-    dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
+    (List<String> args) =>
+        javaRun(files.jbuildJar, config, args, actors, compilationFiles),
+    dependsOn: const {compileTaskName, createJavaRuntimePathTaskName},
     argsValidator: const AcceptAnyArgs(),
     name: runTaskName,
     description: 'Run Java Main class.',
     phase: evaluatePhase,
   );
-}
-
-Future<void> _run(
-  File jbuildJar,
-  JbConfigContainer configContainer,
-  List<String> args,
-) async {
-  final config = configContainer.config;
-  var mainClass = config.mainClass ?? '';
-  if (mainClass.isEmpty) {
-    const mainClassArg = '--main-class=';
-    final mainClassArgIndex = args.indexWhere(
-      (arg) => arg.startsWith(mainClassArg),
-    );
-    if (mainClassArgIndex >= 0) {
-      mainClass = args
-          .removeAt(mainClassArgIndex)
-          .substring(mainClassArg.length);
-    }
-  }
-  if (mainClass.isEmpty) {
-    throw DartleException(
-      message:
-          'cannot run Java application as '
-          'no main-class has been configured or provided.\n'
-          'To configure one, add "main-class: your.Main" to your jb config file.',
-    );
-  }
-
-  final classpath = {
-    configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j),
-    config.runtimeLibsDir,
-    p.join(config.runtimeLibsDir, '*'),
-  }.join(classpathSeparator);
-
-  final exitCode = await execJava(runTaskName, [
-    ...config.runJavaArgs,
-    '-cp',
-    classpath,
-    mainClass,
-    ...args,
-  ], env: config.runJavaEnv);
-
-  if (exitCode != 0) {
-    throw DartleException(message: 'java command failed', exitCode: exitCode);
-  }
 }
 
 /// Create the `jshell` task.
@@ -838,12 +890,17 @@ Future<void> _test(
       ? null
       : '.*Spec|.*Specification|.*Specifications|.*Test|.*Tests|.*TestSuite|.*TestCase';
 
+  final junitSubcommand = await junitTestSubcommand(
+    p.join(cache.rootDir, junitRunnerLibsDir),
+  );
+
   final exitCode = await execJava(testTaskName, [
     ...config.testJavaArgs,
     '-ea',
     '-cp',
     p.join(cache.rootDir, junitRunnerLibsDir, '*'),
     mainClass,
+    ?junitSubcommand,
     '--classpath=$classpath',
     if (!hasCustomSelect)
       '--scan-classpath=${configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j)}',

@@ -6,6 +6,7 @@ import 'package:schemake/schemake.dart';
 import 'jb_extension_schema.dart';
 
 const configFile = 'lib/src/jb_config.g.dart';
+const compilationPathFile = 'lib/src/compilation_path.g.dart';
 const jsonSchemaFile = 'website/source/static/schemas/jb-schema.json';
 const jsonSchemaUri =
     'https://renatoathaydes.github.io/jb/schemas/jb-schema.json';

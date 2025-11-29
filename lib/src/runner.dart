@@ -1,30 +1,26 @@
-import 'package:actors/actors.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
 
 import 'config.dart';
-import 'dependencies/deps_cache.dart';
+import 'jb_actors.dart';
 import 'jb_dartle.dart';
 import 'jb_files.dart';
-import 'jvm_executor.dart';
 
 class JbRunner {
   final JbFiles files;
   final JbConfiguration config;
-  final Sendable<JavaCommand, Object?> _jvmExecutor;
-  final Sendable<DepsCacheMessage, ResolvedDependencies> _depsCache;
+  final JbActors _actors;
 
-  JbRunner(this.files, this.config, this._jvmExecutor, this._depsCache);
+  JbRunner(this.files, this.config, this._actors);
 
   static Future<JbRunner> create(
     JbFiles files,
     JbConfiguration config,
-    Sendable<JavaCommand, Object?> jvmExecutor,
-    Sendable<DepsCacheMessage, ResolvedDependencies> depsCache,
+    JbActors actors,
   ) async {
     logger.fine(() => 'Parsed jb configuration: $config');
     config.validate();
-    return JbRunner(files, config, jvmExecutor, depsCache);
+    return JbRunner(files, config, actors);
   }
 
   Future<List<ParallelTasks>> run(
@@ -32,15 +28,14 @@ class JbRunner {
     Stopwatch stopWatch, {
     bool isRoot = true,
   }) async {
-    final cache = DartleCache(files.jbCache);
+    final cache = DartleCache(JbFiles.jbCache);
 
     final jb = JbDartle.create(
       files,
       config,
       cache,
       options,
-      _jvmExecutor,
-      _depsCache,
+      _actors,
       stopWatch,
       isRoot: isRoot,
     );

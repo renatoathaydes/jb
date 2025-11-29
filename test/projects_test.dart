@@ -19,6 +19,7 @@ const exampleExtensionDir = '$projectsDir/example-extension';
 const usesExtensionDir = '$projectsDir/uses-extension';
 const testsProjectDir = '$projectsDir/tests';
 const runEnvProjectDir = '$projectsDir/run-env';
+const javaModulesProjectDir = '$projectsDir/java-modules';
 
 const _expectedWithSubProjectPom =
     '''\
@@ -647,6 +648,37 @@ void main() {
       timeout: const Timeout(Duration(seconds: 10)),
     );
   });
+
+  projectGroup(javaModulesProjectDir, 'Java Modules Project', () {
+    test('can build simple Java module', () async {
+      final mod1 = p.join(javaModulesProjectDir, 'mod1');
+      var jbResult = await runJb(Directory(mod1));
+      expectSuccess(jbResult);
+      expectCompilationPath(mod1, modules: {'org.slf4j'});
+    }, timeout: const Timeout(Duration(seconds: 10)));
+
+    test(
+      'can build Java module that depends on jars and modules',
+      () async {
+        final mod2 = p.join(javaModulesProjectDir, 'mod2');
+        var jbResult = await runJb(Directory(mod2));
+        expectSuccess(jbResult);
+        expectCompilationPath(mod2, modules: {'mod.one', 'org.slf4j'});
+      },
+      timeout: const Timeout(Duration(seconds: 10)),
+    );
+
+    test(
+      'can run Java module that depends on jars and modules',
+      () async {
+        final mod2 = p.join(javaModulesProjectDir, 'mod2');
+        var jbResult = await runJb(Directory(mod2), const ['run']);
+        expectSuccess(jbResult);
+        expect(jbResult.stdout.join('\n'), contains("M1{value=This is M1}"));
+      },
+      timeout: const Timeout(Duration(seconds: 10)),
+    );
+  }, ['mod1', 'mod2']);
 
   Future<void> cleanupEmptyProjectDir() async {
     await for (final entity in Directory(emptyProjectDir).list()) {

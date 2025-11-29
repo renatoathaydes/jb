@@ -1,5 +1,13 @@
 ## Next
 
+# 0.15.0
+
+- added support for Java modules.
+- separated classpath and modulepath when compiling modules.
+- updated licenses registry.
+- improved JUnit5 execution so both old and new versions work (after `execute` command introduced in JUint).
+- rewrote `publish` task to work with new Sonatype Publish API.
+
 # 0.14.0
 
 - added the `jshell` task, which allows running a Java shell with the project's classpath easily.

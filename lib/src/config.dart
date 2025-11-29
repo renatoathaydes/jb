@@ -267,12 +267,15 @@ class JbExtensionModel {
 /// as well as a computed [CompileOutput].
 class JbConfigContainer {
   final JbConfiguration config;
+  String artifactId;
   final CompileOutput output;
   final TestConfig testConfig;
   final KnownDependencies knownDeps;
 
   JbConfigContainer(JbConfiguration config)
     : config = _processPaths(config),
+      artifactId =
+          "${config.group ?? '?'}:${config.module ?? '?'}:${config.version ?? '?'}",
       output = config.outputDir.vmapOr(
         (d) => CompileOutput.dir(_processPath(d)),
         () => CompileOutput.jar(
