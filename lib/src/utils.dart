@@ -17,6 +17,19 @@ typedef Closable = FutureOr<void> Function();
 
 final classpathSeparator = Platform.isWindows ? ';' : ':';
 
+final class EnvVar {
+  final String name;
+  final String? value;
+
+  const EnvVar(this.name, this.value);
+
+  bool get isTrue => value?.toLowerCase() == 'true';
+
+  bool get isFalse => value?.toLowerCase() == 'false';
+
+  bool get isNotFalse => !isFalse;
+}
+
 Future<File> createIfNeededAndGetJBuildJarFile() async {
   final file = File(jbuildJarPath()).absolute;
   if (!await file.exists()) {
@@ -288,6 +301,8 @@ extension StringExtension on String {
     }
     return "$this${Platform.pathSeparator}";
   }
+
+  EnvVar envVar() => EnvVar(this, Platform.environment[this]);
 }
 
 extension NullableStringExtension on String? {

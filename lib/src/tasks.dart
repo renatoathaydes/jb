@@ -533,7 +533,11 @@ Task _createInstallDepsTask(
     runCondition: runCondition,
     dependsOn: const {verifyDepsTaskName},
     name: taskName,
-    description: 'Install $scopeName dependencies.',
+    description:
+        'Install $scopeName dependencies. '
+        'By default, dependencies are installed in the configured libs '
+        'directory and also on Maven Local. To disable Maven Local, '
+        'set the JB_INSTALL_TO_MAVEN_LOCAL env var to "false".',
   );
 }
 
@@ -553,7 +557,8 @@ Future<void> _install(
       ...preArgs,
       'install',
       '--non-transitive',
-      '-d',
+      if ('JB_INSTALL_TO_MAVEN_LOCAL'.envVar().isNotFalse) '--maven-local',
+      '--directory',
       outputDir,
       ...deps,
     ]),
