@@ -70,13 +70,18 @@ class Publisher {
   }
 
   String _mavenHome() {
-    final mavenHome = Platform.environment['MAVEN_HOME'];
+    final mavenHome = Platform.environment['MAVEN_LOCAL_HOME'];
     if (mavenHome != null) {
+      logger.finer(
+        () =>
+            'MAVEN_LOCAL_HOME environment variable will be used for publishing: $mavenHome',
+      );
       return mavenHome;
     }
     logger.finer(
       () =>
-          'MAVEN_HOME environment variable is not set, will use ~/.m2/repository',
+          'MAVEN_HOME environment variable is not set, will use '
+          '~/.m2/repository for publishing',
     );
     final home = homeDir().orThrow(
       () => failBuild(reason: 'Cannot find home directory'),

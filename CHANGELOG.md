@@ -1,5 +1,8 @@
 ## Next
 
+- changed environment variable used to find Maven Local Repository from `MAVEN_HOME` to `MAVEN_LOCAL_HOME`.
+- install dependencies to Maven Local unless `JB_INSTALL_TO_MAVEN_LOCAL` is set to `false`.
+
 # 0.15.0
 
 - added support for Java modules.
