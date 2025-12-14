@@ -197,10 +197,10 @@ packages:
     dependency: "direct main"
     description:
       name: dartle
-      sha256: "4b653f41cc47b7d6652918223794ffcb5d3f5d8e1e0ddbb72c556e5117d3195b"
+      sha256: "43cd34759d3a8b6c7cf60cc57095518205fbf4037bd73f6fc3fb5c7aa8e07aa1"
       url: "https://pub.dev"
     source: hosted
-    version: "0.34.0"
+    version: "0.34.1"
   ffi:
     dependency: transitive
     description:
