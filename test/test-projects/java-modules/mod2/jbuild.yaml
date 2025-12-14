@@ -4,6 +4,10 @@ version: "1.0"
 dependencies:
   modules:mod1:1.0:
     path: ../mod1
-javacArgs:
-  - --release=11
+  "org.slf4j:slf4j-simple:2.0.17":
+    scope: runtime-only
+run-java-args:
+  - "-Dorg.slf4j.simpleLogger.defaultLogLevel=debug"
+javac-args:
+  - "--release=11"
 main-class: m2.M2

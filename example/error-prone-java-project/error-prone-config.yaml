@@ -1,9 +1,11 @@
 processor-dependencies:
     com.google.errorprone:error_prone_core:2.16:
+    com.google.errorprone:error_prone_annotations:2.16:
 
 processor-dependency-exclusion-patterns:
     - org.checkerframework:.*
-    - com.google.*error_prone_annotation.*
+    - com.google.errorprone:error_prone_annotations:.*
+    - com.google.code.findbugs:.*
 
 javac-args:
     - -J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED

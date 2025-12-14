@@ -87,9 +87,11 @@ void main() {
         [
           'with-deps.jar',
           'compile-libs',
+          p.join('compile-libs', 'lists-1.0.pom'),
           p.join('compile-libs', 'lists-1.0.jar'),
           p.join('compile-libs', 'minimal-java-project.jar'),
           p.join('compile-libs', 'slf4j-api-1.7.36.jar'),
+          p.join('compile-libs', 'slf4j-api-1.7.36.pom'),
         ],
         reason:
             'Did not create all artifacts.\n\n'
@@ -335,6 +337,7 @@ void main() {
         [
           'example-extension.jar',
           'compile-libs',
+          p.join('compile-libs', 'jbuild-api-0.10.0.pom'),
           p.join('compile-libs', 'jbuild-api-0.10.0.jar'),
         ],
       );
