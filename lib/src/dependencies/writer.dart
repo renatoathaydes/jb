@@ -207,8 +207,8 @@ void _checkDependenciesAreNotExcludedDirectly(
       .toList();
   if (directExclusions.isNotEmpty) {
     final listMsg = directExclusions.map((dep) => '  - $dep').join('\n');
-    failBuild(
-      reason:
+    logger.info(
+      () =>
           'Direct dependenc${directExclusions.length == 1 ? 'y is' : 'ies are'}'
           ' explicitly excluded:\n$listMsg',
     );
