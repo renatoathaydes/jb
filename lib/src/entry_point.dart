@@ -31,7 +31,12 @@ Future<bool> runJb(
     printHelp();
     return false;
   }
+  stopwatch
+    ..reset()
+    ..start();
   final jbuildJar = await createIfNeededAndGetJBuildJarFile();
+  stopwatch.stop();
+  logger.log(profile, () => 'Checked JBuild jar in ${elapsedTime(stopwatch)}');
   if (dartleOptions.showVersion) {
     await printVersion(jbuildJar);
     return false;

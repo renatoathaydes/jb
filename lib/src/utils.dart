@@ -27,26 +27,55 @@ final class EnvVar {
 
   bool get isFalse => value?.toLowerCase() == 'false';
 
+  bool get isNotTrue => !isTrue;
+
   bool get isNotFalse => !isFalse;
 }
 
 Future<File> createIfNeededAndGetJBuildJarFile() async {
-  final file = File(jbuildJarPath()).absolute;
-  if (!await file.exists()) {
-    logger.info(const PlainMessage('Creating JBuild jar'));
-    await _createJBuildJar(file);
+  final jbuildJar = File(jbuildJarPath()).absolute;
+  final tsStats = await _tsFile(jbuildJar).stat();
+  if (tsStats.fileExists()) {
+    final jarStats = await jbuildJar.stat();
+    if (jarStats.fileExists()) {
+      const ignoreJBuildJarChanges = 'JB_IGNORE_JBUILD_JAR_CHANGES';
+      if (ignoreJBuildJarChanges.envVar().isNotTrue &&
+          jarStats.modified.isAfter(tsStats.modified)) {
+        logger.warning(
+          'Detected JBuild jar change, will re-generate it. To avoid this, '
+          'set the env var $ignoreJBuildJarChanges to "true"',
+        );
+      } else {
+        // both files exist, jar not modified (or ignored timestamp), all good.
+        logger.finer('JBuild jar exists and is fresh.');
+        return jbuildJar;
+      }
+    } else {
+      logger.fine('JBuild jar does not exist');
+    }
+  } else {
+    logger.fine('JBuild jar timestamp file does not exist');
   }
-  return file;
+  logger.info(const PlainMessage('Creating JBuild jar'));
+  await _createJBuildJar(jbuildJar);
+  return jbuildJar;
 }
 
 Future<void> _createJBuildJar(File jar) async {
   await jar.parent.create(recursive: true);
   await jar.writeAsBytes(base64Decode(jbuildJarB64));
+  await _tsFile(jar).writeAsString(DateTime.now().toIso8601String());
   logger.info(() => PlainMessage('JBuild jar saved at ${jar.path}'));
 }
 
 Function changedDirectoryOnError(String directory) {
   return (e, st) => throw NestedDirectoryException(directory, e, st);
+}
+
+File _tsFile(File jar) => File(p.join(jar.parent.path, 'timestamp.txt'));
+
+extension on FileStat {
+  bool fileExists() => type != FileSystemEntityType.notFound;
 }
 
 extension NullIterable<T> on Iterable<T?> {
