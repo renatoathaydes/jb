@@ -161,7 +161,7 @@ String toCurrentOsPath(String path) {
   return path.replaceAll('/', '\\');
 }
 
-void expectCompilationPath(
+Future<void> expectCompilationPath(
   String dir, {
   Set<String> jars = const {},
   Set<String> modules = const {},

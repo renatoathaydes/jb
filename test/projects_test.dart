@@ -657,7 +657,7 @@ void main() {
       final mod1 = p.join(javaModulesProjectDir, 'mod1');
       var jbResult = await runJb(Directory(mod1));
       expectSuccess(jbResult);
-      expectCompilationPath(mod1, modules: {'org.slf4j'});
+      await expectCompilationPath(mod1, modules: {'org.slf4j'});
     }, timeout: const Timeout(Duration(seconds: 10)));
 
     test(
@@ -666,7 +666,10 @@ void main() {
         final mod2 = p.join(javaModulesProjectDir, 'mod2');
         var jbResult = await runJb(Directory(mod2));
         expectSuccess(jbResult);
-        expectCompilationPath(mod2, modules: {'mod.one', 'org.slf4j'});
+        await expectCompilationPath(
+          mod2,
+          modules: {'mod.one', 'org.slf4j.simple', 'org.slf4j'},
+        );
       },
       timeout: const Timeout(Duration(seconds: 10)),
     );
