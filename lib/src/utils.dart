@@ -331,6 +331,8 @@ extension StringExtension on String {
     return "$this${Platform.pathSeparator}";
   }
 
+  String quote() => '"$this"';
+
   EnvVar envVar() => EnvVar(this, Platform.environment[this]);
 }
 

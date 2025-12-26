@@ -14,6 +14,7 @@ import 'package:path/path.dart' as p;
 import '../config.dart';
 import '../jb_files.dart';
 import '../jvm_executor.dart';
+import '../utils.dart';
 
 /// The name of the file inside the Dartle Cache where the full extension project
 /// data model is cached.
@@ -128,7 +129,27 @@ Future<JbExtensionModel> createJbExtensionModel(
     () => 'Loaded extension tasks in ${elapsedTime(stopWatch)}',
   );
 
+  _verifyAllExtrasMatchExtensionTasks(config, extensionTasks);
+
   return JbExtensionModel(config, classpath, extensionTasks);
+}
+
+void _verifyAllExtrasMatchExtensionTasks(
+  JbConfiguration config,
+  List<ExtensionTask> extensionTasks,
+) {
+  final extras = config.extras.keys.toSet();
+  final taskNames = extensionTasks.map((t) => t.name).toSet();
+  final badExtras = extras.difference(taskNames);
+  if (badExtras.isNotEmpty) {
+    failBuild(
+      reason:
+          'The following keys are not jb configuration entries, '
+          'nor custom tasks configurations: '
+          '${badExtras.map((s) => s.quote()).join(', ')}. '
+          'Remove them from your jb file or add the required extensions.',
+    );
+  }
 }
 
 Future<_JbExtensionConfig> _jbExtensionFromJar(

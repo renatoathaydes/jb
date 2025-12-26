@@ -152,7 +152,7 @@ $extension''';
     final taskEntries = [
       for (final e in extras.entries)
         '${_quote(e.key)}:'
-            '${_mapToYaml(e.value as Map<String, Object?>)}',
+            '${_valueToYaml(e.value)}',
     ].join('\n');
     return '$header\n$taskEntries\n';
   }
