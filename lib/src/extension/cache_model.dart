@@ -129,12 +129,10 @@ Future<JbExtensionModel> createJbExtensionModel(
     () => 'Loaded extension tasks in ${elapsedTime(stopWatch)}',
   );
 
-  _verifyAllExtrasMatchExtensionTasks(config, extensionTasks);
-
   return JbExtensionModel(config, classpath, extensionTasks);
 }
 
-void _verifyAllExtrasMatchExtensionTasks(
+void verifyAllExtrasMatchExtensionTasks(
   JbConfiguration config,
   List<ExtensionTask> extensionTasks,
 ) {

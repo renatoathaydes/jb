@@ -343,10 +343,10 @@ extension-project: null
 # Custom tasks configuration
 ############################
 "extensionTask":
-  "inputs": ["a", "b"]
-  "outputs": "foo"
+    "inputs": ["a", "b"]
+    "outputs": "foo"
 "anotherTask":
-  "verbose": true
+    "verbose": true
 ''';
 
 String _configImportingVersionsConfig(String importPath) =>

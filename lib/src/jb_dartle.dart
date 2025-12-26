@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'package:jb/src/extension/cache_model.dart';
 
 import 'compute_compilation_path.dart';
 import 'config.dart';
@@ -262,7 +263,13 @@ class JbDartle {
       _cache,
     );
 
-    final extensionTasks = extensionProject?.tasks;
+    final extensionTasks = extensionProject.vmap((extProject) {
+      verifyAllExtrasMatchExtensionTasks(
+        _config,
+        extProject?.model.extensionTasks ?? const [],
+      );
+      return extProject?.tasks;
+    });
 
     projectTasks.addAll({
       compile,

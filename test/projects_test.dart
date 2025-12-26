@@ -799,5 +799,34 @@ void main() {
       },
       timeout: const Timeout(Duration(seconds: 15)),
     );
+
+    test(
+      'cannot configure non-existing tasks',
+      () async {
+        addTearDown(cleanupEmptyProjectDir);
+        await File(p.join(emptyProjectDir, 'jbuild.json')).writeAsString(
+          '{'
+          ' "module": "test",'
+          ' "foo": { "bar": "zort" }'
+          '}',
+        );
+        await Directory(p.join(emptyProjectDir, 'src')).create();
+        await File(
+          p.join(emptyProjectDir, 'src', 'Hi.java'),
+        ).writeAsString('class Hi {}');
+
+        final runResult = await runJb(Directory(emptyProjectDir));
+        expect(runResult.exitCode, isNot(0));
+        final allOutput = runResult.stdout.join('\n');
+        expect(
+          allOutput,
+          contains(
+            'The following keys are not jb configuration entries, '
+            'nor custom tasks configurations: "foo"',
+          ),
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 15)),
+    );
   });
 }
