@@ -21,7 +21,7 @@ void main(List<String> arguments) async {
     if (printBuildSuccess) {
       logger.info(
         ColoredLogMessage(
-          'Build succeeded in ${_elapsedTime(stopWatch)}!',
+          'Build succeeded in ${elapsedTime(stopWatch)}!',
           LogColor.green,
         ),
       );
@@ -77,14 +77,4 @@ void _onEverythingUpToDate() {
       LogColor.green,
     ),
   );
-}
-
-String _elapsedTime(Stopwatch stopwatch) {
-  final millis = stopwatch.elapsedMilliseconds;
-  if (millis > 1000) {
-    final secs = (millis * 1e-3).toStringAsPrecision(4);
-    return '$secs seconds';
-  } else {
-    return '$millis ms';
-  }
 }

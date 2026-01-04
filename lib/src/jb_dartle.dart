@@ -315,9 +315,7 @@ class JbDartle {
 
     logger.log(
       profile,
-      () =>
-          'Project initialization completed in '
-          '${stopwatch.elapsedMilliseconds} ms.',
+      () => 'Project initialization completed in ${elapsedTime(stopwatch)}.',
     );
   }
 

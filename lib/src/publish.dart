@@ -13,7 +13,8 @@ import 'package:dartle/dartle.dart'
         execProc,
         profile,
         tempDir,
-        tempFile;
+        tempFile,
+        elapsedTime;
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
@@ -152,25 +153,20 @@ class Publisher {
     final deps = await depsCache.send(GetDeps(depsFile.path));
     logger.log(
       profile,
-      'Parsed dependencies file in ${stopwatch.elapsedMilliseconds} ms',
+      'Parsed dependencies file in ${elapsedTime(stopwatch)}.',
     );
     stopwatch.reset();
 
     final pom = createPom(artifact, deps.dependencies, localDependencies);
 
-    logger.log(
-      profile,
-      () => 'Created POM in ${stopwatch.elapsedMilliseconds} ms',
-    );
+    logger.log(profile, () => 'Created POM in ${elapsedTime(stopwatch)}.');
     stopwatch.reset();
 
     await _publishFiles(destination, artifact, pom, jarFile);
 
     logger.log(
       profile,
-      () =>
-          'Created publication artifacts in '
-          '${stopwatch.elapsedMilliseconds} ms',
+      () => 'Created publication artifacts in ${elapsedTime(stopwatch)}.',
     );
   }
 
@@ -235,8 +231,8 @@ class Publisher {
     logger.log(
       profile,
       () =>
-          'Created publication bundle at ${bundle.path} in '
-          '${stopwatch.elapsedMilliseconds} ms.',
+          'Created publication bundle at ${bundle.path} '
+          'in ${elapsedTime(stopwatch)}.',
     );
 
     return bundle;

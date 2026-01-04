@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:path/path.dart' as p;
 
 import 'package:actors/actors.dart';
-import 'package:dartle/dartle.dart' show failBuild, profile, activateLogging;
+import 'package:dartle/dartle.dart'
+    show failBuild, profile, activateLogging, elapsedTime;
 import 'package:logging/logging.dart' as log;
 import 'package:logging/logging.dart' show Level;
+import 'package:path/path.dart' as p;
 
 import '../config.dart' show ResolvedDependencies, logger;
 import '../utils.dart';
@@ -101,7 +102,7 @@ Future<ResolvedDependencies> _parse(File file) async {
     profile,
     () =>
         'Parsed dependencies file from ${file.path} '
-        'in ${stopwatch.elapsedMilliseconds} ms',
+        'in ${elapsedTime(stopwatch)}.',
   );
   return result;
 }

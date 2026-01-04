@@ -708,10 +708,7 @@ Future<void> _generatePom(
 ) async {
   final stopWatch = Stopwatch()..start();
   final deps = await depsCache.send(GetDeps(dependenciesFile.path));
-  logger.log(
-    profile,
-    'Parsed dependencies file in ${stopWatch.elapsedMilliseconds} ms',
-  );
+  logger.log(profile, 'Parsed dependencies file in ${elapsedTime(stopWatch)}.');
   stopWatch.reset();
 
   final pom = createPom(
@@ -723,7 +720,7 @@ Future<void> _generatePom(
     localDependencies,
   );
 
-  logger.log(profile, 'Created POM in ${stopWatch.elapsedMilliseconds} ms');
+  logger.log(profile, 'Created POM in ${elapsedTime(stopWatch)}.');
 
   final destination = File(args.isEmpty ? 'pom.xml' : args[0]);
   await destination.parent.create(recursive: true);
