@@ -212,9 +212,9 @@ Future<void> _compile(
   stopwatch.reset();
   final compilationPath = await getCompilationPath(
     actors.compPath,
-    compPathFiles,
     configContainer.artifactId,
     config.compileLibsDir,
+    compPathFiles.compilePath,
   );
   final isGroovyEnabled =
       configContainer.knownDeps.groovy ||
@@ -399,6 +399,7 @@ Task createInstallCompileDepsTask(
     projectDeps,
     jarDeps,
     config.compileLibsDir,
+    null,
     cache,
   );
 }
@@ -406,7 +407,7 @@ Task createInstallCompileDepsTask(
 /// Create the `installRuntimeDependencies` task.
 Task createInstallRuntimeDepsTask(
   JbFiles files,
-  JbConfiguration config,
+  JbConfigContainer config,
   JBuildSender jBuildSender,
   DepsCache depsCache,
   DartleCache cache,
@@ -420,8 +421,8 @@ Task createInstallRuntimeDepsTask(
       .map((j) => j.path)
       .toList(growable: false);
   final depsFile = files.dependenciesFile.path;
-  final preArgs = config.preArgs(Directory.current.path);
-  final runtimeLibsDir = config.runtimeLibsDir;
+  final preArgs = config.config.preArgs(Directory.current.path);
+  final runtimeLibsDir = config.config.runtimeLibsDir;
   Future<void> action(_) async {
     final deps = FileDependencies(
       File(depsFile),
@@ -436,7 +437,10 @@ Task createInstallRuntimeDepsTask(
       runtimeLibsDir,
     );
     await _copy(projectDeps, runtimeLibsDir, runtime: true);
-    await _copyFiles(jarDeps, runtimeLibsDir);
+    await _copyFiles([
+      ?config.output.when(dir: (_) => null, jar: (j) => j),
+      ...jarDeps,
+    ], runtimeLibsDir);
   }
 
   return _createInstallDepsTask(
@@ -446,7 +450,9 @@ Task createInstallRuntimeDepsTask(
     depsFile,
     projectDeps,
     jarDeps,
-    config.runtimeLibsDir,
+    config.config.runtimeLibsDir,
+    // the compiled jar is added to the runtime
+    compileTaskName,
     cache,
   );
 }
@@ -496,6 +502,7 @@ Task createInstallProcessorDepsTask(
     projectDeps,
     jarDeps,
     libsDir,
+    null,
     cache,
   );
 }
@@ -508,6 +515,7 @@ Task _createInstallDepsTask(
   List<ResolvedProjectDependency> projectDeps,
   List<String> jarDeps,
   String libsDir,
+  String? taskDependency,
   DartleCache cache,
 ) {
   final inputFiles = [inputFile];
@@ -531,7 +539,7 @@ Task _createInstallDepsTask(
   return Task(
     action,
     runCondition: runCondition,
-    dependsOn: const {verifyDepsTaskName},
+    dependsOn: {verifyDepsTaskName, ?taskDependency},
     name: taskName,
     description:
         'Install $scopeName dependencies. '

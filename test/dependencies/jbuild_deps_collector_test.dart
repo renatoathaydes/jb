@@ -6,7 +6,9 @@ import 'package:test/scaffolding.dart';
 void main() {
   group('JBuildDepsCollector Tests', () {
     test('can parse dependency', () {
-      final collector = JBuildDepsCollector();
+      final collector = JBuildDepsCollector({
+        'com.google.errorprone:error_prone_core:2.16': const DependencySpec(),
+      });
       collector(
         'Dependencies of com.google.errorprone:error_prone_core:2.16 (incl. transitive) [{Apache-2.0}]:',
       );
@@ -20,7 +22,7 @@ void main() {
         equals([
           ResolvedDependency(
             artifact: 'foo:bar:1.0',
-            spec: DependencySpec(scope: DependencyScope.runtimeOnly),
+            spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
             sha1: '',
             isDirect: false,
             dependencies: const [],
@@ -31,7 +33,9 @@ void main() {
     });
 
     test('can parse dependency (include root)', () {
-      final collector = JBuildDepsCollector();
+      final collector = JBuildDepsCollector({
+        'com.google.errorprone:error_prone_core:2.16': const DependencySpec(),
+      });
       collector(
         'Dependencies of com.google.errorprone:error_prone_core:2.16 (incl. transitive) [{Apache-2.0}]:',
       );
@@ -45,11 +49,7 @@ void main() {
         equals([
           ResolvedDependency(
             artifact: "com.google.errorprone:error_prone_core:2.16",
-            spec: DependencySpec(
-              transitive: true,
-              scope: DependencyScope.all,
-              path: null,
-            ),
+            spec: const DependencySpec(scope: DependencyScope.all, path: null),
             sha1: "",
             licenses: [DependencyLicense(name: "Apache-2.0", url: "")],
             isDirect: true,
@@ -57,7 +57,7 @@ void main() {
           ),
           ResolvedDependency(
             artifact: 'foo:bar:1.0',
-            spec: DependencySpec(scope: DependencyScope.runtimeOnly),
+            spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
             sha1: '',
             isDirect: false,
             dependencies: const [],
@@ -68,7 +68,9 @@ void main() {
     });
 
     test('can parse no-dependencies direct dependency', () {
-      final collector = JBuildDepsCollector();
+      final collector = JBuildDepsCollector({
+        'com.example:lists:1.0': const DependencySpec(),
+      });
       collector('Dependencies of com.example:lists:1.0 (incl. transitive):');
       collector('  * no dependencies');
       collector.done(emitRoot: true);
@@ -89,7 +91,9 @@ void main() {
     });
 
     test('can parse repeated dependencies', () {
-      final collector = JBuildDepsCollector();
+      final collector = JBuildDepsCollector({
+        'com.example:project': const DependencySpec(),
+      });
       collector(
         'Dependencies of com.example:project (incl. transitive) [{Apache-2.0}]:',
       );
@@ -106,7 +110,7 @@ void main() {
         containsAll([
           ResolvedDependency(
             artifact: "com.example:project",
-            spec: DependencySpec(),
+            spec: const DependencySpec(),
             sha1: "",
             licenses: [DependencyLicense(name: "Apache-2.0", url: "")],
             isDirect: true,
@@ -114,7 +118,7 @@ void main() {
           ),
           ResolvedDependency(
             artifact: 'foo:bar:1.0',
-            spec: DependencySpec(),
+            spec: const DependencySpec(),
             sha1: '',
             isDirect: false,
             dependencies: ['bar:zort:2.0'],
@@ -122,7 +126,7 @@ void main() {
           ),
           ResolvedDependency(
             artifact: 'bar:zort:2.0',
-            spec: DependencySpec(),
+            spec: const DependencySpec(),
             sha1: '',
             isDirect: false,
             dependencies: ['zort:bar:2.0'],
@@ -130,7 +134,7 @@ void main() {
           ),
           ResolvedDependency(
             artifact: 'bar:zort:2.0',
-            spec: DependencySpec(),
+            spec: const DependencySpec(),
             sha1: '',
             isDirect: false,
             dependencies: const [],
@@ -139,7 +143,7 @@ void main() {
           ),
           ResolvedDependency(
             artifact: 'zort:bar:2.0',
-            spec: DependencySpec(),
+            spec: const DependencySpec(),
             sha1: '',
             isDirect: false,
             dependencies: const [],
@@ -151,7 +155,12 @@ void main() {
     });
 
     test('can parse multiple scopes and dependency missing license', () {
-      final collector = JBuildDepsCollector();
+      final collector = JBuildDepsCollector({
+        'com.example:with-deps:1.2.3': const DependencySpec(),
+        'com.example:another:4': const DependencySpec(
+          scope: DependencyScope.compileOnly,
+        ),
+      });
       collector(
         'Dependencies of com.example:with-deps:1.2.3 (incl. transitive):',
       );
@@ -179,7 +188,7 @@ void main() {
         containsAll([
           ResolvedDependency(
             artifact: 'com.example:with-deps:1.2.3',
-            spec: DependencySpec(),
+            spec: const DependencySpec(),
             sha1: '',
             isDirect: true,
             dependencies: [
@@ -191,7 +200,7 @@ void main() {
           ),
           ResolvedDependency(
             artifact: 'com.example:another:4',
-            spec: DependencySpec(),
+            spec: const DependencySpec(scope: DependencyScope.compileOnly),
             sha1: '',
             isDirect: true,
             dependencies: ['org.apache.groovy:groovy:4.0.20'],
@@ -199,7 +208,7 @@ void main() {
           ),
           ResolvedDependency(
             artifact: 'org.apache.groovy:groovy:4.0.20',
-            spec: DependencySpec(),
+            spec: const DependencySpec(),
             sha1: '',
             isDirect: false,
             dependencies: const [],
@@ -207,7 +216,7 @@ void main() {
           ),
           ResolvedDependency(
             artifact: 'foo:bar:1.0',
-            spec: DependencySpec(scope: DependencyScope.runtimeOnly),
+            spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
             sha1: '',
             isDirect: false,
             dependencies: const [],
@@ -215,7 +224,7 @@ void main() {
           ),
           ResolvedDependency(
             artifact: 'com.example:lists:1.0',
-            spec: DependencySpec(),
+            spec: const DependencySpec(),
             sha1: '',
             isDirect: false,
             dependencies: const [],
@@ -223,7 +232,7 @@ void main() {
           ),
           ResolvedDependency(
             artifact: 'com.example:other:2.0',
-            spec: DependencySpec(),
+            spec: const DependencySpec(),
             sha1: '',
             isDirect: false,
             dependencies: ['com.example:transitive:1.1'],
@@ -236,7 +245,7 @@ void main() {
           ),
           ResolvedDependency(
             artifact: 'com.example:transitive:1.1',
-            spec: DependencySpec(),
+            spec: const DependencySpec(),
             sha1: '',
             isDirect: false,
             dependencies: const [],
@@ -247,7 +256,9 @@ void main() {
     });
 
     test('can parse dep with exclusions and license', () {
-      final collector = JBuildDepsCollector();
+      final collector = JBuildDepsCollector({
+        'com.google.errorprone:error_prone_core:2.16': const DependencySpec(),
+      });
       collector(
         'Dependencies of com.google.errorprone:error_prone_core:2.16 (incl. transitive) [{Apache-2.0}]:',
       );
@@ -266,7 +277,7 @@ void main() {
         equals([
           ResolvedDependency(
             artifact: 'org.eclipse.jgit:org.eclipse.jgit:4.4.1.201607150455-r',
-            spec: DependencySpec(
+            spec: const DependencySpec(
               scope: DependencyScope.runtimeOnly,
               exclusions: [
                 'commons-codec:commons-codec',
@@ -473,7 +484,12 @@ All licenses listed (see https://spdx.org/licenses/ for more information):
 JBuild success in 415 ms!
       ''';
 
-      final collector = JBuildDepsCollector();
+      final collector = JBuildDepsCollector({
+        'org.springframework.boot:spring-boot-starter-thymeleaf:':
+            const DependencySpec(),
+        'org.springframework.boot:spring-boot-starter-oauth2-client:':
+            const DependencySpec(),
+      });
       realWorldExample.split('\n').forEach(collector.call);
       collector.done(emitRoot: true);
 
@@ -521,7 +537,7 @@ JBuild success in 415 ms!
         // --- org.thymeleaf:thymeleaf ---
         ResolvedDependency(
           artifact: 'org.thymeleaf:thymeleaf:3.1.3.RELEASE',
-          spec: DependencySpec(exclusions: ['ognl:ognl']),
+          spec: const DependencySpec(exclusions: ['ognl:ognl']),
           sha1: '',
           isDirect: false,
           dependencies: [

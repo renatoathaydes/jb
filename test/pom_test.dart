@@ -154,7 +154,6 @@ $nonTransitiveDependency
               ProjectDependency(
                 'jb-api',
                 DependencySpec(
-                  transitive: true,
                   scope: DependencyScope.compileOnly,
                   path: '../jb-api',
                 ),

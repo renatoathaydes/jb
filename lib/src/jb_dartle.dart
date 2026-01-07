@@ -179,7 +179,7 @@ class JbDartle {
     );
     installRuntime = createInstallRuntimeDepsTask(
       _files,
-      _config,
+      configContainer,
       jvmExecutor,
       depsCache,
       _cache,

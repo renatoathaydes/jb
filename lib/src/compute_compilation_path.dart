@@ -75,16 +75,12 @@ Actor<CompilationPathMessage, CompilationPath?> createCompilationPathActor(
 /// or directly from the file.
 Future<CompilationPath> getCompilationPath(
   Sendable<CompilationPathMessage, CompilationPath?> compPathActor,
-  CompilationPathFiles compPathFiles,
   String artifactId,
   String libsDir,
+  String outputPath,
 ) async {
   final actorResponse = await compPathActor.send(
-    ReturnCompilationPath(
-      artifactId,
-      libsDir,
-      p.absolute(compPathFiles.compilePath),
-    ),
+    ReturnCompilationPath(artifactId, libsDir, outputPath),
   );
   if (actorResponse == null) {
     throw StateError('CompPathActor returned null');

@@ -154,7 +154,7 @@ Future<ResolvedDependencies> _write(
         .expand((e) => [e.$1, ...e.$2.expand(_exclusionOption)]);
 
     final collector = Actor.create(
-      wrapHandlerWithCurrentDir(_CollectorActor.new),
+      wrapHandlerWithCurrentDir(() => _CollectorActor(nonLocalDeps)),
     );
     await jBuildSender.send(
       RunJBuild(writeDepsTaskName, [
@@ -237,7 +237,10 @@ final class _Line extends _CollectorMessage {
 /// until a [_Done] message is received, when it returns the results.
 class _CollectorActor
     with Handler<_CollectorMessage, List<ResolvedDependency>?> {
-  final _collector = JBuildDepsCollector();
+  final JBuildDepsCollector _collector;
+
+  _CollectorActor(Map<String, DependencySpec> deps)
+    : _collector = JBuildDepsCollector(deps);
 
   @override
   List<ResolvedDependency>? handle(_CollectorMessage message) {

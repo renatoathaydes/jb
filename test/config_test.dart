@@ -413,7 +413,6 @@ void main() {
             dependencies: {'com.google:guava:1.2.3': null},
             processorDependencies: {
               'foo.bar:zort:1.0': DependencySpec(
-                transitive: true,
                 exclusions: ['foo', 'bar'],
                 scope: DependencyScope.runtimeOnly,
                 path: 'foo/bar/zort',
@@ -507,7 +506,6 @@ void main() {
       final config = await loadConfigString('''
       dependencies:
         foo:bar:1.0:
-            transitive: false
             scope: runtime-only
         second:dep:0.1:
         var:
@@ -516,10 +514,7 @@ void main() {
       expect(
         config.dependencies,
         equals(const {
-          'foo:bar:1.0': DependencySpec(
-            transitive: false,
-            scope: DependencyScope.runtimeOnly,
-          ),
+          'foo:bar:1.0': DependencySpec(scope: DependencyScope.runtimeOnly),
           'second:dep:0.1': null,
           'var': null,
         }),
@@ -542,7 +537,9 @@ void main() {
       'test-java-env': {'E': 'F'},
       'repositories': {'r1', 'r2'},
       'dependencies': {
-        'dep1': {'transitive': true},
+        'dep1': {
+          'exclusions': ['.*'],
+        },
       },
       'dependency-exclusion-patterns': {'e1'},
       'compile-libs-dir': 'comp',

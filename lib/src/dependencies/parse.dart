@@ -59,6 +59,10 @@ class _DepNode {
 enum _ParserState { parsingDeps, parsingConflicts }
 
 class JBuildDepsCollector implements ProcessOutputConsumer {
+  final Map<String, DependencySpec> deps;
+
+  JBuildDepsCollector(this.deps);
+
   int pid = -1;
   _ParserState _state = _ParserState.parsingDeps;
   DependencyScope _currentScope = DependencyScope.all;
@@ -226,13 +230,22 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
     DependencyScope scope, {
     required bool isDirect,
   }) {
+    DependencyScope actualScope;
+    if (isDirect) {
+      final dep = deps[node.id];
+      if (dep == null) {
+        throw StateError(
+          'Direct dependency "${node.id}" not found in ${deps.keys}',
+        );
+      }
+      actualScope = dep.scope;
+    } else {
+      actualScope = scope;
+    }
     _resolvedDeps.add(
       ResolvedDependency(
         artifact: node.id,
-        spec: DependencySpec(
-          scope: isDirect ? DependencyScope.all : scope,
-          exclusions: node.exclusions,
-        ),
+        spec: DependencySpec(scope: actualScope, exclusions: node.exclusions),
         isDirect: isDirect,
         sha1: '',
         licenses: node.licenses,

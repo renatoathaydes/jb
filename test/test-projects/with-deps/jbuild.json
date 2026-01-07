@@ -9,7 +9,10 @@
   "dependencies": {
     "com.example:lists:1.0": {},
     "org.slf4j:slf4j-api:1.7.36": {},
-    "minimal-sample": {
+    "org.slf4j:slf4j-simple:1.7.36": {
+      "scope": "runtime-only"
+    },
+    "example:minimal-sample:latest": {
       "path": "minimal-java-project.jar"
     }
   },

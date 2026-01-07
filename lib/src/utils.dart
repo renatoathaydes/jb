@@ -262,7 +262,6 @@ extension on DependencySpec? {
     if (self == null) return other?.resolveProperties(props);
     if (other == null) return self.resolveProperties(props);
     return DependencySpec(
-      transitive: self.transitive || other.transitive,
       scope: self.scope.index < other.scope.index ? self.scope : other.scope,
       path: resolveOptionalString(other.path, props),
       exclusions: self.exclusions.merge(other.exclusions, props),
