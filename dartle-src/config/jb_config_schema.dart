@@ -53,7 +53,6 @@ const dependencyMap =
     );
 
 const dependency = Objects('DependencySpec', {
-  'transitive': Property(Bools(), defaultValue: true),
   'scope': Property(
     scope,
     description: 'Scope of a dependency.',

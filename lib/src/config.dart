@@ -529,10 +529,7 @@ extension DependencyScopeExtension on DependencyScope {
   }
 }
 
-const DependencySpec defaultSpec = DependencySpec(
-  transitive: true,
-  scope: DependencyScope.all,
-);
+const DependencySpec defaultSpec = DependencySpec(scope: DependencyScope.all);
 
 extension DependencySpecExtension on DependencySpec {
   PathDependency? toPathDependency(String artifact) {
@@ -547,7 +544,6 @@ extension DependencySpecExtension on DependencySpec {
     final p = path;
     if ((p != null && p.contains('{')) || exclusions.isNotEmpty) {
       return DependencySpec(
-        transitive: transitive,
         scope: scope,
         path: resolveOptionalString(p, props),
         exclusions: exclusions
@@ -562,8 +558,7 @@ extension DependencySpecExtension on DependencySpec {
     final colorPath = path == null
         ? color('null', kwColor)
         : color('"$path"', strColor);
-    return '${ident}transitive: ${color('$transitive', kwColor)}\n'
-        '${ident}scope: ${scope.toYaml(color)}\n'
+    return '${ident}scope: ${scope.toYaml(color)}\n'
         '${ident}path: $colorPath\n'
         '${ident}exclusions: [${exclusions.map((e) => color('"$e"', strColor)).join(', ')}]';
   }
