@@ -132,8 +132,10 @@ void main() {
           'Project Dependencies:\n'
           'com.example:with-deps:1.2.3:\n'
           '├── com.example:lists:1.0\n'
-          '├── minimal-sample (local)\n'
-          '└── org.slf4j:slf4j-api:1.7.36',
+          '├── example:minimal-sample:latest (local)\n'
+          '├── org.slf4j:slf4j-api:1.7.36\n'
+          '└── org.slf4j:slf4j-simple:1.7.36\n'
+          '    └── org.slf4j:slf4j-api:1.7.36 (-)',
         ),
       );
     });
@@ -172,8 +174,10 @@ void main() {
           'com.athaydes.tests:my-app:0.0.0:\n'
           '├── com.example:with-deps:1.2.3 (local)\n'
           '│   ├── com.example:lists:1.0\n'
-          '│   ├── minimal-sample (local)\n'
-          '│   └── org.slf4j:slf4j-api:1.7.36\n'
+          '│   ├── example:minimal-sample:latest (local)\n'
+          '│   ├── org.slf4j:slf4j-api:1.7.36\n'
+          '│   └── org.slf4j:slf4j-simple:1.7.36\n'
+          '│       └── org.slf4j:slf4j-api:1.7.36 (-)\n'
           '├── org.slf4j:slf4j-api:2.0.16\n'
           '└── tests:greetings-app:1.0 (local)\n'
           '    └── tests:greetings:1.0 (local)\n'
@@ -661,15 +665,12 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 10)));
 
     test(
-      'can build Java module that depends on jars and modules',
+      'can compile Java module that depends on jars and modules',
       () async {
         final mod2 = p.join(javaModulesProjectDir, 'mod2');
         var jbResult = await runJb(Directory(mod2));
         expectSuccess(jbResult);
-        await expectCompilationPath(
-          mod2,
-          modules: {'mod.one', 'org.slf4j.simple', 'org.slf4j'},
-        );
+        await expectCompilationPath(mod2, modules: {'mod.one', 'org.slf4j'});
       },
       timeout: const Timeout(Duration(seconds: 10)),
     );
@@ -680,6 +681,11 @@ void main() {
         final mod2 = p.join(javaModulesProjectDir, 'mod2');
         var jbResult = await runJb(Directory(mod2), const ['run']);
         expectSuccess(jbResult);
+        await expectCompilationPath(
+          mod2,
+          modules: {'mod.one', 'mod.two', 'org.slf4j.simple', 'org.slf4j'},
+          runtime: true,
+        );
         expect(jbResult.stdout.join('\n'), contains("M1{value=This is M1}"));
       },
       timeout: const Timeout(Duration(seconds: 10)),

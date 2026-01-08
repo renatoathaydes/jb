@@ -165,11 +165,16 @@ Future<void> expectCompilationPath(
   String dir, {
   Set<String> jars = const {},
   Set<String> modules = const {},
+  bool runtime = false,
 }) async {
   final compPath = CompilationPath.fromJson(
     jsonDecode(
       await File(
-        p.join(dir, '.jb-cache', 'compilation-path.json'),
+        p.join(
+          dir,
+          '.jb-cache',
+          '${runtime ? 'runtime' : 'compilation'}-path.json',
+        ),
       ).readAsString(),
     ),
   );
