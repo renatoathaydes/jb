@@ -76,7 +76,6 @@ final class ResolvedProjectDependency {
         options.copy(
           tasksInvocation: const [compileTaskName, installRuntimeDepsTaskName],
         ),
-        Stopwatch(),
         isRoot: false,
       ),
     );

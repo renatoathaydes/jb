@@ -65,7 +65,6 @@ class JbDartle {
     this._options,
     this._actors,
     this.isRoot,
-    Stopwatch stopwatch,
   ) {
     final localDeps = Future.wait([
       _resolveLocalDependencies(_config.allDependencies, name: 'main'),
@@ -74,7 +73,7 @@ class JbDartle {
         name: 'annotation processor',
       ),
     ]);
-    init = localDeps.then((d) => _initialize(d[0], d[1], stopwatch));
+    init = localDeps.then((d) => _initialize(d[0], d[1]));
   }
 
   JbDartle.create(
@@ -82,10 +81,9 @@ class JbDartle {
     JbConfiguration config,
     DartleCache cache,
     Options options,
-    JbActors actors,
-    Stopwatch stopWatch, {
+    JbActors actors, {
     required bool isRoot,
-  }) : this._(files, config, cache, options, actors, isRoot, stopWatch);
+  }) : this._(files, config, cache, options, actors, isRoot);
 
   /// Get the default tasks (`{ compile }`).
   Set<Task> get defaultTasks {
@@ -125,8 +123,8 @@ class JbDartle {
   Future<void> _initialize(
     ResolvedLocalDependencies localDependencies,
     ResolvedLocalDependencies localProcessorDependencies,
-    Stopwatch stopwatch,
   ) async {
+    final stopwatch = Stopwatch()..start();
     final configContainer = JbConfigContainer(_config);
 
     final jvmExecutor = _actors.jvmExecutor;

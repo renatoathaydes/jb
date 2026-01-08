@@ -33,7 +33,6 @@ Future<void> main(List<String> args) async {
   final buildRan = await runJb(
     jbOptions,
     dartleOptions,
-    stopwatch,
     InstanceConfigSource(config),
   );
   if (buildRan) {

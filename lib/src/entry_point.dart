@@ -23,19 +23,15 @@ import 'utils.dart';
 /// The caller must handle errors.
 Future<bool> runJb(
   JbCliOptions jbOptions,
-  Options dartleOptions,
-  Stopwatch stopwatch, [
+  Options dartleOptions, [
   ConfigSource? configSource,
 ]) async {
   if (dartleOptions.showHelp) {
     printHelp();
     return false;
   }
-  stopwatch
-    ..reset()
-    ..start();
+  final stopwatch = Stopwatch()..start();
   final jbuildJar = await createIfNeededAndGetJBuildJarFile();
-  stopwatch.stop();
   logger.log(profile, () => 'Checked JBuild jar in ${elapsedTime(stopwatch)}');
   if (dartleOptions.showVersion) {
     await printVersion(jbuildJar);
@@ -57,7 +53,7 @@ Future<bool> runJb(
     logger.fine(() => "Running jb on directory '$rootDir'");
   }
 
-  await _runJb(jbOptions, dartleOptions, configSource, stopwatch, jbuildJar);
+  await _runJb(jbOptions, dartleOptions, configSource, jbuildJar);
 
   return true;
 }
@@ -66,13 +62,8 @@ Future<void> _runJb(
   JbCliOptions options,
   Options dartleOptions,
   ConfigSource? configSource,
-  Stopwatch stopwatch,
   File jbuildJar,
 ) async {
-  logger.log(
-    profile,
-    () => 'Initialized CLI and parsed options in ${elapsedTime(stopwatch)}',
-  );
   final createOptions = options.createOptions;
   if (createOptions != null) {
     return createNewProject(
@@ -111,7 +102,7 @@ Future<void> _runJb(
   );
 
   try {
-    await runner.run(dartleOptions, stopwatch);
+    await runner.run(dartleOptions);
   } finally {
     await jvmExecutor.close();
     await depsCache.close();

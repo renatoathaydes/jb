@@ -87,7 +87,6 @@ Future<ExtensionProject?> loadExtensionProject(
       options.copy(
         tasksInvocation: const [compileTaskName, installRuntimeDepsTaskName],
       ),
-      Stopwatch(),
       isRoot: false,
     ),
   );

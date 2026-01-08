@@ -23,11 +23,7 @@ class JbRunner {
     return JbRunner(files, config, actors);
   }
 
-  Future<List<ParallelTasks>> run(
-    Options options,
-    Stopwatch stopWatch, {
-    bool isRoot = true,
-  }) async {
+  Future<List<ParallelTasks>> run(Options options, {bool isRoot = true}) async {
     final cache = DartleCache(JbFiles.jbCache);
 
     final jb = JbDartle.create(
@@ -36,7 +32,6 @@ class JbRunner {
       cache,
       options,
       _actors,
-      stopWatch,
       isRoot: isRoot,
     );
 

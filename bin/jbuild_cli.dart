@@ -17,8 +17,13 @@ void main(List<String> arguments) async {
       colorfulLog: dartleOptions.colorfulLog,
       logName: 'jb',
     );
-    final printBuildSuccess = await runJb(jbOptions, dartleOptions, stopWatch);
+    logger.log(
+      profile,
+      () => 'Initialized CLI and parsed options in ${elapsedTime(stopWatch)}',
+    );
+    final printBuildSuccess = await runJb(jbOptions, dartleOptions);
     if (printBuildSuccess) {
+      stopWatch.stop();
       logger.info(
         ColoredLogMessage(
           'Build succeeded in ${elapsedTime(stopWatch)}!',
