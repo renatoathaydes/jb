@@ -76,7 +76,7 @@ String? findTestRunnerLib(ResolvedDependencies resolvedDeps) {
   }
   // empty version implies "latest"
   final version = platformLib?.artifact.findVersion(_junitPlatformPrefix) ?? '';
-  return '$_junitConsolePrefix$version:jar';
+  return '$_junitConsolePrefix$version';
 }
 
 /// Dependency coordinates for the Spock Test Runner.
