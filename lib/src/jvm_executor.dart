@@ -38,6 +38,7 @@ class _Proc {
 
 final class _JBuildActor implements Handler<JavaCommand, Object?> {
   final Level _level;
+  final bool _colorfulLog;
   final String jbuildJar;
   final String jvmCdsFile;
   final List<String> _javaRuntimeArgs;
@@ -45,6 +46,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
 
   _JBuildActor(
     this._level,
+    this._colorfulLog,
     this.jbuildJar,
     this.jvmCdsFile,
     this._javaRuntimeArgs,
@@ -52,7 +54,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
 
   @override
   void init() {
-    activateLogging(_level);
+    activateLogging(_level, colorfulLog: _colorfulLog);
   }
 
   static Future<_JBuildRpc> _startRpc(
@@ -259,13 +261,20 @@ final class RunJava extends JavaCommand {
 /// The Actor sender returns whatever the Java method returned.
 Actor<JavaCommand, Object?> createJavaActor(
   Level level,
+  bool colorfulLog,
   String jbuildJar,
   String jvmCdsFile,
   List<String> javaRuntimeArgs,
 ) {
   return Actor.create(
     wrapHandlerWithCurrentDir(
-      () => _JBuildActor(level, jbuildJar, jvmCdsFile, javaRuntimeArgs),
+      () => _JBuildActor(
+        level,
+        colorfulLog,
+        jbuildJar,
+        jvmCdsFile,
+        javaRuntimeArgs,
+      ),
     ),
   );
 }

@@ -80,15 +80,20 @@ Future<void> _runJb(
 
   final jvmExecutor = createJavaActor(
     dartleOptions.logLevel,
+    dartleOptions.colorfulLog,
     jbuildJar.path,
     jbFiles.jvmCdsFile.absolute.path,
     config.javacArgs.javaRuntimeArgs().toList(growable: false),
   );
 
-  final depsCache = createDepsActor(dartleOptions.logLevel);
+  final depsCache = createDepsActor(
+    dartleOptions.logLevel,
+    dartleOptions.colorfulLog,
+  );
 
   final compilationPathActor = createCompilationPathActor(
     dartleOptions.logLevel,
+    dartleOptions.colorfulLog,
   );
 
   final runner = await JbRunner.create(

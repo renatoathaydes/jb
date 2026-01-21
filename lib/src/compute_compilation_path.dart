@@ -69,7 +69,8 @@ final class ComputeCompilationPath extends CompilationPathMessage
 /// obtain the project's compilation path.
 Actor<CompilationPathMessage, CompilationPath?> createCompilationPathActor(
   Level level,
-) => Actor.create(() => _CompilePathsHandler(level));
+  bool colorfulLog,
+) => Actor.create(() => _CompilePathsHandler(level, colorfulLog));
 
 /// Get the compilation path either from the Actor (which writes the file)
 /// or directly from the file.
@@ -199,12 +200,13 @@ class _CompilePathsHandler
     with Handler<CompilationPathMessage, CompilationPath?> {
   final Map<String, _CompilePathsState> _stateByKey = {};
   final Level _level;
+  final bool _colorfulLog;
 
-  _CompilePathsHandler(this._level);
+  _CompilePathsHandler(this._level, this._colorfulLog);
 
   @override
   void init() {
-    activateLogging(_level);
+    activateLogging(_level, colorfulLog: _colorfulLog);
   }
 
   @override

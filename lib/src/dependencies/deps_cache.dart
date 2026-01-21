@@ -14,8 +14,9 @@ import '../utils.dart';
 
 typedef DepsCache = Sendable<DepsCacheMessage, ResolvedDependencies>;
 
-Actor<DepsCacheMessage, ResolvedDependencies> createDepsActor(Level level) =>
-    Actor.create(wrapHandlerWithCurrentDir(() => _DepsCacheHandler(level)));
+Actor<DepsCacheMessage, ResolvedDependencies> createDepsActor(Level level,
+    bool colorfulLog) =>
+    Actor.create(wrapHandlerWithCurrentDir(() => _DepsCacheHandler(level, colorfulLog)));
 
 sealed class DepsCacheMessage {
   // This is instantiated when we create the DepsCacheMessage, but NOT when
@@ -40,12 +41,13 @@ final class _DepsCacheHandler
     with Handler<DepsCacheMessage, ResolvedDependencies> {
   final Map<String, Future<ResolvedDependencies>> _cache = {};
   final Level _level;
+  final bool _colorfulLog;
 
-  _DepsCacheHandler(this._level);
+  _DepsCacheHandler(this._level, this._colorfulLog);
 
   @override
   void init() {
-    activateLogging(_level);
+    activateLogging(_level, colorfulLog: _colorfulLog);
   }
 
   @override
