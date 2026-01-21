@@ -348,6 +348,7 @@ Task createVerifyDependenciesTask(
       cache: cache,
     ),
     dependsOn: {writeDepsTaskName},
+    phase: depsPhase,
     description:
         'Fails the build if dependency version conflicts are detected.',
   );
@@ -628,6 +629,7 @@ Task createJavaCompilationPathTask(
     description: 'Computes the Java compile classpath and modulepath.',
     dependsOn: {installCompileDepsTaskName},
     runCondition: RunOnChanges(
+      inputs: file(files.dependenciesFile.path),
       outputs: compilationFiles.asFileCollection(),
       cache: compilationFiles.cache,
     ),
@@ -658,6 +660,7 @@ Task createJavaRuntimePathTask(
     description: 'Computes the Java runtime classpath and modulepath.',
     dependsOn: {installRuntimeDepsTaskName},
     runCondition: RunOnChanges(
+      inputs: file(files.dependenciesFile.path),
       outputs: compilationFiles.asFileCollection(runtime: true),
       cache: compilationFiles.cache,
     ),
@@ -813,7 +816,7 @@ Task createDownloadTestRunnerTask(
     ),
     dependsOn: {writeDepsTaskName},
     runCondition: RunOnChanges(
-      inputs: jbFileInputs,
+      inputs: file(files.testRunnerDependenciesFile.path),
       outputs: dir(p.join(cache.rootDir, junitRunnerLibsDir)),
       cache: cache,
     ),
@@ -946,6 +949,7 @@ Task createDepsTask(
     ),
     name: depsTaskName,
     dependsOn: {writeDepsTaskName},
+    phase: depsPhase,
     argsValidator: const DepsArgValidator(),
     description: 'Shows information about project dependencies.',
   );
