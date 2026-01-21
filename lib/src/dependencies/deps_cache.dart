@@ -14,9 +14,12 @@ import '../utils.dart';
 
 typedef DepsCache = Sendable<DepsCacheMessage, ResolvedDependencies>;
 
-Actor<DepsCacheMessage, ResolvedDependencies> createDepsActor(Level level,
-    bool colorfulLog) =>
-    Actor.create(wrapHandlerWithCurrentDir(() => _DepsCacheHandler(level, colorfulLog)));
+Actor<DepsCacheMessage, ResolvedDependencies> createDepsActor(
+  Level level,
+  bool colorfulLog,
+) => Actor.create(
+  wrapHandlerWithCurrentDir(() => _DepsCacheHandler(level, colorfulLog)),
+);
 
 sealed class DepsCacheMessage {
   // This is instantiated when we create the DepsCacheMessage, but NOT when

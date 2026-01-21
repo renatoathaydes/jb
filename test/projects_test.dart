@@ -463,17 +463,27 @@ void main() {
             fail('Could not find line for Loading extension');
 
         // the extension project is re-compiled
-        expect(lines.length, greaterThan(loadingLineIndex + 4));
-        expect(lines[loadingLineIndex + 1], contains('Executing 1 task'));
+        expect(lines.length, greaterThan(loadingLineIndex + 7));
+        expect(lines[loadingLineIndex + 1], contains('Executing 2 tasks'));
         expect(
           lines[loadingLineIndex + 2],
           endsWith(" Running task 'compile'"),
         );
+        expect(
+          lines[loadingLineIndex + 3],
+          endsWith(" Running task 'installRuntimeDependencies'"),
+        );
+        expect(
+          lines[loadingLineIndex + 4],
+          endsWith("========= jb extension loaded ========="),
+        );
+        expect(lines[loadingLineIndex + 5], contains("Executing 1 task"));
+        expect(lines[loadingLineIndex + 6], endsWith("Running task 'bar'"));
 
         // the new custom task is run
         expect(
-          lines,
-          contains(matches(RegExp(r'^\?:stdout \[jvm \d+]: Hello from Bar!$'))),
+          lines[loadingLineIndex + 7],
+          matches(RegExp(r'^\?:stdout \[jvm \d+]: Hello from Bar!$')),
         );
 
         // change the inputs and make sure the previous task runs incrementally
@@ -516,7 +526,6 @@ void main() {
           p.basename(usesExtensionDir),
         ]);
 
-        print(jbResult.stdout.join('\n'));
         expect(jbResult.exitCode, isNot(0));
         expect(
           jbResult.stdout,

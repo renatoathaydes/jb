@@ -613,13 +613,11 @@ Task createJavaCompilationPathTask(
   Sendable<cp.CompilationPathMessage, CompilationPath?> compPath,
   cp.CompilationPathFiles compilationFiles,
 ) {
-  final workingDir = Directory.current.path;
   return Task(
     (_) async {
       await cp.computeCompilationPath(
         createJavaCompilationPathTaskName,
         config,
-        workingDir,
         jBuildSender,
         compPath,
         config.config.compileLibsDir,

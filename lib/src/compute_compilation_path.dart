@@ -25,19 +25,28 @@ class CompilationPathFiles {
 }
 
 sealed class CompilationPathMessage {
-  final String artifactId, key;
+  // This is instantiated when we create the object, but NOT when
+  // an Actor de-serializes the value.
+  final String workingDir = Directory.current.path;
 
-  const CompilationPathMessage(this.artifactId, String libsDir)
-    : key = "$artifactId:$libsDir";
+  final String artifactId, libsDir;
+
+  CompilationPathMessage(this.artifactId, this.libsDir);
+
+  String get key =>
+      "${p.isAbsolute(libsDir) ? libsDir : p.join(workingDir, libsDir)}"
+      ":$artifactId";
 }
 
 final class JBuildModuleOutputLine extends CompilationPathMessage {
   final String line;
 
-  const JBuildModuleOutputLine(super.artifactId, super.libsDir, this.line);
+  JBuildModuleOutputLine(super.artifactId, super.libsDir, this.line);
 }
 
 mixin KnowsCompilationPath {
+  String get workingDir;
+
   String get key;
 
   String get artifactId;
@@ -50,7 +59,7 @@ final class ReturnCompilationPath extends CompilationPathMessage
   @override
   final String outputFile;
 
-  const ReturnCompilationPath(super.artifactId, super.libsDir, this.outputFile);
+  ReturnCompilationPath(super.artifactId, super.libsDir, this.outputFile);
 }
 
 final class ComputeCompilationPath extends CompilationPathMessage
@@ -58,11 +67,7 @@ final class ComputeCompilationPath extends CompilationPathMessage
   @override
   final String outputFile;
 
-  const ComputeCompilationPath(
-    super.artifactId,
-    super.libsDir,
-    this.outputFile,
-  );
+  ComputeCompilationPath(super.artifactId, super.libsDir, this.outputFile);
 }
 
 /// Creates the actor that will consume the output of JBuild's command to
@@ -93,14 +98,13 @@ Future<CompilationPath> getCompilationPath(
 Future<void> computeCompilationPath(
   String taskName,
   JbConfigContainer config,
-  String workingDir,
   JBuildSender jBuildSender,
   Sendable<CompilationPathMessage, CompilationPath?> compPath,
   String compileLibsDir,
   CompilationPathFiles files,
 ) async {
   final artifactId = config.artifactId;
-  final preArgs = config.config.preArgs(workingDir);
+  final preArgs = config.config.preArgs(Directory.current.path);
   await _computePaths(
     taskName,
     artifactId,
@@ -164,7 +168,7 @@ Future<void> _computePaths(
   );
   await compPath
       .send(ComputeCompilationPath(artifactId, libsDir, p.absolute(outputFile)))
-      .timeout(const Duration(seconds: 5));
+      .timeout(const Duration(seconds: 10));
 }
 
 /// Converts messages of type [String] to [JBuildModuleOutputLine].
@@ -173,7 +177,8 @@ class _Sender with Sendable<String, void> {
   final Sendable<CompilationPathMessage, void> _actor;
   final String _libsDir;
 
-  _Sender(this._artifactId, this._actor, this._libsDir);
+  _Sender(this._artifactId, this._actor, String libsDir)
+    : _libsDir = p.absolute(libsDir);
 
   @override
   Future<void> send(String message) async =>
@@ -214,15 +219,32 @@ class _CompilePathsHandler
     return switch (message) {
       JBuildModuleOutputLine(key: var k, line: var l) => _addLine(k, l),
       ReturnCompilationPath() => _returnCompilationPath(message),
-      ComputeCompilationPath() => _returnCompilationPath(
-        message,
-      ).then((_) => null),
+      ComputeCompilationPath() => _computeCompilationPath(message),
     };
   }
 
   CompilationPath? _addLine(String key, String line) {
+    logger.finer(() => 'Adding line to [$key]: $line');
     _stateByKey.putIfAbsent(key, () => _CompilePathsState()).addLine(line);
     return null;
+  }
+
+  Future<Null> _computeCompilationPath(KnowsCompilationPath message) async {
+    final key = message.key;
+    final state = _stateByKey[key];
+    if (state?.lines == null) {
+      throw StateError(
+        'CompilationPath cannot be computed for $key (no JBuild output)',
+      );
+    }
+    logger.fine(() => 'CompilationPath will be computed for $key');
+    final result = parseModules(state!.lines!);
+    logger.fine(
+      () => 'CompilationPath was computed successfully for $key, saving it',
+    );
+    await _write(p.join(message.workingDir, message.outputFile), key, result);
+    state.result = result;
+    state.lines = null;
   }
 
   Future<CompilationPath> _returnCompilationPath(
@@ -236,23 +258,18 @@ class _CompilePathsHandler
           logger.fine(() => 'CompilationPath already computed for $key');
           return result;
         }
-        if (state.lines == null) {
-          throw StateError(
-            'CompilationPath cannot be computed for $key (no JBuild output)',
-          );
-        }
-        logger.fine(() => 'CompilationPath will be computed for $key');
-        result = parseModules(state.lines!);
-        logger.fine(
-          () => 'CompilationPath was computed successfully for $key, saving it',
+        throw StateError(
+          'CompilationPath was not computed for $key, cannot return it',
         );
-        await _write(message.outputFile, key, result);
-        state.result = result;
-        state.lines = null;
-        return result;
       },
       () {
-        return _readCompilationPathFile(message.artifactId, message.outputFile);
+        // if the compile-path was not in-memory, it's because the task that
+        // creates it did not need to run, which means it must've written
+        // the file before... so we can read the file here.
+        return _readCompilationPathFile(
+          message.artifactId,
+          p.join(message.workingDir, message.outputFile),
+        );
       },
     );
   }
@@ -263,12 +280,13 @@ class _CompilePathsHandler
   ) async {
     var compPathFile = File(outputFile);
     if (!await compPathFile.exists()) {
-      logger.fine('CompilationPath is empty');
-      return const CompilationPath(modules: [], jars: []);
+      failBuild(
+        reason: 'Compilation paths file does not exist: ${compPathFile.path}',
+      );
     }
     logger.fine(
       () =>
-          'CompilationPath not available for $artifactId, '
+          'CompilationPath not yet available for $artifactId, '
           'reading it from cached file',
     );
     return CompilationPath.fromJson(
@@ -282,11 +300,7 @@ Future<void> _writeEmpty(
   String libsDir,
   String outputFile,
 ) async {
-  final key = ComputeCompilationPath(
-    artifactId,
-    libsDir,
-    p.absolute(outputFile),
-  ).key;
+  final key = ComputeCompilationPath(artifactId, libsDir, outputFile).key;
   await _write(outputFile, key, const CompilationPath(modules: [], jars: []));
 }
 
