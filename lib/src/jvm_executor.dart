@@ -396,24 +396,11 @@ class _JBuildRpc {
   }
 
   Future<void> stop() async {
-    await CancellableFuture.ctx((ctx) async {
-      final stopFuture = _sendStopMessage();
-
-      // wait a few milliseconds before destroying the process as
-      // it should die naturally after receiving the stop message.
-      unawaited(
-        Future.delayed(Duration(seconds: 2), () {
-          if (ctx.isComputationCancelled()) return;
-          rpcLogger.warning(
-            'JVM Process did not die after sending stop message, '
-            'destroying it forcibly',
-          );
-          proc.destroy();
-        }),
-      );
-
-      await stopFuture;
-    });
+    try {
+      await _sendStopMessage();
+    } finally {
+      proc.destroy();
+    }
   }
 
   Future<void> _sendStopMessage() async {
