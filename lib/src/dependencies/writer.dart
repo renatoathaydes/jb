@@ -153,24 +153,13 @@ Future<ResolvedDependencies> _write(
         .map((e) => (e.key, e.value.exclusions))
         .expand((e) => [e.$1, ...e.$2.expand(_exclusionOption)]);
 
-    final collector = Actor.create(
-      wrapHandlerWithCurrentDir(() => _CollectorActor(nonLocalDeps)),
+    final allDeps = await _collectDependencies(
+      nonLocalDeps,
+      jBuildSender,
+      preArgs,
+      exclusions,
+      nonLocalDepsOptions,
     );
-    await jBuildSender.send(
-      RunJBuild(writeDepsTaskName, [
-        ...preArgs.where((n) => n != '-V'),
-        'deps',
-        '--transitive',
-        '--licenses',
-        '--scope',
-        'runtime',
-        ...exclusions.expand(_exclusionOption),
-        ...nonLocalDepsOptions,
-      ], _CollectorSendable(await collector.toSendable())),
-    );
-
-    // the Done response must NOT be null
-    final allDeps = [...(await collector.send(const _Done()))!];
 
     for (final (_, dep) in projectDeps) {
       allDeps.add(dep);
@@ -195,6 +184,37 @@ Future<ResolvedDependencies> _write(
   });
   await depsCache.send(AddDeps(depsFile.path, results));
   return results;
+}
+
+Future<List<ResolvedDependency>> _collectDependencies(
+  Map<String, DependencySpec> nonLocalDeps,
+  JBuildSender jBuildSender,
+  List<String> preArgs,
+  Set<String> exclusions,
+  Iterable<String> nonLocalDepsOptions,
+) async {
+  final collector = Actor.create(
+    wrapHandlerWithCurrentDir(() => _CollectorActor(nonLocalDeps)),
+  );
+  try {
+    await jBuildSender.send(
+      RunJBuild(writeDepsTaskName, [
+        ...preArgs.where((n) => n != '-V'),
+        'deps',
+        '--transitive',
+        '--licenses',
+        '--scope',
+        'runtime',
+        ...exclusions.expand(_exclusionOption),
+        ...nonLocalDepsOptions,
+      ], _CollectorSendable(await collector.toSendable())),
+    );
+
+    // the Done response must NOT be null
+    return [...(await collector.send(const _Done()))!];
+  } finally {
+    await collector.close();
+  }
 }
 
 void _checkDependenciesAreNotExcludedDirectly(

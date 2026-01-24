@@ -96,22 +96,25 @@ Future<void> _runJb(
     dartleOptions.colorfulLog,
   );
 
-  final runner = await JbRunner.create(
-    jbFiles,
-    config,
-    JbActors(
-      await jvmExecutor.toSendable(),
-      await depsCache.toSendable(),
-      await compilationPathActor.toSendable(),
-    ),
-  );
-
   try {
+    final runner = await JbRunner.create(
+      jbFiles,
+      config,
+      JbActors(
+        await jvmExecutor.toSendable(),
+        await depsCache.toSendable(),
+        await compilationPathActor.toSendable(),
+      ),
+    );
+
     await runner.run(dartleOptions);
   } finally {
-    await jvmExecutor.close();
-    await depsCache.close();
-    await compilationPathActor.close();
+    final closeFutures = [
+      jvmExecutor.close(),
+      depsCache.close(),
+      compilationPathActor.close(),
+    ].whereType<Future<Object?>>();
+    await Future.wait(closeFutures);
   }
 }
 
