@@ -203,6 +203,7 @@ class _CompilePathsState {
 
 class _CompilePathsHandler
     with Handler<CompilationPathMessage, CompilationPath?> {
+  static final bool _isWindows = Platform.isWindows;
   final Map<String, _CompilePathsState> _stateByKey = {};
   final Level _level;
   final bool _colorfulLog;
@@ -224,18 +225,33 @@ class _CompilePathsHandler
   }
 
   CompilationPath? _addLine(String key, String line) {
+    // on Windows, the path needs to be case-insensitive
+    if (_isWindows) {
+      key = key.toLowerCase();
+    }
     logger.finer(() => 'Adding line to [$key]: $line');
     _stateByKey.putIfAbsent(key, () => _CompilePathsState()).addLine(line);
     return null;
   }
 
   Future<Null> _computeCompilationPath(KnowsCompilationPath message) async {
-    final key = message.key;
+    final String key;
+    // on Windows, the path needs to be case-insensitive
+    if (_isWindows) {
+      key = message.key.toLowerCase();
+    } else {
+      key = message.key;
+    }
     final state = _stateByKey[key];
     if (state?.lines == null) {
-      throw StateError(
-        'CompilationPath cannot be computed for $key (no JBuild output)',
-      );
+      try {
+        throw StateError(
+          "CompilationPath cannot be computed for key '$key' (no JBuild output). "
+          "Available keys: ${_stateByKey.keys.map((s) => "'$s'").join(', ')}",
+        );
+      } catch (e, s) {
+        print(s);
+      }
     }
     logger.fine(() => 'CompilationPath will be computed for $key');
     final result = parseModules(state!.lines!);
