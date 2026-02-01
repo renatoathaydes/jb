@@ -821,6 +821,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "CAPEC-tou": License(
+    licenseId: "CAPEC-tou",
+    name: "Common Attack    Pattern Enumeration and Classification License",
+    uri: "https://spdx.org/licenses/CAPEC-tou.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "Catharon": License(
     licenseId: "Catharon",
     name: "Catharon License",
@@ -2497,6 +2504,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "HPND-sell-variant-critical-systems": License(
+    licenseId: "HPND-sell-variant-critical-systems",
+    name: "HPND - sell variant with safety critical systems clause",
+    uri: "https://spdx.org/licenses/HPND-sell-variant-critical-systems.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "HPND-sell-variant-MIT-disclaimer": License(
     licenseId: "HPND-sell-variant-MIT-disclaimer",
     name: "HPND sell variant with MIT disclaimer",
@@ -3255,6 +3269,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "MMPL-1.0.1": License(
+    licenseId: "MMPL-1.0.1",
+    name: "Minecraft Mod Public License v1.0.1",
+    uri: "https://spdx.org/licenses/MMPL-1.0.1.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "Motosoto": License(
     licenseId: "Motosoto",
     name: "Motosoto License",
@@ -3864,6 +3885,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "OpenMDW-1.0": License(
+    licenseId: "OpenMDW-1.0",
+    name: "OpenMDW License Agreement v1.0",
+    uri: "https://spdx.org/licenses/OpenMDW-1.0.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "OpenPBS-2.3": License(
     licenseId: "OpenPBS-2.3",
     name: "OpenPBS v2.3 Software License",
@@ -3966,6 +3994,13 @@ const allLicenses = <String, License>{
     licenseId: "PADL",
     name: "PADL License",
     uri: "https://spdx.org/licenses/PADL.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "ParaType-Free-Font-1.3": License(
+    licenseId: "ParaType-Free-Font-1.3",
+    name: "ParaType Free Font Licensing Agreement v1.3",
+    uri: "https://spdx.org/licenses/ParaType-Free-Font-1.3.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
@@ -4739,6 +4774,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "UnRAR": License(
+    licenseId: "UnRAR",
+    name: "UnRAR License",
+    uri: "https://spdx.org/licenses/UnRAR.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "UPL-1.0": License(
     licenseId: "UPL-1.0",
     name: "Universal Permissive License v1.0",
@@ -4759,6 +4801,13 @@ const allLicenses = <String, License>{
     uri: "https://spdx.org/licenses/Vim.html",
     isOsiApproved: false,
     isFsfLibre: true,
+  ),
+  "Vixie-Cron": License(
+    licenseId: "Vixie-Cron",
+    name: "Vixie Cron License",
+    uri: "https://spdx.org/licenses/Vixie-Cron.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
   ),
   "VOSTROM": License(
     licenseId: "VOSTROM",
