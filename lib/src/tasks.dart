@@ -566,6 +566,7 @@ Future<void> _install(
       ...preArgs,
       'install',
       '--non-transitive',
+      '--checksum',
       if ('JB_INSTALL_TO_MAVEN_LOCAL'.envVar().isNotFalse) '--maven-local',
       '--directory',
       outputDir,

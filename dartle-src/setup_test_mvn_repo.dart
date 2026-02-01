@@ -36,7 +36,7 @@ final buildMvnRepoListsProjectTask = Task(
   description: 'Builds the _lists_ project for the test Maven repository.',
   runCondition: RunOnChanges(
     inputs: dir(listsMavenRepoProjectSrc, fileExtensions: const {'.java'}),
-    outputs: file(_listsJar),
+    outputs: files([_listsJar, '$_listsJar.sha1']),
   ),
 );
 
@@ -58,6 +58,9 @@ final setupTestMvnRepoTask = Task(
 Future<void> _setupTestMvnRepo(_) async {
   await Directory(_listsRepoDir).create(recursive: true);
   await File(_listsJar).copy(path.join(_listsRepoDir, 'lists-1.0.jar'));
+  await File(
+    '$_listsJar.sha1',
+  ).copy(path.join(_listsRepoDir, 'lists-1.0.jar.sha1'));
   await File(_listsPom).copy(path.join(_listsRepoDir, 'lists-1.0.pom'));
 
   await Directory(testMavenRepoPreBuilt).copyContentsInto(testMavenRepo);
@@ -74,7 +77,8 @@ Future<void> _buildProject(String name) async {
       await jbuildJarPath(),
       'compile',
       '-j',
-      path.join('build', 'lists.jar'),
+      path.join('build', '$name.jar'),
+      '--checksum',
       '--',
       '--release',
       '11',
