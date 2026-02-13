@@ -1,7 +1,18 @@
 ## Next
 
+# 0.16.0
+
+- verify checksum of all downloaded artifacts.
 - changed environment variable used to find Maven Local Repository from `MAVEN_HOME` to `MAVEN_LOCAL_HOME`.
 - install dependencies to Maven Local unless `JB_INSTALL_TO_MAVEN_LOCAL` is set to `false`.
+- fail when unknown config setting is used in jb file.
+- allow direct dependencies to be excluded in transitive dependency resolution.
+- removed `transitive` property from dependency specification (use `exclude: ".*"`).
+- fixed reported build times.
+- honour `--color` in jb actors.
+- improved task phases organization and task I/O declarations.
+- properly shutdown jb actors (including the JVM) even on errors.
+- SPDX license registry updates.
 
 # 0.15.0
 
