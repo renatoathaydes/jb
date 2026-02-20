@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../config.dart';
 
-final groovyJarPattern = RegExp(r'groovy-\d+\.\d+\..*\.jar');
+final groovyJarPattern = RegExp(r'groovy-\d+\.\d+\..*\.jar$');
 
 bool hasGroovyDependency(
   Iterable<MapEntry<String, DependencySpec>> dependencies,
@@ -31,5 +31,6 @@ Future<String> findGroovyJar(JbConfiguration config) async {
           '${config.compileLibsDir}',
     ),
   );
-  return p.absolute(jar.path);
+  logger.finer(() => 'Groovy jar: ${jar.path}');
+  return jar.path;
 }
