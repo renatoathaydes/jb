@@ -31,5 +31,5 @@ Future<String> findGroovyJar(JbConfiguration config) async {
           '${config.compileLibsDir}',
     ),
   );
-  return jar.path;
+  return p.absolute(jar.path);
 }
