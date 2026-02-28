@@ -304,10 +304,16 @@ void main() {
       ]);
       expectSuccess(jbResult);
       final output = jbResult.stdout.join('\n');
-      expect(output, contains("Running task 'compile'"),
-          reason: 'compile task should run as a dependency of test');
-      expect(output, contains("Running task 'test'"),
-          reason: 'test task should run');
+      expect(
+        output,
+        contains("Running task 'compile'"),
+        reason: 'compile task should run as a dependency of test',
+      );
+      expect(
+        output,
+        contains("Running task 'test'"),
+        reason: 'test task should run',
+      );
     });
 
     test('can run single Java test', () async {

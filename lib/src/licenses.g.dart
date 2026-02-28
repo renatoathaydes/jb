@@ -464,6 +464,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "BOLA-1.1": License(
+    licenseId: "BOLA-1.1",
+    name: "Buena Onda License Agreement v1.1",
+    uri: "https://spdx.org/licenses/BOLA-1.1.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "Borceux": License(
     licenseId: "Borceux",
     name: "Borceux license",
@@ -3939,6 +3946,13 @@ const allLicenses = <String, License>{
     name: "Open Publication License v1.0",
     uri: "https://spdx.org/licenses/OPUBL-1.0.html",
     isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "OSC-1.0": License(
+    licenseId: "OSC-1.0",
+    name: "OSC License 1.0",
+    uri: "https://spdx.org/licenses/OSC-1.0.html",
+    isOsiApproved: true,
     isFsfLibre: null,
   ),
   "OSET-PL-2.1": License(
