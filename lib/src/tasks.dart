@@ -833,6 +833,10 @@ Task createTestTask(
   DartleCache cache,
   bool noColor,
 ) {
+  final inputs = dirs([
+    config.config.runtimeLibsDir,
+    p.join(cache.rootDir, junitRunnerLibsDir),
+  ]);
   return Task(
     (List<String> args) => _test(jbuildJar, config, cache, noColor, args),
     name: testTaskName,
@@ -842,6 +846,7 @@ Task createTestTask(
       downloadTestRunnerTaskName,
       installRuntimeDepsTaskName,
     },
+    runCondition: RunOnChanges(inputs: inputs, cache: cache),
     description: 'Run tests. JBuild automatically detects JUnit5 and Spock.',
     phase: evaluatePhase,
   );

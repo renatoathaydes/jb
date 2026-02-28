@@ -175,6 +175,8 @@ Depends on: [verifyDependencies](#verifyDependencies)
 
 By default, dependencies are installed in the configured libs
 directory (given by `compile-libs-dir`) and also on Maven Local.
+This is done so that dependencies are globally cached on Maven Local as they are retrieved.
+Notice that if the dependency was found in Maven Local, JBuild is smart enough to not write back to it.
 
 > To disable Maven Local, set the `JB_INSTALL_TO_MAVEN_LOCAL` env var to `false`.
 

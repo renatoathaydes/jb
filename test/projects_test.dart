@@ -297,6 +297,19 @@ void main() {
       );
     }, testOn: '!windows');
 
+    test('test task triggers compile as dependency from clean state', () async {
+      final jbResult = await runJb(Directory(testsProjectDir), const [
+        'test',
+        '--no-color',
+      ]);
+      expectSuccess(jbResult);
+      final output = jbResult.stdout.join('\n');
+      expect(output, contains("Running task 'compile'"),
+          reason: 'compile task should run as a dependency of test');
+      expect(output, contains("Running task 'test'"),
+          reason: 'test task should run');
+    });
+
     test('can run single Java test', () async {
       // install compile dependencies and check they are installed
       final jbInstallResult = await runJb(Directory(testsProjectDir), const [
