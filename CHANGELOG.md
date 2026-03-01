@@ -1,9 +1,8 @@
 # 0.16.1
 
-- fixed `test` task not triggering `compile` as a dependency when invoked from a clean state.
+- fixed Java module incremental compilation.
+- fixed `test` and `run` tasks not triggering `compile` as a dependency when invoked from a clean state.
 - fixed Groovy jar detection and path handling across all platforms.
-- treated jar and pom files as binary in git to prevent checksum corruption.
-- refactored CI/release workflows to use matrix strategy and added Linux ARM64 support.
 
 # 0.16.0
 
