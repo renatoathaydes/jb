@@ -13,8 +13,6 @@ jobs:
             artifact-name: linux-x86
           - os: ubuntu-24.04-arm
             artifact-name: linux-arm64
-          - os: macos-13
-            artifact-name: macos-x86
           - os: macos-latest
             artifact-name: macos-arm64
           - os: windows-latest
