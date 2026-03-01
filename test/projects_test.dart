@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:dartle/dartle.dart';
 import 'package:logging/logging.dart' show Level;
 import 'package:path/path.dart' as p;
@@ -722,6 +723,91 @@ void main() {
         expect(jbResult.stdout.join('\n'), contains("M1{value=This is M1}"));
       },
       timeout: const Timeout(Duration(seconds: 10)),
+    );
+
+    test(
+      'can recompile module project incrementally',
+      () async {
+        final mod1 = p.join(javaModulesProjectDir, 'mod1');
+        final mod2 = p.join(javaModulesProjectDir, 'mod2');
+        final m1File = File(p.join(mod1, 'src', 'm1', 'M1.java'));
+        final originalContent = await m1File.readAsString();
+        addTearDown(() => m1File.writeAsString(originalContent));
+
+        // First build (full compilation)
+        var jbResult = await runJb(Directory(mod1));
+        expectSuccess(jbResult);
+
+        final jarFile = File(p.join(mod1, 'build', 'mod1.jar'));
+        expect(await jarFile.exists(), isTrue);
+
+        // Modify M1.java (not module-info.java) to trigger incremental build
+        await m1File.writeAsString(
+          originalContent.replaceFirst(
+            '"M1{value=" + value + "}"',
+            '"M1{val=" + value + "!}"',
+          ),
+        );
+
+        // Second build (incremental - should use classpath mode for modules)
+        jbResult = await runJb(Directory(mod1), const ['--no-color']);
+        expectSuccess(jbResult);
+        expect(jbResult.stdout.join('\n'), contains("Running task 'compile'"));
+
+        // run mod2 to confirm the mod1 change was picked up and is valid
+        jbResult = await runJb(Directory(mod2), const ['run', '--no-color']);
+        expectSuccess(jbResult);
+
+        // make sure the compile task of m1 did not run again
+        expect(
+          outputOfProjectDependencies(jbResult).join('\n'),
+          allOf(
+            contains("Running task 'installRuntimeDependencies'"),
+            isNot(contains("Running task 'compile'")),
+          ),
+        );
+
+        // assert that the change was actually picked up
+        expect(jbResult.stdout.join('\n'), contains("M1{val=This is M1!}"));
+      },
+      timeout: const Timeout(Duration(seconds: 20)),
+    );
+
+    test(
+      'changing module-info.java causes full re-compilation',
+      () async {
+        final mod1 = p.join(javaModulesProjectDir, 'mod1');
+        final moduleInfoFile = File(p.join(mod1, 'src', 'module-info.java'));
+        final originalContent = await moduleInfoFile.readAsString();
+        addTearDown(() => moduleInfoFile.writeAsString(originalContent));
+
+        // First build (full compilation)
+        var jbResult = await runJb(Directory(mod1));
+        expectSuccess(jbResult);
+
+        // Modify module-info.java (should trigger full re-compilation)
+        await moduleInfoFile.writeAsString('''module mod.one {
+            requires org.slf4j;
+        }''');
+
+        // Second build - should fall back to full compilation
+        jbResult = await runJb(Directory(mod1), const [
+          '--no-color',
+          '-l',
+          'debug',
+        ]);
+        expectSuccess(jbResult);
+        expect(
+          jbResult.stdout.join('\n'),
+          allOf(
+            contains("Collected 1 input and 0 output change(s) for 'compile'"),
+            contains(
+              'module-info.java changed, falling back to full module compilation',
+            ),
+          ),
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 20)),
     );
   }, ['mod1', 'mod2']);
 

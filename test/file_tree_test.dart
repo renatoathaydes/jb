@@ -51,6 +51,33 @@ void main() {
       );
     });
 
+    test('can compute transitive dependencies of a file', () async {
+      expect(
+        tree.dependenciesOf(p.join('jbuild', 'artifact', 'VersionRange.java')),
+        equals(const <String>{}),
+      );
+
+      expect(
+        tree.dependenciesOf(p.join('jbuild', 'errors', 'Error.java')),
+        equals({
+          p.join('jbuild', 'artifact', 'Version.java'),
+          p.join('jbuild', 'maven', 'Maven.java'),
+          p.join('jbuild', 'artifact', 'VersionRange.java'),
+        }),
+      );
+
+      expect(
+        tree.dependenciesOf(p.join('jbuild', 'artifact', 'Artifact.java')),
+        equals({
+          p.join('jbuild', 'artifact', 'Version.java'),
+          p.join('jbuild', 'errors', 'JBuildException.java'),
+          p.join('jbuild', 'artifact', 'VersionRange.java'),
+          p.join('jbuild', 'errors', 'Error.java'),
+          p.join('jbuild', 'maven', 'Maven.java'),
+        }),
+      );
+    });
+
     test('can compute transitive changes from file changes', () async {
       var changes = tree.computeTransitiveChanges([
         FileChange(

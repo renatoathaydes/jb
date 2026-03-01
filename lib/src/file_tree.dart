@@ -91,6 +91,24 @@ class FileTree {
     return result;
   }
 
+  /// Compute the transitive dependencies of a particular file in the tree.
+  ///
+  /// If the file is not present in the file tree, `null` is returned.
+  ///
+  /// If `result` is provided, the results are collected into it and it is
+  /// returned, otherwise a new `Set` is created and returned.
+  Set<String>? dependenciesOf(String file, {Set<String>? result}) {
+    final fileDeps = depsByFile[file];
+    if (fileDeps == null) return null;
+    result ??= <String>{};
+    for (final dep in fileDeps.deps) {
+      if (result.add(dep)) {
+        dependenciesOf(dep, result: result);
+      }
+    }
+    return result;
+  }
+
   /// Compute the transitive changes given an initial change Set.
   ///
   /// The transitive dependents of every modified file are included.

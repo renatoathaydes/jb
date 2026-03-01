@@ -107,6 +107,16 @@ void expectSuccess(ProcessResult result, {int expectedExitCode = 0}) {
   );
 }
 
+List<String> outputOfProjectDependencies(ProcessResult result) {
+  final fullOutput = result.stdout as List<String>;
+  return fullOutput.sublist(
+    0,
+    fullOutput.indexWhere(
+      (t) => t.contains('All project dependencies have been initialized'),
+    ),
+  );
+}
+
 Future<ProcessResult> runJb(
   Directory workingDir, [
   List<String> args = const [],

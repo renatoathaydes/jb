@@ -33,7 +33,37 @@ Future<JavaCommand> compileCommand(
     logger.finer('No Groovy dependencies found. Using javac compiler.');
   }
 
-  await addCompilationPathsTo(allArgs, config, compPath, forJava: false);
+  final isModule = await _isModuleProject(config);
+
+  // For incremental compilation of module projects, we must handle two cases:
+  // 1. module-info.java changed: cannot do incremental, fall back to full
+  //    module compilation so javac rebuilds the module correctly.
+  // 2. module-info.java NOT changed: use classpath-only mode (no module-path)
+  //    so javac treats the code as non-modular and can see all classes from
+  //    the previous compilation output on the classpath. JBuild will replace
+  //    the recompiled class files in the existing module jar.
+  TransitiveChanges? effectiveChanges = changes;
+  bool useModulePath = isModule;
+
+  if (isModule && changes != null) {
+    if (_moduleInfoChanged(changes)) {
+      logger.fine(
+        'module-info.java changed, falling back to full module compilation.',
+      );
+      effectiveChanges = null;
+    } else {
+      logger.fine('Incremental module compilation: using classpath mode.');
+      useModulePath = false;
+    }
+  }
+
+  await addCompilationPathsTo(
+    allArgs,
+    config,
+    compPath,
+    forJava: false,
+    useModulePath: useModulePath,
+  );
   allArgs.addAll(args);
 
   return jbuildCompileCommand(
@@ -41,7 +71,7 @@ Future<JavaCommand> compileCommand(
     config,
     workingDir,
     publication,
-    changes,
+    effectiveChanges,
     allArgs,
     isGroovyEnabled,
   );
@@ -53,12 +83,16 @@ Future<JavaCommand> compileCommand(
 ///
 /// If `forJava` is `true`, options for the java command are used, otherwise
 ///  options for the jbuild command are used.
+///
+/// If `useModulePath` is provided, it overrides the automatic module detection
+/// for deciding whether to use module-path or classpath.
 Future<bool> addCompilationPathsTo(
   List<String> args,
   JbConfiguration config,
   CompilationPath compPath, {
   required bool forJava,
   String? output,
+  bool? useModulePath,
 }) async {
   // to support local dependencies that do not produce a jar,
   // we always add the libs dir itself to the classpath
@@ -70,7 +104,7 @@ Future<bool> addCompilationPathsTo(
     cp.addAll(compPath.jars.map((j) => j.path));
   }
 
-  final isModule = await config.isModule;
+  final isModule = useModulePath ?? await _isModuleProject(config);
 
   (isModule ? mp : cp).vmap((paths) {
     paths.addAll(compPath.modules.map((m) => m.path));
@@ -86,20 +120,25 @@ Future<bool> addCompilationPathsTo(
   return isModule;
 }
 
-extension on JbConfiguration {
-  Future<bool> get isModule async {
-    final dirs = sourceDirs.isEmpty
-        ? ['src', p.join('src', 'main', 'java')]
-        : sourceDirs;
-    for (var dir in dirs) {
-      logger.finer(
-        () =>
-            'Checking if module file exists in: ${p.join(Directory.current.path, dir)}',
-      );
-      if (await File(p.join(dir, 'module-info.java')).exists()) {
-        return true;
-      }
+/// Whether this project uses the Java module system (has module-info.java).
+Future<bool> _isModuleProject(JbConfiguration config) async {
+  final dirs = config.sourceDirs.isEmpty
+      ? ['src', p.join('src', 'main', 'java')]
+      : config.sourceDirs;
+  for (var dir in dirs) {
+    logger.finer(
+      () =>
+          'Checking if module file exists in: ${p.join(Directory.current.path, dir)}',
+    );
+    if (await File(p.join(dir, 'module-info.java')).exists()) {
+      return true;
     }
-    return false;
   }
+  return false;
+}
+
+bool _moduleInfoChanged(TransitiveChanges changes) {
+  return changes.fileChanges.any(
+    (c) => c.entity.path.endsWith('module-info.java'),
+  );
 }
