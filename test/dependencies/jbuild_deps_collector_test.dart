@@ -23,7 +23,6 @@ void main() {
           ResolvedDependency(
             artifact: 'foo:bar:1.0',
             spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
-            sha1: '',
             isDirect: false,
             dependencies: const [],
             licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -50,7 +49,6 @@ void main() {
           ResolvedDependency(
             artifact: "com.google.errorprone:error_prone_core:2.16",
             spec: const DependencySpec(scope: DependencyScope.all, path: null),
-            sha1: "",
             licenses: [DependencyLicense(name: "Apache-2.0", url: "")],
             isDirect: true,
             dependencies: ['foo:bar:1.0'],
@@ -58,7 +56,6 @@ void main() {
           ResolvedDependency(
             artifact: 'foo:bar:1.0',
             spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
-            sha1: '',
             isDirect: false,
             dependencies: const [],
             licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -81,7 +78,6 @@ void main() {
           ResolvedDependency(
             artifact: 'com.example:lists:1.0',
             spec: defaultSpec,
-            sha1: '',
             isDirect: true,
             dependencies: const [],
             licenses: const [],
@@ -111,7 +107,6 @@ void main() {
           ResolvedDependency(
             artifact: "com.example:project",
             spec: const DependencySpec(),
-            sha1: "",
             licenses: [DependencyLicense(name: "Apache-2.0", url: "")],
             isDirect: true,
             dependencies: ['foo:bar:1.0', 'bar:zort:2.0'],
@@ -119,7 +114,6 @@ void main() {
           ResolvedDependency(
             artifact: 'foo:bar:1.0',
             spec: const DependencySpec(),
-            sha1: '',
             isDirect: false,
             dependencies: ['bar:zort:2.0'],
             licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -127,7 +121,6 @@ void main() {
           ResolvedDependency(
             artifact: 'bar:zort:2.0',
             spec: const DependencySpec(),
-            sha1: '',
             isDirect: false,
             dependencies: ['zort:bar:2.0'],
             licenses: [DependencyLicense(name: 'MIT', url: '')],
@@ -135,7 +128,6 @@ void main() {
           ResolvedDependency(
             artifact: 'bar:zort:2.0',
             spec: const DependencySpec(),
-            sha1: '',
             isDirect: false,
             dependencies: const [],
             // repeated dependency
@@ -144,7 +136,6 @@ void main() {
           ResolvedDependency(
             artifact: 'zort:bar:2.0',
             spec: const DependencySpec(),
-            sha1: '',
             isDirect: false,
             dependencies: const [],
             // repeated dependency
@@ -189,7 +180,6 @@ void main() {
           ResolvedDependency(
             artifact: 'com.example:with-deps:1.2.3',
             spec: const DependencySpec(),
-            sha1: '',
             isDirect: true,
             dependencies: [
               'foo:bar:1.0',
@@ -201,7 +191,6 @@ void main() {
           ResolvedDependency(
             artifact: 'com.example:another:4',
             spec: const DependencySpec(scope: DependencyScope.compileOnly),
-            sha1: '',
             isDirect: true,
             dependencies: ['org.apache.groovy:groovy:4.0.20'],
             licenses: const [],
@@ -209,7 +198,6 @@ void main() {
           ResolvedDependency(
             artifact: 'org.apache.groovy:groovy:4.0.20',
             spec: const DependencySpec(),
-            sha1: '',
             isDirect: false,
             dependencies: const [],
             licenses: const [],
@@ -217,7 +205,6 @@ void main() {
           ResolvedDependency(
             artifact: 'foo:bar:1.0',
             spec: const DependencySpec(scope: DependencyScope.runtimeOnly),
-            sha1: '',
             isDirect: false,
             dependencies: const [],
             licenses: const [],
@@ -225,7 +212,6 @@ void main() {
           ResolvedDependency(
             artifact: 'com.example:lists:1.0',
             spec: const DependencySpec(),
-            sha1: '',
             isDirect: false,
             dependencies: const [],
             licenses: const [],
@@ -233,7 +219,6 @@ void main() {
           ResolvedDependency(
             artifact: 'com.example:other:2.0',
             spec: const DependencySpec(),
-            sha1: '',
             isDirect: false,
             dependencies: ['com.example:transitive:1.1'],
             licenses: [
@@ -246,7 +231,6 @@ void main() {
           ResolvedDependency(
             artifact: 'com.example:transitive:1.1',
             spec: const DependencySpec(),
-            sha1: '',
             isDirect: false,
             dependencies: const [],
             licenses: const [],
@@ -288,7 +272,6 @@ void main() {
                 'org.slf4j:slf4j-api',
               ],
             ),
-            sha1: '',
             isDirect: false,
             dependencies: const [],
             licenses: [
@@ -498,7 +481,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework.boot:spring-boot-starter-thymeleaf:',
           spec: defaultSpec,
-          sha1: '',
           isDirect: true,
           dependencies: [
             'org.springframework.boot:spring-boot-starter:3.5.3',
@@ -510,7 +492,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework.boot:spring-boot-starter:3.5.3',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'jakarta.annotation:jakarta.annotation-api:2.1.1',
@@ -526,7 +507,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.thymeleaf:thymeleaf-spring6:3.1.3.RELEASE',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'org.slf4j:slf4j-api:2.0.16',
@@ -538,7 +518,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.thymeleaf:thymeleaf:3.1.3.RELEASE',
           spec: const DependencySpec(exclusions: ['ognl:ognl']),
-          sha1: '',
           isDirect: false,
           dependencies: [
             'org.attoparser:attoparser:2.0.7.RELEASE',
@@ -550,7 +529,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.attoparser:attoparser:2.0.7.RELEASE',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -558,7 +536,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.unbescape:unbescape:1.1.6.RELEASE',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -567,7 +544,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework.boot:spring-boot-autoconfigure:3.5.3',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['org.springframework.boot:spring-boot:3.5.3'],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -576,7 +552,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework.boot:spring-boot:3.5.3',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'org.springframework:spring-context:6.2.8',
@@ -588,7 +563,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-context:6.2.8',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'io.micrometer:micrometer-observation:1.14.8',
@@ -603,7 +577,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'io.micrometer:micrometer-observation:1.14.8',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['io.micrometer:micrometer-commons:1.14.8'],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -612,7 +585,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'io.micrometer:micrometer-commons:1.14.8',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -621,7 +593,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-aop:6.2.8',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'org.springframework:spring-beans:6.2.8',
@@ -633,7 +604,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-beans:6.2.8',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['org.springframework:spring-core:6.2.8'],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -642,7 +612,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-core:6.2.8',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['org.springframework:spring-jcl:6.2.8'],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -651,7 +620,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-jcl:6.2.8',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -660,7 +628,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-expression:6.2.8',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['org.springframework:spring-core:6.2.8'],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -669,7 +636,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.yaml:snakeyaml:2.4',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -679,7 +645,6 @@ JBuild success in 415 ms!
           artifact:
               'org.springframework.boot:spring-boot-starter-logging:3.5.3',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'ch.qos.logback:logback-classic:1.5.18',
@@ -692,7 +657,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'ch.qos.logback:logback-classic:1.5.18',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'ch.qos.logback:logback-core:1.5.18',
@@ -707,7 +671,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'ch.qos.logback:logback-core:1.5.18',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [
@@ -719,7 +682,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.slf4j:slf4j-api:2.0.17',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'MIT', url: '')],
@@ -728,7 +690,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.apache.logging.log4j:log4j-to-slf4j:2.24.3',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'org.apache.logging.log4j:log4j-api:2.24.3',
@@ -740,7 +701,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.apache.logging.log4j:log4j-api:2.24.3',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -749,7 +709,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.slf4j:slf4j-api:2.0.16',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'MIT', url: '')],
@@ -758,7 +717,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.slf4j:jul-to-slf4j:2.0.17',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['org.slf4j:slf4j-api:2.0.17'],
           licenses: [DependencyLicense(name: 'MIT', url: '')],
@@ -767,7 +725,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'jakarta.annotation:jakarta.annotation-api:2.1.1',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [
@@ -795,7 +752,6 @@ JBuild success in 415 ms!
           artifact:
               'org.springframework.boot:spring-boot-starter-oauth2-client:',
           spec: defaultSpec,
-          sha1: '',
           isDirect: true,
           dependencies: [
             'org.springframework.boot:spring-boot-starter:3.5.3',
@@ -810,7 +766,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework.security:spring-security-config:6.5.1',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'org.springframework.security:spring-security-core:6.5.1',
@@ -825,7 +780,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework.security:spring-security-core:6.5.1',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'io.micrometer:micrometer-observation:1.14.8',
@@ -842,7 +796,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework.security:spring-security-crypto:6.5.1',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -851,7 +804,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-aop:6.2.7',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'org.springframework:spring-beans:6.2.7',
@@ -863,7 +815,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-beans:6.2.7',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['org.springframework:spring-core:6.2.7'],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -872,7 +823,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-core:6.2.7',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['org.springframework:spring-jcl:6.2.7'],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -881,7 +831,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-jcl:6.2.7',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -890,7 +839,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-context:6.2.7',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'io.micrometer:micrometer-observation:1.14.7',
@@ -905,7 +853,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'io.micrometer:micrometer-observation:1.14.7',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['io.micrometer:micrometer-commons:1.14.7'],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -914,7 +861,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'io.micrometer:micrometer-commons:1.14.7',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -923,7 +869,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-expression:6.2.7',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['org.springframework:spring-core:6.2.7'],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -933,7 +878,6 @@ JBuild success in 415 ms!
           artifact:
               'org.springframework.security:spring-security-oauth2-client:6.5.1',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'com.nimbusds:oauth2-oidc-sdk:9.43.6',
@@ -948,7 +892,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'com.nimbusds:oauth2-oidc-sdk:9.43.6',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'com.github.stephenc.jcip:jcip-annotations:1.0-1',
@@ -968,7 +911,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'com.github.stephenc.jcip:jcip-annotations:1.0-1',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -977,7 +919,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'com.nimbusds:content-type:2.2',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -986,7 +927,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'com.nimbusds:lang-tag:1.7',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -995,7 +935,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'com.nimbusds:nimbus-jose-jwt:9.37.3',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['com.github.stephenc.jcip:jcip-annotations:1.0-1'],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -1004,7 +943,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'net.minidev:json-smart:2.5.2',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['net.minidev:accessors-smart:2.5.2'],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -1013,7 +951,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'net.minidev:accessors-smart:2.5.2',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: ['org.ow2.asm:asm:9.7.1'],
           licenses: [DependencyLicense(name: 'Apache-2.0', url: '')],
@@ -1022,7 +959,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.ow2.asm:asm:9.7.1',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: const [],
           licenses: [
@@ -1038,7 +974,6 @@ JBuild success in 415 ms!
           artifact:
               'org.springframework.security:spring-security-oauth2-core:6.5.1',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'org.springframework.security:spring-security-core:6.5.1',
@@ -1051,7 +986,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework:spring-web:6.2.7',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'io.micrometer:micrometer-observation:1.14.7',
@@ -1064,7 +998,6 @@ JBuild success in 415 ms!
         ResolvedDependency(
           artifact: 'org.springframework.security:spring-security-web:6.5.1',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'org.springframework.security:spring-security-core:6.5.1',
@@ -1082,7 +1015,6 @@ JBuild success in 415 ms!
           artifact:
               'org.springframework.security:spring-security-oauth2-jose:6.5.1',
           spec: defaultSpec,
-          sha1: '',
           isDirect: false,
           dependencies: [
             'com.nimbusds:nimbus-jose-jwt:9.37.3',

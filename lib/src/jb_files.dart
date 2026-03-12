@@ -15,6 +15,8 @@ class JbFiles {
 
   File get dependenciesFile => File(p.join(jbCache, 'dependencies.json'));
 
+  File get dependenciesChecksumFile => File('dependencies-checksums');
+
   File get processorDependenciesFile =>
       File(p.join(jbCache, 'processor-dependencies.json'));
 

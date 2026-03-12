@@ -46,6 +46,7 @@ class JbDartle {
       run,
       jshell,
       downloadTestRunner,
+      downloadChecksums,
       test,
       showConfig,
       deps,
@@ -166,6 +167,13 @@ class JbDartle {
       jbFileInputs,
       jvmExecutor,
     );
+    downloadChecksums = createDownloadDependenciesChecksumsTask(
+      _files,
+      _config,
+      jvmExecutor,
+      depsCache,
+      _cache,
+    );
     verifyDeps = createVerifyDependenciesTask(_files, depsCache, _cache);
     installCompile = createInstallCompileDepsTask(
       _files,
@@ -281,6 +289,7 @@ class JbDartle {
       createRuntimePath,
       run,
       jshell,
+      downloadChecksums,
       downloadTestRunner,
       test,
       deps,

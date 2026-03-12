@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:archive/archive_io.dart';
 import 'package:conveniently/conveniently.dart';
-import 'package:crypto/crypto.dart';
 import 'package:dartle/dartle.dart'
     show
         ArgsValidator,
@@ -15,6 +14,7 @@ import 'package:dartle/dartle.dart'
         tempDir,
         tempFile,
         elapsedTime;
+import 'package:jb/src/crypto.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
@@ -265,13 +265,13 @@ HttpClientCredentials? _mavenCredentials() {
 
 Future<void> _shaFile(String file, List<int> bytes) async {
   logger.finer(() => 'Computing SHA1 of $file');
-  await File('$file.sha1').writeAsString(sha1.convert(bytes).toString());
+  await File('$file.sha1').writeAsString(await computeSha1(file));
   logger.finer(() => 'Computed SHA1 of $file');
 }
 
 Future<void> _md5File(String file, List<int> bytes) async {
   logger.finer(() => 'Computing MD5 of $file');
-  await File('$file.md5').writeAsString(md5.convert(bytes).toString());
+  await File('$file.md5').writeAsString(await computeMd5(file));
   logger.finer(() => 'Computed MD5 of $file');
 }
 

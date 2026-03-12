@@ -81,7 +81,6 @@ ResolvedDependency _dep(
   return ResolvedDependency(
     artifact: artifact,
     spec: const DependencySpec(),
-    sha1: '',
     isDirect: isDirect,
     dependencies: deps,
   );

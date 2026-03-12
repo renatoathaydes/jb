@@ -47,9 +47,6 @@ Future<void> writeDependencies(
     forProcessor: true,
   );
 
-  // TODO invoke 'jbuild fetch' to get SHA1:
-  // e.g. jbuild fetch -d sha1-dir group:module:version:jar.sha1
-  // and then read the file sha1-dir/<module>-<version>.jar.sha1
   final mainDeps = await _write(
     'Project dependencies',
     jBuildSender,
@@ -122,7 +119,6 @@ Stream<_ExclusionsAndProjectDeps> _projectDepsAndExclusions(
     final rd = ResolvedDependency(
       artifact: jar.artifact,
       spec: jar.spec,
-      sha1: '',
       isDirect: true,
       dependencies: const [],
     );
@@ -150,8 +146,8 @@ Future<ResolvedDependencies> _write(
     _checkDependenciesAreNotExcludedDirectly(nonLocalDeps, exclusions);
 
     final nonLocalDepsOptions = nonLocalDeps.entries
-        .map((e) => (e.key, e.value.exclusions))
-        .expand((e) => [e.$1, ...e.$2.expand(_exclusionOption)]);
+        .map((e) => (dep: e.key, ex: e.value.exclusions))
+        .expand((e) => [e.dep, ...e.ex.expand(_exclusionOption)]);
 
     final allDeps = await _collectDependencies(
       nonLocalDeps,

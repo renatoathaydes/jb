@@ -4,6 +4,7 @@ import 'package:actors/actors.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
+import 'package:jb/src/dependencies/checksums.dart';
 import 'package:path/path.dart' as p;
 
 import 'compilation_path.g.dart';
@@ -47,6 +48,7 @@ const createJavaCompilationPathTaskName = 'createJavaCompilationPath';
 const createJavaRuntimePathTaskName = 'createJavaRuntimePath';
 const writeDepsTaskName = 'writeDependencies';
 const verifyDepsTaskName = 'verifyDependencies';
+const downloadDependenciesChecksumsTaskName = 'downloadDependenciesChecksums';
 const depsTaskName = 'dependencies';
 const showJbConfigTaskName = 'showJbConfiguration';
 const requirementsTaskName = 'requirements';
@@ -354,6 +356,37 @@ Task createVerifyDependenciesTask(
   );
 }
 
+/// Create the 'downloadDependenciesChecksums' task.
+Task createDownloadDependenciesChecksumsTask(
+  JbFiles jbFiles,
+  JbConfiguration config,
+  JBuildSender jBuildSender,
+  DepsCache depsCache,
+  DartleCache cache,
+) {
+  final preArgs = config.preArgs(Directory.current.path);
+  return Task(
+    (List<String> _) async => downloadDependenciesChecksums(
+      jbFiles,
+      preArgs,
+      jBuildSender,
+      depsCache,
+    ),
+    name: downloadDependenciesChecksumsTaskName,
+    runCondition: RunOnChanges(
+      inputs: files([
+        jbFiles.dependenciesFile.path,
+        jbFiles.processorDependenciesFile.path,
+      ]),
+      outputs: file(jbFiles.dependenciesChecksumFile.path),
+      cache: cache,
+    ),
+    dependsOn: {verifyDepsTaskName},
+    phase: depsPhase,
+    description: 'Downloads dependencies checksums.',
+  );
+}
+
 /// Create the `installCompileDependencies` task.
 Task createInstallCompileDepsTask(
   JbFiles files,
@@ -400,7 +433,7 @@ Task createInstallCompileDepsTask(
     projectDeps,
     jarDeps,
     config.compileLibsDir,
-    null,
+    downloadDependenciesChecksumsTaskName,
     cache,
   );
 }

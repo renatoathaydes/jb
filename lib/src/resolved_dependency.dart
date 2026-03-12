@@ -87,7 +87,6 @@ final class ResolvedProjectDependency {
       ResolvedDependency(
         artifact: artifact,
         spec: spec,
-        sha1: '',
         isDirect: isDirect,
         dependencies: dependencies.keys.toList(growable: false),
       );

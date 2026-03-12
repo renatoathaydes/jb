@@ -247,7 +247,6 @@ class JBuildDepsCollector implements ProcessOutputConsumer {
         artifact: node.id,
         spec: DependencySpec(scope: actualScope, exclusions: node.exclusions),
         isDirect: isDirect,
-        sha1: '',
         licenses: node.licenses,
         dependencies: node.deps.map((d) => d.id).toList(growable: false),
       ),

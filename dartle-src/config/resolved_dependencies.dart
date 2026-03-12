@@ -20,7 +20,6 @@ const dependencyWarning = Objects('DependencyWarning', {
 const resolvedDependency = Objects('ResolvedDependency', {
   'artifact': Property(Strings()),
   'spec': Property(dependency),
-  'sha1': Property(Strings()),
   'licenses': Property(Nullable(Arrays(dependencyLicense))),
   'isDirect': Property(Bools()),
   'dependencies': Property(Arrays(Strings())),

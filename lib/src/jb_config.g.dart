@@ -1131,14 +1131,12 @@ class _ExtensionTaskExtraJsonReviver extends ObjectsBase<ExtensionTaskExtra> {
 final class ResolvedDependency {
   final String artifact;
   final DependencySpec spec;
-  final String sha1;
   final List<DependencyLicense>? licenses;
   final bool isDirect;
   final List<String> dependencies;
   const ResolvedDependency({
     required this.artifact,
     required this.spec,
-    required this.sha1,
     this.licenses,
     required this.isDirect,
     required this.dependencies,
@@ -1148,7 +1146,6 @@ final class ResolvedDependency {
       'ResolvedDependency{'
       'artifact: "$artifact", '
       'spec: $spec, '
-      'sha1: "$sha1", '
       'licenses: $licenses, '
       'isDirect: $isDirect, '
       'dependencies: $dependencies'
@@ -1160,7 +1157,6 @@ final class ResolvedDependency {
           runtimeType == other.runtimeType &&
           artifact == other.artifact &&
           spec == other.spec &&
-          sha1 == other.sha1 &&
           const ListEquality<DependencyLicense>().equals(
             licenses,
             other.licenses,
@@ -1171,14 +1167,12 @@ final class ResolvedDependency {
   int get hashCode =>
       artifact.hashCode ^
       spec.hashCode ^
-      sha1.hashCode ^
       const ListEquality<DependencyLicense>().hash(licenses) ^
       isDirect.hashCode ^
       const ListEquality<String>().hash(dependencies);
   ResolvedDependency copyWith({
     String? artifact,
     DependencySpec? spec,
-    String? sha1,
     List<DependencyLicense>? licenses,
     bool? isDirect,
     List<String>? dependencies,
@@ -1187,7 +1181,6 @@ final class ResolvedDependency {
     return ResolvedDependency(
       artifact: artifact ?? this.artifact,
       spec: spec ?? this.spec.copyWith(),
-      sha1: sha1 ?? this.sha1,
       licenses: unsetLicenses
           ? null
           : licenses ?? (this.licenses == null ? null : [...this.licenses!]),
@@ -1205,7 +1198,6 @@ final class ResolvedDependency {
   Map<String, Object?> toJson() => {
     'artifact': artifact,
     'spec': spec,
-    'sha1': sha1,
     if (licenses != null) 'licenses': licenses,
     'isDirect': isDirect,
     'dependencies': dependencies,
@@ -1607,7 +1599,6 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
     const knownProperties = {
       'artifact',
       'spec',
-      'sha1',
       'licenses',
       'isDirect',
       'dependencies',
@@ -1621,7 +1612,6 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
     return ResolvedDependency(
       artifact: convertProperty(const Strings(), 'artifact', value),
       spec: convertProperty(const _DependencySpecJsonReviver(), 'spec', value),
-      sha1: convertProperty(const Strings(), 'sha1', value),
       licenses: convertProperty(
         const Nullable<
           List<DependencyLicense>,
@@ -1650,8 +1640,6 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
         return const Strings();
       case 'spec':
         return const _DependencySpecJsonReviver();
-      case 'sha1':
-        return const Strings();
       case 'licenses':
         return const Nullable<
           List<DependencyLicense>,
@@ -1672,7 +1660,7 @@ class _ResolvedDependencyJsonReviver extends ObjectsBase<ResolvedDependency> {
 
   @override
   Iterable<String> getRequiredProperties() {
-    return const {'artifact', 'spec', 'sha1', 'isDirect', 'dependencies'};
+    return const {'artifact', 'spec', 'isDirect', 'dependencies'};
   }
 
   @override
