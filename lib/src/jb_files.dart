@@ -9,13 +9,14 @@ const jbExtension = 'jb-extension';
 /// Files and directories used by jb.
 class JbFiles {
   static const String jbCache = '.jb-cache';
+  static const String dependenciesChecksum = 'dependencies-checksums';
   final File jbuildJar;
   final ConfigSource configSource;
   final String processorLibsDir;
 
   File get dependenciesFile => File(p.join(jbCache, 'dependencies.json'));
 
-  File get dependenciesChecksumFile => File('dependencies-checksums');
+  File get dependenciesChecksumFile => File(dependenciesChecksum);
 
   File get processorDependenciesFile =>
       File(p.join(jbCache, 'processor-dependencies.json'));

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:dartle/dartle.dart';
+import 'package:jb/jb.dart' show JbFiles;
 import 'package:logging/logging.dart' show Level;
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
@@ -67,6 +68,14 @@ void main() {
         await File(p.join(helloProjectDir, 'out', 'Hello.class')).exists(),
         isTrue,
       );
+      expect(
+        await File(
+          p.join(helloProjectDir, JbFiles.dependenciesChecksum),
+        ).exists(),
+        isFalse,
+        reason:
+            'The dependencies checksum file should not be created in a project without any dependencies.',
+      );
 
       final javaResult = await runJava(Directory(helloProjectDir), const [
         '-cp',
@@ -82,6 +91,13 @@ void main() {
     test('can install dependencies and compile project', () async {
       final jbResult = await runJb(Directory(withDepsProjectDir), const []);
       expectSuccess(jbResult);
+      await verifyDependenciesChecksums(Directory(withDepsProjectDir), {
+        'com.example:lists:1.0': 'd1961a9adfdf3c40afb3064cd23c8647cdeecdc4',
+        'org.slf4j:slf4j-api:1.7.36':
+            '6c62681a2f655b49963a5983b8b0950a6120ae14',
+        'org.slf4j:slf4j-simple:1.7.36':
+            'a41f9cfe6faafb2eb83a1c7dd2d0dfd844e2a936',
+      });
 
       await assertDirectoryContents(
         Directory(p.join(withDepsProjectDir, 'build')),

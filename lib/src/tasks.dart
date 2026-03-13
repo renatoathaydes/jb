@@ -379,6 +379,7 @@ Task createDownloadDependenciesChecksumsTask(
         jbFiles.processorDependenciesFile.path,
       ]),
       outputs: file(jbFiles.dependenciesChecksumFile.path),
+      verifyOutputsExist: false,
       cache: cache,
     ),
     dependsOn: {verifyDepsTaskName},

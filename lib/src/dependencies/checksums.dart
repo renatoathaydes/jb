@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:conveniently/conveniently.dart' show ConvenientlyPredicate;
 import 'package:dartle/dartle.dart'
-    show tempDir, failBuild, profile, elapsedTime;
+    show deleteAll, file, tempDir, failBuild, profile, elapsedTime;
 import 'package:path/path.dart' as p;
 
 import '../config.dart' show logger;
@@ -123,6 +123,10 @@ Future<void> _writeChecksums(
   File dependenciesChecksumFile,
   Map<String, String> checksums,
 ) async {
+  if (checksums.isEmpty) {
+    await deleteAll(file(dependenciesChecksumFile.path));
+    return;
+  }
   await dependenciesChecksumFile.withSink((sink) async {
     for (final entry in checksums.entries.sorted(
       (a, b) => compareAsciiLowerCase(a.key, b.key),

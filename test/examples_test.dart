@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
+import 'package:jb/jb.dart' show JbFiles;
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -207,6 +208,12 @@ void main() {
     });
 
     projectGroup(groovyProjectDir, 'Spock', () {
+      tearDown(() async {
+        await deleteAll(
+          file(p.join(groovyProjectDir, 'test', JbFiles.dependenciesChecksum)),
+        );
+      });
+
       test('can run Spock tests', () async {
         final jbResult = await runJb(
           Directory(p.join(groovyProjectDir, 'test')),
