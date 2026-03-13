@@ -114,11 +114,7 @@ extension _XmlBuilderExt on xml.XmlBuilder {
   }) {
     element(
       'classpathentry',
-      attributes: {
-        if (kind != null) 'kind': kind,
-        if (path != null) 'path': path,
-        if (output != null) 'output': output,
-      },
+      attributes: {'kind': ?kind, 'path': ?path, 'output': ?output},
       nest: attributes.isEmpty
           ? null
           : () {
