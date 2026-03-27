@@ -1,5 +1,5 @@
-import 'package:jb/src/utils.dart';
 import 'package:jb/src/config.dart';
+import 'package:jb/src/utils.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -17,6 +17,18 @@ void main() {
     expect('dir\\bar'.removeFromEnd(const {'/', '\\'}), equals('dir\\bar'));
     expect('dir\\bar/'.removeFromEnd(const {'/', '\\'}), equals('dir\\bar'));
     expect('dir\\bar//'.removeFromEnd(const {'/', '\\'}), equals('dir\\bar/'));
+  });
+
+  test('String.asEncodedPath', () {
+    expect(''.asEncodedPath(), equals(''));
+    expect('a'.asEncodedPath(), equals('a'));
+    expect('abc'.asEncodedPath(), equals('abc'));
+    expect('a.bc'.asEncodedPath(), equals('a%2Ebc'));
+    expect('ab%c%'.asEncodedPath(), equals('ab%25c%25'));
+    expect('a/bc'.asEncodedPath(), equals('a%2Fbc'));
+    expect('/bc'.asEncodedPath(), equals('%2Fbc'));
+    expect('/b /c'.asEncodedPath(), equals('%2Fb %2Fc'));
+    expect('/a/b\\c'.asEncodedPath(), equals('%2Fa%2Fb%5Cc'));
   });
 
   group('DependencyMapExtension', () {

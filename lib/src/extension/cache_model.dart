@@ -327,8 +327,12 @@ Future<void> _cacheExtensionTasks(
 }
 
 String _modelCacheLocation(DartleCache cache, String dir) {
-  final encodedName = base64Url.encode(sha1.convert(dir.codeUnits).bytes);
-  return p.join(cache.rootDir, 'jb-extensions', encodedName, modelJsonFile);
+  return p.join(
+    cache.rootDir,
+    'jb-extensions',
+    dir.asEncodedPath(),
+    modelJsonFile,
+  );
 }
 
 List<String> _ensureStrings(dynamic value) {

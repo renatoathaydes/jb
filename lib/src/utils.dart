@@ -333,6 +333,15 @@ extension StringExtension on String {
   String quote() => '"$this"';
 
   EnvVar envVar() => EnvVar(this, Platform.environment[this]);
+
+  /// Encode a String representing a path so that the result is not a path itself.
+  ///
+  /// The result is still readable, but will not have intermediate directories.
+  String asEncodedPath() {
+    return replaceAllMapped(RegExp(r'[%/\\.]'), (match) {
+      return '%${match[0]!.codeUnitAt(0).toRadixString(16).toUpperCase().padLeft(2, '0')}';
+    });
+  }
 }
 
 extension NullableStringExtension on String? {
