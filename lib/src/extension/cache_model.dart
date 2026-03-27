@@ -1,11 +1,9 @@
-import 'dart:convert' show base64Url, jsonDecode, jsonEncode, utf8;
+import 'dart:convert' show jsonDecode, jsonEncode, utf8;
 import 'dart:io';
 
 import 'package:actors/actors.dart' show Sendable;
 import 'package:archive/archive_io.dart';
-import 'package:collection/collection.dart';
 import 'package:conveniently/conveniently.dart';
-import 'package:crypto/crypto.dart' show sha1;
 import 'package:dartle/dartle.dart' show elapsedTime, profile;
 import 'package:dartle/dartle_cache.dart';
 import 'package:jb/src/extension/constructors.dart';
@@ -34,29 +32,14 @@ final class _JbExtensionConfig {
   });
 }
 
-sealed class _CacheTask {
-  const _CacheTask();
-}
-
-final class _CacheMissTask extends _CacheTask {
-  final BasicExtensionTask basicExtensionTask;
-
-  const _CacheMissTask(this.basicExtensionTask);
-}
-
-final class _CachedTask extends _CacheTask {
-  final ExtensionTask extensionTask;
-
-  const _CachedTask(this.extensionTask);
-}
-
 Future<JbExtensionModel> createJbExtensionModel(
   JbConfigContainer configContainer,
   String rootDir,
   String classpath,
   DartleCache cache,
-  Sendable<JavaCommand, Object?> jvmExecutor,
-) async {
+  Sendable<JavaCommand, Object?> jvmExecutor, {
+  required bool extensionUpToDate,
+}) async {
   final out = configContainer.output.when(dir: dir, jar: file);
   final jbExtensionConfig = await configContainer.output.when(
     dir: (d) async => await _jbExtensionFromDir(rootDir, d),
@@ -72,46 +55,13 @@ Future<JbExtensionModel> createJbExtensionModel(
   final stopWatch = Stopwatch()..start();
   List<ExtensionTask>? extensionTasks;
 
-  // if anything in the output changed, we need to reload the extension config
-  // fully as it's not possible to know whether it's necessary.
-  // Otherwise, try to load tasks from cache if the cache exists.
-  if (!await cache.hasChanged(out)) {
-    final cacheTasks = await _loadExtensionTasksFromCache(
+  if (extensionUpToDate && !await cache.hasChanged(out)) {
+    extensionTasks = await _loadExtensionTasksFromCache(
       config,
       taskConfigs,
       cache,
       rootDir,
     );
-    if (cacheTasks != null) {
-      final cacheMisses = cacheTasks.groupFoldBy<bool, int>(
-        (t) => t is _CacheMissTask,
-        (int? prev, _) => (prev ?? 0) + 1,
-      );
-      logger.fine(
-        () =>
-            'Loaded ${cacheMisses[false] ?? 0} task(s) from the cache, '
-            '${cacheMisses[true] ?? 0} cache misses',
-      );
-
-      extensionTasks = await Stream.fromIterable(cacheTasks)
-          .asyncMap(
-            (task) => switch (task) {
-              _CachedTask(extensionTask: final t) => Future.value(t),
-              _CacheMissTask(basicExtensionTask: final t) => _loadExtensionTask(
-                config,
-                classpath,
-                t,
-                jvmExecutor,
-              ),
-            },
-          )
-          .toList();
-
-      // only cache if there was at least one cache miss
-      if ((cacheMisses[true] ?? 0) > 0) {
-        await _cacheExtensionTasks(cache, rootDir, extensionTasks);
-      }
-    }
   }
 
   if (extensionTasks == null) {
@@ -269,7 +219,7 @@ List<String> _addJbFileIfRequiringConfig(
   return inputs;
 }
 
-Future<List<_CacheTask>?> _loadExtensionTasksFromCache(
+Future<List<ExtensionTask>> _loadExtensionTasksFromCache(
   JbConfiguration config,
   Iterable<BasicExtensionTask> taskConfigs,
   DartleCache cache,
@@ -282,7 +232,7 @@ Future<List<_CacheTask>?> _loadExtensionTasksFromCache(
           'Cannot load extensions tasks from cache '
           'as cached model file does not exist: ${cacheFile.path}',
     );
-    return null;
+    return const [];
   }
   logger.fine(() => 'Loading extension tasks data from cache');
   final extras =
@@ -291,24 +241,21 @@ Future<List<_CacheTask>?> _loadExtensionTasksFromCache(
       .map((taskConfig) {
         final extra = extras[taskConfig.name];
         if (extra == null) {
-          logger.fine(
-            () =>
-                'Task with name "${taskConfig.name}" was not found in serialized extension task cache: $extras',
+          failBuild(
+            reason:
+                'Cannot find extension task configuration in '
+                'cache ${cacheFile.path}: ${taskConfig.name}',
           );
-          return _CacheMissTask(taskConfig);
         }
 
         final constructorData = resolveTaskConstructorData(config, taskConfig);
 
-        return _CachedTask(
-          ExtensionTask(
-            basicConfig: taskConfig,
-            constructorData: constructorData,
-            extraConfig: ExtensionTaskExtra.fromJson(extra),
-          ),
+        return ExtensionTask(
+          basicConfig: taskConfig,
+          constructorData: constructorData,
+          extraConfig: ExtensionTaskExtra.fromJson(extra),
         );
       })
-      .nonNulls
       .toList(growable: false);
 }
 

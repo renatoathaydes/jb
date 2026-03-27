@@ -80,7 +80,7 @@ Future<ExtensionProject?> loadExtensionProject(
 
   // run the extension project's compile task so that its
   // jb tasks can be executed later
-  await withCurrentDirectory(
+  final extensionProjectTasks = await withCurrentDirectory(
     rootDir,
     onError: changedDirectoryOnError(rootDir),
     () async => await runner.run(
@@ -102,6 +102,7 @@ Future<ExtensionProject?> loadExtensionProject(
     classpath,
     cache,
     actors.jvmExecutor,
+    extensionUpToDate: extensionProjectTasks.every((t) => t.mustRunCount == 0),
   );
 
   _warnOnUnexpectedConfig(extensionModel, config.extras);
