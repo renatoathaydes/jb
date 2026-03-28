@@ -155,7 +155,7 @@ Task createPublicationCompileTask(
     runCondition: _createPublicationCompileRunCondition(config, cache),
     name: publicationCompileTaskName,
     argsValidator: const AcceptAnyArgs(),
-    dependsOn: const {installCompileDepsTaskName, installProcessorDepsTaskName},
+    dependsOn: const {compileTaskName, installProcessorDepsTaskName},
     description: 'Compile Java source code, javadocs and sources jar.',
   );
 }
