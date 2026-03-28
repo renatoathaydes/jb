@@ -118,7 +118,11 @@ Future<void> verifyDependenciesChecksums(
   final checksumsFile = File(
     p.join(directory.path, JbFiles.dependenciesChecksum),
   );
-  expect(await checksumsFile.exists(), isTrue);
+  expect(
+    await checksumsFile.exists(),
+    isTrue,
+    reason: 'checksum file not found',
+  );
   final checksums = await checksumsFile.readAsLines();
   final actualChecksums = Map.fromEntries(
     checksums.map((line) => line.split(' ').vmap((e) => MapEntry(e[0], e[1]))),

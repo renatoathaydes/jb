@@ -106,12 +106,9 @@ void main() {
           'compile-libs',
           p.join('compile-libs', 'lists-1.0.pom'),
           p.join('compile-libs', 'lists-1.0.jar'),
-          p.join('compile-libs', 'lists-1.0.jar.sha1'),
           p.join('compile-libs', 'minimal-java-project.jar'),
           p.join('compile-libs', 'slf4j-api-1.7.36.jar'),
-          p.join('compile-libs', 'slf4j-api-1.7.36.jar.sha1'),
           p.join('compile-libs', 'slf4j-api-1.7.36.pom'),
-          p.join('compile-libs', 'slf4j-api-1.7.36.pom.sha1'),
         ],
         reason:
             'Did not create all artifacts.\n\n'
@@ -375,15 +372,17 @@ void main() {
     test('can compile extension project', () async {
       var jbResult = await runJb(Directory(exampleExtensionDir));
       expectSuccess(jbResult);
+      await verifyDependenciesChecksums(Directory(exampleExtensionDir), {
+        'com.athaydes.jbuild:jbuild-api:0.10.0':
+            'a1e84f7d2602bf5071fc3990bc65ea2402743590',
+      });
       await assertDirectoryContents(
         Directory(p.join(exampleExtensionDir, 'build')),
         [
           'example-extension.jar',
           'compile-libs',
           p.join('compile-libs', 'jbuild-api-0.10.0.pom'),
-          p.join('compile-libs', 'jbuild-api-0.10.0.pom.sha1'),
           p.join('compile-libs', 'jbuild-api-0.10.0.jar'),
-          p.join('compile-libs', 'jbuild-api-0.10.0.jar.sha1'),
         ],
       );
     });

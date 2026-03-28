@@ -9,7 +9,7 @@ const jbExtension = 'jb-extension';
 /// Files and directories used by jb.
 class JbFiles {
   static const String jbCache = '.jb-cache';
-  static const String dependenciesChecksum = 'dependencies-checksums';
+  static const String dependenciesChecksum = 'dependencies.sum';
   final File jbuildJar;
   final ConfigSource configSource;
   final String processorLibsDir;
