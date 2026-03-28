@@ -52,19 +52,28 @@ class Publisher {
     final theArtifact = _getArtifact();
 
     final destination = args.isEmpty ? _mavenHome() : args[0];
+    final credentials = _mavenCredentials();
 
     final mavenClient = MavenClient(switch (destination) {
       '-m' => Sonatype.s01Oss,
       _ => CustomMavenRepo(destination),
-    }, credentials: _mavenCredentials());
+    }, credentials: credentials);
+
+    final toMavenCentral = destination == '-m';
+    final toHttpRepo =
+        !toMavenCentral &&
+        (destination.startsWith('http://') ||
+            destination.startsWith('https://'));
 
     final stopwatch = Stopwatch()..start();
 
-    if (destination == '-m') {
-      return await _publishHttp(mavenClient, theArtifact, stopwatch);
-    }
-    if (destination.startsWith('http://') ||
-        destination.startsWith('https://')) {
+    if (toMavenCentral || toHttpRepo) {
+      if (credentials == null) {
+        logger.info(
+          'No HTTP credentials provided (set either SONATYPE_USER_TOKEN '
+          'or MAVEN_USER and MAVEN_PASSWORD to provide it)',
+        );
+      }
       return await _publishHttp(mavenClient, theArtifact, stopwatch);
     }
     await _publishLocal(theArtifact, destination, depsCache, stopwatch);
@@ -256,10 +265,6 @@ HttpClientCredentials? _mavenCredentials() {
   if (token != null) {
     return HttpClientBearerCredentials(token);
   }
-  logger.info(
-    'No HTTP credentials provided (set either SONATYPE_USER_TOKEN '
-    'or MAVEN_USER and MAVEN_PASSWORD to provide it)',
-  );
   return null;
 }
 
