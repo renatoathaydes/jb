@@ -647,6 +647,10 @@ Future<void> _install(
   String outputDir,
 ) async {
   final deps = await dependencies.resolveArtifacts(includeLocal: false);
+  final outDir = Directory(outputDir);
+  if (await outDir.exists()) {
+    await outDir.delete(recursive: true);
+  }
   if (deps.isEmpty) {
     return logger.fine("No dependencies to install for '$taskName'.");
   }
