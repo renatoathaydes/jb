@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:conveniently/conveniently.dart';
+import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:path/path.dart' as p;
 
 import '../compilation_path.g.dart';
@@ -21,6 +22,7 @@ Future<JavaCommand> compileCommand(
   bool publication,
   TransitiveChanges? changes,
   List<String> args,
+  DartleCache cache,
 ) async {
   final allArgs = <String>[];
   if (isGroovyEnabled) {
@@ -29,6 +31,22 @@ Future<JavaCommand> compileCommand(
     );
     final groovyJar = await findGroovyJar(config);
     allArgs.addAll(['-g', groovyJar]);
+
+    if (publication) {
+      allArgs.addAll([
+        '--groovydoc-tool-class-path',
+        await Directory(
+          p.join(cache.rootDir, groovydocLibsDir),
+        ).toClasspath().then((cp) {
+          if (cp == null) {
+            throw StateError(
+              'The groovydoc libs directory is empty: $groovydocLibsDir',
+            );
+          }
+          return cp;
+        }),
+      ]);
+    }
   } else {
     logger.finer('No Groovy dependencies found. Using javac compiler.');
   }
@@ -73,7 +91,7 @@ Future<JavaCommand> compileCommand(
     publication,
     effectiveChanges,
     allArgs,
-    isGroovyEnabled,
+    isGroovyEnabled: isGroovyEnabled,
   );
 }
 

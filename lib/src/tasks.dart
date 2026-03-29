@@ -44,6 +44,7 @@ const jshellTaskName = 'jshell';
 const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const installProcessorDepsTaskName = 'installProcessorDependencies';
+const installGroovydocsTaskName = 'installGroovydocsRuntime';
 const createJavaCompilationPathTaskName = 'createJavaCompilationPath';
 const createJavaRuntimePathTaskName = 'createJavaRuntimePath';
 const writeDepsTaskName = 'writeDependencies';
@@ -155,7 +156,11 @@ Task createPublicationCompileTask(
     runCondition: _createPublicationCompileRunCondition(config, cache),
     name: publicationCompileTaskName,
     argsValidator: const AcceptAnyArgs(),
-    dependsOn: const {compileTaskName, installProcessorDepsTaskName},
+    dependsOn: const {
+      compileTaskName,
+      installProcessorDepsTaskName,
+      installGroovydocsTaskName,
+    },
     description: 'Compile Java source code, javadocs and sources jar.',
   );
 }
@@ -218,19 +223,17 @@ Future<void> _compile(
     config.compileLibsDir,
     compPathFiles.compilePath,
   );
-  final isGroovyEnabled =
-      configContainer.knownDeps.groovy ||
-      configContainer.testConfig.spockVersion != null;
   await actors.jvmExecutor.send(
     await compileCommand(
       jbFiles,
       config,
       compilationPath,
-      isGroovyEnabled,
+      configContainer.knownDeps.groovy,
       workingDir,
       publication,
       changes,
       args,
+      cache,
     ),
   );
 
@@ -238,6 +241,11 @@ Future<void> _compile(
     profile,
     () => 'Java compilation completed in ${elapsedTime(stopwatch)}',
   );
+
+  if (publication) {
+    // no need to create file-tree, that's created when doing the normal compilation.
+    return;
+  }
 
   stopwatch.reset();
   logger.fine('Computing Java source tree for incremental builds');
@@ -388,7 +396,54 @@ Task createDownloadDependenciesChecksumsTask(
   );
 }
 
-/// Create the `installCompileDependencies` task.
+/// Create the `installGroovydocsRuntime` task.
+Task createInstallGroovydocsTask(
+  JbFiles files,
+  JbConfigContainer config,
+  JBuildSender jBuildSender,
+  DepsCache depsCache,
+  DartleCache cache,
+  ResolvedLocalDependencies localDependencies,
+) {
+  final isGroovyEnabled =
+      config.knownDeps.groovy || config.testConfig.spockVersion != null;
+
+  final depsFile = files.groovydocsDependenciesFile.path;
+  final preArgs = config.config.preArgs(Directory.current.path);
+  final libsDir = p.join(cache.rootDir, groovydocLibsDir);
+
+  // can only use Sendable objects inside action
+  Future<void> action(_) async {
+    if (!isGroovyEnabled) {
+      logger.fine(
+        'Groovy is not configured in this project. Will not '
+        'install Groovydocs tools.',
+      );
+      return;
+    }
+    final deps = FileDependencies(File(depsFile), depsCache, alwaysTrue);
+    await _install(
+      installGroovydocsTaskName,
+      jBuildSender,
+      preArgs,
+      deps,
+      libsDir,
+    );
+  }
+
+  return _createInstallDepsTask(
+    installGroovydocsTaskName,
+    'runtime',
+    action,
+    depsFile,
+    const [],
+    const [],
+    libsDir,
+    null,
+    cache,
+  );
+}
+
 Task createInstallCompileDepsTask(
   JbFiles files,
   JbConfiguration config,

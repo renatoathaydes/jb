@@ -24,6 +24,9 @@ class JbFiles {
   File get testRunnerDependenciesFile =>
       File(p.join(jbCache, 'test-runner-dependencies.json'));
 
+  File get groovydocsDependenciesFile =>
+      File(p.join(jbCache, 'groovydocs-dependencies.json'));
+
   File get javaSrcFileTreeFile =>
       File(p.join(jbCache, 'java-src-file-tree.txt'));
 

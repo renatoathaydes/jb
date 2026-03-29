@@ -12,9 +12,8 @@ const _junitConsolePrefix =
 const _junitPlatformPrefix = 'org.junit.platform:';
 
 const _junitApiPrefix = 'org.junit.jupiter:junit-jupiter-api:';
-const _spockPrefix = 'org.spockframework:spock-core:';
+const _spockPrefix = '$spockCore:';
 const junitRunnerJarNamePrefix = 'junit-platform-console-standalone-';
-const junitRunnerLibsDir = 'test-runner';
 
 /// Testing Framework information.
 typedef TestConfig = ({

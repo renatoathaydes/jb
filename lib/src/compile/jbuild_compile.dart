@@ -17,9 +17,9 @@ Future<JavaCommand> jbuildCompileCommand(
   String workingDir,
   bool publication,
   TransitiveChanges? changes,
-  List<String> args,
-  bool isGroovyEnabled,
-) async {
+  List<String> args, {
+  required bool isGroovyEnabled,
+}) async {
   final commandArgs = [
     ...args,
     ...await config.compileArgs(

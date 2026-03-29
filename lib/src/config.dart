@@ -23,9 +23,15 @@ const jsonJbFile = 'jbuild.json';
 
 const jbuild = 'com.athaydes.jbuild:jbuild';
 const jbApi = 'com.athaydes.jbuild:jbuild-api';
-const groovy3 = 'org.codehaus.groovy:groovy';
-const groovy4 = 'org.apache.groovy:groovy';
+const groovy3Group = 'org.codehaus.groovy';
+const groovy4Group = 'org.apache.groovy';
+const groovy3 = '$groovy3Group:groovy';
+const groovy4 = '$groovy4Group:groovy';
 const spockCore = 'org.spockframework:spock-core';
+
+// libs dir stored within the jb-cache
+const junitRunnerLibsDir = 'test-runner';
+const groovydocLibsDir = 'groovydocs-libs';
 
 /// Parse the YAML/JSON jbuild file.
 ///

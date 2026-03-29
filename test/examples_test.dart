@@ -205,6 +205,24 @@ void main() {
           ]),
         );
       });
+
+      test('can publish Groovy project', () async {
+        final mavenHome = p.join(groovyProjectDir, 'mvn');
+
+        final jbResult = await runJb(
+          Directory(groovyProjectDir),
+          const ['publish'],
+          {'MAVEN_LOCAL_HOME': mavenHome},
+        );
+
+        // TODO failing because Groovy 4 does not work, only Groovy 5
+        try {
+          expectSuccess(jbResult);
+          await assertDirectoryContents(Directory(mavenHome), ['foo']);
+        } finally {
+          await deleteAll(dir(mavenHome));
+        }
+      }, skip: true);
     });
 
     projectGroup(groovyProjectDir, 'Spock', () {

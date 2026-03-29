@@ -34,6 +34,7 @@ class JbDartle {
       publicationCompile,
       writeDeps,
       verifyDeps,
+      installGroovydocs,
       installCompile,
       installRuntime,
       installProcessor,
@@ -183,6 +184,14 @@ class JbDartle {
       _cache,
       localDependencies,
     );
+    installGroovydocs = createInstallGroovydocsTask(
+      _files,
+      configContainer,
+      jvmExecutor,
+      depsCache,
+      _cache,
+      localDependencies,
+    );
     installRuntime = createInstallRuntimeDepsTask(
       _files,
       configContainer,
@@ -282,6 +291,7 @@ class JbDartle {
       publicationCompile,
       writeDeps,
       verifyDeps,
+      installGroovydocs,
       installCompile,
       installRuntime,
       installProcessor,

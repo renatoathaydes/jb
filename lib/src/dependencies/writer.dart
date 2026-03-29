@@ -7,6 +7,7 @@ import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:path/path.dart' as paths;
 
+import '../compile/groovy.dart';
 import '../config.dart';
 import '../java_tests.dart';
 import '../jb_files.dart';
@@ -88,6 +89,22 @@ Future<void> writeDependencies(
     const [],
     jbFiles.testRunnerDependenciesFile,
   );
+  final groovydocsDep = await findGroovydocsDependency(mainDeps.dependencies);
+  if (groovydocsDep != null) {
+    await _write(
+      'Groovydocs dependencies',
+      jBuildSender,
+      preArgs,
+      jbFiles,
+      depsCache,
+      {groovydocsDep: const DependencySpec()},
+      const {},
+      const [],
+      jbFiles.groovydocsDependenciesFile,
+    );
+  } else {
+    await ignoreExceptions(jbFiles.groovydocsDependenciesFile.delete);
+  }
 }
 
 Stream<_ExclusionsAndProjectDeps> _projectDepsAndExclusions(

@@ -143,8 +143,9 @@ List<String> outputOfProjectDependencies(ProcessResult result) {
 Future<ProcessResult> runJb(
   Directory workingDir, [
   List<String> args = const [],
+  Map<String, String> env = const {},
 ]) {
-  return runProcess(jbuildExecutable, workingDir, args);
+  return runProcess(jbuildExecutable, workingDir, args, env);
 }
 
 Future<Process> startJb(
@@ -171,11 +172,17 @@ Future<ProcessResult> runProcess(
   String name,
   Directory workingDir, [
   List<String> args = const [],
+  Map<String, String> env = const {},
 ]) async {
   final stdout = <String>[];
   final stderr = <String>[];
   final exitCode = await exec(
-    Process.start(name, args, workingDirectory: workingDir.path),
+    Process.start(
+      name,
+      args,
+      environment: env,
+      workingDirectory: workingDir.path,
+    ),
     onStdoutLine: stdout.add,
     onStderrLine: stderr.add,
   );
