@@ -1,3 +1,13 @@
+# 0.17.0
+
+- improved handling of dependencies checksums: store checksums at the root directory to make it visible.
+- support for groovy-docs generation in Groovy projects.
+- stopped hashing the name of jb-extension in jb-cache.
+- fixed mistake computing whether jb extension tasks need to be reloaded.
+- made `publish` task depend on `compile` task.
+- do not log missing Maven credentials when only publishing to Maven local.
+- delete installation directory before installing again (to make sure the installation is clean).
+
 # 0.16.1
 
 - fixed Java module incremental compilation.

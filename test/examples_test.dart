@@ -11,6 +11,11 @@ const errorProneProjectDir = 'example/error-prone-java-project';
 const minimalProjectDir = 'example/minimal-java-project';
 const groovyProjectDir = 'example/groovy-example';
 
+const groovy4Version = '4.0.20';
+const groovy5Version = '5.0.0';
+const groovy4Dep = '  org.apache.groovy:groovy:$groovy4Version:';
+const groovy5Dep = '  org.apache.groovy:groovy:$groovy5Version:';
+
 void main() {
   projectGroup(errorProneProjectDir, 'error-prone example', () {
     test('error prone plugin runs and finds problem with the code', () async {
@@ -206,8 +211,8 @@ void main() {
         );
       });
 
-      test('can publish Groovy project', () async {
-        final mavenHome = p.join(groovyProjectDir, 'mvn');
+      test('can publish Groovy project (Groovy 4)', () async {
+        const mavenHome = 'mvn1';
 
         final jbResult = await runJb(
           Directory(groovyProjectDir),
@@ -215,14 +220,76 @@ void main() {
           {'MAVEN_LOCAL_HOME': mavenHome},
         );
 
-        // TODO failing because Groovy 4 does not work, only Groovy 5
         try {
           expectSuccess(jbResult);
-          await assertDirectoryContents(Directory(mavenHome), ['foo']);
+          await assertDirectoryContents(
+            Directory(p.join(groovyProjectDir, mavenHome)),
+            [
+              p.join(
+                'org',
+                'apache',
+                'groovy',
+                'groovy-docgenerator',
+                groovy4Version,
+                'groovy-docgenerator-$groovy4Version.pom',
+              ),
+              p.join(
+                'org',
+                'apache',
+                'groovy',
+                'groovy-docgenerator',
+                groovy4Version,
+                'groovy-docgenerator-$groovy4Version.jar',
+              ),
+            ],
+            checkLength: false,
+          );
         } finally {
-          await deleteAll(dir(mavenHome));
+          await deleteAll(dir(p.join(groovyProjectDir, mavenHome)));
         }
-      }, skip: true);
+      });
+
+      test('can publish Groovy project (Groovy 5)', () async {
+        const mavenHome = 'mvn2';
+        final originalJbFileLines = await _changeGroovyProjectToUseGroovy5();
+
+        try {
+          final jbResult = await runJb(
+            Directory(groovyProjectDir),
+            const ['publish'],
+            {'MAVEN_LOCAL_HOME': mavenHome},
+          );
+          try {
+            expectSuccess(jbResult);
+            await assertDirectoryContents(
+              Directory(p.join(groovyProjectDir, mavenHome)),
+              [
+                p.join(
+                  'org',
+                  'apache',
+                  'groovy',
+                  'groovy-docgenerator',
+                  groovy5Version,
+                  'groovy-docgenerator-$groovy5Version.pom',
+                ),
+                p.join(
+                  'org',
+                  'apache',
+                  'groovy',
+                  'groovy-docgenerator',
+                  groovy5Version,
+                  'groovy-docgenerator-$groovy5Version.jar',
+                ),
+              ],
+              checkLength: false,
+            );
+          } finally {
+            await deleteAll(dir(p.join(groovyProjectDir, mavenHome)));
+          }
+        } finally {
+          await _restoreGroovyProjectJbFile(originalJbFileLines);
+        }
+      });
     });
 
     projectGroup(groovyProjectDir, 'Spock', () {
@@ -257,4 +324,33 @@ void main() {
       });
     });
   });
+}
+
+Future<List<String>> _changeGroovyProjectToUseGroovy5() async {
+  final jbFile = File(p.join(groovyProjectDir, 'jbuild.yaml'));
+  final lines = await jbFile.readAsLines();
+  final groovyDepLineIndex = lines.indexWhere((line) => line == groovy4Dep);
+  if (groovyDepLineIndex < 0) {
+    fail('Cannot find the groovy dependency in ${jbFile.path}');
+  }
+  final jbFileWriter = jbFile.openWrite();
+  try {
+    for (final (index, line) in lines.indexed) {
+      if (index == groovyDepLineIndex) {
+        jbFileWriter.writeln(groovy5Dep);
+      } else {
+        jbFileWriter.writeln(line);
+      }
+    }
+  } finally {
+    await jbFileWriter.close();
+  }
+  return lines;
+}
+
+Future<void> _restoreGroovyProjectJbFile(List<String> originalLines) async {
+  final jbFile = File(p.join(groovyProjectDir, 'jbuild.yaml'));
+  await jbFile.writeAsString(
+    originalLines.join(Platform.lineTerminator) + Platform.lineTerminator,
+  );
 }
