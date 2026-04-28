@@ -978,8 +978,17 @@ Future<void> _test(
 ) async {
   final config = configContainer.config;
   final libs = Directory(config.runtimeLibsDir).list();
+
+  final junitRunnerJars = await p
+      .join(cache.rootDir, junitRunnerLibsDir)
+      .jarsUnder()
+      .toList();
+
+  final testPath = configContainer.output.when(dir: (d) => d, jar: (j) => j);
+
   final classpath = {
-    configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j),
+    ...junitRunnerJars,
+    testPath,
     config.runtimeLibsDir,
     await for (final lib in libs)
       if (p.extension(lib.path) == '.jar') lib.path,
@@ -988,7 +997,11 @@ Future<void> _test(
   const mainClass = 'org.junit.platform.console.ConsoleLauncher';
 
   final hasCustomSelect = args.any(
-    (arg) => arg.startsWith('--select') || arg.startsWith('--scan-classpath'),
+    (arg) =>
+        arg.startsWith('--select') ||
+        arg == '-n' ||
+        arg.startsWith('--scan-classpath') ||
+        arg.startsWith('--scan-modules'),
   );
 
   final isSpockConfigured = configContainer.testConfig.spockVersion != null;
@@ -999,20 +1012,16 @@ Future<void> _test(
       ? null
       : '.*Spec|.*Specification|.*Specifications|.*Test|.*Tests|.*TestSuite|.*TestCase';
 
-  final junitSubcommand = await junitTestSubcommand(
-    p.join(cache.rootDir, junitRunnerLibsDir),
-  );
+  final junitSubcommand = junitTestSubcommand(junitRunnerJars);
 
   final exitCode = await execJava(testTaskName, [
     ...config.testJavaArgs,
     '-ea',
     '-cp',
-    p.join(cache.rootDir, junitRunnerLibsDir, '*'),
+    classpath,
     mainClass,
     ?junitSubcommand,
-    '--classpath=$classpath',
-    if (!hasCustomSelect)
-      '--scan-classpath=${configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j)}',
+    if (!hasCustomSelect) '--scan-classpath=$testPath',
     if (customTestNames != null) ...['-n', customTestNames],
     '--reports-dir=${config.testReportsDir}',
     '--fail-if-no-tests',

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:collection/collection.dart';
 import 'package:dartle/dartle.dart';
 import 'package:path/path.dart' as p;
@@ -89,12 +87,12 @@ String spockRunnerLib(TestConfig testConfig) {
 /// Since version 1.10, they warn that `execute` must be used, so
 /// we try to find out which version we're using and if that's 1.10
 /// or above, `execute` is returned, otherwise `null`.
-Future<String?> junitTestSubcommand(String junitLauncherDir) async {
-  await for (final file in Directory(junitLauncherDir).list()) {
-    if (!file.path.endsWith('.jar')) {
+String? junitTestSubcommand(List<String> jars) {
+  for (final file in jars) {
+    if (!file.endsWith('.jar')) {
       continue;
     }
-    final name = p.basenameWithoutExtension(file.path);
+    final name = p.basenameWithoutExtension(file);
     if (name.startsWith(junitRunnerJarNamePrefix)) {
       final versionParts = name
           .substring(junitRunnerJarNamePrefix.length)

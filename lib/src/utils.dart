@@ -320,6 +320,13 @@ extension StringExtension on String {
     return "$this$classpathSeparator$classpath";
   }
 
+  Stream<String> jarsUnder() {
+    return Directory(this)
+        .list()
+        .where((entity) => entity is File && entity.path.endsWith('.jar'))
+        .map((entity) => entity.path);
+  }
+
   String asDirPath() {
     if (Platform.isWindows && endsWith('/')) {
       return "${substring(0, length - 1)}\\";
