@@ -977,21 +977,20 @@ Future<void> _test(
   List<String> args,
 ) async {
   final config = configContainer.config;
-  final libs = Directory(config.runtimeLibsDir).list();
 
   final junitRunnerJars = await p
       .join(cache.rootDir, junitRunnerLibsDir)
       .jarsUnder()
       .toList();
 
-  final testPath = configContainer.output.when(dir: (d) => d, jar: (j) => j);
+  final testLibPath = configContainer.output.when(dir: (d) => d, jar: (j) => j);
 
-  final classpath = {
-    ...junitRunnerJars,
-    testPath,
+  final runnerClasspath = junitRunnerJars.join(classpathSeparator);
+
+  final testClasspath = {
+    testLibPath,
     config.runtimeLibsDir,
-    await for (final lib in libs)
-      if (p.extension(lib.path) == '.jar') lib.path,
+    ...await config.runtimeLibsDir.jarsUnder().toList(),
   }.join(classpathSeparator);
 
   const mainClass = 'org.junit.platform.console.ConsoleLauncher';
@@ -999,14 +998,13 @@ Future<void> _test(
   final hasCustomSelect = args.any(
     (arg) =>
         arg.startsWith('--select') ||
-        arg == '-n' ||
         arg.startsWith('--scan-classpath') ||
         arg.startsWith('--scan-modules'),
   );
 
   final isSpockConfigured = configContainer.testConfig.spockVersion != null;
   final hasCustomName = args.any(
-    (arg) => arg == '-n' || arg.startsWith('--include-classname'),
+    (arg) => arg.startsWith('-n=') || arg.startsWith('--include-classname='),
   );
   final customTestNames = (hasCustomName || !isSpockConfigured)
       ? null
@@ -1018,10 +1016,11 @@ Future<void> _test(
     ...config.testJavaArgs,
     '-ea',
     '-cp',
-    classpath,
+    runnerClasspath,
     mainClass,
     ?junitSubcommand,
-    if (!hasCustomSelect) '--scan-classpath=$testPath',
+    '--classpath=$testClasspath',
+    if (!hasCustomSelect) '--scan-classpath=$testLibPath',
     if (customTestNames != null) ...['-n', customTestNames],
     '--reports-dir=${config.testReportsDir}',
     '--fail-if-no-tests',
