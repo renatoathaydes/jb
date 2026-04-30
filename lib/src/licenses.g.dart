@@ -492,6 +492,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "Brian-Gladman-3-Clause-no-conversion": License(
+    licenseId: "Brian-Gladman-3-Clause-no-conversion",
+    name: "Brian Gladman 3-Clause License (no conversion clause)",
+    uri: "https://spdx.org/licenses/Brian-Gladman-3-Clause-no-conversion.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "BSD-1-Clause": License(
     licenseId: "BSD-1-Clause",
     name: "BSD 1-Clause License",
@@ -3399,6 +3406,13 @@ const allLicenses = <String, License>{
     licenseId: "Mup",
     name: "Mup License",
     uri: "https://spdx.org/licenses/Mup.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "MVT-1.1": License(
+    licenseId: "MVT-1.1",
+    name: "MVT License 1.1",
+    uri: "https://spdx.org/licenses/MVT-1.1.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
