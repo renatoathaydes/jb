@@ -22,9 +22,10 @@ void projectGroup(
   Function() definition, [
   List<String> subDirectories = const [],
 ]) {
-  final rootDirs = subDirectories.isEmpty
-      ? [projectDir]
-      : subDirectories.map((d) => p.join(projectDir, d));
+  final rootDirs = [
+    projectDir,
+    ...subDirectories.map((d) => p.join(projectDir, d)),
+  ];
   final outputDirs = dirs([
     for (final d in rootDirs) ...[
       p.join(d, '.jb-cache'),
