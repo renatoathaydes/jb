@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
-import 'package:jb/jb.dart' show JbFiles, groovy3, groovy4;
+import 'package:jb/jb.dart' show groovy3, groovy4;
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -188,10 +188,129 @@ void main() {
         ]),
       );
     });
+    // end minimal project group
+  });
 
-    projectGroup(groovyProjectDir, 'Groovy example', () {
-      test('can compile simple Groovy class into a jar', () async {
-        final jbResult = await runJb(Directory(groovyProjectDir));
+  projectGroup(groovyProjectDir, 'Groovy example', () {
+    test('can compile simple Groovy class into a jar', () async {
+      final jbResult = await runJb(Directory(groovyProjectDir));
+      expectSuccess(jbResult);
+      final jarPath = p.join(groovyProjectDir, 'build', 'groovy-example.jar');
+      expect(
+        await File(jarPath).exists(),
+        isTrue,
+        reason: 'jar should be created',
+      );
+
+      final jarList = await execRead(Process.start('jar', ['-tf', jarPath]));
+      expect(jarList.exitCode, equals(0));
+      expect(
+        jarList.stdout,
+        containsAllInOrder([
+          'META-INF/',
+          'META-INF/MANIFEST.MF',
+          'example/',
+          'example/Main.class',
+        ]),
+      );
+    });
+
+    Future<void> runGroovyProjectTestPublishTask(
+      String mavenHome,
+      groovyVersion,
+    ) async {
+      try {
+        final jbResult = await runJb(
+          Directory(groovyProjectDir),
+          const ['publish'],
+          {'MAVEN_LOCAL_HOME': mavenHome},
+        );
+
+        expectSuccess(jbResult);
+        await assertDirectoryContents(
+          Directory(p.join(groovyProjectDir, mavenHome)),
+          [
+            p.join(
+              'org',
+              (groovyVersion == groovy3Version) ? 'codehaus' : 'apache',
+              'groovy',
+              'groovy-docgenerator',
+              groovyVersion,
+              'groovy-docgenerator-$groovyVersion.pom',
+            ),
+            p.join(
+              'org',
+              (groovyVersion == groovy3Version) ? 'codehaus' : 'apache',
+              'groovy',
+              'groovy-docgenerator',
+              groovyVersion,
+              'groovy-docgenerator-$groovyVersion.jar',
+            ),
+          ],
+          checkLength: false,
+        );
+      } finally {
+        await deleteAll(dir(p.join(groovyProjectDir, mavenHome)));
+      }
+    }
+
+    test('can publish Groovy project (Groovy 4)', () async {
+      const mavenHome = 'mvn-home-groovy-4';
+      await runGroovyProjectTestPublishTask(mavenHome, groovy4Version);
+    });
+
+    test('can publish Groovy project (Groovy 3)', () async {
+      const mavenHome = 'mvn-home-groovy-3';
+      final originalJbFileLines = await _changeGroovyProjectToUseGroovy(3);
+
+      try {
+        await runGroovyProjectTestPublishTask(mavenHome, groovy3Version);
+      } finally {
+        await _restoreGroovyProjectJbFile(originalJbFileLines);
+      }
+    });
+
+    test('can publish Groovy project (Groovy 5)', () async {
+      const mavenHome = 'mvn-home-groovy-5';
+      final originalJbFileLines = await _changeGroovyProjectToUseGroovy(5);
+
+      try {
+        await runGroovyProjectTestPublishTask(mavenHome, groovy5Version);
+      } finally {
+        await _restoreGroovyProjectJbFile(originalJbFileLines);
+      }
+    });
+
+    test('can run Spock tests', () async {
+      final jbResult = await runJb(
+        Directory(p.join(groovyProjectDir, 'test')),
+        const ['test', '--no-color'],
+      );
+      expectSuccess(jbResult);
+      const unicodeResults =
+          ''
+          '└─ Spock ✔\n'
+          '   └─ MainSpec ✔\n'
+          '      ├─ hello spock ✔\n'
+          '      └─ Immutable test ✔\n';
+      const asciiResults =
+          '\n'
+          '\'-- Spock [OK]\n'
+          '  \'-- MainSpec [OK]\n'
+          '    +-- hello spock [OK]\n'
+          '    \'-- Immutable test [OK]\n';
+      expect(
+        jbResult.stdout.join('\n'),
+        anyOf(contains(unicodeResults), contains(asciiResults)),
+      );
+    });
+
+    test(
+      'when upgrading library (Groovy 4 to 5) libs directories are updated',
+      () async {
+        var jbResult = await runJb(Directory(groovyProjectDir), [
+          'installRuntime',
+        ]);
         expectSuccess(jbResult);
         final jarPath = p.join(groovyProjectDir, 'build', 'groovy-example.jar');
         expect(
@@ -199,166 +318,55 @@ void main() {
           isTrue,
           reason: 'jar should be created',
         );
-
-        final jarList = await execRead(Process.start('jar', ['-tf', jarPath]));
-        expect(jarList.exitCode, equals(0));
-        expect(
-          jarList.stdout,
-          containsAllInOrder([
-            'META-INF/',
-            'META-INF/MANIFEST.MF',
-            'example/',
-            'example/Main.class',
-          ]),
+        await assertDirectoryContents(
+          Directory(p.join(groovyProjectDir, 'build', 'compile-libs')),
+          ['groovy-$groovy4Version.jar', 'groovy-$groovy4Version.pom'],
         );
-      });
+        await assertDirectoryContents(
+          Directory(p.join(groovyProjectDir, 'build', 'runtime-libs')),
+          [
+            'groovy-$groovy4Version.jar',
+            'groovy-$groovy4Version.pom',
+            'groovy-example.jar',
+          ],
+        );
+        // verify the checksum file
+        await verifyDependenciesChecksums(Directory(groovyProjectDir), {
+          '$groovy4:$groovy4Version':
+              'd5bd8f500fc3fac63b6de06e597940defb8320fa',
+        });
 
-      Future<void> runGroovyProjectTestPublishTask(
-        String mavenHome,
-        groovyVersion,
-      ) async {
-        try {
-          final jbResult = await runJb(
-            Directory(groovyProjectDir),
-            const ['publish'],
-            {'MAVEN_LOCAL_HOME': mavenHome},
-          );
-
-          expectSuccess(jbResult);
-          await assertDirectoryContents(
-            Directory(p.join(groovyProjectDir, mavenHome)),
-            [
-              p.join(
-                'org',
-                (groovyVersion == groovy3Version) ? 'codehaus' : 'apache',
-                'groovy',
-                'groovy-docgenerator',
-                groovyVersion,
-                'groovy-docgenerator-$groovyVersion.pom',
-              ),
-              p.join(
-                'org',
-                (groovyVersion == groovy3Version) ? 'codehaus' : 'apache',
-                'groovy',
-                'groovy-docgenerator',
-                groovyVersion,
-                'groovy-docgenerator-$groovyVersion.jar',
-              ),
-            ],
-            checkLength: false,
-          );
-        } finally {
-          await deleteAll(dir(p.join(groovyProjectDir, mavenHome)));
-        }
-      }
-
-      test('can publish Groovy project (Groovy 4)', () async {
-        const mavenHome = 'mvn-home-groovy-4';
-        await runGroovyProjectTestPublishTask(mavenHome, groovy4Version);
-      });
-
-      test('can publish Groovy project (Groovy 3)', () async {
-        const mavenHome = 'mvn-home-groovy-3';
-        final originalJbFileLines = await _changeGroovyProjectToUseGroovy(3);
-
-        try {
-          await runGroovyProjectTestPublishTask(mavenHome, groovy3Version);
-        } finally {
-          await _restoreGroovyProjectJbFile(originalJbFileLines);
-        }
-      });
-
-      test('can publish Groovy project (Groovy 5)', () async {
-        const mavenHome = 'mvn-home-groovy-5';
+        // when we upgrade to Groovy 5, the libs dir must be cleaned up
         final originalJbFileLines = await _changeGroovyProjectToUseGroovy(5);
 
         try {
-          await runGroovyProjectTestPublishTask(mavenHome, groovy5Version);
+          var jbResult = await runJb(Directory(groovyProjectDir), [
+            'installRuntime',
+          ]);
+          expectSuccess(jbResult);
+          await assertDirectoryContents(
+            Directory(p.join(groovyProjectDir, 'build', 'compile-libs')),
+            ['groovy-$groovy5Version.jar', 'groovy-$groovy5Version.pom'],
+          );
+          await assertDirectoryContents(
+            Directory(p.join(groovyProjectDir, 'build', 'runtime-libs')),
+            [
+              'groovy-$groovy5Version.jar',
+              'groovy-$groovy5Version.pom',
+              'groovy-example.jar',
+            ],
+          );
+          // verify the checksum file was updated correctly
+          await verifyDependenciesChecksums(Directory(groovyProjectDir), {
+            '$groovy4:$groovy5Version':
+                'b4e9817ec0f53d48670a414f9090492c9c459643',
+          });
         } finally {
           await _restoreGroovyProjectJbFile(originalJbFileLines);
         }
-      });
-
-      test(
-        'when upgrading library (Groovy 4 to 5) libs directories are updated',
-        () async {
-          var jbResult = await runJb(Directory(groovyProjectDir));
-          expectSuccess(jbResult);
-          final jarPath = p.join(
-            groovyProjectDir,
-            'build',
-            'groovy-example.jar',
-          );
-          expect(
-            await File(jarPath).exists(),
-            isTrue,
-            reason: 'jar should be created',
-          );
-          await assertDirectoryContents(
-            Directory(p.join(groovyProjectDir, 'build', 'compile-libs')),
-            ['groovy-$groovy4Version.jar', 'groovy-$groovy4Version.pom'],
-          );
-
-          // verify the checksum file
-          await verifyDependenciesChecksums(Directory(groovyProjectDir), {
-            '$groovy4:$groovy4Version':
-                'd5bd8f500fc3fac63b6de06e597940defb8320fa',
-          });
-
-          // when we upgrade to Groovy 5, the libs dir must be cleaned up
-          final originalJbFileLines = await _changeGroovyProjectToUseGroovy(5);
-
-          try {
-            var jbResult = await runJb(Directory(groovyProjectDir));
-            expectSuccess(jbResult);
-            await assertDirectoryContents(
-              Directory(p.join(groovyProjectDir, 'build', 'compile-libs')),
-              ['groovy-$groovy5Version.jar', 'groovy-$groovy5Version.pom'],
-            );
-            // verify the checksum file was updated correctly
-            await verifyDependenciesChecksums(Directory(groovyProjectDir), {
-              '$groovy4:$groovy5Version':
-                  'b4e9817ec0f53d48670a414f9090492c9c459643',
-            });
-          } finally {
-            await _restoreGroovyProjectJbFile(originalJbFileLines);
-          }
-        },
-      );
-    });
-
-    projectGroup(groovyProjectDir, 'Spock', () {
-      tearDown(() async {
-        await deleteAll(
-          file(p.join(groovyProjectDir, 'test', JbFiles.dependenciesChecksum)),
-        );
-      });
-
-      test('can run Spock tests', () async {
-        final jbResult = await runJb(
-          Directory(p.join(groovyProjectDir, 'test')),
-          const ['test', '--no-color'],
-        );
-        expectSuccess(jbResult);
-        const unicodeResults =
-            ''
-            '└─ Spock ✔\n'
-            '   └─ MainSpec ✔\n'
-            '      ├─ hello spock ✔\n'
-            '      └─ Immutable test ✔\n';
-        const asciiResults =
-            '\n'
-            '\'-- Spock [OK]\n'
-            '  \'-- MainSpec [OK]\n'
-            '    +-- hello spock [OK]\n'
-            '    \'-- Immutable test [OK]\n';
-        expect(
-          jbResult.stdout.join('\n'),
-          anyOf(contains(unicodeResults), contains(asciiResults)),
-        );
-      });
-    });
-  });
+      },
+    );
+  }, ['test']);
 }
 
 Future<List<String>> _changeGroovyProjectToUseGroovy(int groovyVersion) async {
