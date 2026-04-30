@@ -278,6 +278,53 @@ void main() {
           await _restoreGroovyProjectJbFile(originalJbFileLines);
         }
       });
+
+      test(
+        'when upgrading library (Groovy 4 to 5) libs directories are updated',
+        () async {
+          var jbResult = await runJb(Directory(groovyProjectDir));
+          expectSuccess(jbResult);
+          final jarPath = p.join(
+            groovyProjectDir,
+            'build',
+            'groovy-example.jar',
+          );
+          expect(
+            await File(jarPath).exists(),
+            isTrue,
+            reason: 'jar should be created',
+          );
+          await assertDirectoryContents(
+            Directory(p.join(groovyProjectDir, 'build', 'compile-libs')),
+            ['groovy-$groovy4Version.jar', 'groovy-$groovy4Version.pom'],
+          );
+
+          // verify the checksum file
+          await verifyDependenciesChecksums(Directory(groovyProjectDir), {
+            '$groovy4:$groovy4Version':
+                'd5bd8f500fc3fac63b6de06e597940defb8320fa',
+          });
+
+          // when we upgrade to Groovy 5, the libs dir must be cleaned up
+          final originalJbFileLines = await _changeGroovyProjectToUseGroovy(5);
+
+          try {
+            var jbResult = await runJb(Directory(groovyProjectDir));
+            expectSuccess(jbResult);
+            await assertDirectoryContents(
+              Directory(p.join(groovyProjectDir, 'build', 'compile-libs')),
+              ['groovy-$groovy5Version.jar', 'groovy-$groovy5Version.pom'],
+            );
+            // verify the checksum file was updated correctly
+            await verifyDependenciesChecksums(Directory(groovyProjectDir), {
+              '$groovy4:$groovy5Version':
+                  'b4e9817ec0f53d48670a414f9090492c9c459643',
+            });
+          } finally {
+            await _restoreGroovyProjectJbFile(originalJbFileLines);
+          }
+        },
+      );
     });
 
     projectGroup(groovyProjectDir, 'Spock', () {
