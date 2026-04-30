@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
-import 'package:jb/jb.dart' show JbFiles;
+import 'package:jb/jb.dart' show JbFiles, groovy3, groovy4;
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -11,10 +11,12 @@ const errorProneProjectDir = 'example/error-prone-java-project';
 const minimalProjectDir = 'example/minimal-java-project';
 const groovyProjectDir = 'example/groovy-example';
 
+const groovy3Version = '3.0.25';
 const groovy4Version = '4.0.20';
 const groovy5Version = '5.0.0';
-const groovy4Dep = '  org.apache.groovy:groovy:$groovy4Version:';
-const groovy5Dep = '  org.apache.groovy:groovy:$groovy5Version:';
+const groovy3Dep = '  $groovy3:$groovy3Version:';
+const groovy4Dep = '  $groovy4:$groovy4Version:';
+const groovy5Dep = '  $groovy4:$groovy5Version:';
 
 void main() {
   projectGroup(errorProneProjectDir, 'error-prone example', () {
@@ -211,35 +213,36 @@ void main() {
         );
       });
 
-      test('can publish Groovy project (Groovy 4)', () async {
-        const mavenHome = 'mvn1';
-
-        final jbResult = await runJb(
-          Directory(groovyProjectDir),
-          const ['publish'],
-          {'MAVEN_LOCAL_HOME': mavenHome},
-        );
-
+      Future<void> runGroovyProjectTestPublishTask(
+        String mavenHome,
+        groovyVersion,
+      ) async {
         try {
+          final jbResult = await runJb(
+            Directory(groovyProjectDir),
+            const ['publish'],
+            {'MAVEN_LOCAL_HOME': mavenHome},
+          );
+
           expectSuccess(jbResult);
           await assertDirectoryContents(
             Directory(p.join(groovyProjectDir, mavenHome)),
             [
               p.join(
                 'org',
-                'apache',
+                (groovyVersion == groovy3Version) ? 'codehaus' : 'apache',
                 'groovy',
                 'groovy-docgenerator',
-                groovy4Version,
-                'groovy-docgenerator-$groovy4Version.pom',
+                groovyVersion,
+                'groovy-docgenerator-$groovyVersion.pom',
               ),
               p.join(
                 'org',
-                'apache',
+                (groovyVersion == groovy3Version) ? 'codehaus' : 'apache',
                 'groovy',
                 'groovy-docgenerator',
-                groovy4Version,
-                'groovy-docgenerator-$groovy4Version.jar',
+                groovyVersion,
+                'groovy-docgenerator-$groovyVersion.jar',
               ),
             ],
             checkLength: false,
@@ -247,45 +250,30 @@ void main() {
         } finally {
           await deleteAll(dir(p.join(groovyProjectDir, mavenHome)));
         }
+      }
+
+      test('can publish Groovy project (Groovy 4)', () async {
+        const mavenHome = 'mvn-home-groovy-4';
+        await runGroovyProjectTestPublishTask(mavenHome, groovy4Version);
+      });
+
+      test('can publish Groovy project (Groovy 3)', () async {
+        const mavenHome = 'mvn-home-groovy-3';
+        final originalJbFileLines = await _changeGroovyProjectToUseGroovy(3);
+
+        try {
+          await runGroovyProjectTestPublishTask(mavenHome, groovy3Version);
+        } finally {
+          await _restoreGroovyProjectJbFile(originalJbFileLines);
+        }
       });
 
       test('can publish Groovy project (Groovy 5)', () async {
-        const mavenHome = 'mvn2';
-        final originalJbFileLines = await _changeGroovyProjectToUseGroovy5();
+        const mavenHome = 'mvn-home-groovy-5';
+        final originalJbFileLines = await _changeGroovyProjectToUseGroovy(5);
 
         try {
-          final jbResult = await runJb(
-            Directory(groovyProjectDir),
-            const ['publish'],
-            {'MAVEN_LOCAL_HOME': mavenHome},
-          );
-          try {
-            expectSuccess(jbResult);
-            await assertDirectoryContents(
-              Directory(p.join(groovyProjectDir, mavenHome)),
-              [
-                p.join(
-                  'org',
-                  'apache',
-                  'groovy',
-                  'groovy-docgenerator',
-                  groovy5Version,
-                  'groovy-docgenerator-$groovy5Version.pom',
-                ),
-                p.join(
-                  'org',
-                  'apache',
-                  'groovy',
-                  'groovy-docgenerator',
-                  groovy5Version,
-                  'groovy-docgenerator-$groovy5Version.jar',
-                ),
-              ],
-              checkLength: false,
-            );
-          } finally {
-            await deleteAll(dir(p.join(groovyProjectDir, mavenHome)));
-          }
+          await runGroovyProjectTestPublishTask(mavenHome, groovy5Version);
         } finally {
           await _restoreGroovyProjectJbFile(originalJbFileLines);
         }
@@ -326,7 +314,12 @@ void main() {
   });
 }
 
-Future<List<String>> _changeGroovyProjectToUseGroovy5() async {
+Future<List<String>> _changeGroovyProjectToUseGroovy(int groovyVersion) async {
+  final groovyDep = switch (groovyVersion) {
+    3 => groovy3Dep,
+    5 => groovy5Dep,
+    _ => throw Exception('Groovy version is not supported: $groovyVersion'),
+  };
   final jbFile = File(p.join(groovyProjectDir, 'jbuild.yaml'));
   final lines = await jbFile.readAsLines();
   final groovyDepLineIndex = lines.indexWhere((line) => line == groovy4Dep);
@@ -337,7 +330,7 @@ Future<List<String>> _changeGroovyProjectToUseGroovy5() async {
   try {
     for (final (index, line) in lines.indexed) {
       if (index == groovyDepLineIndex) {
-        jbFileWriter.writeln(groovy5Dep);
+        jbFileWriter.writeln(groovyDep);
       } else {
         jbFileWriter.writeln(line);
       }
