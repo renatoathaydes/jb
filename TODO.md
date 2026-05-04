@@ -13,6 +13,4 @@ Once the project is in good shape, this should be moved to a proper bug tracker.
 
 ## Bugs
 
-- test task generates a test-reports directory but does not clean it.
-- Java test runner: downloads latest runner: `org.junit.platform:junit-platform-console-standalone:6.0.0-M1`
-  which decided to change all CLI options!
+

@@ -938,7 +938,11 @@ Task createTestTask(
       downloadTestRunnerTaskName,
       installRuntimeDepsTaskName,
     },
-    runCondition: RunOnChanges(inputs: inputs, cache: cache),
+    runCondition: RunOnChanges(
+      inputs: inputs,
+      outputs: dir(config.config.testReportsDir),
+      cache: cache,
+    ),
     description: 'Run tests. JBuild automatically detects JUnit5 and Spock.',
     phase: evaluatePhase,
   );

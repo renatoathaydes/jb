@@ -365,6 +365,24 @@ void main() {
         jbResult.stdout.join('\n'),
         anyOf(contains(unicodeResults), contains(asciiResults)),
       );
+
+      // verify that the test-reports were generated
+      await assertDirectoryContents(
+        Directory(p.join(testsProjectDir, 'build', 'test-reports')),
+        ['TEST-junit-jupiter.xml', 'TEST-junit-vintage.xml'],
+      );
+
+      // clean everything and make sure it did clean everything
+      final jbCleanResult = await runJb(Directory(testsProjectDir), const [
+        'clean',
+        '--no-color',
+      ]);
+      expectSuccess(jbCleanResult);
+
+      await assertDirectoryContents(
+        Directory(p.join(testsProjectDir, 'build')),
+        const [],
+      );
     });
   });
 
