@@ -67,7 +67,7 @@ final class ResolvedProjectDependency {
     JbFiles files,
     JbActors actors,
   ) async {
-    final runner = JbRunner(files, _config.config, actors);
+    final runner = JbRunner(files, _config.cwi, actors);
     logger.info(() => "Initializing project dependency at '$projectDir'");
     await withCurrentDirectory(
       projectDir,

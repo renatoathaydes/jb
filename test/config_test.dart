@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:io/ansi.dart';
@@ -355,20 +356,24 @@ dependencies:
 void main() {
   group('JBuildConfiguration', () {
     test('can load', () async {
-      final config = await loadConfigString('''
+      final cwi = await loadConfigString('''
       output-jar: lib.jar
       ''');
+
+      final config = cwi.config;
 
       expect(config.sourceDirs, equals(const []));
       expect(config.outputJar, 'lib.jar');
       expect(config.outputDir, isNull);
+
+      expect(cwi.imports, equals(const []));
     });
 
     test('can parse full config', () async {
-      final config = await loadConfigString(_fullConfig);
+      final cwi = await loadConfigString(_fullConfig);
 
       expect(
-        config,
+        cwi.config,
         equalsConfig(
           JbConfiguration(
             group: 'my-group',
@@ -425,29 +430,33 @@ void main() {
     });
 
     test('can print full config as YAML', () async {
-      final config = await loadConfigString(_fullConfig);
+      final cwi = await loadConfigString(_fullConfig);
       expect(
-        overrideAnsiOutput(true, () => config.toYaml(false)),
+        overrideAnsiOutput(true, () => cwi.config.toYaml(false)),
         equals(_fullConfigExpanded),
       );
     });
 
     test('can print basic config with dependencies as YAML', () async {
       expect(
-        (await loadConfigString(_basicConfigWithDependencies)).toYaml(true),
+        (await loadConfigString(
+          _basicConfigWithDependencies,
+        )).config.toYaml(true),
         equals(_basicConfigWithDependenciesExpanded),
       );
     });
 
     test('can print basic config with extensions as YAML', () async {
       expect(
-        (await loadConfigString(_basicConfigWithExtensions)).toYaml(true),
+        (await loadConfigString(
+          _basicConfigWithExtensions,
+        )).config.toYaml(true),
         equals(_basicConfigWithExtensionsExpanded),
       );
     });
 
     test('can parse unquoted string in iterable', () async {
-      final config = await loadConfigString('''
+      final cwi = await loadConfigString('''
       source-dirs: [src/java]
       dependency-exclusion-patterns: [one]  
       output-dir: out
@@ -458,7 +467,7 @@ void main() {
       ''');
 
       expect(
-        config,
+        cwi.config,
         equalsConfig(
           const JbConfiguration(
             licenses: [],
@@ -486,17 +495,17 @@ void main() {
     });
 
     test('can parse basic string dependencies', () async {
-      final config = await loadConfigString('''
+      final cwi = await loadConfigString('''
       dependencies:
         foo:
         var:
       ''');
 
-      expect(config.dependencies, equals(const {'foo': null, 'var': null}));
+      expect(cwi.config.dependencies, equals(const {'foo': null, 'var': null}));
     });
 
     test('can parse map dependencies', () async {
-      final config = await loadConfigString('''
+      final cwi = await loadConfigString('''
       dependencies:
         foo:bar:1.0:
             scope: runtime-only
@@ -505,7 +514,7 @@ void main() {
       ''');
 
       expect(
-        config.dependencies,
+        cwi.config.dependencies,
         equals(const {
           'foo:bar:1.0': DependencySpec(scope: DependencyScope.runtimeOnly),
           'second:dep:0.1': null,
@@ -541,14 +550,14 @@ void main() {
     });
 
     test('invalid keys are allowed on top config', () async {
-      final config = await loadConfigString('''
+      final cwi = await loadConfigString('''
       module: foo
       version: "1.0"
       custom: true
       ''');
 
       expect(
-        config,
+        cwi.config,
         equals(
           JbConfiguration(
             module: 'foo',
@@ -761,14 +770,50 @@ void main() {
       final versionsFile = await tempFile(
         extension: '.yaml',
       ).writeAsString(_versionsConfig);
-      final config = await loadConfigString(
+      final cwi = await loadConfigString(
         _configImportingVersionsConfig(versionsFile.path),
       );
+      final config = cwi.config;
       expect(config.module, equals('importing-versions-config'));
       expect(
         config.dependencies,
         equals({'com.athaydes.jbuild:jbuild:0.12.0': null}),
       );
+      expect(cwi.imports, equals([versionsFile.path]));
+    });
+
+    test('can import file from imported file', () async {
+      final importFile1 = tempFile(extension: '.yaml');
+      await importFile1.writeAsString('''
+        version: 1.2.3
+      ''');
+      final importFile2 = tempFile(extension: '.yaml');
+      await importFile2.writeAsString('''
+        imports:
+          - ${importFile1.path}
+        group: foo.bar
+      ''');
+      final importFile3 = tempFile(extension: '.yaml');
+      await importFile3.writeAsString('''
+        name: Test Module
+      ''');
+      final cwi = await loadConfigString('''
+      imports:
+        - ${importFile2.path}
+        - ${importFile3.path}
+      module: testing
+      ''', File('test.yaml'));
+      final config = cwi.config;
+      expect(cwi.configFile, equals('test.yaml'));
+      expect(
+        cwi.imports,
+        // all transitive imports should show up
+        equals({importFile1.path, importFile2.path, importFile3.path}),
+      );
+      expect(config.module, equals('testing')); // from main file
+      expect(config.group, equals('foo.bar')); // main -> file2
+      expect(config.name, equals('Test Module')); // main -> file3
+      expect(config.version, equals('1.2.3')); // main -> file2 -> file1
     });
   });
 

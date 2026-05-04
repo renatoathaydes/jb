@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 
 import 'compute_compilation_path.dart';
 import 'config.dart';
+import 'config_import.dart' show JbConfigWithImports;
 import 'config_source.dart';
 import 'create/create.dart';
 import 'dependencies/deps_cache.dart';
@@ -72,7 +73,7 @@ Future<void> _runJb(
     );
   }
 
-  final config = await _createConfig(configSource ?? defaultJbConfigSource);
+  final cwi = await _createConfig(configSource ?? defaultJbConfigSource);
   final jbFiles = JbFiles(
     jbuildJar,
     configSource: configSource ?? defaultJbConfigSource,
@@ -83,7 +84,7 @@ Future<void> _runJb(
     dartleOptions.colorfulLog,
     jbuildJar.path,
     jbFiles.jvmCdsFile.absolute.path,
-    config.javacArgs.javaRuntimeArgs().toList(growable: false),
+    cwi.config.javacArgs.javaRuntimeArgs().toList(growable: false),
   );
 
   final depsCache = createDepsActor(
@@ -99,7 +100,7 @@ Future<void> _runJb(
   try {
     final runner = await JbRunner.create(
       jbFiles,
-      config,
+      cwi,
       JbActors(
         await jvmExecutor.toSendable(),
         await depsCache.toSendable(),
@@ -118,7 +119,7 @@ Future<void> _runJb(
   }
 }
 
-Future<JbConfiguration> _createConfig(ConfigSource configSource) async {
+Future<JbConfigWithImports> _createConfig(ConfigSource configSource) async {
   try {
     return await configSource.load();
   } on DartleException {

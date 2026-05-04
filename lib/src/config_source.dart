@@ -2,11 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dartle/dartle.dart' show DartleException;
-
-import 'config.dart';
+import 'package:jb/jb.dart';
 
 sealed class ConfigSource {
-  FutureOr<JbConfiguration> load();
+  FutureOr<JbConfigWithImports> load();
 }
 
 const defaultJbConfigSource = FileConfigSource([yamlJbFile, jsonJbFile]);
@@ -32,18 +31,18 @@ final class FileConfigSource implements ConfigSource {
   }
 
   @override
-  Future<JbConfiguration> load() async {
+  Future<JbConfigWithImports> load() async {
     return await loadConfig(await selectFile());
   }
 }
 
 final class InstanceConfigSource implements ConfigSource {
-  final JbConfiguration configuration;
+  final JbConfigWithImports _ciw;
 
-  const InstanceConfigSource(this.configuration);
+  const InstanceConfigSource(this._ciw);
 
   @override
-  JbConfiguration load() {
-    return configuration;
+  JbConfigWithImports load() {
+    return _ciw;
   }
 }

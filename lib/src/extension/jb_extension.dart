@@ -19,6 +19,7 @@ import 'package:isolate_current_directory/isolate_current_directory.dart';
 import 'package:path/path.dart' as p;
 
 import '../config.dart';
+import '../config_import.dart';
 import '../config_source.dart';
 import '../jb_actors.dart';
 import '../jb_files.dart';
@@ -45,10 +46,10 @@ Future<ExtensionProject?> loadExtensionProject(
   JbFiles files,
   JbActors actors,
   Options options,
-  JbConfiguration config,
+  JbConfigWithImports cwi,
   DartleCache cache,
 ) async {
-  final extensionProjectPath = config.extensionProject;
+  final extensionProjectPath = cwi.config.extensionProject;
   final stopWatch = Stopwatch()..start();
   final projectDir = Directory(extensionProjectPath ?? jbExtension);
   if (!await projectDir.exists()) {
@@ -66,17 +67,17 @@ Future<ExtensionProject?> loadExtensionProject(
     () => '========= Loading jb extension project: $rootDir =========',
   );
 
-  final extensionConfig = await withCurrentDirectory(rootDir, () async {
+  final extensionCwi = await withCurrentDirectory(rootDir, () async {
     return await defaultJbConfigSource.load();
   }, onError: changedDirectoryOnError(rootDir));
-  _verifyJBuildApiDependency(extensionConfig);
+  _verifyJBuildApiDependency(extensionCwi.config);
 
   final configContainer = await withCurrentDirectory(
     rootDir,
     onError: changedDirectoryOnError(rootDir),
-    () => JbConfigContainer(config),
+    () => JbConfigContainer(cwi),
   );
-  final runner = JbRunner(files, extensionConfig, actors);
+  final runner = JbRunner(files, extensionCwi, actors);
 
   // run the extension project's compile task so that its
   // jb tasks can be executed later
@@ -105,7 +106,7 @@ Future<ExtensionProject?> loadExtensionProject(
     extensionUpToDate: extensionProjectTasks.every((t) => t.mustRunCount == 0),
   );
 
-  _warnOnUnexpectedConfig(extensionModel, config.extras);
+  _warnOnUnexpectedConfig(extensionModel, cwi.config.extras);
 
   // convert the [ExtensionTask]s and constructor data into Dartle [Task]s
   final tasks = extensionModel.extensionTasks

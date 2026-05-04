@@ -2,18 +2,11 @@ import 'package:collection/collection.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
+import 'package:jb/jb.dart';
 import 'package:jb/src/extension/cache_model.dart';
 
 import 'compute_compilation_path.dart';
-import 'config.dart';
-import 'config_source.dart';
-import 'extension/jb_extension.dart';
 import 'jb_actors.dart';
-import 'jb_files.dart';
-import 'path_dependency.dart';
-import 'pom.dart';
-import 'resolved_dependency.dart';
-import 'tasks.dart';
 import 'utils.dart';
 
 /// jb Dartle build definition.
@@ -22,7 +15,7 @@ import 'utils.dart';
 /// be fully initialized before using it.
 class JbDartle {
   final JbFiles _files;
-  final JbConfiguration _config;
+  final JbConfigWithImports _cwi;
   final DartleCache _cache;
   final Options _options;
   final JbActors _actors;
@@ -60,9 +53,11 @@ class JbDartle {
   /// Wait for all sub-projects tasks to be initialized.
   late final Future<void> init;
 
+  JbConfiguration get _config => _cwi.config;
+
   JbDartle._(
     this._files,
-    this._config,
+    this._cwi,
     this._cache,
     this._options,
     this._actors,
@@ -80,12 +75,12 @@ class JbDartle {
 
   JbDartle.create(
     JbFiles files,
-    JbConfiguration config,
+    JbConfigWithImports cwi,
     DartleCache cache,
     Options options,
     JbActors actors, {
     required bool isRoot,
-  }) : this._(files, config, cache, options, actors, isRoot);
+  }) : this._(files, cwi, cache, options, actors, isRoot);
 
   /// Get the default tasks (`{ compile }`).
   Set<Task> get defaultTasks {
@@ -127,19 +122,13 @@ class JbDartle {
     ResolvedLocalDependencies localProcessorDependencies,
   ) async {
     final stopwatch = Stopwatch()..start();
-    final configContainer = JbConfigContainer(_config);
+    final configContainer = JbConfigContainer(_cwi);
 
     final jvmExecutor = _actors.jvmExecutor;
     final depsCache = _actors.depsCache;
     final compPath = _actors.compPath;
 
-    final FileCollection jbFileInputs;
-    final configSource = _files.configSource;
-    if (configSource is FileConfigSource) {
-      jbFileInputs = file((await configSource.selectFile()).path);
-    } else {
-      jbFileInputs = FileCollection.empty;
-    }
+    final FileCollection jbFileInputs = _inputsFrom(_cwi);
     final artifact = createArtifact(_config);
     final compilationFiles = CompilationPathFiles(_cache);
     final projectTasks = <Task>{};
@@ -274,7 +263,7 @@ class JbDartle {
       _files,
       _actors,
       _options,
-      _config,
+      _cwi,
       _cache,
     );
 
@@ -343,6 +332,10 @@ class JbDartle {
       await dep.initialize(_options, _files, _actors);
     }
   }
+}
+
+FileCollection _inputsFrom(JbConfigWithImports cwi) {
+  return files([?cwi.configFile, ...cwi.imports]);
 }
 
 void _wireupTasks(ExtensionProject extensionProject, Set<Task> allTasks) {
