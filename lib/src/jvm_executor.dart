@@ -3,12 +3,15 @@ import 'dart:io' hide pid;
 import 'dart:isolate';
 
 import 'package:actors/actors.dart';
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
 import 'package:structured_async/structured_async.dart'
     show FutureCancelled, CancellableFuture;
 
 import 'config.dart' show logger;
+import 'java_info.dart';
 import 'output_consumer.dart';
 import 'utils.dart';
 import 'xml_rpc.dart';
@@ -19,7 +22,7 @@ class _Proc {
   final Process _process;
   final int port;
   final String authorizationHeader;
-  final String javaVersion;
+  final int? javaVersion;
   bool _closed = false;
 
   bool get isClosed => _closed;
@@ -42,6 +45,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   final String jbuildJar;
   final String jvmCdsFile;
   final List<String> _javaRuntimeArgs;
+  final JavaInfo? javaInfo;
   final Map<String, Future<_JBuildRpc>> _rpc = {};
 
   _JBuildActor(
@@ -50,6 +54,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     this.jbuildJar,
     this.jvmCdsFile,
     this._javaRuntimeArgs,
+    this.javaInfo,
   );
 
   @override
@@ -57,7 +62,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     activateLogging(_level, colorfulLog: _colorfulLog);
   }
 
-  static Future<_JBuildRpc> _startRpc(
+  Future<_JBuildRpc> _startRpc(
     String jbuildJar,
     String jvmCdsFile,
     List<String> javaRuntimeArgs,
@@ -65,13 +70,17 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   ) async {
     final stopwatch = Stopwatch()..start();
 
+    final javaVersion = javaInfo?.majorVersion ?? 0;
+    String? sharedArchiveOption;
+    if (javaVersion >= 12) {
+      sharedArchiveOption = await File(jvmCdsFile).exists()
+          ? '-XX:SharedArchiveFile=$jvmCdsFile'
+          : '-XX:ArchiveClassesAtExit=$jvmCdsFile';
+    }
+
     final args = [
       // See https://docs.oracle.com/en/java/javase/17/docs/specs/man/java.html#application-class-data-sharing
-      // FIXME only use this if Java version is 12+
-      // if (await File(jvmCdsFile).exists())
-      //   '-XX:SharedArchiveFile=$jvmCdsFile'
-      // else
-      //   '-XX:ArchiveClassesAtExit=$jvmCdsFile',
+      ?sharedArchiveOption,
       ...javaRuntimeArgs,
       '-cp',
       jbuildJar,
@@ -86,8 +95,10 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
           'with args: $args',
     );
 
+    final javaHome = javaInfo?.javaHome;
+
     final proc = await Process.start(
-      'java',
+      javaHome.vmapOr((home) => p.join(home, 'bin', 'java'), () => 'java'),
       args,
       runInShell: true,
       workingDirectory: workingDirectory,
@@ -97,7 +108,8 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     final lines = await pout.take(3).toList();
     final port = lines.isEmpty ? '' : lines.first;
     final token = lines.length >= 2 ? lines[1] : '';
-    final javaVersion = lines.length == 3 ? lines[2] : '';
+    // maybe check the java version printed by JBuild matches?
+    // final javaVersion = lines.length == 3 ? lines[2] : '';
     final portNumber = int.tryParse(port);
     if (portNumber == null) {
       // could be that the JVM process failed to start, so have a look
@@ -265,6 +277,7 @@ Actor<JavaCommand, Object?> createJavaActor(
   String jbuildJar,
   String jvmCdsFile,
   List<String> javaRuntimeArgs,
+  JavaInfo? javaInfo,
 ) {
   return Actor.create(
     wrapHandlerWithCurrentDir(
@@ -274,6 +287,7 @@ Actor<JavaCommand, Object?> createJavaActor(
         jbuildJar,
         jvmCdsFile,
         javaRuntimeArgs,
+        javaInfo,
       ),
     ),
   );

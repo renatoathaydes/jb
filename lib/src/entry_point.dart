@@ -10,6 +10,7 @@ import 'config_source.dart';
 import 'create/create.dart';
 import 'dependencies/deps_cache.dart';
 import 'help.dart';
+import 'java_info.dart';
 import 'jb_actors.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart';
@@ -79,12 +80,15 @@ Future<void> _runJb(
     configSource: configSource ?? defaultJbConfigSource,
   );
 
+  final javaInfo = await detectJavaInfo();
+
   final jvmExecutor = createJavaActor(
     dartleOptions.logLevel,
     dartleOptions.colorfulLog,
     jbuildJar.path,
     jbFiles.jvmCdsFile.absolute.path,
     cwi.config.javacArgs.javaRuntimeArgs().toList(growable: false),
+    javaInfo,
   );
 
   final depsCache = createDepsActor(
