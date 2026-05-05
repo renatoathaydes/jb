@@ -35,8 +35,11 @@ Future<bool> runJb(
   final stopwatch = Stopwatch()..start();
   final jbuildJar = await createIfNeededAndGetJBuildJarFile();
   logger.log(profile, () => 'Checked JBuild jar in ${elapsedTime(stopwatch)}');
+
+  final javaInfo = await detectJavaInfo();
+
   if (dartleOptions.showVersion) {
-    await printVersion(jbuildJar);
+    await printVersion(jbuildJar, javaInfo);
     return false;
   }
   var rootDir = jbOptions.rootDirectory;
@@ -55,7 +58,7 @@ Future<bool> runJb(
     logger.fine(() => "Running jb on directory '$rootDir'");
   }
 
-  await _runJb(jbOptions, dartleOptions, configSource, jbuildJar);
+  await _runJb(jbOptions, dartleOptions, configSource, jbuildJar, javaInfo);
 
   return true;
 }
@@ -65,6 +68,7 @@ Future<void> _runJb(
   Options dartleOptions,
   ConfigSource? configSource,
   File jbuildJar,
+  JavaInfo? javaInfo,
 ) async {
   final createOptions = options.createOptions;
   if (createOptions != null) {
@@ -79,8 +83,6 @@ Future<void> _runJb(
     jbuildJar,
     configSource: configSource ?? defaultJbConfigSource,
   );
-
-  final javaInfo = await detectJavaInfo();
 
   final jvmExecutor = createJavaActor(
     dartleOptions.logLevel,

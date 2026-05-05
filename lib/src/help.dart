@@ -8,6 +8,7 @@ import 'package:io/ansi.dart' as ansi;
 import 'package:logging/logging.dart';
 
 import '../jb.dart';
+import 'java_info.dart';
 import 'version.g.dart';
 
 void printHelp() {
@@ -44,9 +45,13 @@ Options:''');
   );
 }
 
-Future<void> printVersion(File jbuildJar) async {
+Future<void> printVersion(File jbuildJar, JavaInfo? javaInfo) async {
   print('jb version: $jbVersion');
   print('JBuild version: ${await getJBuildVersion(jbuildJar)}');
+  final javaVersion = javaInfo?.version;
+  if (javaVersion != null) {
+    print('Java version: $javaVersion');
+  }
 }
 
 Future<String> getJBuildVersion(File jbuildJar) async {
