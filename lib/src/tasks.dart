@@ -35,6 +35,7 @@ import 'run_conditions.dart';
 import 'utils.dart';
 
 const cleanTaskName = 'clean';
+const checkJavaVersionTaskName = 'checkJavaVersion';
 const compileTaskName = 'compile';
 const publicationCompileTaskName = 'publicationCompile';
 const testTaskName = 'test';
@@ -69,6 +70,7 @@ final publishPhase = TaskPhase.custom(evaluatePhase.index + 10, 'publish');
 
 /// Create run condition for the `compile` task.
 RunOnChanges _createCompileRunCondition(
+  JbFiles jbFiles,
   JbConfigContainer configContainer,
   DartleCache cache,
 ) {
@@ -78,7 +80,12 @@ RunOnChanges _createCompileRunCondition(
     jar: (j) => file(j),
   );
   return RunOnChanges(
-    inputs: dirs(config.sourceDirs.followedBy(config.resourceDirs)),
+    inputs: entities(
+      [jbFiles.javaVersionFile.path],
+      config.sourceDirs
+          .followedBy(config.resourceDirs)
+          .map((path) => DirectoryEntry(path: path)),
+    ),
     outputs: outputs,
     cache: cache,
   );
@@ -103,6 +110,42 @@ RunCondition _createPublicationCompileRunCondition(
   );
 }
 
+/// Create the `checkJavaVersion` task.
+Task createCheckJavaVersionTask(JbFiles jbFiles, JbActors actors) {
+  final jvmExecutor = actors.jvmExecutor;
+  final versionFile = jbFiles.javaVersionFile;
+  // FIXME 'compile' cannot depend on this since this ALWAYS runs, it would
+  // make that also always run.
+  // But it needs to run automatically before 'compile' anyway!
+  return Task(
+    (_) => _checkJavaVersion(versionFile, jvmExecutor),
+    name: checkJavaVersionTaskName,
+    description:
+        'Check if the Java executable has the same version as in the previous build.',
+  );
+}
+
+Future<void> _checkJavaVersion(
+  File versionFile,
+  Sendable<JvmExecutorMessage, Object?> jvmExecutor,
+) async {
+  final stat = await versionFile.stat();
+  switch (stat.type) {
+    case FileSystemEntityType.file:
+      logger.fine('Java Version file exists, checking it');
+      final version = await versionFile.readAsString();
+      logger.fine(() => 'JVM version from Java Version file: $version,');
+      await jvmExecutor.send(PreviousJavaVersion(version));
+      break;
+    case FileSystemEntityType.notFound:
+      logger.fine('Java Version file does not exist');
+      await jvmExecutor.send(const PreviousJavaVersion(null));
+      break;
+    default:
+      failBuild(reason: 'Java Version file is not a file: ${versionFile.path}');
+  }
+}
+
 /// Create the `compile` task.
 Task createCompileTask(
   JbFiles jbFiles,
@@ -123,7 +166,7 @@ Task createCompileTask(
       cache,
       actors,
     ),
-    runCondition: _createCompileRunCondition(config, cache),
+    runCondition: _createCompileRunCondition(jbFiles, config, cache),
     name: compileTaskName,
     argsValidator: const AcceptAnyArgs(),
     dependsOn: const {
@@ -204,17 +247,22 @@ Future<void> _compile(
 }) async {
   final config = configContainer.config;
   final stopwatch = Stopwatch()..start();
-  final changes = await computeAllChanges(
-    changeSet,
-    jbFiles.javaSrcFileTreeFile,
-  );
-  if (changes != null) {
-    logger.log(
-      profile,
-      () =>
-          'Computed transitive changes in '
-          '${elapsedTime(stopwatch)}: $changes',
-    );
+  final shouldForce =
+      await actors.jvmExecutor.send(const ShouldForceCompilation()) as bool;
+  TransitiveChanges? changes;
+  if (shouldForce) {
+    logger.info('Forcing compilation due to environment changes');
+  } else {
+    logger.fine('Computing source file changes');
+    changes = await computeAllChanges(changeSet, jbFiles.javaSrcFileTreeFile);
+    if (changes != null) {
+      logger.log(
+        profile,
+        () =>
+            'Computed transitive changes in '
+            '${elapsedTime(stopwatch)}: $changes',
+      );
+    }
   }
   stopwatch.reset();
   final compilationPath = await getCompilationPath(
@@ -247,6 +295,11 @@ Future<void> _compile(
     return;
   }
 
+  logger.fine('Writing JVM version to Java Version file');
+  await actors.jvmExecutor.send(
+    WriteJavaVersionFile(jbFiles.javaVersionFile.path),
+  );
+
   stopwatch.reset();
   logger.fine('Computing Java source tree for incremental builds');
   final output = configContainer.output.when(dir: (d) => d, jar: (j) => j);
@@ -254,7 +307,7 @@ Future<void> _compile(
     compileTaskName,
     config,
     workingDir,
-    actors.jvmExecutor,
+    actors.jvmExecutor.takingJavaCommands(),
     output,
     jbFiles.javaSrcFileTreeFile,
   );

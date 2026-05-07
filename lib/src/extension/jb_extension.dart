@@ -102,7 +102,7 @@ Future<ExtensionProject?> loadExtensionProject(
     rootDir,
     classpath,
     cache,
-    actors.jvmExecutor,
+    actors.jvmExecutor.takingJavaCommands(),
     extensionUpToDate: extensionProjectTasks.every((t) => t.mustRunCount == 0),
   );
 
@@ -112,7 +112,7 @@ Future<ExtensionProject?> loadExtensionProject(
   final tasks = extensionModel.extensionTasks
       .map((extensionTask) {
         return _createTask(
-          actors.jvmExecutor,
+          actors.jvmExecutor.takingJavaCommands(),
           classpath,
           extensionTask,
           absRootDir,

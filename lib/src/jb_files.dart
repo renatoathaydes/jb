@@ -14,6 +14,8 @@ class JbFiles {
   final ConfigSource configSource;
   final String processorLibsDir;
 
+  File get javaVersionFile => File(p.join(jbCache, 'java-version.txt'));
+
   File get dependenciesFile => File(p.join(jbCache, 'dependencies.json'));
 
   File get dependenciesChecksumFile => File(dependenciesChecksum);

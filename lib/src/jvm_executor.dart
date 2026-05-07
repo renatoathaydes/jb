@@ -39,7 +39,7 @@ class _Proc {
   }
 }
 
-final class _JBuildActor implements Handler<JavaCommand, Object?> {
+final class _JBuildActor implements Handler<JvmExecutorMessage, Object?> {
   final Level _level;
   final bool _colorfulLog;
   final String jbuildJar;
@@ -47,6 +47,9 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   final List<String> _javaRuntimeArgs;
   final JavaInfo? javaInfo;
   final Map<String, Future<_JBuildRpc>> _rpc = {};
+
+  // may be set to true by tasks running before compilation.
+  bool _forceCompilation = false;
 
   _JBuildActor(
     this._level,
@@ -165,7 +168,44 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   }
 
   @override
-  Future<Object?> handle(JavaCommand command) async {
+  Future<Object?> handle(JvmExecutorMessage message) async {
+    return switch (message) {
+      PreviousJavaVersion(version: var v) => _handlePreviousJavaVersion(v),
+      WriteJavaVersionFile() => javaInfo?.version.vmap(
+        (version) => message.javaVersionFile.writeAsString(version),
+      ),
+      ShouldForceCompilation() => _forceCompilation,
+      JavaCommand() => _runCommand(message),
+    };
+  }
+
+  Future<void> _handlePreviousJavaVersion(String? prevVersion) async {
+    final currentVersion = javaInfo?.version;
+    if (currentVersion == null) {
+      logger.warning(
+        'Cannot check current JVM version, check JVM installation',
+      );
+      return;
+    }
+    if (currentVersion == prevVersion) {
+      logger.fine('JVM version matches previous build JVM version');
+      return;
+    }
+
+    final prevMessage = prevVersion == null
+        ? 'no previous build information is available.'
+        : 'previous build was on version $prevVersion. ';
+
+    logger.info(
+      () =>
+          'Current JVM version is $currentVersion, $prevMessage '
+          'Will force full recompilation.',
+    );
+
+    _forceCompilation = true;
+  }
+
+  Future<Object?> _runCommand(JavaCommand command) async {
     final rpc = await _getOrStartRpc(command.workingDir);
     final stopwatch = Stopwatch()..start();
     final Future<Object?> result = _run(command, rpc);
@@ -227,7 +267,32 @@ Future<Object?> _run(JavaCommand command, _JBuildRpc rpc) {
   };
 }
 
-sealed class JavaCommand {
+sealed class JvmExecutorMessage {
+  const JvmExecutorMessage();
+}
+
+final class PreviousJavaVersion extends JvmExecutorMessage {
+  final String? version;
+
+  const PreviousJavaVersion([this.version]);
+}
+
+final class ShouldForceCompilation extends JvmExecutorMessage {
+  const ShouldForceCompilation();
+}
+
+final class WriteJavaVersionFile extends JvmExecutorMessage {
+  // This is instantiated when we create the JavaCommand, but NOT when
+  // an Actor de-serializes the value.
+  final String workingDir = Directory.current.path;
+  final String _javaVersionFile;
+
+  WriteJavaVersionFile(this._javaVersionFile);
+
+  File get javaVersionFile => File(p.join(workingDir, _javaVersionFile));
+}
+
+sealed class JavaCommand extends JvmExecutorMessage {
   final String taskName;
   final String classpath;
 
@@ -271,7 +336,7 @@ final class RunJava extends JavaCommand {
 /// arbitrary Java methods (for jb extensions).
 ///
 /// The Actor sender returns whatever the Java method returned.
-Actor<JavaCommand, Object?> createJavaActor(
+Actor<JvmExecutorMessage, Object?> createJavaActor(
   Level level,
   bool colorfulLog,
   String jbuildJar,

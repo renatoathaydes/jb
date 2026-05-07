@@ -13,4 +13,5 @@ Once the project is in good shape, this should be moved to a proper bug tracker.
 
 ## Bugs
 
+- clean task deletes `dependencies.sum` (correctly but inconveniently).
 
