@@ -113,10 +113,7 @@ RunCondition _createPublicationCompileRunCondition(
 /// Create the `checkJavaVersion` task.
 Task createCheckJavaVersionTask(JbFiles jbFiles, JbActors actors) {
   final jvmExecutor = actors.jvmExecutor;
-  final versionFile = jbFiles.javaVersionFile;
-  // FIXME 'compile' cannot depend on this since this ALWAYS runs, it would
-  // make that also always run.
-  // But it needs to run automatically before 'compile' anyway!
+  final versionFile = jbFiles.javaVersionFile.path;
   return Task(
     (_) => _checkJavaVersion(versionFile, jvmExecutor),
     name: checkJavaVersionTaskName,
@@ -126,23 +123,25 @@ Task createCheckJavaVersionTask(JbFiles jbFiles, JbActors actors) {
 }
 
 Future<void> _checkJavaVersion(
-  File versionFile,
+  String versionFilePath,
   Sendable<JvmExecutorMessage, Object?> jvmExecutor,
 ) async {
-  final stat = await versionFile.stat();
-  switch (stat.type) {
-    case FileSystemEntityType.file:
-      logger.fine('Java Version file exists, checking it');
-      final version = await versionFile.readAsString();
-      logger.fine(() => 'JVM version from Java Version file: $version,');
-      await jvmExecutor.send(PreviousJavaVersion(version));
-      break;
-    case FileSystemEntityType.notFound:
-      logger.fine('Java Version file does not exist');
-      await jvmExecutor.send(const PreviousJavaVersion(null));
-      break;
-    default:
-      failBuild(reason: 'Java Version file is not a file: ${versionFile.path}');
+  String? previousVersion;
+  final versionFile = File(versionFilePath);
+  if (await versionFile.exists()) {
+    logger.finer('Java Version file exists, checking it');
+    previousVersion = await versionFile.readAsString();
+  } else {
+    logger.finer('Java Version file does not exist');
+  }
+  final currentVersion =
+      await jvmExecutor.send(PreviousJavaVersion(previousVersion)) as String?;
+  if (currentVersion != null) {
+    if (previousVersion == currentVersion) {
+      return; // nothing else to do
+    }
+    logger.fine('Updating Java version file');
+    await versionFile.writeAsString(currentVersion);
   }
 }
 
@@ -169,6 +168,7 @@ Task createCompileTask(
     runCondition: _createCompileRunCondition(jbFiles, config, cache),
     name: compileTaskName,
     argsValidator: const AcceptAnyArgs(),
+    requires: const {checkJavaVersionTaskName},
     dependsOn: const {
       createJavaCompilationPathTaskName,
       installProcessorDepsTaskName,
@@ -294,11 +294,6 @@ Future<void> _compile(
     // no need to create file-tree, that's created when doing the normal compilation.
     return;
   }
-
-  logger.fine('Writing JVM version to Java Version file');
-  await actors.jvmExecutor.send(
-    WriteJavaVersionFile(jbFiles.javaVersionFile.path),
-  );
 
   stopwatch.reset();
   logger.fine('Computing Java source tree for incremental builds');

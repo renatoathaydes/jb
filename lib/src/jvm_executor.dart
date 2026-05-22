@@ -171,25 +171,29 @@ final class _JBuildActor implements Handler<JvmExecutorMessage, Object?> {
   Future<Object?> handle(JvmExecutorMessage message) async {
     return switch (message) {
       PreviousJavaVersion(version: var v) => _handlePreviousJavaVersion(v),
-      WriteJavaVersionFile() => javaInfo?.version.vmap(
-        (version) => message.javaVersionFile.writeAsString(version),
-      ),
-      ShouldForceCompilation() => _forceCompilation,
+      ShouldForceCompilation(force: var f) => f.vmap((force) {
+        if (force != null) {
+          _forceCompilation = force;
+        }
+        return _forceCompilation;
+      }),
       JavaCommand() => _runCommand(message),
     };
   }
 
-  Future<void> _handlePreviousJavaVersion(String? prevVersion) async {
+  /// Check the current Java version matches the previous version.
+  /// Return the current version if it's different, or null otherwise.
+  Future<String?> _handlePreviousJavaVersion(String? prevVersion) async {
     final currentVersion = javaInfo?.version;
     if (currentVersion == null) {
       logger.warning(
         'Cannot check current JVM version, check JVM installation',
       );
-      return;
+      return null;
     }
     if (currentVersion == prevVersion) {
       logger.fine('JVM version matches previous build JVM version');
-      return;
+      return null;
     }
 
     final prevMessage = prevVersion == null
@@ -203,6 +207,8 @@ final class _JBuildActor implements Handler<JvmExecutorMessage, Object?> {
     );
 
     _forceCompilation = true;
+
+    return currentVersion;
   }
 
   Future<Object?> _runCommand(JavaCommand command) async {
@@ -271,25 +277,22 @@ sealed class JvmExecutorMessage {
   const JvmExecutorMessage();
 }
 
+/// This message is used to ask the JVM Executor whether the Java version
+/// has changed since the last build.
+/// If it did, the new version is returned, otherwise `null` is returned.
 final class PreviousJavaVersion extends JvmExecutorMessage {
   final String? version;
 
-  const PreviousJavaVersion([this.version]);
+  const PreviousJavaVersion(this.version);
 }
 
+/// Message for getting or setting the `force` flag.
+/// If non-null is sent, it sets the `force` flag.
+/// The value of the `force` flag is always returned.
 final class ShouldForceCompilation extends JvmExecutorMessage {
-  const ShouldForceCompilation();
-}
+  final bool? force;
 
-final class WriteJavaVersionFile extends JvmExecutorMessage {
-  // This is instantiated when we create the JavaCommand, but NOT when
-  // an Actor de-serializes the value.
-  final String workingDir = Directory.current.path;
-  final String _javaVersionFile;
-
-  WriteJavaVersionFile(this._javaVersionFile);
-
-  File get javaVersionFile => File(p.join(workingDir, _javaVersionFile));
+  const ShouldForceCompilation([this.force]);
 }
 
 sealed class JavaCommand extends JvmExecutorMessage {
