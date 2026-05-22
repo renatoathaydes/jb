@@ -1261,7 +1261,7 @@ const allLicenses = <String, License>{
     licenseId: "CDDL-1.1",
     name: "Common Development and Distribution License 1.1",
     uri: "https://spdx.org/licenses/CDDL-1.1.html",
-    isOsiApproved: false,
+    isOsiApproved: true,
     isFsfLibre: null,
   ),
   "CDL-1.0": License(
