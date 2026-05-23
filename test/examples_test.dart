@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:jb/jb.dart' show groovy3, groovy4;
+import 'package:jb/src/java_info.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -18,7 +19,10 @@ const groovy3Dep = '  $groovy3:$groovy3Version:';
 const groovy4Dep = '  $groovy4:$groovy4Version:';
 const groovy5Dep = '  $groovy4:$groovy5Version:';
 
-void main() {
+void main() async {
+  final javaInfo = await detectJavaInfo();
+  final javaOlderThan17 = (javaInfo?.majorVersion ?? 21) < 17;
+
   projectGroup(errorProneProjectDir, 'error-prone example', () {
     test('error prone plugin runs and finds problem with the code', () async {
       final jbResult = await runJb(Directory(errorProneProjectDir), const [
@@ -150,7 +154,8 @@ void main() {
         ),
       );
     });
-  });
+    // ErrorProne's latest version only works with Java 17+
+  }, skip: javaOlderThan17);
 
   projectGroup(minimalProjectDir, 'minimal example', () {
     test('can compile simple Java class into a jar', () async {
@@ -358,7 +363,7 @@ void main() {
         }
       },
     );
-  }, ['test']);
+  }, subDirectories: ['test']);
 }
 
 Future<List<String>> _changeGroovyProjectToUseGroovy(int groovyVersion) async {

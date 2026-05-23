@@ -19,9 +19,10 @@ final jbuildExecutable = p.join(
 void projectGroup(
   String projectDir,
   String name,
-  Function() definition, [
+  Function() definition, {
   List<String> subDirectories = const [],
-]) {
+  Object? skip,
+}) {
   final rootDirs = [
     projectDir,
     ...subDirectories.map((d) => p.join(projectDir, d)),
@@ -47,7 +48,7 @@ void projectGroup(
     await deleteAll(outputDirs.union(checksumFiles));
   });
 
-  group(name, definition);
+  group(name, definition, skip: skip);
 }
 
 Future<Directory> createTempFiles(Map<String, String> files) async {

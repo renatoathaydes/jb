@@ -7,7 +7,6 @@ processor-dependencies:
         exclusions:
             - com.google.code.findbugs:.*
 
-
 processor-dependency-exclusion-patterns:
     - com.google.errorprone:error_prone_annotations:.*
     - org.checkerframework:.*

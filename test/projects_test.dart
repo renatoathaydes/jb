@@ -852,7 +852,7 @@ void main() {
       },
       timeout: const Timeout(Duration(seconds: 20)),
     );
-  }, ['mod1', 'mod2']);
+  }, subDirectories: ['mod1', 'mod2']);
 
   Future<void> cleanupEmptyProjectDir() async {
     await for (final entity in Directory(emptyProjectDir).list()) {
