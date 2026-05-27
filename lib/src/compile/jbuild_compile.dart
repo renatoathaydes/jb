@@ -6,13 +6,11 @@ import 'package:path/path.dart';
 
 import '../config.dart';
 import '../file_tree.dart';
-import '../jb_files.dart';
 import '../jvm_executor.dart';
 import '../tasks.dart';
 import '../utils.dart';
 
 Future<JavaCommand> jbuildCompileCommand(
-  JbFiles jbFiles,
   JbConfiguration config,
   String workingDir,
   bool publication,
@@ -22,11 +20,7 @@ Future<JavaCommand> jbuildCompileCommand(
 }) async {
   final commandArgs = [
     ...args,
-    ...await config.compileArgs(
-      jbFiles.processorLibsDir,
-      changes,
-      isGroovyEnabled,
-    ),
+    ...await config.compileArgs(changes, isGroovyEnabled),
   ];
 
   return RunJBuild(compileTaskName, [
@@ -41,7 +35,6 @@ Future<JavaCommand> jbuildCompileCommand(
 extension _JbConfig on JbConfiguration {
   /// Get the compile task arguments from this configuration.
   Future<List<String>> compileArgs(
-    String processorLibsDir,
     TransitiveChanges? changes,
     bool isGroovyEnabled,
   ) async {
@@ -66,13 +59,10 @@ extension _JbConfig on JbConfiguration {
         !_addIncrementalCompileArgs(result, changes, isGroovyEnabled)) {
       result.addAll(sourceDirs);
     }
-    if (javacArgs.isNotEmpty || processorDependencies.isNotEmpty) {
+
+    if (javacArgs.isNotEmpty) {
       result.add('--');
       result.addAll(javacArgs);
-      if (processorDependencies.isNotEmpty) {
-        result.add('-processorpath');
-        (await Directory(processorLibsDir).toClasspath())?.vmap(result.add);
-      }
     }
     return result;
   }

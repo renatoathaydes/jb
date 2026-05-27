@@ -75,6 +75,12 @@ Future<JavaCommand> compileCommand(
     }
   }
 
+  if (config.processorDependencies.isNotEmpty &&
+      !config.javacArgs.contains('-processorpath')) {
+    allArgs.add('--processor-path');
+    allArgs.add(p.join(jbFiles.processorLibsDir, '*'));
+  }
+
   await addCompilationPathsTo(
     allArgs,
     config,
@@ -85,7 +91,6 @@ Future<JavaCommand> compileCommand(
   allArgs.addAll(args);
 
   return jbuildCompileCommand(
-    jbFiles,
     config,
     workingDir,
     publication,
