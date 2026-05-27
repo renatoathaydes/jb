@@ -160,7 +160,7 @@ Future<ResolvedDependencies> _write(
 ) async {
   ResolvedDependencies? results;
   if (nonLocalDeps.isNotEmpty || projectDeps.isNotEmpty) {
-    _checkDependenciesAreNotExcludedDirectly(nonLocalDeps, exclusions);
+    _warnIfExcludingDirectDependency(nonLocalDeps, exclusions);
 
     final nonLocalDepsOptions = nonLocalDeps.entries
         .map((e) => (dep: e.key, ex: e.value.exclusions))
@@ -230,7 +230,7 @@ Future<List<ResolvedDependency>> _collectDependencies(
   }
 }
 
-void _checkDependenciesAreNotExcludedDirectly(
+void _warnIfExcludingDirectDependency(
   Map<String, DependencySpec> deps,
   Set<String> exclusions,
 ) {
@@ -240,10 +240,11 @@ void _checkDependenciesAreNotExcludedDirectly(
       .toList();
   if (directExclusions.isNotEmpty) {
     final listMsg = directExclusions.map((dep) => '  - $dep').join('\n');
-    logger.info(
+    logger.fine(
       () =>
           'Direct dependenc${directExclusions.length == 1 ? 'y is' : 'ies are'}'
-          ' explicitly excluded:\n$listMsg',
+          ' explicitly excluded, including it anyway but excluding it from '
+          'transitive dependency resolution:\n$listMsg',
     );
   }
 }
