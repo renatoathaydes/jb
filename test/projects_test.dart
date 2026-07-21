@@ -8,6 +8,7 @@ import 'package:logging/logging.dart' show Level;
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
+import '../dartle-src/paths.dart';
 import 'pom_test.dart' show nonTransitiveDependency;
 import 'test_helper.dart';
 
@@ -89,10 +90,20 @@ void main() {
 
   projectGroup(withDepsProjectDir, 'with-deps project', () {
     test('can install dependencies and compile project', () async {
+      final expectedListsSha = await File(
+        p.join(
+          testMavenRepo,
+          'com',
+          'example',
+          'lists',
+          '1.0',
+          'lists-1.0.jar.sha1',
+        ),
+      ).readAsString();
       final jbResult = await runJb(Directory(withDepsProjectDir), const []);
       expectSuccess(jbResult);
       await verifyDependenciesChecksums(Directory(withDepsProjectDir), {
-        'com.example:lists:1.0': '47e9f0cce6d813b7e06a0381550e1c2b78292975',
+        'com.example:lists:1.0': expectedListsSha,
         'org.slf4j:slf4j-api:1.7.36':
             '6c62681a2f655b49963a5983b8b0950a6120ae14',
         'org.slf4j:slf4j-simple:1.7.36':

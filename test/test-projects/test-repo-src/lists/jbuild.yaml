@@ -1,0 +1,9 @@
+group: my-group
+module: my-app
+version: '0.0.0'
+output-jar: build/lists.jar
+javac-args:
+  - --release=11
+javac-env:
+  # see https://reproducible-builds.org/docs/source-date-epoch/
+  SOURCE_DATE_EPOCH: 1980-01-01T00:00:02Z
