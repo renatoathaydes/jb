@@ -271,19 +271,36 @@ Future<void> _compile(
     config.compileLibsDir,
     compPathFiles.compilePath,
   );
-  await actors.jvmExecutor.send(
-    await compileCommand(
-      jbFiles,
-      config,
-      compilationPath,
-      configContainer.knownDeps.groovy,
-      workingDir,
-      publication,
-      changes,
-      args,
-      cache,
-    ),
+  final command = await compileCommand(
+    jbFiles,
+    config,
+    compilationPath,
+    configContainer.knownDeps.groovy,
+    workingDir,
+    publication,
+    changes,
+    args,
+    cache,
   );
+  if (config.javacEnv.isEmpty) {
+    await actors.jvmExecutor.send(command);
+  } else {
+    logger.fine(
+      'Cannot use JVM Executor to compile because javac-env is not empty, '
+      'will start new JVM Process instead.',
+    );
+    final exitCode = await execJBuild(
+      publication ? publicationCompileTaskName : compileTaskName,
+      jbFiles.jbuildJar,
+      command.preArgs,
+      command.command,
+      command.args,
+      env: config.javacEnv,
+    );
+    if (exitCode != 0) {
+      failBuild(reason: 'jbuild compile command failed', exitCode: exitCode);
+    }
+  }
 
   logger.log(
     profile,
@@ -703,9 +720,7 @@ Future<void> _install(
     return logger.fine("No dependencies to install for '$taskName'.");
   }
   await jBuildSender.send(
-    RunJBuild(taskName, [
-      ...preArgs,
-      'install',
+    RunJBuild(taskName, preArgs, 'install', [
       '--non-transitive',
       if ('JB_INSTALL_TO_MAVEN_LOCAL'.envVar().isNotFalse) '--maven-local',
       '--directory',

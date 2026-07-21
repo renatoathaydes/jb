@@ -211,16 +211,20 @@ Future<List<ResolvedDependency>> _collectDependencies(
   );
   try {
     await jBuildSender.send(
-      RunJBuild(writeDepsTaskName, [
-        ...preArgs.where((n) => n != '-V'),
+      RunJBuild(
+        writeDepsTaskName,
+        preArgs.where((n) => n != '-V').toList(growable: false),
         'deps',
-        '--transitive',
-        '--licenses',
-        '--scope',
-        'runtime',
-        ...exclusions.expand(_exclusionOption),
-        ...nonLocalDepsOptions,
-      ], _CollectorSendable(await collector.toSendable())),
+        [
+          '--transitive',
+          '--licenses',
+          '--scope',
+          'runtime',
+          ...exclusions.expand(_exclusionOption),
+          ...nonLocalDepsOptions,
+        ],
+        _CollectorSendable(await collector.toSendable()),
+      ),
     );
 
     // the Done response must NOT be null

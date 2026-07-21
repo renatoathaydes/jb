@@ -322,12 +322,13 @@ Future<void> storeNewFileTree(
   );
   try {
     await jBuildSender.send(
-      RunJBuild('requirements', [
-        ...config.preArgs(workingDir),
+      RunJBuild(
         'requirements',
-        '-c',
-        buildOutput,
-      ], await outputConsumer.toSendable()),
+        config.preArgs(workingDir),
+        'requirements',
+        ['-c', buildOutput],
+        await outputConsumer.toSendable(),
+      ),
     );
   } finally {
     await outputConsumer.close();

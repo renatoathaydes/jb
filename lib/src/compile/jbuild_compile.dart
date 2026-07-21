@@ -10,7 +10,7 @@ import '../jvm_executor.dart';
 import '../tasks.dart';
 import '../utils.dart';
 
-Future<JavaCommand> jbuildCompileCommand(
+Future<RunJBuild> jbuildCompileCommand(
   JbConfiguration config,
   String workingDir,
   bool publication,
@@ -23,9 +23,7 @@ Future<JavaCommand> jbuildCompileCommand(
     ...await config.compileArgs(changes, isGroovyEnabled),
   ];
 
-  return RunJBuild(compileTaskName, [
-    ...config.preArgs(workingDir),
-    'compile',
+  return RunJBuild(compileTaskName, config.preArgs(workingDir), 'compile', [
     if (publication) ...const ['-sj', '-dj'],
     // the Java compiler runtime args are sent when starting the JVM
     ...commandArgs.notJavaRuntimeArgs(),

@@ -1,4 +1,4 @@
-# 0.17.0
+# Next
 
 - improved handling of dependencies checksums: store checksums at the root directory to make it visible.
 - support for groovy-docs generation in Groovy projects.
@@ -7,6 +7,7 @@
 - made `publish` task depend on `compile` task.
 - do not log missing Maven credentials when only publishing to Maven local.
 - delete installation directory before installing again (to make sure the installation is clean).
+- added back support for `javac-env` config. Using it causes a new JVM process to be executed with the custom environment.
 
 # 0.16.1
 

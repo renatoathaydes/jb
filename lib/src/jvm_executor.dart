@@ -254,7 +254,11 @@ final class _JBuildActor implements Handler<JvmExecutorMessage, Object?> {
 Future<Object?> _run(JavaCommand command, _JBuildRpc rpc) {
   final taskName = command.taskName;
   return switch (command) {
-    RunJBuild jb => rpc.runJBuild(taskName, jb.args, jb.stdoutConsumer),
+    RunJBuild jb => rpc.runJBuild(
+      taskName,
+      jb.allArgs.toList(growable: false),
+      jb.stdoutConsumer,
+    ),
     RunJava(
       classpath: var classpath,
       className: var className,
@@ -312,11 +316,25 @@ sealed class JavaCommand extends JvmExecutorMessage {
 }
 
 final class RunJBuild extends JavaCommand {
+  final List<String> preArgs;
+  final String command;
   final List<String> args;
   final Sendable<String, void>? stdoutConsumer;
 
-  RunJBuild(String taskName, this.args, [this.stdoutConsumer])
-    : super(taskName, '');
+  RunJBuild(
+    String taskName,
+    this.preArgs,
+    this.command,
+    this.args, [
+    this.stdoutConsumer,
+  ]) : super(taskName, '');
+
+  /// Put pre-args, JBuild command and command args together.
+  Iterable<String> get allArgs sync* {
+    yield* preArgs;
+    yield command;
+    yield* args;
+  }
 }
 
 final class RunJava extends JavaCommand {
@@ -389,7 +407,7 @@ class _JBuildRpc {
   /// Run a JBuild command.
   Future<void> runJBuild(
     String taskName,
-    List<String> args,
+    Iterable<String> args,
     Sendable<String, void>? stdoutConsumer,
   ) async {
     final trackId = _currentMessageIndex++;

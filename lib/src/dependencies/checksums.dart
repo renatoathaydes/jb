@@ -64,9 +64,7 @@ Future<Map<String, String>> _computeDependenciesChecksums(
     logger.fine(() => 'Will request checksum for dependencies: $unknownDeps');
     final stopWatch = Stopwatch()..start();
     await jBuildSender.send(
-      RunJBuild(downloadDependenciesChecksumsTaskName, [
-        ...preArgs,
-        'fetch',
+      RunJBuild(downloadDependenciesChecksumsTaskName, preArgs, 'fetch', [
         '-d',
         tempDirectory.path,
         ...unknownDeps.map((dep) => '$dep:jar.sha1'),

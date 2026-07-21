@@ -35,12 +35,13 @@ Future<void> _update(
   _Lines latestVersionOutput,
 ) async {
   await jBuildSender.send(
-    RunJBuild(updateJBuildTaskName, [
-      '-q',
-      '-w',
-      workingDir,
+    RunJBuild(
+      updateJBuildTaskName,
+      ['-q', '-w', workingDir],
       'version',
-    ], localVersionOutput),
+      const [],
+      localVersionOutput,
+    ),
   );
   final currentVersion =
       localVersionOutput.lines
@@ -53,13 +54,13 @@ Future<void> _update(
   }
   logger.fine(() => 'JBuild current version: $currentVersion');
   await jBuildSender.send(
-    RunJBuild(updateJBuildTaskName, [
-      '-q',
-      '-w',
-      workingDir,
+    RunJBuild(
+      updateJBuildTaskName,
+      ['-q', '-w', workingDir],
       'versions',
-      jbuild,
-    ], latestVersionOutput),
+      [jbuild],
+      latestVersionOutput,
+    ),
   );
   final latestVersion = latestVersionOutput.lines
       .where((it) => it.startsWith('  * Latest: '))
@@ -80,14 +81,12 @@ Future<void> _update(
   final jarFile = File(jbuildJarPath());
   final jarDir = jarFile.parent;
   await jBuildSender.send(
-    RunJBuild('fetch', [
-      '-w',
-      workingDir,
+    RunJBuild(
       'fetch',
-      '-d',
-      jarDir.path,
-      '$jbuild:$latestVersion:jar',
-    ]),
+      ['-w', workingDir],
+      'fetch',
+      ['-d', jarDir.path, '$jbuild:$latestVersion:jar'],
+    ),
   );
   await File('jbuild-$latestVersion.jar').rename(jarFile.path);
   logger.info(() => 'Updated JBuild to version $latestVersion');

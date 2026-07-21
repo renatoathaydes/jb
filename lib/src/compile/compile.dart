@@ -13,7 +13,7 @@ import '../utils.dart';
 import 'groovy.dart';
 import 'jbuild_compile.dart';
 
-Future<JavaCommand> compileCommand(
+Future<RunJBuild> compileCommand(
   JbFiles jbFiles,
   JbConfiguration config,
   CompilationPath compPath,
