@@ -22,6 +22,7 @@ void projectGroup(
   Function() definition, {
   List<String> subDirectories = const [],
   Object? skip,
+  bool deleteChecksums = true,
 }) {
   final rootDirs = [
     projectDir,
@@ -36,9 +37,11 @@ void projectGroup(
       p.join(d, 'runtime-libs'),
     ],
   ], includeHidden: true);
-  final checksumFiles = files([
-    for (final d in rootDirs) p.join(d, JbFiles.dependenciesChecksum),
-  ]);
+  final checksumFiles = deleteChecksums
+      ? files([
+          for (final d in rootDirs) p.join(d, JbFiles.dependenciesChecksum),
+        ])
+      : FileCollection.empty;
 
   setUp(() async {
     await deleteAll(outputDirs.union(checksumFiles));

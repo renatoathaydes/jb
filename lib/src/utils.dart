@@ -286,15 +286,15 @@ extension DirectoryExtension on Directory {
             .join(classpathSeparator)
       : null;
 
-  Future<void> copyContentsInto(String destinationDir) async {
+  Stream<FileSystemEntity> copyContentsInto(String destinationDir) async* {
     if (!await exists()) return;
     await for (final child in list(recursive: true)) {
       if (child is Directory) {
-        await Directory(
+        yield await Directory(
           p.join(destinationDir, p.relative(child.path, from: path)),
         ).create();
       } else if (child is File) {
-        await child.copy(
+        yield await child.copy(
           p.join(destinationDir, p.relative(child.path, from: path)),
         );
       }
@@ -331,12 +331,12 @@ extension StringExtension on String {
 
   String asDirPath() {
     if (Platform.isWindows && endsWith('/')) {
-      return "${substring(0, length - 1)}\\";
+      return "${substring(0, length - 1).asOsPath()}\\";
     }
     if (endsWith(Platform.pathSeparator)) {
       return this;
     }
-    return "$this${Platform.pathSeparator}";
+    return "${asOsPath()}${Platform.pathSeparator}";
   }
 
   String quote() => '"$this"';
@@ -350,6 +350,11 @@ extension StringExtension on String {
     return replaceAllMapped(RegExp(r'[%/\\.]'), (match) {
       return '%${match[0]!.codeUnitAt(0).toRadixString(16).toUpperCase().padLeft(2, '0')}';
     });
+  }
+
+  /// Normalize a path for the current OS.
+  String asOsPath() {
+    return p.normalize(this);
   }
 }
 

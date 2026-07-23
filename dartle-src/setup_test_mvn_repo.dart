@@ -63,7 +63,9 @@ Future<void> _setupTestMvnRepo(_) async {
   ).copy(path.join(_listsRepoDir, 'lists-1.0.jar.sha1'));
   await File(_listsPom).copy(path.join(_listsRepoDir, 'lists-1.0.pom'));
 
-  await Directory(testMavenRepoPreBuilt).copyContentsInto(testMavenRepo);
+  await Directory(
+    testMavenRepoPreBuilt,
+  ).copyContentsInto(testMavenRepo).drain();
 }
 
 Future<void> _buildMvnRepoListsProject(_) async {

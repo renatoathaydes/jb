@@ -239,7 +239,7 @@ Future<String> _toClasspath(
     extensionConfig.output.when(dir: (d) => d.asDirPath(), jar: (j) => j),
   );
   final libsDir = Directory(
-    p.join(absRootDir, extensionConfig.config.runtimeLibsDir),
+    p.join(absRootDir, extensionConfig.config.runtimeLibsDir.asOsPath()),
   );
   logger.fine(
     () =>

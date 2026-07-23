@@ -323,9 +323,11 @@ void main() {
     }, testOn: '!windows');
 
     test('test task triggers compile as dependency from clean state', () async {
-      final jbResult = await runJb(Directory(testsProjectDir), const [
+      final jbResult = await runJb(Directory(testsProjectDir), [
         'test',
         '--no-color',
+        '-l',
+        Platform.isWindows ? 'trace' : 'info',
       ]);
       expectSuccess(jbResult);
       final output = jbResult.stdout.join('\n');

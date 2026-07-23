@@ -9,7 +9,7 @@ import 'package:io/ansi.dart' show red;
 
 import 'config.dart' show JbConfigContainer, logger;
 import 'tasks.dart' show jshellTaskName;
-import 'utils.dart' show DirectoryExtension;
+import 'utils.dart' show DirectoryExtension, StringExtension;
 
 const jshellHelp =
     '''Run jshell with this project's runtime classpath.
@@ -34,12 +34,13 @@ Future<void> jshell(
   List<String> args,
 ) async {
   final config = configContainer.config;
-  final classpath = await Directory(config.runtimeLibsDir).toClasspath(
-    extraEntries: {
-      configContainer.output.when(dir: Directory.new, jar: File.new),
-    },
-    includeSelf: true,
-  );
+  final classpath = await Directory(config.runtimeLibsDir.asOsPath())
+      .toClasspath(
+        extraEntries: {
+          configContainer.output.when(dir: Directory.new, jar: File.new),
+        },
+        includeSelf: true,
+      );
   logger.fine(() => 'jshell classpath: $classpath');
 
   final options = JshellArgs().parse(args);

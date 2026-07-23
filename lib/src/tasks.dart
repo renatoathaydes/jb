@@ -268,7 +268,7 @@ Future<void> _compile(
   final compilationPath = await getCompilationPath(
     actors.compPath,
     configContainer.artifactId,
-    config.compileLibsDir,
+    config.compileLibsDir.asOsPath(),
     compPathFiles.compilePath,
   );
   final command = await compileCommand(
@@ -526,7 +526,7 @@ Task createInstallCompileDepsTask(
       .toList(growable: false);
   final depsFile = files.dependenciesFile.path;
   final preArgs = config.preArgs(Directory.current.path);
-  final libsDir = config.compileLibsDir;
+  final libsDir = config.compileLibsDir.asOsPath();
 
   // can only use Sendable objects inside action
   Future<void> action(_) async {
@@ -553,7 +553,7 @@ Task createInstallCompileDepsTask(
     depsFile,
     projectDeps,
     jarDeps,
-    config.compileLibsDir,
+    config.compileLibsDir.asOsPath(),
     downloadDependenciesChecksumsTaskName,
     cache,
   );
@@ -577,7 +577,7 @@ Task createInstallRuntimeDepsTask(
       .toList(growable: false);
   final depsFile = files.dependenciesFile.path;
   final preArgs = config.config.preArgs(Directory.current.path);
-  final runtimeLibsDir = config.config.runtimeLibsDir;
+  final runtimeLibsDir = config.config.runtimeLibsDir.asOsPath();
   Future<void> action(_) async {
     final deps = FileDependencies(
       File(depsFile),
@@ -605,7 +605,7 @@ Task createInstallRuntimeDepsTask(
     depsFile,
     projectDeps,
     jarDeps,
-    config.config.runtimeLibsDir,
+    runtimeLibsDir,
     // the compiled jar is added to the runtime
     compileTaskName,
     cache,
@@ -740,7 +740,9 @@ Future<void> _copy(
   for (final dep in resolvedDeps) {
     await _copyOutput(dep.output, destinationDir);
     await _copyOutput(
-      CompileOutput.dir(runtime ? dep.runtimeLibsDir : dep.compileLibsDir),
+      CompileOutput.dir(
+        (runtime ? dep.runtimeLibsDir : dep.compileLibsDir).asOsPath(),
+      ),
       destinationDir,
     );
   }
@@ -750,12 +752,12 @@ Future<void> _copyFiles(Iterable<String> jars, String destinationDir) async {
   if (jars.isEmpty) return;
   await Directory(destinationDir).create(recursive: true);
   for (final jar in jars) {
-    logger.fine(() => 'Copying $jar to $destinationDir');
+    logger.fine(() => 'Copying $jar to ${p.absolute(destinationDir)}');
     final jarFile = File(jar);
     if (!await jarFile.exists()) {
       failBuild(
         reason:
-            'Cannot copy file from $jar to $destinationDir '
+            'Cannot copy file from $jar to ${p.absolute(destinationDir)} '
             'because file does not exist',
       );
     }
@@ -763,12 +765,15 @@ Future<void> _copyFiles(Iterable<String> jars, String destinationDir) async {
   }
 }
 
-Future<void> _copyOutput(CompileOutput out, String destinationDir) {
-  logger.fine(() => 'Copying $out to $destinationDir');
-  return out.when(
+Future<void> _copyOutput(CompileOutput out, String destinationDir) async {
+  logger.fine(() => 'Copying $out to ${p.absolute(destinationDir)}');
+  final createdEntities = out.when(
     dir: (d) => Directory(d).copyContentsInto(destinationDir),
-    jar: (j) => File(j).copy(p.join(destinationDir, p.basename(j))),
+    jar: (j) => File(j).copy(p.join(destinationDir, p.basename(j))).asStream(),
   );
+  await for (final entity in createdEntities) {
+    logger.finer(() => 'Copied to ${p.absolute(entity.path)}');
+  }
 }
 
 Task createJavaCompilationPathTask(
@@ -785,7 +790,7 @@ Task createJavaCompilationPathTask(
         config,
         jBuildSender,
         compPath,
-        config.config.compileLibsDir,
+        config.config.compileLibsDir.asOsPath(),
         compilationFiles,
       );
     },
@@ -815,7 +820,7 @@ Task createJavaRuntimePathTask(
         config,
         workingDir,
         jBuildSender,
-        config.config.runtimeLibsDir,
+        config.config.runtimeLibsDir.asOsPath(),
         compPath,
         compilationFiles,
       );
@@ -838,7 +843,7 @@ Task createEclipseTask(JbConfiguration config) {
       config.sourceDirs,
       config.resourceDirs,
       config.module,
-      config.compileLibsDir,
+      config.compileLibsDir.asOsPath(),
     ),
     name: createEclipseTaskName,
     description: 'Generate Eclipse IDE files for the project.',
@@ -997,7 +1002,7 @@ Task createTestTask(
   bool noColor,
 ) {
   final inputs = dirs([
-    config.config.runtimeLibsDir,
+    config.config.runtimeLibsDir.asOsPath(),
     p.join(cache.rootDir, junitRunnerLibsDir),
   ]);
   return Task(
@@ -1066,7 +1071,7 @@ Future<void> _test(
   final runnerClasspath = junitRunnerJars.join(classpathSeparator);
 
   final testClasspath = await Directory(
-    config.runtimeLibsDir,
+    config.runtimeLibsDir.asOsPath(),
   ).toClasspath(extraEntries: {testLibPath}, includeSelf: true);
 
   const mainClass = 'org.junit.platform.console.ConsoleLauncher';

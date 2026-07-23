@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dartle/dartle.dart';
+import 'package:jb/src/utils.dart';
 import 'package:path/path.dart' as p;
 
 import '../config.dart';
@@ -24,13 +25,14 @@ bool hasGroovyDependency(
 }
 
 Future<String> findGroovyJar(JbConfiguration config) async {
-  final jar = await Directory(config.compileLibsDir).list().firstWhere(
+  final libsDir = config.compileLibsDir.asOsPath();
+  final jar = await Directory(libsDir).list().firstWhere(
     (f) =>
         f is File && groovyJarPattern.matchAsPrefix(p.basename(f.path)) != null,
     orElse: () => failBuild(
       reason:
-          'Project has a Groovy or Spock dependency but Groovy jar was not found in '
-          '${config.compileLibsDir}',
+          'Project has a Groovy or Spock dependency but Groovy jar was '
+          'not found in $libsDir',
     ),
   );
   logger.finer(() => 'Groovy jar: ${jar.path}');

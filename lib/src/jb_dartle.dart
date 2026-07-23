@@ -334,7 +334,14 @@ class JbDartle {
     List<ResolvedProjectDependency> projectDeps,
   ) async {
     for (var dep in projectDeps) {
-      await dep.initialize(_options, _files, _actors);
+      try {
+        await dep.initialize(_options, _files, _actors);
+      } catch (e) {
+        failBuild(
+          reason:
+              'Failed to initialize project dependency at path "${dep.path}": $e',
+        );
+      }
     }
   }
 }

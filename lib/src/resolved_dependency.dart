@@ -80,7 +80,7 @@ final class ResolvedProjectDependency {
       ),
     );
 
-    logger.fine(() => "Project dependency '$projectDir' initialized");
+    logger.info(() => "Project dependency '$projectDir' initialized");
   }
 
   ResolvedDependency toResolvedDependency({required bool isDirect}) =>
