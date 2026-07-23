@@ -751,7 +751,15 @@ Future<void> _copyFiles(Iterable<String> jars, String destinationDir) async {
   await Directory(destinationDir).create(recursive: true);
   for (final jar in jars) {
     logger.fine(() => 'Copying $jar to $destinationDir');
-    await File(jar).copy(p.join(destinationDir, p.basename(jar)));
+    final jarFile = File(jar);
+    if (!await jarFile.exists()) {
+      failBuild(
+        reason:
+            'Cannot copy file from $jar to $destinationDir '
+            'because file does not exist',
+      );
+    }
+    await jarFile.copy(p.join(destinationDir, p.basename(jar)));
   }
 }
 
