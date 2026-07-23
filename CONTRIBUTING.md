@@ -150,3 +150,8 @@ Please file an issue before contributing/working on new features.
 The only branch used for development, currently, is `main`, so target pull requests at it.
 
 I appreciate if changes are kept small and to-the-point, and come with tests proving they work.
+
+## AI Policy
+
+LLMs must not be used to generate significant amounts of code for `jb`. Small bug fixes and review improvements are
+allowed as long as they are 100% human-reviewed and approved.
