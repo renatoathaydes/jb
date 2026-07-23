@@ -1058,15 +1058,16 @@ Future<void> _test(
       .jarsUnder()
       .toList();
 
-  final testLibPath = configContainer.output.when(dir: (d) => d, jar: (j) => j);
+  final testLibPath = configContainer.output.when(
+    dir: Directory.new,
+    jar: File.new,
+  );
 
   final runnerClasspath = junitRunnerJars.join(classpathSeparator);
 
-  final testClasspath = {
-    testLibPath,
+  final testClasspath = await Directory(
     config.runtimeLibsDir,
-    ...await config.runtimeLibsDir.jarsUnder().toList(),
-  }.join(classpathSeparator);
+  ).toClasspath(extraEntries: {testLibPath}, includeSelf: true);
 
   const mainClass = 'org.junit.platform.console.ConsoleLauncher';
 
@@ -1094,8 +1095,8 @@ Future<void> _test(
     runnerClasspath,
     mainClass,
     ?junitSubcommand,
-    '--classpath=$testClasspath',
-    if (!hasCustomSelect) '--scan-classpath=$testLibPath',
+    if (testClasspath != null) '--classpath=$testClasspath',
+    if (!hasCustomSelect) '--scan-classpath=${testLibPath.path}',
     if (customTestNames != null) ...['-n', customTestNames],
     '--reports-dir=${config.testReportsDir}',
     '--fail-if-no-tests',

@@ -34,9 +34,12 @@ Future<void> jshell(
   List<String> args,
 ) async {
   final config = configContainer.config;
-  final classpath = await Directory(config.runtimeLibsDir).toClasspath({
-    configContainer.output.when(dir: Directory.new, jar: File.new),
-  });
+  final classpath = await Directory(config.runtimeLibsDir).toClasspath(
+    extraEntries: {
+      configContainer.output.when(dir: Directory.new, jar: File.new),
+    },
+    includeSelf: true,
+  );
   logger.fine(() => 'jshell classpath: $classpath');
 
   final options = JshellArgs().parse(args);

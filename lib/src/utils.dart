@@ -270,17 +270,19 @@ extension on DependencySpec? {
 }
 
 extension DirectoryExtension on Directory {
-  Future<String?> toClasspath([
+  Future<String?> toClasspath({
     Set<FileSystemEntity> extraEntries = const {},
-  ]) async => await exists()
+    bool includeSelf = false,
+  }) async => await exists()
       ? list()
             .where(
               (f) =>
                   FileSystemEntity.isFileSync(f.path) &&
-                  p.extension(f.path) == '.jar',
+                  f.path.endsWith('.jar'),
             )
             .map((f) => f.path)
             .followedBy(extraEntries.map((f) => f.path))
+            .followedBy(includeSelf ? [path.asDirPath()] : const [])
             .join(classpathSeparator)
       : null;
 

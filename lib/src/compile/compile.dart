@@ -119,7 +119,7 @@ Future<bool> addCompilationPathsTo(
 }) async {
   // to support local dependencies that do not produce a jar,
   // we always add the libs dir itself to the classpath
-  final cp = [config.compileLibsDir];
+  final cp = [config.compileLibsDir.asDirPath()];
 
   final mp = <String>[];
 
