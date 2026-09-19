@@ -303,7 +303,7 @@ class JbDartle {
       generatePom,
       publish,
       updateJBuild,
-      if (extensionTasks != null) ...extensionTasks,
+      ...?extensionTasks,
     });
 
     clean = createCleanTask(

@@ -480,7 +480,7 @@ class _JBuildRpc {
     try {
       final resp = await req.close();
       if (resp.statusCode == 200) {
-        return parseRpcResponse(resp);
+        return await parseRpcResponse(resp);
       }
       throw DartleException(
         message:
