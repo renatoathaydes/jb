@@ -110,6 +110,7 @@ Task createCheckJavaVersionTask(JbFiles jbFiles, JbActors actors) {
   return Task(
     (_) => _checkJavaVersion(versionFile, jvmExecutor),
     name: checkJavaVersionTaskName,
+    phase: TaskPhase.setup,
     description: 'Check if the Java executable has the same version as in the previous build.',
   );
 }
