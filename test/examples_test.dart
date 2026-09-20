@@ -272,7 +272,7 @@ void main() async {
         try {
           await runGroovyProjectTestPublishTask(mavenHome, groovy3Version);
         } finally {
-          await _restoreGroovyProjectJbFile(originalJbFileLines);
+          await _restoreGroovyProject(originalJbFileLines);
         }
       });
 
@@ -283,7 +283,7 @@ void main() async {
         try {
           await runGroovyProjectTestPublishTask(mavenHome, groovy5Version);
         } finally {
-          await _restoreGroovyProjectJbFile(originalJbFileLines);
+          await _restoreGroovyProject(originalJbFileLines);
         }
       });
 
@@ -372,7 +372,7 @@ void main() async {
                   'b4e9817ec0f53d48670a414f9090492c9c459643',
             });
           } finally {
-            await _restoreGroovyProjectJbFile(originalJbFileLines);
+            await _restoreGroovyProject(originalJbFileLines);
           }
         },
       );
@@ -409,9 +409,16 @@ Future<List<String>> _changeGroovyProjectToUseGroovy(int groovyVersion) async {
   return lines;
 }
 
-Future<void> _restoreGroovyProjectJbFile(List<String> originalLines) async {
+Future<void> _restoreGroovyProject(List<String> originalLines) async {
   final jbFile = File(p.join(groovyProjectDir, 'jbuild.yaml'));
   await jbFile.writeAsString(
     originalLines.join(Platform.lineTerminator) + Platform.lineTerminator,
   );
+  const mavenHome = 'mvn-home-groovy-4';
+  final jbResult = await runJb(
+    Directory(groovyProjectDir),
+    const ['downloadDependenciesChecksums'],
+    {'MAVEN_LOCAL_HOME': mavenHome},
+  );
+  expectSuccess(jbResult);
 }
