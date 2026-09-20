@@ -562,6 +562,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "BSD-2-Clause-pos-unchanged": License(
+    licenseId: "BSD-2-Clause-pos-unchanged",
+    name: "BSD 2-Clause - position unchanged variant",
+    uri: "https://spdx.org/licenses/BSD-2-Clause-pos-unchanged.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "BSD-2-Clause-Views": License(
     licenseId: "BSD-2-Clause-Views",
     name: "BSD 2-Clause with views sentence",
@@ -660,6 +667,13 @@ const allLicenses = <String, License>{
     isOsiApproved: true,
     isFsfLibre: null,
   ),
+  "BSD-3-Clause-OpenWebUI": License(
+    licenseId: "BSD-3-Clause-OpenWebUI",
+    name: "BSD 3-Clause - OpenWebUI variant",
+    uri: "https://spdx.org/licenses/BSD-3-Clause-OpenWebUI.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "BSD-3-Clause-Sun": License(
     licenseId: "BSD-3-Clause-Sun",
     name: "BSD 3-Clause Sun Microsystems",
@@ -716,6 +730,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "BSD-ask-to-endorse": License(
+    licenseId: "BSD-ask-to-endorse",
+    name: "BSD - ask to endorse",
+    uri: "https://spdx.org/licenses/BSD-ask-to-endorse.html",
+    isOsiApproved: true,
+    isFsfLibre: null,
+  ),
   "BSD-Attribution-HPND-disclaimer": License(
     licenseId: "BSD-Attribution-HPND-disclaimer",
     name: "BSD with Attribution and HPND disclaimer",
@@ -744,6 +765,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "BSD-Source-alt-GPL": License(
+    licenseId: "BSD-Source-alt-GPL",
+    name: "BSD Source Code Attribution - GPL alternative",
+    uri: "https://spdx.org/licenses/BSD-Source-alt-GPL.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "BSD-Source-beginning-file": License(
     licenseId: "BSD-Source-beginning-file",
     name: "BSD Source Code Attribution - beginning of file variant",
@@ -755,6 +783,13 @@ const allLicenses = <String, License>{
     licenseId: "BSD-Source-Code",
     name: "BSD Source Code Attribution",
     uri: "https://spdx.org/licenses/BSD-Source-Code.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
+  "BSD-Source-Code-no-disclaimer": License(
+    licenseId: "BSD-Source-Code-no-disclaimer",
+    name: "BSD Source Code Attribution - no disclaimer",
+    uri: "https://spdx.org/licenses/BSD-Source-Code-no-disclaimer.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
@@ -1005,40 +1040,35 @@ const allLicenses = <String, License>{
   ),
   "CC-BY-NC-ND-1.0": License(
     licenseId: "CC-BY-NC-ND-1.0",
-    name:
-        "Creative Commons Attribution Non Commercial No Derivatives 1.0 Generic",
+    name: "Creative Commons Attribution Non Commercial No Derivatives 1.0 Generic",
     uri: "https://spdx.org/licenses/CC-BY-NC-ND-1.0.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
   "CC-BY-NC-ND-2.0": License(
     licenseId: "CC-BY-NC-ND-2.0",
-    name:
-        "Creative Commons Attribution Non Commercial No Derivatives 2.0 Generic",
+    name: "Creative Commons Attribution Non Commercial No Derivatives 2.0 Generic",
     uri: "https://spdx.org/licenses/CC-BY-NC-ND-2.0.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
   "CC-BY-NC-ND-2.5": License(
     licenseId: "CC-BY-NC-ND-2.5",
-    name:
-        "Creative Commons Attribution Non Commercial No Derivatives 2.5 Generic",
+    name: "Creative Commons Attribution Non Commercial No Derivatives 2.5 Generic",
     uri: "https://spdx.org/licenses/CC-BY-NC-ND-2.5.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
   "CC-BY-NC-ND-3.0": License(
     licenseId: "CC-BY-NC-ND-3.0",
-    name:
-        "Creative Commons Attribution Non Commercial No Derivatives 3.0 Unported",
+    name: "Creative Commons Attribution Non Commercial No Derivatives 3.0 Unported",
     uri: "https://spdx.org/licenses/CC-BY-NC-ND-3.0.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
   "CC-BY-NC-ND-3.0-DE": License(
     licenseId: "CC-BY-NC-ND-3.0-DE",
-    name:
-        "Creative Commons Attribution Non Commercial No Derivatives 3.0 Germany",
+    name: "Creative Commons Attribution Non Commercial No Derivatives 3.0 Germany",
     uri: "https://spdx.org/licenses/CC-BY-NC-ND-3.0-DE.html",
     isOsiApproved: false,
     isFsfLibre: null,
@@ -1052,8 +1082,7 @@ const allLicenses = <String, License>{
   ),
   "CC-BY-NC-ND-4.0": License(
     licenseId: "CC-BY-NC-ND-4.0",
-    name:
-        "Creative Commons Attribution Non Commercial No Derivatives 4.0 International",
+    name: "Creative Commons Attribution Non Commercial No Derivatives 4.0 International",
     uri: "https://spdx.org/licenses/CC-BY-NC-ND-4.0.html",
     isOsiApproved: false,
     isFsfLibre: null,
@@ -1088,8 +1117,7 @@ const allLicenses = <String, License>{
   ),
   "CC-BY-NC-SA-2.0-UK": License(
     licenseId: "CC-BY-NC-SA-2.0-UK",
-    name:
-        "Creative Commons Attribution Non Commercial Share Alike 2.0 England and Wales",
+    name: "Creative Commons Attribution Non Commercial Share Alike 2.0 England and Wales",
     uri: "https://spdx.org/licenses/CC-BY-NC-SA-2.0-UK.html",
     isOsiApproved: false,
     isFsfLibre: null,
@@ -1125,8 +1153,7 @@ const allLicenses = <String, License>{
   ),
   "CC-BY-NC-SA-4.0": License(
     licenseId: "CC-BY-NC-SA-4.0",
-    name:
-        "Creative Commons Attribution Non Commercial Share Alike 4.0 International",
+    name: "Creative Commons Attribution Non Commercial Share Alike 4.0 International",
     uri: "https://spdx.org/licenses/CC-BY-NC-SA-4.0.html",
     isOsiApproved: false,
     isFsfLibre: null,
@@ -1457,7 +1484,7 @@ const allLicenses = <String, License>{
     licenseId: "CNRI-Python-GPL-Compatible",
     name: "CNRI Python Open Source GPL Compatible License Agreement",
     uri: "https://spdx.org/licenses/CNRI-Python-GPL-Compatible.html",
-    isOsiApproved: false,
+    isOsiApproved: true,
     isFsfLibre: null,
   ),
   "COIL-1.0": License(
@@ -1569,7 +1596,7 @@ const allLicenses = <String, License>{
     licenseId: "curl",
     name: "curl License",
     uri: "https://spdx.org/licenses/curl.html",
-    isOsiApproved: false,
+    isOsiApproved: true,
     isFsfLibre: null,
   ),
   "cve-tou": License(
@@ -1784,8 +1811,7 @@ const allLicenses = <String, License>{
   ),
   "ESA-PL-strong-copyleft-2.4": License(
     licenseId: "ESA-PL-strong-copyleft-2.4",
-    name:
-        "European Space Agency Public License (ESA-PL) - V2.4 - Strong Copyleft (Type 1)",
+    name: "European Space Agency Public License (ESA-PL) - V2.4 - Strong Copyleft (Type 1)",
     uri: "https://spdx.org/licenses/ESA-PL-strong-copyleft-2.4.html",
     isOsiApproved: false,
     isFsfLibre: null,
@@ -1861,6 +1887,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "FDK-MPEG-H": License(
+    licenseId: "FDK-MPEG-H",
+    name: "Fraunhofer FDK MPEG-H Software",
+    uri: "https://spdx.org/licenses/FDK-MPEG-H.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "Ferguson-Twofish": License(
     licenseId: "Ferguson-Twofish",
     name: "Ferguson Twofish License",
@@ -1926,8 +1959,7 @@ const allLicenses = <String, License>{
   ),
   "FSFULLRWD": License(
     licenseId: "FSFULLRWD",
-    name:
-        "FSF Unlimited License (With License Retention and Warranty Disclaimer)",
+    name: "FSF Unlimited License (With License Retention and Warranty Disclaimer)",
     uri: "https://spdx.org/licenses/FSFULLRWD.html",
     isOsiApproved: false,
     isFsfLibre: null,
@@ -2380,6 +2412,13 @@ const allLicenses = <String, License>{
     isOsiApproved: false,
     isFsfLibre: null,
   ),
+  "Hippocratic-3.0-core": License(
+    licenseId: "Hippocratic-3.0-core",
+    name: "Hippocratic License 3.0",
+    uri: "https://spdx.org/licenses/Hippocratic-3.0-core.html",
+    isOsiApproved: false,
+    isFsfLibre: null,
+  ),
   "HP-1986": License(
     licenseId: "HP-1986",
     name: "Hewlett-Packard 1986 License",
@@ -2417,8 +2456,7 @@ const allLicenses = <String, License>{
   ),
   "HPND-doc-sell": License(
     licenseId: "HPND-doc-sell",
-    name:
-        "Historical Permission Notice and Disclaimer - documentation sell variant",
+    name: "Historical Permission Notice and Disclaimer - documentation sell variant",
     uri: "https://spdx.org/licenses/HPND-doc-sell.html",
     isOsiApproved: false,
     isFsfLibre: null,
@@ -2454,8 +2492,7 @@ const allLicenses = <String, License>{
   ),
   "HPND-Fenneberg-Livingston": License(
     licenseId: "HPND-Fenneberg-Livingston",
-    name:
-        "Historical Permission Notice and Disclaimer - Fenneberg-Livingston variant",
+    name: "Historical Permission Notice and Disclaimer - Fenneberg-Livingston variant",
     uri: "https://spdx.org/licenses/HPND-Fenneberg-Livingston.html",
     isOsiApproved: false,
     isFsfLibre: null,
@@ -2519,8 +2556,7 @@ const allLicenses = <String, License>{
   ),
   "HPND-sell-MIT-disclaimer-xserver": License(
     licenseId: "HPND-sell-MIT-disclaimer-xserver",
-    name:
-        "Historical Permission Notice and Disclaimer - sell xserver variant with MIT disclaimer",
+    name: "Historical Permission Notice and Disclaimer - sell xserver variant with MIT disclaimer",
     uri: "https://spdx.org/licenses/HPND-sell-MIT-disclaimer-xserver.html",
     isOsiApproved: false,
     isFsfLibre: null,
@@ -2569,16 +2605,14 @@ const allLicenses = <String, License>{
   ),
   "HPND-UC": License(
     licenseId: "HPND-UC",
-    name:
-        "Historical Permission Notice and Disclaimer - University of California variant",
+    name: "Historical Permission Notice and Disclaimer - University of California variant",
     uri: "https://spdx.org/licenses/HPND-UC.html",
     isOsiApproved: false,
     isFsfLibre: null,
   ),
   "HPND-UC-export-US": License(
     licenseId: "HPND-UC-export-US",
-    name:
-        "Historical Permission Notice and Disclaimer - University of California, US export warning",
+    name: "Historical Permission Notice and Disclaimer - University of California, US export warning",
     uri: "https://spdx.org/licenses/HPND-UC-export-US.html",
     isOsiApproved: false,
     isFsfLibre: null,
@@ -4183,7 +4217,7 @@ const allLicenses = <String, License>{
     licenseId: "Python-2.0.1",
     name: "Python License 2.0.1",
     uri: "https://spdx.org/licenses/Python-2.0.1.html",
-    isOsiApproved: false,
+    isOsiApproved: true,
     isFsfLibre: null,
   ),
   "python-ldap": License(
