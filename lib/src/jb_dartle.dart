@@ -2,18 +2,31 @@ import 'package:collection/collection.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
-import 'package:jb/jb.dart';
-import 'package:jb/src/extension/cache_model.dart';
 
 import 'compute_compilation_path.dart';
+import 'config.dart';
+import 'config_import.dart';
+import 'extension/cache_model.dart';
+import 'extension/jb_extension.dart';
 import 'jb_actors.dart';
+import 'jb_files.dart';
+import 'path_dependency.dart';
+import 'pom.dart';
+import 'resolved_dependency.dart';
+import 'tasks.dart';
 import 'utils.dart';
+
+mixin JbDartleTasks {
+  Set<Task> get tasks;
+
+  Set<Task> get defaultTasks;
+}
 
 /// jb Dartle build definition.
 ///
 /// Users of this class must await on the [init] Future for this class to
 /// be fully initialized before using it.
-class JbDartle {
+class JbDartle with JbDartleTasks {
   final JbFiles _files;
   final JbConfigWithImports _cwi;
   final DartleCache _cache;
@@ -49,6 +62,7 @@ class JbDartle {
       updateJBuild;
 
   /// Get the tasks that are configured as part of a build.
+  @override
   late final Set<Task> tasks;
 
   /// Wait for all sub-projects tasks to be initialized.
@@ -84,6 +98,7 @@ class JbDartle {
   }) : this._(files, cwi, cache, options, actors, isRoot);
 
   /// Get the default tasks (`{ compile }`).
+  @override
   Set<Task> get defaultTasks {
     return {compile};
   }
@@ -222,7 +237,14 @@ class JbDartle {
       _actors,
       compilationFiles,
     );
-    jshell = createJshellTask(_files, configContainer, _cache);
+    jshell = createJshellTask(
+      this,
+      _files,
+      configContainer,
+      _actors,
+      _options,
+      _cache,
+    );
     downloadTestRunner = createDownloadTestRunnerTask(
       _files,
       configContainer,
