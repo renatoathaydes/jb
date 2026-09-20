@@ -175,9 +175,8 @@ void main() {
         expect(javaResult.stdout, contains('Hej World'));
 
         // delete the Resources class and the resource, update Utils class
-        await File(
-          p.join(rootDir.path, 'source', 'util', 'Resources.java'),
-        ).delete();
+        await File(p.join(rootDir.path, 'source', 'util', 'Resources.java'))
+            .delete();
         await File(p.join(rootDir.path, 'res', 'greeting.txt')).delete();
         await createFiles(rootDir, {
           p.join('source', 'util', 'Util.java'): '''

@@ -70,12 +70,10 @@ void main() {
         isTrue,
       );
       expect(
-        await File(
-          p.join(helloProjectDir, JbFiles.dependenciesChecksum),
-        ).exists(),
+        await File(p.join(helloProjectDir, JbFiles.dependenciesChecksum))
+            .exists(),
         isFalse,
-        reason:
-            'The dependencies checksum file should not be created in a project without any dependencies.',
+        reason: 'The dependencies checksum file should not be created in a project without any dependencies.',
       );
 
       final javaResult = await runJava(Directory(helloProjectDir), const [
@@ -436,21 +434,17 @@ void main() {
       );
     });
 
-    test(
-      'can run custom task defined by extension project',
-      () async {
-        var jbResult = await runJb(Directory(usesExtensionDir), const [
-          'sample-task',
-          '--no-color',
-        ]);
-        expectSuccess(jbResult);
-        expect(
-          jbResult.stdout.join('\n'),
-          contains('Extension task running: SampleTask'),
-        );
-      },
-      timeout: const Timeout(Duration(seconds: 10)),
-    );
+    test('can run custom task defined by extension project', () async {
+      var jbResult = await runJb(Directory(usesExtensionDir), const [
+        'sample-task',
+        '--no-color',
+      ]);
+      expectSuccess(jbResult);
+      expect(
+        jbResult.stdout.join('\n'),
+        contains('Extension task running: SampleTask'),
+      );
+    }, timeout: const Timeout(Duration(seconds: 10)));
 
     test(
       'can run custom task defined by extension project from another dir',
@@ -474,15 +468,13 @@ void main() {
           ['hello.txt', 'bye.txt'],
         );
         expect(
-          await File(
-            p.join(usesExtensionDir, 'output-resources', 'hello.txt'),
-          ).readAsString(),
+          await File(p.join(usesExtensionDir, 'output-resources', 'hello.txt'))
+              .readAsString(),
           equals('Hello'),
         );
         expect(
-          await File(
-            p.join(usesExtensionDir, 'output-resources', 'bye.txt'),
-          ).readAsString(),
+          await File(p.join(usesExtensionDir, 'output-resources', 'bye.txt'))
+              .readAsString(),
           equals('Bye'),
         );
 
@@ -508,9 +500,8 @@ void main() {
 
         // modify a file in the extension project (adds task "bar")
         await Directory(p.join(exampleExtensionDir, 'src', 'foo')).create();
-        await File(
-          p.join(exampleExtensionDir, 'src', 'foo', 'Bar.java'),
-        ).writeAsString(_fooJavaFileContents);
+        await File(p.join(exampleExtensionDir, 'src', 'foo', 'Bar.java'))
+            .writeAsString(_fooJavaFileContents);
 
         // run the task "bar" newly defined by the extension project
         jbResult = await runJb(Directory(projectsDir), [
@@ -567,9 +558,8 @@ void main() {
         );
 
         // change the inputs and make sure the previous task runs incrementally
-        await File(
-          p.join(usesExtensionDir, 'input-resources', 'new.txt'),
-        ).writeAsString('hello there');
+        await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
+            .writeAsString('hello there');
 
         jbResult = await runJb(Directory(projectsDir), [
           'copyFile',
@@ -639,15 +629,13 @@ void main() {
           ['hello.txt', 'bye.txt'],
         );
         expect(
-          await File(
-            p.join(usesExtensionDir, 'output-resources', 'hello.txt'),
-          ).readAsString(),
+          await File(p.join(usesExtensionDir, 'output-resources', 'hello.txt'))
+              .readAsString(),
           equals('Hello'),
         );
         expect(
-          await File(
-            p.join(usesExtensionDir, 'output-resources', 'bye.txt'),
-          ).readAsString(),
+          await File(p.join(usesExtensionDir, 'output-resources', 'bye.txt'))
+              .readAsString(),
           equals('Bye'),
         );
 
@@ -670,9 +658,8 @@ void main() {
         ]);
 
         // change the inputs and make sure the task runs incrementally
-        await File(
-          p.join(usesExtensionDir, 'input-resources', 'new.txt'),
-        ).writeAsString('hello there');
+        await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
+            .writeAsString('hello there');
 
         jbResult = await runJb(Directory(usesExtensionDir), const [
           'copyFile',
@@ -696,9 +683,8 @@ void main() {
           ['hello.txt', 'bye.txt', 'new.txt'],
         );
 
-        await File(
-          p.join(usesExtensionDir, 'input-resources', 'new.txt'),
-        ).delete();
+        await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
+            .delete();
 
         jbResult = await runJb(Directory(usesExtensionDir), const [
           'copyFile',
@@ -731,18 +717,11 @@ void main() {
   });
 
   projectGroup(runEnvProjectDir, 'Run with Env Var project', () {
-    test(
-      'can run Java class that uses the environment',
-      () async {
-        var jbResult = await runJb(Directory(runEnvProjectDir), const ['run']);
-        expectSuccess(jbResult);
-        expect(
-          jbResult.stdout.join('\n'),
-          contains("MY_VAR is 'hello jbuild'"),
-        );
-      },
-      timeout: const Timeout(Duration(seconds: 10)),
-    );
+    test('can run Java class that uses the environment', () async {
+      var jbResult = await runJb(Directory(runEnvProjectDir), const ['run']);
+      expectSuccess(jbResult);
+      expect(jbResult.stdout.join('\n'), contains("MY_VAR is 'hello jbuild'"));
+    }, timeout: const Timeout(Duration(seconds: 10)));
   });
 
   projectGroup(javaModulesProjectDir, 'Java Modules Project', () {
@@ -753,117 +732,101 @@ void main() {
       await expectCompilationPath(mod1, modules: {'org.slf4j'});
     }, timeout: const Timeout(Duration(seconds: 10)));
 
-    test(
-      'can compile Java module that depends on jars and modules',
-      () async {
-        final mod2 = p.join(javaModulesProjectDir, 'mod2');
-        var jbResult = await runJb(Directory(mod2));
-        expectSuccess(jbResult);
-        await expectCompilationPath(mod2, modules: {'mod.one', 'org.slf4j'});
-      },
-      timeout: const Timeout(Duration(seconds: 10)),
-    );
+    test('can compile Java module that depends on jars and modules', () async {
+      final mod2 = p.join(javaModulesProjectDir, 'mod2');
+      var jbResult = await runJb(Directory(mod2));
+      expectSuccess(jbResult);
+      await expectCompilationPath(mod2, modules: {'mod.one', 'org.slf4j'});
+    }, timeout: const Timeout(Duration(seconds: 10)));
 
-    test(
-      'can run Java module that depends on jars and modules',
-      () async {
-        final mod2 = p.join(javaModulesProjectDir, 'mod2');
-        var jbResult = await runJb(Directory(mod2), const ['run']);
-        expectSuccess(jbResult);
-        await expectCompilationPath(
-          mod2,
-          modules: {'mod.one', 'mod.two', 'org.slf4j.simple', 'org.slf4j'},
-          runtime: true,
-        );
-        expect(jbResult.stdout.join('\n'), contains("M1{value=This is M1}"));
-      },
-      timeout: const Timeout(Duration(seconds: 10)),
-    );
+    test('can run Java module that depends on jars and modules', () async {
+      final mod2 = p.join(javaModulesProjectDir, 'mod2');
+      var jbResult = await runJb(Directory(mod2), const ['run']);
+      expectSuccess(jbResult);
+      await expectCompilationPath(
+        mod2,
+        modules: {'mod.one', 'mod.two', 'org.slf4j.simple', 'org.slf4j'},
+        runtime: true,
+      );
+      expect(jbResult.stdout.join('\n'), contains("M1{value=This is M1}"));
+    }, timeout: const Timeout(Duration(seconds: 10)));
 
-    test(
-      'can recompile module project incrementally',
-      () async {
-        final mod1 = p.join(javaModulesProjectDir, 'mod1');
-        final mod2 = p.join(javaModulesProjectDir, 'mod2');
-        final m1File = File(p.join(mod1, 'src', 'm1', 'M1.java'));
-        final originalContent = await m1File.readAsString();
-        addTearDown(() => m1File.writeAsString(originalContent));
+    test('can recompile module project incrementally', () async {
+      final mod1 = p.join(javaModulesProjectDir, 'mod1');
+      final mod2 = p.join(javaModulesProjectDir, 'mod2');
+      final m1File = File(p.join(mod1, 'src', 'm1', 'M1.java'));
+      final originalContent = await m1File.readAsString();
+      addTearDown(() => m1File.writeAsString(originalContent));
 
-        // First build (full compilation)
-        var jbResult = await runJb(Directory(mod1));
-        expectSuccess(jbResult);
+      // First build (full compilation)
+      var jbResult = await runJb(Directory(mod1));
+      expectSuccess(jbResult);
 
-        final jarFile = File(p.join(mod1, 'build', 'mod1.jar'));
-        expect(await jarFile.exists(), isTrue);
+      final jarFile = File(p.join(mod1, 'build', 'mod1.jar'));
+      expect(await jarFile.exists(), isTrue);
 
-        // Modify M1.java (not module-info.java) to trigger incremental build
-        await m1File.writeAsString(
-          originalContent.replaceFirst(
-            '"M1{value=" + value + "}"',
-            '"M1{val=" + value + "!}"',
-          ),
-        );
+      // Modify M1.java (not module-info.java) to trigger incremental build
+      await m1File.writeAsString(
+        originalContent.replaceFirst(
+          '"M1{value=" + value + "}"',
+          '"M1{val=" + value + "!}"',
+        ),
+      );
 
-        // Second build (incremental - should use classpath mode for modules)
-        jbResult = await runJb(Directory(mod1), const ['--no-color']);
-        expectSuccess(jbResult);
-        expect(jbResult.stdout.join('\n'), contains("Running task 'compile'"));
+      // Second build (incremental - should use classpath mode for modules)
+      jbResult = await runJb(Directory(mod1), const ['--no-color']);
+      expectSuccess(jbResult);
+      expect(jbResult.stdout.join('\n'), contains("Running task 'compile'"));
 
-        // run mod2 to confirm the mod1 change was picked up and is valid
-        jbResult = await runJb(Directory(mod2), const ['run', '--no-color']);
-        expectSuccess(jbResult);
+      // run mod2 to confirm the mod1 change was picked up and is valid
+      jbResult = await runJb(Directory(mod2), const ['run', '--no-color']);
+      expectSuccess(jbResult);
 
-        // make sure the compile task of m1 did not run again
-        expect(
-          outputOfProjectDependencies(jbResult).join('\n'),
-          allOf(
-            contains("Running task 'installRuntimeDependencies'"),
-            isNot(contains("Running task 'compile'")),
-          ),
-        );
+      // make sure the compile task of m1 did not run again
+      expect(
+        outputOfProjectDependencies(jbResult).join('\n'),
+        allOf(
+          contains("Running task 'installRuntimeDependencies'"),
+          isNot(contains("Running task 'compile'")),
+        ),
+      );
 
-        // assert that the change was actually picked up
-        expect(jbResult.stdout.join('\n'), contains("M1{val=This is M1!}"));
-      },
-      timeout: const Timeout(Duration(seconds: 20)),
-    );
+      // assert that the change was actually picked up
+      expect(jbResult.stdout.join('\n'), contains("M1{val=This is M1!}"));
+    }, timeout: const Timeout(Duration(seconds: 20)));
 
-    test(
-      'changing module-info.java causes full re-compilation',
-      () async {
-        final mod1 = p.join(javaModulesProjectDir, 'mod1');
-        final moduleInfoFile = File(p.join(mod1, 'src', 'module-info.java'));
-        final originalContent = await moduleInfoFile.readAsString();
-        addTearDown(() => moduleInfoFile.writeAsString(originalContent));
+    test('changing module-info.java causes full re-compilation', () async {
+      final mod1 = p.join(javaModulesProjectDir, 'mod1');
+      final moduleInfoFile = File(p.join(mod1, 'src', 'module-info.java'));
+      final originalContent = await moduleInfoFile.readAsString();
+      addTearDown(() => moduleInfoFile.writeAsString(originalContent));
 
-        // First build (full compilation)
-        var jbResult = await runJb(Directory(mod1));
-        expectSuccess(jbResult);
+      // First build (full compilation)
+      var jbResult = await runJb(Directory(mod1));
+      expectSuccess(jbResult);
 
-        // Modify module-info.java (should trigger full re-compilation)
-        await moduleInfoFile.writeAsString('''module mod.one {
+      // Modify module-info.java (should trigger full re-compilation)
+      await moduleInfoFile.writeAsString('''module mod.one {
             requires org.slf4j;
         }''');
 
-        // Second build - should fall back to full compilation
-        jbResult = await runJb(Directory(mod1), const [
-          '--no-color',
-          '-l',
-          'debug',
-        ]);
-        expectSuccess(jbResult);
-        expect(
-          jbResult.stdout.join('\n'),
-          allOf(
-            contains("Collected 1 input and 0 output change(s) for 'compile'"),
-            contains(
-              'module-info.java changed, falling back to full module compilation',
-            ),
+      // Second build - should fall back to full compilation
+      jbResult = await runJb(Directory(mod1), const [
+        '--no-color',
+        '-l',
+        'debug',
+      ]);
+      expectSuccess(jbResult);
+      expect(
+        jbResult.stdout.join('\n'),
+        allOf(
+          contains("Collected 1 input and 0 output change(s) for 'compile'"),
+          contains(
+            'module-info.java changed, falling back to full module compilation',
           ),
-        );
-      },
-      timeout: const Timeout(Duration(seconds: 20)),
-    );
+        ),
+      );
+    }, timeout: const Timeout(Duration(seconds: 20)));
   }, subDirectories: ['mod1', 'mod2']);
 
   Future<void> cleanupEmptyProjectDir() async {
@@ -878,135 +841,120 @@ void main() {
   }
 
   projectGroup(emptyProjectDir, 'jb create', () {
-    test(
-      'can create and run a jb project',
-      () async {
-        final jbProc = await startJb(Directory(emptyProjectDir), const [
-          'create',
-          '--no-color',
-        ]);
-        addTearDown(jbProc.kill);
-        addTearDown(cleanupEmptyProjectDir);
-        final out = jbProc.stdout.transform(utf8.decoder).asBroadcastStream();
-        expect(await out.first, equals('Please enter a project group ID: '));
-        jbProc.stdin.writeln('testing.foo');
-        expect(
-          await out.first,
-          equals('\nEnter the artifact ID of this project: '),
-        );
-        jbProc.stdin.writeln();
-        expect(
-          await out.first,
-          equals('\nEnter the root package [testing.foo.my_app]: '),
-        );
-        jbProc.stdin.writeln('testing.foo');
-        expect(
-          await out.first,
-          equals('\nWould you like to create a test module [Y/n]? '),
-        );
-        jbProc.stdin.writeln('n');
-        expect(
-          await out.first,
-          equals(
-            '\nSelect a project type:\n'
-            '  1. basic project.\n'
-            '  2. jb extension.\n'
-            'Choose [1]: ',
-          ),
-        );
-        jbProc.stdin.writeln();
-        expect(await out.first, startsWith('\njb project created at '));
-        expect(await jbProc.exitCode, isZero);
+    test('can create and run a jb project', () async {
+      final jbProc = await startJb(Directory(emptyProjectDir), const [
+        'create',
+        '--no-color',
+      ]);
+      addTearDown(jbProc.kill);
+      addTearDown(cleanupEmptyProjectDir);
+      final out = jbProc.stdout.transform(utf8.decoder).asBroadcastStream();
+      expect(await out.first, equals('Please enter a project group ID: '));
+      jbProc.stdin.writeln('testing.foo');
+      expect(
+        await out.first,
+        equals('\nEnter the artifact ID of this project: '),
+      );
+      jbProc.stdin.writeln();
+      expect(
+        await out.first,
+        equals('\nEnter the root package [testing.foo.my_app]: '),
+      );
+      jbProc.stdin.writeln('testing.foo');
+      expect(
+        await out.first,
+        equals('\nWould you like to create a test module [Y/n]? '),
+      );
+      jbProc.stdin.writeln('n');
+      expect(
+        await out.first,
+        equals(
+          '\nSelect a project type:\n'
+          '  1. basic project.\n'
+          '  2. jb extension.\n'
+          'Choose [1]: ',
+        ),
+      );
+      jbProc.stdin.writeln();
+      expect(await out.first, startsWith('\njb project created at '));
+      expect(await jbProc.exitCode, isZero);
 
-        await assertDirectoryContents(Directory(emptyProjectDir), [
-          '.gitkeep',
-          'jbuild.yaml',
-          'src',
-          p.join('src', 'testing'),
-          p.join('src', 'testing', 'foo'),
-          p.join('src', 'testing', 'foo', 'Main.java'),
-        ]);
+      await assertDirectoryContents(Directory(emptyProjectDir), [
+        '.gitkeep',
+        'jbuild.yaml',
+        'src',
+        p.join('src', 'testing'),
+        p.join('src', 'testing', 'foo'),
+        p.join('src', 'testing', 'foo', 'Main.java'),
+      ]);
 
-        // ensure everything is valid by running a build
-        final runResult = await runJb(Directory(emptyProjectDir), const [
-          'run',
-        ]);
-        expectSuccess(runResult);
-        expect(runResult.stdout.join('\n'), contains('Hello world!'));
-      },
-      timeout: const Timeout(Duration(seconds: 15)),
-    );
+      // ensure everything is valid by running a build
+      final runResult = await runJb(Directory(emptyProjectDir), const ['run']);
+      expectSuccess(runResult);
+      expect(runResult.stdout.join('\n'), contains('Hello world!'));
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test(
-      'can create and test a jb project',
-      () async {
-        final jbProc = await startJb(
-          Directory(emptyProjectDir),
-          const ['create', '--no-color'],
-          // freeze the test lib versions so the tests work on Java 11 forever
-          const {
-            'ASSERTJ_VERSION': '3.27.3',
-            'JUNIT_JUPITER_API_VERSION': '5.8.2',
-          },
-        );
-        addTearDown(jbProc.kill);
-        addTearDown(cleanupEmptyProjectDir);
+    test('can create and test a jb project', () async {
+      final jbProc = await startJb(
+        Directory(emptyProjectDir),
+        const ['create', '--no-color'],
+        // freeze the test lib versions so the tests work on Java 11 forever
+        const {
+          'ASSERTJ_VERSION': '3.27.3',
+          'JUNIT_JUPITER_API_VERSION': '5.8.2',
+        },
+      );
+      addTearDown(jbProc.kill);
+      addTearDown(cleanupEmptyProjectDir);
 
-        // group ID
-        jbProc.stdin.writeln('testing.foo');
-        // artifact ID
-        jbProc.stdin.writeln();
-        // root package
-        jbProc.stdin.writeln('testing.foo');
-        // test module?
-        jbProc.stdin.writeln('y');
-        // 1. basic, 2. jb-extension
-        jbProc.stdin.writeln('1');
-        // done
-        expect(await jbProc.exitCode, isZero);
+      // group ID
+      jbProc.stdin.writeln('testing.foo');
+      // artifact ID
+      jbProc.stdin.writeln();
+      // root package
+      jbProc.stdin.writeln('testing.foo');
+      // test module?
+      jbProc.stdin.writeln('y');
+      // 1. basic, 2. jb-extension
+      jbProc.stdin.writeln('1');
+      // done
+      expect(await jbProc.exitCode, isZero);
 
-        // ensure everything is valid by running a build
-        final runResult = await runJb(Directory(emptyProjectDir), const [
-          '-p',
-          'test',
-          'test',
-        ]);
-        expectSuccess(runResult);
-        final allOutput = runResult.stdout.join('\n');
-        expect(allOutput, contains('Test run finished after '));
-        expect(allOutput, contains(' 1 tests found '));
-        expect(allOutput, contains(' 1 tests successful '));
-      },
-      timeout: const Timeout(Duration(seconds: 15)),
-    );
+      // ensure everything is valid by running a build
+      final runResult = await runJb(Directory(emptyProjectDir), const [
+        '-p',
+        'test',
+        'test',
+      ]);
+      expectSuccess(runResult);
+      final allOutput = runResult.stdout.join('\n');
+      expect(allOutput, contains('Test run finished after '));
+      expect(allOutput, contains(' 1 tests found '));
+      expect(allOutput, contains(' 1 tests successful '));
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test(
-      'cannot configure non-existing tasks',
-      () async {
-        addTearDown(cleanupEmptyProjectDir);
-        await File(p.join(emptyProjectDir, 'jbuild.json')).writeAsString(
-          '{'
-          ' "module": "test",'
-          ' "foo": { "bar": "zort" }'
-          '}',
-        );
-        await Directory(p.join(emptyProjectDir, 'src')).create();
-        await File(
-          p.join(emptyProjectDir, 'src', 'Hi.java'),
-        ).writeAsString('class Hi {}');
+    test('cannot configure non-existing tasks', () async {
+      addTearDown(cleanupEmptyProjectDir);
+      await File(p.join(emptyProjectDir, 'jbuild.json')).writeAsString(
+        '{'
+        ' "module": "test",'
+        ' "foo": { "bar": "zort" }'
+        '}',
+      );
+      await Directory(p.join(emptyProjectDir, 'src')).create();
+      await File(p.join(emptyProjectDir, 'src', 'Hi.java'))
+          .writeAsString('class Hi {}');
 
-        final runResult = await runJb(Directory(emptyProjectDir));
-        expect(runResult.exitCode, isNot(0));
-        final allOutput = runResult.stdout.join('\n');
-        expect(
-          allOutput,
-          contains(
-            'The following keys are not jb configuration entries, '
-            'nor custom tasks configurations: "foo"',
-          ),
-        );
-      },
-      timeout: const Timeout(Duration(seconds: 15)),
-    );
+      final runResult = await runJb(Directory(emptyProjectDir));
+      expect(runResult.exitCode, isNot(0));
+      final allOutput = runResult.stdout.join('\n');
+      expect(
+        allOutput,
+        contains(
+          'The following keys are not jb configuration entries, '
+          'nor custom tasks configurations: "foo"',
+        ),
+      );
+    }, timeout: const Timeout(Duration(seconds: 15)));
   });
 }

@@ -4,33 +4,26 @@ import 'package:actors/actors.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
+import 'package:jb/jb.dart';
 import 'package:jb/src/dependencies/checksums.dart';
 import 'package:path/path.dart' as p;
 
-import 'compilation_path.g.dart';
 import 'compile/compile.dart';
 import 'compute_compilation_path.dart' as cp;
 import 'compute_compilation_path.dart';
-import 'config.dart';
 import 'dependencies/deps_cache.dart';
 import 'dependencies/printer.dart';
 import 'dependencies/writer.dart';
 import 'deps.dart';
 import 'eclipse.dart';
-import 'exec.dart';
-import 'file_tree.dart';
-import 'java_tests.dart';
 import 'jb_actors.dart';
-import 'jb_files.dart';
 import 'jbuild_update.dart';
 import 'jshell.dart';
 import 'jvm_executor.dart';
 import 'jvm_run.dart';
 import 'optional_arg_validator.dart';
-import 'pom.dart';
 import 'publish.dart';
 import 'requirements.dart';
-import 'resolved_dependency.dart';
 import 'run_conditions.dart';
 import 'utils.dart';
 
@@ -117,8 +110,7 @@ Task createCheckJavaVersionTask(JbFiles jbFiles, JbActors actors) {
   return Task(
     (_) => _checkJavaVersion(versionFile, jvmExecutor),
     name: checkJavaVersionTaskName,
-    description:
-        'Check if the Java executable has the same version as in the previous build.',
+    description: 'Check if the Java executable has the same version as in the previous build.',
   );
 }
 
@@ -949,14 +941,16 @@ Task createRunTask(
 
 /// Create the `jshell` task.
 Task createJshellTask(
-  JbFiles files,
+  JbDartle jbDartle,
+  JbFiles jbFiles,
   JbConfigContainer config,
+  JbActors actors,
+  Options options,
   DartleCache cache,
 ) {
   return Task(
-    (List<String> args) => jshell(files.jbuildJar, config, args),
+    (List<String> args) => jshell(jbDartle, options, config, args, cache),
     dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
-    argsValidator: const JshellArgs(),
     name: jshellTaskName,
     description: jshellHelp,
     phase: evaluatePhase,
@@ -1070,9 +1064,8 @@ Future<void> _test(
 
   final runnerClasspath = junitRunnerJars.join(classpathSeparator);
 
-  final testClasspath = await Directory(
-    config.runtimeLibsDir.asOsPath(),
-  ).toClasspath(extraEntries: {testLibPath}, includeSelf: true);
+  final testClasspath = await Directory(config.runtimeLibsDir.asOsPath())
+      .toClasspath(extraEntries: {testLibPath}, includeSelf: true);
 
   const mainClass = 'org.junit.platform.console.ConsoleLauncher';
 

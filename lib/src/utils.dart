@@ -114,9 +114,11 @@ extension AsyncIterable<T> on Iterable<FutureOr<T>> {
 }
 
 extension ListExtension on Iterable<String> {
-  List<String> merge(Iterable<String> other, Properties props) => followedBy(
-    other,
-  ).map((e) => resolveString(e, props)).toSet().toList(growable: false);
+  List<String> merge(Iterable<String> other, Properties props) =>
+      followedBy(other)
+          .map((e) => resolveString(e, props))
+          .toSet()
+          .toList(growable: false);
 
   bool _javaRuntimeArg(String arg) => arg.startsWith('-J-');
 

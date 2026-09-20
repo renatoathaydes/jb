@@ -19,13 +19,11 @@ Future<void> generateEclipseFiles(
     resourceDirs,
     compileLibsDir,
   );
-  await File(
-    classpathFile,
-  ).writeAsString(classpath.toXmlString(pretty: true, indent: '    '));
+  await File(classpathFile)
+      .writeAsString(classpath.toXmlString(pretty: true, indent: '    '));
   final project = generateProject(module);
-  await File(
-    projectFile,
-  ).writeAsString(project.toXmlString(pretty: true, indent: '    '));
+  await File(projectFile)
+      .writeAsString(project.toXmlString(pretty: true, indent: '    '));
 }
 
 Future<xml.XmlDocument> generateClasspath(
@@ -35,9 +33,10 @@ Future<xml.XmlDocument> generateClasspath(
 ) async {
   final builder = xml.XmlBuilder();
   builder.processing('xml', 'version="1.0" encoding="UTF-8"');
-  final jars = await Directory(
-    compileLibsDir,
-  ).list().where((f) => p.extension(f.path) == '.jar').toList();
+  final jars = await Directory(compileLibsDir)
+      .list()
+      .where((f) => p.extension(f.path) == '.jar')
+      .toList();
   builder.element(
     'classpath',
     nest: () {

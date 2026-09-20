@@ -185,9 +185,9 @@ class Publisher {
     String pom,
     String jarFile,
   ) async {
-    await File(
-      p.join(destination.path, _fileFor(artifact, extension: '.pom')),
-    ).writeAsString(pom).then(_createChecksumsAndSign);
+    await File(p.join(destination.path, _fileFor(artifact, extension: '.pom')))
+        .writeAsString(pom)
+        .then(_createChecksumsAndSign);
     await File(jarFile)
         .copy(p.join(destination.path, _fileFor(artifact)))
         .then(_createChecksumsAndSign);

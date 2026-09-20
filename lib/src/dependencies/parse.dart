@@ -283,7 +283,7 @@ class LicenseParser {
   /// ```
   /// {MIT}
   /// ```
-  List<DependencyLicense> parseLicenses(final String text) {
+  List<DependencyLicense> parseLicenses(String text) {
     final result = <DependencyLicense>[];
     var startIndex = 0;
     while (startIndex < text.length) {

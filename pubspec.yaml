@@ -3,7 +3,7 @@ description: JBuild front-end. A modern Java build system that leverages Dartle 
 version: 0.16.1
 repository: https://github.com/renatoathaydes/jb
 environment:
-  sdk: '>=3.10.0 <4.0.0'
+  sdk: '>=3.13.0 <4.0.0'
 
 dependencies:
   path: ^1.8.2

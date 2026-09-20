@@ -439,18 +439,16 @@ void main() {
 
     test('can print basic config with dependencies as YAML', () async {
       expect(
-        (await loadConfigString(
-          _basicConfigWithDependencies,
-        )).config.toYaml(true),
+        (await loadConfigString(_basicConfigWithDependencies)).config
+            .toYaml(true),
         equals(_basicConfigWithDependenciesExpanded),
       );
     });
 
     test('can print basic config with extensions as YAML', () async {
       expect(
-        (await loadConfigString(
-          _basicConfigWithExtensions,
-        )).config.toYaml(true),
+        (await loadConfigString(_basicConfigWithExtensions)).config
+            .toYaml(true),
         equals(_basicConfigWithExtensionsExpanded),
       );
     });
@@ -767,9 +765,8 @@ void main() {
     });
 
     test('can import configuration with properties', () async {
-      final versionsFile = await tempFile(
-        extension: '.yaml',
-      ).writeAsString(_versionsConfig);
+      final versionsFile = await tempFile(extension: '.yaml')
+          .writeAsString(_versionsConfig);
       final cwi = await loadConfigString(
         _configImportingVersionsConfig(versionsFile.path),
       );

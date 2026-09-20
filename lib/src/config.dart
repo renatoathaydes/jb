@@ -75,9 +75,8 @@ Future<JbConfigWithImports> loadConfigString(
     final resolvedMap = resolvePropertiesFromMap(json);
     final imports = resolvedMap.map.remove('imports');
     try {
-      return await JbConfiguration.fromJson(
-        resolvedMap.map,
-      ).applyImports(imports, configFile?.path);
+      return await JbConfiguration.fromJson(resolvedMap.map)
+          .applyImports(imports, configFile?.path);
     } on PropertyTypeException catch (e) {
       final help = _helpForProperty(e.propertyPath);
       if (help.isEmpty) {

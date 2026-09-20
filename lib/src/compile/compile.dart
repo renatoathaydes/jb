@@ -35,16 +35,16 @@ Future<RunJBuild> compileCommand(
     if (publication) {
       allArgs.addAll([
         '--groovydoc-tool-class-path',
-        await Directory(
-          p.join(cache.rootDir, groovydocLibsDir),
-        ).toClasspath().then((cp) {
-          if (cp == null) {
-            throw StateError(
-              'The groovydoc libs directory is empty: $groovydocLibsDir',
-            );
-          }
-          return cp;
-        }),
+        await Directory(p.join(cache.rootDir, groovydocLibsDir))
+            .toClasspath()
+            .then((cp) {
+              if (cp == null) {
+                throw StateError(
+                  'The groovydoc libs directory is empty: $groovydocLibsDir',
+                );
+              }
+              return cp;
+            }),
       ]);
     }
   } else {

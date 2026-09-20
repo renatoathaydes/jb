@@ -58,14 +58,13 @@ final setupTestMvnRepoTask = Task(
 Future<void> _setupTestMvnRepo(_) async {
   await Directory(_listsRepoDir).create(recursive: true);
   await File(_listsJar).copy(path.join(_listsRepoDir, 'lists-1.0.jar'));
-  await File(
-    '$_listsJar.sha1',
-  ).copy(path.join(_listsRepoDir, 'lists-1.0.jar.sha1'));
+  await File('$_listsJar.sha1')
+      .copy(path.join(_listsRepoDir, 'lists-1.0.jar.sha1'));
   await File(_listsPom).copy(path.join(_listsRepoDir, 'lists-1.0.pom'));
 
-  await Directory(
-    testMavenRepoPreBuilt,
-  ).copyContentsInto(testMavenRepo).drain();
+  await Directory(testMavenRepoPreBuilt)
+      .copyContentsInto(testMavenRepo)
+      .drain();
 }
 
 Future<void> _buildMvnRepoListsProject(_) async {

@@ -741,8 +741,7 @@ JBuild success in 415 ms!
               url: 'https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.txt',
             ),
             DependencyLicense(
-              name:
-                  'GNU General Public License, version 2 with the GNU Classpath Exception',
+              name: 'GNU General Public License, version 2 with the GNU Classpath Exception',
               url: 'https://www.gnu.org/software/classpath/license.html',
             ),
           ],
@@ -875,8 +874,7 @@ JBuild success in 415 ms!
         ),
         // --- org.springframework.security:spring-security-oauth2-client ---
         ResolvedDependency(
-          artifact:
-              'org.springframework.security:spring-security-oauth2-client:6.5.1',
+          artifact: 'org.springframework.security:spring-security-oauth2-client:6.5.1',
           spec: defaultSpec,
           isDirect: false,
           dependencies: [
