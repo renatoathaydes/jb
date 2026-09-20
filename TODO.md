@@ -8,8 +8,8 @@ Once the project is in good shape, this should be moved to a proper bug tracker.
 
 - fat jar
 - add `--watch` option to `compile` task.
+- support more than one jb-extension
 
 ## Bugs
 
 - clean task deletes `dependencies.sum` (correctly but inconveniently).
-

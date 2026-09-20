@@ -170,6 +170,7 @@ final class _JBuildActor implements Handler<JvmExecutorMessage, Object?> {
   @override
   Future<Object?> handle(JvmExecutorMessage message) async {
     return switch (message) {
+      CurrentJavaVersion() => javaInfo?.version,
       PreviousJavaVersion(version: var v) => _handlePreviousJavaVersion(v),
       ShouldForceCompilation(force: var f) => f.vmap((force) {
         if (force != null) {
@@ -279,6 +280,11 @@ Future<Object?> _run(JavaCommand command, _JBuildRpc rpc) {
 
 sealed class JvmExecutorMessage {
   const JvmExecutorMessage();
+}
+
+/// Message to query for the current Java version.
+final class CurrentJavaVersion extends JvmExecutorMessage {
+  const CurrentJavaVersion();
 }
 
 /// This message is used to ask the JVM Executor whether the Java version

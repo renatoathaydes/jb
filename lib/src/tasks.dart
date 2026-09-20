@@ -5,17 +5,18 @@ import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:jb/jb.dart';
-import 'package:jb/src/dependencies/checksums.dart';
 import 'package:path/path.dart' as p;
 
 import 'compile/compile.dart';
 import 'compute_compilation_path.dart' as cp;
 import 'compute_compilation_path.dart';
+import 'dependencies/checksums.dart';
 import 'dependencies/deps_cache.dart';
 import 'dependencies/printer.dart';
 import 'dependencies/writer.dart';
 import 'deps.dart';
 import 'eclipse.dart';
+import 'java_version.dart';
 import 'jb_actors.dart';
 import 'jbuild_update.dart';
 import 'jshell.dart';
@@ -238,10 +239,30 @@ Future<void> _compile(
   JbActors actors, {
   bool publication = false,
 }) async {
-  final config = configContainer.config;
   final stopwatch = Stopwatch()..start();
+  final config = configContainer.config;
+  final jvmExecutor = actors.jvmExecutor;
+  final libsDir = config.compileLibsDir.asOsPath();
+  final artifactId = configContainer.artifactId;
+  final compilePath = compPathFiles.compilePath;
+
+  await _checkDepsJavaVersion(
+    jvmExecutor,
+    actors,
+    artifactId,
+    libsDir,
+    compilePath,
+  );
+  logger.log(
+    profile,
+    () =>
+        'Checked libraries Java version requirements in '
+        '${elapsedTime(stopwatch)}',
+  );
+
+  stopwatch.reset();
   final shouldForce =
-      await actors.jvmExecutor.send(const ShouldForceCompilation()) as bool;
+      await jvmExecutor.send(const ShouldForceCompilation()) as bool;
   TransitiveChanges? changes;
   if (shouldForce) {
     logger.info('Forcing compilation due to environment changes');
@@ -260,8 +281,8 @@ Future<void> _compile(
   stopwatch.reset();
   final compilationPath = await getCompilationPath(
     actors.compPath,
-    configContainer.artifactId,
-    config.compileLibsDir.asOsPath(),
+    artifactId,
+    libsDir,
     compPathFiles.compilePath,
   );
   final command = await compileCommand(
@@ -276,7 +297,7 @@ Future<void> _compile(
     cache,
   );
   if (config.javacEnv.isEmpty) {
-    await actors.jvmExecutor.send(command);
+    await jvmExecutor.send(command);
   } else {
     logger.fine(
       'Cannot use JVM Executor to compile because javac-env is not empty, '
@@ -802,6 +823,45 @@ Task createJavaCompilationPathTask(
       cache: compilationFiles.cache,
     ),
   );
+}
+
+Future<void> _checkDepsJavaVersion(
+  Sendable<JvmExecutorMessage, Object?> jvmExecutor,
+  JbActors actors,
+  String artifactId,
+  String libsDir,
+  String compilePath,
+) async {
+  final compilationPath = await getCompilationPath(
+    actors.compPath,
+    artifactId,
+    libsDir,
+    compilePath,
+  );
+  final currentVersion =
+      await jvmExecutor.send(const CurrentJavaVersion()) as String?;
+  if (currentVersion == null) {
+    logger.warning(
+      () => 'Cannot check Java version, current version is unknown',
+    );
+    return;
+  }
+  final javaVersion = JavaVersion.parse(currentVersion);
+  final nonSuccessfulRequirements = compilationPath.jars
+      .map((j) => (j.path, j.javaVersion))
+      .followedBy(compilationPath.modules.map((m) => (m.name, m.javaVersion)))
+      .where((entry) {
+        final (dep, depJavaVersion) = entry;
+        logger.fine(() => 'Dependency $dep requires Java $depJavaVersion');
+        return JavaVersion.parse(depJavaVersion) > javaVersion;
+      });
+  if (nonSuccessfulRequirements.isNotEmpty) {
+    failBuild(
+      reason:
+          'Current Java version is $currentVersion, but the following dependencies require a higher version:\n'
+          '${nonSuccessfulRequirements.map((e) => '  - ${e.$1} (needs ${e.$2})').join('\n')}',
+    );
+  }
 }
 
 Task createJavaRuntimePathTask(
