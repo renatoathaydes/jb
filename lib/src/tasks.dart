@@ -764,7 +764,13 @@ Future<void> _copyOutput(CompileOutput out, String destinationDir) async {
     jar: (j) => File(j).copy(p.join(destinationDir, p.basename(j))).asStream(),
   );
   await for (final entity in createdEntities) {
-    logger.finer(() => 'Copied to ${p.absolute(entity.path)}');
+    final path = p.absolute(entity.path);
+    final exists = await entity.exists();
+    if (exists) {
+      logger.finer(() => 'Copied to $path');
+    } else {
+      logger.warning(() => 'Failed to copy to $path');
+    }
   }
 }
 

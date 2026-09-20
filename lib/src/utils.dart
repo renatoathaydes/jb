@@ -294,10 +294,19 @@ extension DirectoryExtension on Directory {
       if (child is Directory) {
         yield await Directory(
           p.join(destinationDir, p.relative(child.path, from: path)),
-        ).create();
+        ).create(recursive: true);
       } else if (child is File) {
-        yield await child.copy(
+        final target = File(
           p.join(destinationDir, p.relative(child.path, from: path)),
+        );
+        final targetExistsBefore = await target.exists();
+        yield await child.copy(target.path);
+        final targetExistsAfter = await target.exists();
+        logger.fine(
+          () =>
+              'copy ${child.path} -> ${target.path} '
+              '(exists before: $targetExistsBefore, '
+              'after: $targetExistsAfter)',
         );
       }
     }
