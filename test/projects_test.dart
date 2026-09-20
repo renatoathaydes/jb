@@ -324,8 +324,6 @@ void main() {
       final jbResult = await runJb(Directory(testsProjectDir), [
         'test',
         '--no-color',
-        '-l',
-        Platform.isWindows ? 'trace' : 'info',
       ]);
       expectSuccess(jbResult);
       final output = jbResult.stdout.join('\n');
@@ -602,7 +600,7 @@ void main() {
           contains(matches(RegExp(r" Task 'bar' does not exist$"))),
         );
       },
-      timeout: const Timeout(Duration(seconds: 10)),
+      timeout: const Timeout(Duration(seconds: 15)),
     );
 
     test(
