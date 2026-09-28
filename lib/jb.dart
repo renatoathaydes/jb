@@ -9,6 +9,7 @@ export 'src/extension/jb_extension.dart';
 export 'src/file_tree.dart';
 export 'src/java_tests.dart';
 export 'src/jb_dartle.dart';
+export 'src/jb_files.dart';
 export 'src/licenses.g.dart';
 export 'src/maven_metadata.dart';
 export 'src/options.dart';

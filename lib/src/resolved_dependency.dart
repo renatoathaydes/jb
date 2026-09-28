@@ -67,7 +67,7 @@ final class ResolvedProjectDependency {
     JbFiles files,
     JbActors actors,
   ) async {
-    final runner = JbRunner(files, _config.config, actors);
+    final runner = JbRunner(files, _config.cwi, actors);
     logger.info(() => "Initializing project dependency at '$projectDir'");
     await withCurrentDirectory(
       projectDir,
@@ -80,14 +80,13 @@ final class ResolvedProjectDependency {
       ),
     );
 
-    logger.fine(() => "Project dependency '$projectDir' initialized");
+    logger.info(() => "Project dependency '$projectDir' initialized");
   }
 
   ResolvedDependency toResolvedDependency({required bool isDirect}) =>
       ResolvedDependency(
         artifact: artifact,
         spec: spec,
-        sha1: '',
         isDirect: isDirect,
         dependencies: dependencies.keys.toList(growable: false),
       );

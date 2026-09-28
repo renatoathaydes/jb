@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:conveniently/conveniently.dart';
+import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:path/path.dart' as p;
 
 import '../compilation_path.g.dart';
@@ -12,7 +13,7 @@ import '../utils.dart';
 import 'groovy.dart';
 import 'jbuild_compile.dart';
 
-Future<JavaCommand> compileCommand(
+Future<RunJBuild> compileCommand(
   JbFiles jbFiles,
   JbConfiguration config,
   CompilationPath compPath,
@@ -21,6 +22,7 @@ Future<JavaCommand> compileCommand(
   bool publication,
   TransitiveChanges? changes,
   List<String> args,
+  DartleCache cache,
 ) async {
   final allArgs = <String>[];
   if (isGroovyEnabled) {
@@ -29,6 +31,22 @@ Future<JavaCommand> compileCommand(
     );
     final groovyJar = await findGroovyJar(config);
     allArgs.addAll(['-g', groovyJar]);
+
+    if (publication) {
+      allArgs.addAll([
+        '--groovydoc-tool-class-path',
+        await Directory(p.join(cache.rootDir, groovydocLibsDir))
+            .toClasspath()
+            .then((cp) {
+              if (cp == null) {
+                throw StateError(
+                  'The groovydoc libs directory is empty: $groovydocLibsDir',
+                );
+              }
+              return cp;
+            }),
+      ]);
+    }
   } else {
     logger.finer('No Groovy dependencies found. Using javac compiler.');
   }
@@ -57,6 +75,12 @@ Future<JavaCommand> compileCommand(
     }
   }
 
+  if (config.processorDependencies.isNotEmpty &&
+      !config.javacArgs.contains('-processorpath')) {
+    allArgs.add('--processor-path');
+    allArgs.add(p.join(jbFiles.processorLibsDir, '*'));
+  }
+
   await addCompilationPathsTo(
     allArgs,
     config,
@@ -67,13 +91,12 @@ Future<JavaCommand> compileCommand(
   allArgs.addAll(args);
 
   return jbuildCompileCommand(
-    jbFiles,
     config,
     workingDir,
     publication,
     effectiveChanges,
     allArgs,
-    isGroovyEnabled,
+    isGroovyEnabled: isGroovyEnabled,
   );
 }
 
@@ -96,7 +119,7 @@ Future<bool> addCompilationPathsTo(
 }) async {
   // to support local dependencies that do not produce a jar,
   // we always add the libs dir itself to the classpath
-  final cp = [config.compileLibsDir];
+  final cp = [config.compileLibsDir.asDirPath()];
 
   final mp = <String>[];
 

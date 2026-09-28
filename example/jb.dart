@@ -16,7 +16,7 @@ import 'package:jb/jb.dart';
 Future<void> main(List<String> args) async {
   final stopwatch = Stopwatch()..start();
 
-  final config = await loadConfigString('''
+  final cwi = await loadConfigString('''
     source-dirs: [ src ]
     resource-dirs: [ res ]
   ''');
@@ -33,7 +33,7 @@ Future<void> main(List<String> args) async {
   final buildRan = await runJb(
     jbOptions,
     dartleOptions,
-    InstanceConfigSource(config),
+    InstanceConfigSource(cwi),
   );
   if (buildRan) {
     logger.info(

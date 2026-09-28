@@ -4,36 +4,32 @@ import 'package:actors/actors.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
+import 'package:jb/jb.dart';
 import 'package:path/path.dart' as p;
 
-import 'compilation_path.g.dart';
 import 'compile/compile.dart';
 import 'compute_compilation_path.dart' as cp;
 import 'compute_compilation_path.dart';
-import 'config.dart';
+import 'dependencies/checksums.dart';
 import 'dependencies/deps_cache.dart';
 import 'dependencies/printer.dart';
 import 'dependencies/writer.dart';
 import 'deps.dart';
 import 'eclipse.dart';
-import 'exec.dart';
-import 'file_tree.dart';
-import 'java_tests.dart';
+import 'java_version.dart';
 import 'jb_actors.dart';
-import 'jb_files.dart';
 import 'jbuild_update.dart';
 import 'jshell.dart';
 import 'jvm_executor.dart';
 import 'jvm_run.dart';
 import 'optional_arg_validator.dart';
-import 'pom.dart';
 import 'publish.dart';
 import 'requirements.dart';
-import 'resolved_dependency.dart';
 import 'run_conditions.dart';
 import 'utils.dart';
 
 const cleanTaskName = 'clean';
+const checkJavaVersionTaskName = 'checkJavaVersion';
 const compileTaskName = 'compile';
 const publicationCompileTaskName = 'publicationCompile';
 const testTaskName = 'test';
@@ -43,10 +39,12 @@ const jshellTaskName = 'jshell';
 const installCompileDepsTaskName = 'installCompileDependencies';
 const installRuntimeDepsTaskName = 'installRuntimeDependencies';
 const installProcessorDepsTaskName = 'installProcessorDependencies';
+const installGroovydocsTaskName = 'installGroovydocsRuntime';
 const createJavaCompilationPathTaskName = 'createJavaCompilationPath';
 const createJavaRuntimePathTaskName = 'createJavaRuntimePath';
 const writeDepsTaskName = 'writeDependencies';
 const verifyDepsTaskName = 'verifyDependencies';
+const downloadDependenciesChecksumsTaskName = 'downloadDependenciesChecksums';
 const depsTaskName = 'dependencies';
 const showJbConfigTaskName = 'showJbConfiguration';
 const requirementsTaskName = 'requirements';
@@ -66,6 +64,7 @@ final publishPhase = TaskPhase.custom(evaluatePhase.index + 10, 'publish');
 
 /// Create run condition for the `compile` task.
 RunOnChanges _createCompileRunCondition(
+  JbFiles jbFiles,
   JbConfigContainer configContainer,
   DartleCache cache,
 ) {
@@ -75,7 +74,12 @@ RunOnChanges _createCompileRunCondition(
     jar: (j) => file(j),
   );
   return RunOnChanges(
-    inputs: dirs(config.sourceDirs.followedBy(config.resourceDirs)),
+    inputs: entities(
+      [jbFiles.javaVersionFile.path],
+      config.sourceDirs
+          .followedBy(config.resourceDirs)
+          .map((path) => DirectoryEntry(path: path)),
+    ),
     outputs: outputs,
     cache: cache,
   );
@@ -100,6 +104,41 @@ RunCondition _createPublicationCompileRunCondition(
   );
 }
 
+/// Create the `checkJavaVersion` task.
+Task createCheckJavaVersionTask(JbFiles jbFiles, JbActors actors) {
+  final jvmExecutor = actors.jvmExecutor;
+  final versionFile = jbFiles.javaVersionFile.path;
+  return Task(
+    (_) => _checkJavaVersion(versionFile, jvmExecutor),
+    name: checkJavaVersionTaskName,
+    phase: TaskPhase.setup,
+    description: 'Check if the Java executable has the same version as in the previous build.',
+  );
+}
+
+Future<void> _checkJavaVersion(
+  String versionFilePath,
+  Sendable<JvmExecutorMessage, Object?> jvmExecutor,
+) async {
+  String? previousVersion;
+  final versionFile = File(versionFilePath);
+  if (await versionFile.exists()) {
+    logger.finer('Java Version file exists, checking it');
+    previousVersion = await versionFile.readAsString();
+  } else {
+    logger.finer('Java Version file does not exist');
+  }
+  final currentVersion =
+      await jvmExecutor.send(PreviousJavaVersion(previousVersion)) as String?;
+  if (currentVersion != null) {
+    if (previousVersion == currentVersion) {
+      return; // nothing else to do
+    }
+    logger.fine('Updating Java version file');
+    await versionFile.writeAsString(currentVersion);
+  }
+}
+
 /// Create the `compile` task.
 Task createCompileTask(
   JbFiles jbFiles,
@@ -120,9 +159,10 @@ Task createCompileTask(
       cache,
       actors,
     ),
-    runCondition: _createCompileRunCondition(config, cache),
+    runCondition: _createCompileRunCondition(jbFiles, config, cache),
     name: compileTaskName,
     argsValidator: const AcceptAnyArgs(),
+    requires: const {checkJavaVersionTaskName},
     dependsOn: const {
       createJavaCompilationPathTaskName,
       installProcessorDepsTaskName,
@@ -153,7 +193,11 @@ Task createPublicationCompileTask(
     runCondition: _createPublicationCompileRunCondition(config, cache),
     name: publicationCompileTaskName,
     argsValidator: const AcceptAnyArgs(),
-    dependsOn: const {installCompileDepsTaskName, installProcessorDepsTaskName},
+    dependsOn: const {
+      compileTaskName,
+      installProcessorDepsTaskName,
+      installGroovydocsTaskName,
+    },
     description: 'Compile Java source code, javadocs and sources jar.',
   );
 }
@@ -195,47 +239,92 @@ Future<void> _compile(
   JbActors actors, {
   bool publication = false,
 }) async {
-  final config = configContainer.config;
   final stopwatch = Stopwatch()..start();
-  final changes = await computeAllChanges(
-    changeSet,
-    jbFiles.javaSrcFileTreeFile,
+  final config = configContainer.config;
+  final jvmExecutor = actors.jvmExecutor;
+  final libsDir = config.compileLibsDir.asOsPath();
+  final artifactId = configContainer.artifactId;
+  final compilePath = compPathFiles.compilePath;
+
+  await _checkDepsJavaVersion(
+    jvmExecutor,
+    actors,
+    artifactId,
+    libsDir,
+    compilePath,
   );
-  if (changes != null) {
-    logger.log(
-      profile,
-      () =>
-          'Computed transitive changes in '
-          '${elapsedTime(stopwatch)}: $changes',
-    );
+  logger.log(
+    profile,
+    () =>
+        'Checked libraries Java version requirements in '
+        '${elapsedTime(stopwatch)}',
+  );
+
+  stopwatch.reset();
+  final shouldForce =
+      await jvmExecutor.send(const ShouldForceCompilation()) as bool;
+  TransitiveChanges? changes;
+  if (shouldForce) {
+    logger.info('Forcing compilation due to environment changes');
+  } else {
+    logger.fine('Computing source file changes');
+    changes = await computeAllChanges(changeSet, jbFiles.javaSrcFileTreeFile);
+    if (changes != null) {
+      logger.log(
+        profile,
+        () =>
+            'Computed transitive changes in '
+            '${elapsedTime(stopwatch)}: $changes',
+      );
+    }
   }
   stopwatch.reset();
   final compilationPath = await getCompilationPath(
     actors.compPath,
-    configContainer.artifactId,
-    config.compileLibsDir,
+    artifactId,
+    libsDir,
     compPathFiles.compilePath,
   );
-  final isGroovyEnabled =
-      configContainer.knownDeps.groovy ||
-      configContainer.testConfig.spockVersion != null;
-  await actors.jvmExecutor.send(
-    await compileCommand(
-      jbFiles,
-      config,
-      compilationPath,
-      isGroovyEnabled,
-      workingDir,
-      publication,
-      changes,
-      args,
-    ),
+  final command = await compileCommand(
+    jbFiles,
+    config,
+    compilationPath,
+    configContainer.knownDeps.groovy,
+    workingDir,
+    publication,
+    changes,
+    args,
+    cache,
   );
+  if (config.javacEnv.isEmpty) {
+    await jvmExecutor.send(command);
+  } else {
+    logger.fine(
+      'Cannot use JVM Executor to compile because javac-env is not empty, '
+      'will start new JVM Process instead.',
+    );
+    final exitCode = await execJBuild(
+      publication ? publicationCompileTaskName : compileTaskName,
+      jbFiles.jbuildJar,
+      command.preArgs,
+      command.command,
+      command.args,
+      env: config.javacEnv,
+    );
+    if (exitCode != 0) {
+      failBuild(reason: 'jbuild compile command failed', exitCode: exitCode);
+    }
+  }
 
   logger.log(
     profile,
     () => 'Java compilation completed in ${elapsedTime(stopwatch)}',
   );
+
+  if (publication) {
+    // no need to create file-tree, that's created when doing the normal compilation.
+    return;
+  }
 
   stopwatch.reset();
   logger.fine('Computing Java source tree for incremental builds');
@@ -244,7 +333,7 @@ Future<void> _compile(
     compileTaskName,
     config,
     workingDir,
-    actors.jvmExecutor,
+    actors.jvmExecutor.takingJavaCommands(),
     output,
     jbFiles.javaSrcFileTreeFile,
   );
@@ -354,7 +443,86 @@ Task createVerifyDependenciesTask(
   );
 }
 
-/// Create the `installCompileDependencies` task.
+/// Create the 'downloadDependenciesChecksums' task.
+Task createDownloadDependenciesChecksumsTask(
+  JbFiles jbFiles,
+  JbConfiguration config,
+  JBuildSender jBuildSender,
+  DepsCache depsCache,
+  DartleCache cache,
+) {
+  final preArgs = config.preArgs(Directory.current.path);
+  return Task(
+    (List<String> _) async => downloadDependenciesChecksums(
+      jbFiles,
+      preArgs,
+      jBuildSender,
+      depsCache,
+    ),
+    name: downloadDependenciesChecksumsTaskName,
+    runCondition: RunOnChanges(
+      inputs: files([
+        jbFiles.dependenciesFile.path,
+        jbFiles.processorDependenciesFile.path,
+      ]),
+      outputs: file(jbFiles.dependenciesChecksumFile.path),
+      verifyOutputsExist: false,
+      cache: cache,
+    ),
+    dependsOn: {verifyDepsTaskName},
+    phase: depsPhase,
+    description: 'Downloads dependencies checksums.',
+  );
+}
+
+/// Create the `installGroovydocsRuntime` task.
+Task createInstallGroovydocsTask(
+  JbFiles files,
+  JbConfigContainer config,
+  JBuildSender jBuildSender,
+  DepsCache depsCache,
+  DartleCache cache,
+  ResolvedLocalDependencies localDependencies,
+) {
+  final isGroovyEnabled =
+      config.knownDeps.groovy || config.testConfig.spockVersion != null;
+
+  final depsFile = files.groovydocsDependenciesFile.path;
+  final preArgs = config.config.preArgs(Directory.current.path);
+  final libsDir = p.join(cache.rootDir, groovydocLibsDir);
+
+  // can only use Sendable objects inside action
+  Future<void> action(_) async {
+    if (!isGroovyEnabled) {
+      logger.fine(
+        'Groovy is not configured in this project. Will not '
+        'install Groovydocs tools.',
+      );
+      return;
+    }
+    final deps = FileDependencies(File(depsFile), depsCache, alwaysTrue);
+    await _install(
+      installGroovydocsTaskName,
+      jBuildSender,
+      preArgs,
+      deps,
+      libsDir,
+    );
+  }
+
+  return _createInstallDepsTask(
+    installGroovydocsTaskName,
+    'runtime',
+    action,
+    depsFile,
+    const [],
+    const [],
+    libsDir,
+    null,
+    cache,
+  );
+}
+
 Task createInstallCompileDepsTask(
   JbFiles files,
   JbConfiguration config,
@@ -372,7 +540,7 @@ Task createInstallCompileDepsTask(
       .toList(growable: false);
   final depsFile = files.dependenciesFile.path;
   final preArgs = config.preArgs(Directory.current.path);
-  final libsDir = config.compileLibsDir;
+  final libsDir = config.compileLibsDir.asOsPath();
 
   // can only use Sendable objects inside action
   Future<void> action(_) async {
@@ -399,8 +567,8 @@ Task createInstallCompileDepsTask(
     depsFile,
     projectDeps,
     jarDeps,
-    config.compileLibsDir,
-    null,
+    config.compileLibsDir.asOsPath(),
+    downloadDependenciesChecksumsTaskName,
     cache,
   );
 }
@@ -423,7 +591,7 @@ Task createInstallRuntimeDepsTask(
       .toList(growable: false);
   final depsFile = files.dependenciesFile.path;
   final preArgs = config.config.preArgs(Directory.current.path);
-  final runtimeLibsDir = config.config.runtimeLibsDir;
+  final runtimeLibsDir = config.config.runtimeLibsDir.asOsPath();
   Future<void> action(_) async {
     final deps = FileDependencies(
       File(depsFile),
@@ -451,7 +619,7 @@ Task createInstallRuntimeDepsTask(
     depsFile,
     projectDeps,
     jarDeps,
-    config.config.runtimeLibsDir,
+    runtimeLibsDir,
     // the compiled jar is added to the runtime
     compileTaskName,
     cache,
@@ -558,15 +726,16 @@ Future<void> _install(
   String outputDir,
 ) async {
   final deps = await dependencies.resolveArtifacts(includeLocal: false);
+  final outDir = Directory(outputDir);
+  if (await outDir.exists()) {
+    await outDir.delete(recursive: true);
+  }
   if (deps.isEmpty) {
     return logger.fine("No dependencies to install for '$taskName'.");
   }
   await jBuildSender.send(
-    RunJBuild(taskName, [
-      ...preArgs,
-      'install',
+    RunJBuild(taskName, preArgs, 'install', [
       '--non-transitive',
-      '--checksum',
       if ('JB_INSTALL_TO_MAVEN_LOCAL'.envVar().isNotFalse) '--maven-local',
       '--directory',
       outputDir,
@@ -585,7 +754,9 @@ Future<void> _copy(
   for (final dep in resolvedDeps) {
     await _copyOutput(dep.output, destinationDir);
     await _copyOutput(
-      CompileOutput.dir(runtime ? dep.runtimeLibsDir : dep.compileLibsDir),
+      CompileOutput.dir(
+        (runtime ? dep.runtimeLibsDir : dep.compileLibsDir).asOsPath(),
+      ),
       destinationDir,
     );
   }
@@ -595,17 +766,34 @@ Future<void> _copyFiles(Iterable<String> jars, String destinationDir) async {
   if (jars.isEmpty) return;
   await Directory(destinationDir).create(recursive: true);
   for (final jar in jars) {
-    logger.fine(() => 'Copying $jar to $destinationDir');
-    await File(jar).copy(p.join(destinationDir, p.basename(jar)));
+    logger.fine(() => 'Copying $jar to ${p.absolute(destinationDir)}');
+    final jarFile = File(jar);
+    if (!await jarFile.exists()) {
+      failBuild(
+        reason:
+            'Cannot copy file from $jar to ${p.absolute(destinationDir)} '
+            'because file does not exist',
+      );
+    }
+    await jarFile.copy(p.join(destinationDir, p.basename(jar)));
   }
 }
 
-Future<void> _copyOutput(CompileOutput out, String destinationDir) {
-  logger.fine(() => 'Copying $out to $destinationDir');
-  return out.when(
+Future<void> _copyOutput(CompileOutput out, String destinationDir) async {
+  logger.fine(() => 'Copying $out to ${p.absolute(destinationDir)}');
+  final createdEntities = out.when(
     dir: (d) => Directory(d).copyContentsInto(destinationDir),
-    jar: (j) => File(j).copy(p.join(destinationDir, p.basename(j))),
+    jar: (j) => File(j).copy(p.join(destinationDir, p.basename(j))).asStream(),
   );
+  await for (final entity in createdEntities) {
+    final path = p.absolute(entity.path);
+    final exists = await entity.exists();
+    if (exists) {
+      logger.finer(() => 'Copied to $path');
+    } else {
+      logger.warning(() => 'Failed to copy to $path');
+    }
+  }
 }
 
 Task createJavaCompilationPathTask(
@@ -622,7 +810,7 @@ Task createJavaCompilationPathTask(
         config,
         jBuildSender,
         compPath,
-        config.config.compileLibsDir,
+        config.config.compileLibsDir.asOsPath(),
         compilationFiles,
       );
     },
@@ -635,6 +823,45 @@ Task createJavaCompilationPathTask(
       cache: compilationFiles.cache,
     ),
   );
+}
+
+Future<void> _checkDepsJavaVersion(
+  Sendable<JvmExecutorMessage, Object?> jvmExecutor,
+  JbActors actors,
+  String artifactId,
+  String libsDir,
+  String compilePath,
+) async {
+  final compilationPath = await getCompilationPath(
+    actors.compPath,
+    artifactId,
+    libsDir,
+    compilePath,
+  );
+  final currentVersion =
+      await jvmExecutor.send(const CurrentJavaVersion()) as String?;
+  if (currentVersion == null) {
+    logger.warning(
+      () => 'Cannot check Java version, current version is unknown',
+    );
+    return;
+  }
+  final javaVersion = JavaVersion.parse(currentVersion);
+  final nonSuccessfulRequirements = compilationPath.jars
+      .map((j) => (j.path, j.javaVersion))
+      .followedBy(compilationPath.modules.map((m) => (m.name, m.javaVersion)))
+      .where((entry) {
+        final (dep, depJavaVersion) = entry;
+        logger.fine(() => 'Dependency $dep requires Java $depJavaVersion');
+        return JavaVersion.parse(depJavaVersion) > javaVersion;
+      });
+  if (nonSuccessfulRequirements.isNotEmpty) {
+    failBuild(
+      reason:
+          'Current Java version is $currentVersion, but the following dependencies require a higher version:\n'
+          '${nonSuccessfulRequirements.map((e) => '  - ${e.$1} (needs ${e.$2})').join('\n')}',
+    );
+  }
 }
 
 Task createJavaRuntimePathTask(
@@ -652,7 +879,7 @@ Task createJavaRuntimePathTask(
         config,
         workingDir,
         jBuildSender,
-        config.config.runtimeLibsDir,
+        config.config.runtimeLibsDir.asOsPath(),
         compPath,
         compilationFiles,
       );
@@ -675,7 +902,7 @@ Task createEclipseTask(JbConfiguration config) {
       config.sourceDirs,
       config.resourceDirs,
       config.module,
-      config.compileLibsDir,
+      config.compileLibsDir.asOsPath(),
     ),
     name: createEclipseTaskName,
     description: 'Generate Eclipse IDE files for the project.',
@@ -781,14 +1008,16 @@ Task createRunTask(
 
 /// Create the `jshell` task.
 Task createJshellTask(
-  JbFiles files,
+  JbDartle jbDartle,
+  JbFiles jbFiles,
   JbConfigContainer config,
+  JbActors actors,
+  Options options,
   DartleCache cache,
 ) {
   return Task(
-    (List<String> args) => jshell(files.jbuildJar, config, args),
+    (List<String> args) => jshell(jbDartle, options, config, args, cache),
     dependsOn: const {compileTaskName, installRuntimeDepsTaskName},
-    argsValidator: const JshellArgs(),
     name: jshellTaskName,
     description: jshellHelp,
     phase: evaluatePhase,
@@ -834,7 +1063,7 @@ Task createTestTask(
   bool noColor,
 ) {
   final inputs = dirs([
-    config.config.runtimeLibsDir,
+    config.config.runtimeLibsDir.asOsPath(),
     p.join(cache.rootDir, junitRunnerLibsDir),
   ]);
   return Task(
@@ -846,7 +1075,11 @@ Task createTestTask(
       downloadTestRunnerTaskName,
       installRuntimeDepsTaskName,
     },
-    runCondition: RunOnChanges(inputs: inputs, cache: cache),
+    runCondition: RunOnChanges(
+      inputs: inputs,
+      outputs: dir(config.config.testReportsDir),
+      cache: cache,
+    ),
     description: 'Run tests. JBuild automatically detects JUnit5 and Spock.',
     phase: evaluatePhase,
   );
@@ -885,42 +1118,50 @@ Future<void> _test(
   List<String> args,
 ) async {
   final config = configContainer.config;
-  final libs = Directory(config.runtimeLibsDir).list();
-  final classpath = {
-    configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j),
-    config.runtimeLibsDir,
-    await for (final lib in libs)
-      if (p.extension(lib.path) == '.jar') lib.path,
-  }.join(classpathSeparator);
+
+  final junitRunnerJars = await p
+      .join(cache.rootDir, junitRunnerLibsDir)
+      .jarsUnder()
+      .toList();
+
+  final testLibPath = configContainer.output.when(
+    dir: Directory.new,
+    jar: File.new,
+  );
+
+  final runnerClasspath = junitRunnerJars.join(classpathSeparator);
+
+  final testClasspath = await Directory(config.runtimeLibsDir.asOsPath())
+      .toClasspath(extraEntries: {testLibPath}, includeSelf: true);
 
   const mainClass = 'org.junit.platform.console.ConsoleLauncher';
 
   final hasCustomSelect = args.any(
-    (arg) => arg.startsWith('--select') || arg.startsWith('--scan-classpath'),
+    (arg) =>
+        arg.startsWith('--select') ||
+        arg.startsWith('--scan-classpath') ||
+        arg.startsWith('--scan-modules'),
   );
 
   final isSpockConfigured = configContainer.testConfig.spockVersion != null;
   final hasCustomName = args.any(
-    (arg) => arg == '-n' || arg.startsWith('--include-classname'),
+    (arg) => arg.startsWith('-n=') || arg.startsWith('--include-classname='),
   );
   final customTestNames = (hasCustomName || !isSpockConfigured)
       ? null
       : '.*Spec|.*Specification|.*Specifications|.*Test|.*Tests|.*TestSuite|.*TestCase';
 
-  final junitSubcommand = await junitTestSubcommand(
-    p.join(cache.rootDir, junitRunnerLibsDir),
-  );
+  final junitSubcommand = junitTestSubcommand(junitRunnerJars);
 
   final exitCode = await execJava(testTaskName, [
     ...config.testJavaArgs,
     '-ea',
     '-cp',
-    p.join(cache.rootDir, junitRunnerLibsDir, '*'),
+    runnerClasspath,
     mainClass,
     ?junitSubcommand,
-    '--classpath=$classpath',
-    if (!hasCustomSelect)
-      '--scan-classpath=${configContainer.output.when(dir: (d) => d.asDirPath(), jar: (j) => j)}',
+    if (testClasspath != null) '--classpath=$testClasspath',
+    if (!hasCustomSelect) '--scan-classpath=${testLibPath.path}',
     if (customTestNames != null) ...['-n', customTestNames],
     '--reports-dir=${config.testReportsDir}',
     '--fail-if-no-tests',

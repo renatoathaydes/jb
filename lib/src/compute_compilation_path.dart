@@ -160,11 +160,13 @@ Future<void> _computePaths(
     return await _writeEmpty(artifactId, libsDir, outputFile);
   }
   await jBuildSender.send(
-    RunJBuild(taskName, [
-      ...preArgs,
+    RunJBuild(
+      taskName,
+      preArgs,
       'module',
-      ...jars,
-    ], _Sender(artifactId, compPath, libsDir)),
+      jars,
+      _Sender(artifactId, compPath, libsDir),
+    ),
   );
   await compPath
       .send(ComputeCompilationPath(artifactId, libsDir, p.absolute(outputFile)))

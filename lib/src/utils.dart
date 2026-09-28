@@ -114,9 +114,11 @@ extension AsyncIterable<T> on Iterable<FutureOr<T>> {
 }
 
 extension ListExtension on Iterable<String> {
-  List<String> merge(Iterable<String> other, Properties props) => followedBy(
-    other,
-  ).map((e) => resolveString(e, props)).toSet().toList(growable: false);
+  List<String> merge(Iterable<String> other, Properties props) =>
+      followedBy(other)
+          .map((e) => resolveString(e, props))
+          .toSet()
+          .toList(growable: false);
 
   bool _javaRuntimeArg(String arg) => arg.startsWith('-J-');
 
@@ -270,30 +272,41 @@ extension on DependencySpec? {
 }
 
 extension DirectoryExtension on Directory {
-  Future<String?> toClasspath([
+  Future<String?> toClasspath({
     Set<FileSystemEntity> extraEntries = const {},
-  ]) async => await exists()
+    bool includeSelf = false,
+  }) async => await exists()
       ? list()
             .where(
               (f) =>
                   FileSystemEntity.isFileSync(f.path) &&
-                  p.extension(f.path) == '.jar',
+                  f.path.endsWith('.jar'),
             )
             .map((f) => f.path)
             .followedBy(extraEntries.map((f) => f.path))
+            .followedBy(includeSelf ? [path.asDirPath()] : const [])
             .join(classpathSeparator)
       : null;
 
-  Future<void> copyContentsInto(String destinationDir) async {
+  Stream<FileSystemEntity> copyContentsInto(String destinationDir) async* {
     if (!await exists()) return;
     await for (final child in list(recursive: true)) {
       if (child is Directory) {
-        await Directory(
+        yield await Directory(
           p.join(destinationDir, p.relative(child.path, from: path)),
-        ).create();
+        ).create(recursive: true);
       } else if (child is File) {
-        await child.copy(
+        final target = File(
           p.join(destinationDir, p.relative(child.path, from: path)),
+        );
+        final targetExistsBefore = await target.exists();
+        yield await child.copy(target.path);
+        final targetExistsAfter = await target.exists();
+        logger.fine(
+          () =>
+              'copy ${child.path} -> ${target.path} '
+              '(exists before: $targetExistsBefore, '
+              'after: $targetExistsAfter)',
         );
       }
     }
@@ -320,19 +333,40 @@ extension StringExtension on String {
     return "$this$classpathSeparator$classpath";
   }
 
+  Stream<String> jarsUnder() {
+    return Directory(this)
+        .list()
+        .where((entity) => entity is File && entity.path.endsWith('.jar'))
+        .map((entity) => entity.path);
+  }
+
   String asDirPath() {
     if (Platform.isWindows && endsWith('/')) {
-      return "${substring(0, length - 1)}\\";
+      return "${substring(0, length - 1).asOsPath()}\\";
     }
     if (endsWith(Platform.pathSeparator)) {
       return this;
     }
-    return "$this${Platform.pathSeparator}";
+    return "${asOsPath()}${Platform.pathSeparator}";
   }
 
   String quote() => '"$this"';
 
   EnvVar envVar() => EnvVar(this, Platform.environment[this]);
+
+  /// Encode a String representing a path so that the result is not a path itself.
+  ///
+  /// The result is still readable, but will not have intermediate directories.
+  String asEncodedPath() {
+    return replaceAllMapped(RegExp(r'[%/\\.]'), (match) {
+      return '%${match[0]!.codeUnitAt(0).toRadixString(16).toUpperCase().padLeft(2, '0')}';
+    });
+  }
+
+  /// Normalize a path for the current OS.
+  String asOsPath() {
+    return p.normalize(this);
+  }
 }
 
 extension NullableStringExtension on String? {

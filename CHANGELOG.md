@@ -1,3 +1,18 @@
+# Next
+
+# 0.17.0
+
+- improved handling of dependencies checksums: store checksums at the root directory to make it visible.
+- support for groovy-docs generation in Groovy projects.
+- stopped hashing the name of jb-extension in jb-cache.
+- fixed mistake computing whether jb extension tasks need to be reloaded.
+- made `publish` task depend on `compile` task.
+- do not log missing Maven credentials when only publishing to Maven local.
+- delete installation directory before installing again (to make sure the installation is clean).
+- added back support for `javac-env` config. Using it causes a new JVM process to be executed with the custom environment.
+- verify the required Java version for every library is met by the current Java before attempting to compile.
+- `jshell` task now re-compiles project on file system changes. Use `/reset` to reload the classpath.
+
 # 0.16.1
 
 - fixed Java module incremental compilation.

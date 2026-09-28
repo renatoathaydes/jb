@@ -45,8 +45,7 @@ class JbCliOptions {
     }
     if (dartleArgs.containsNonLoggingArgs() && createOptions != null) {
       throw DartleException(
-        message:
-            'The "create" command cannot be used with other tasks or arguments.',
+        message: 'The "create" command cannot be used with other tasks or arguments.',
       );
     }
     return JbCliOptions(dartleArgs, rootDir, createOptions);

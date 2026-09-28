@@ -82,11 +82,10 @@ class MavenClient {
 
   MavenClient(
     this.repo, {
-    HttpClientCredentials? credentials,
+    this._credentials,
     this.bundleUpload = 'upload',
     this.bundleStatus = 'status',
-  }) : _credentials = credentials,
-       _client = HttpClient()
+  }) : _client = HttpClient()
          ..userAgent = "JBuild-$jbVersion"
          ..idleTimeout = Duration(minutes: 5);
 
@@ -282,9 +281,9 @@ extension on Artifact {
 
 extension on HttpClientResponse {
   Future<dynamic> jsonBody() async {
-    final result = await transform(
-      const Utf8Decoder(),
-    ).transform(json.decoder).toList();
+    final result = await transform(const Utf8Decoder())
+        .transform(json.decoder)
+        .toList();
     return result.first;
   }
 }

@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:archive/archive_io.dart';
 import 'package:conveniently/conveniently.dart';
-import 'package:crypto/crypto.dart';
 import 'package:dartle/dartle.dart'
     show
         ArgsValidator,
@@ -15,6 +14,7 @@ import 'package:dartle/dartle.dart'
         tempDir,
         tempFile,
         elapsedTime;
+import 'package:jb/src/crypto.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
@@ -52,19 +52,28 @@ class Publisher {
     final theArtifact = _getArtifact();
 
     final destination = args.isEmpty ? _mavenHome() : args[0];
+    final credentials = _mavenCredentials();
 
     final mavenClient = MavenClient(switch (destination) {
       '-m' => Sonatype.s01Oss,
       _ => CustomMavenRepo(destination),
-    }, credentials: _mavenCredentials());
+    }, credentials: credentials);
+
+    final toMavenCentral = destination == '-m';
+    final toHttpRepo =
+        !toMavenCentral &&
+        (destination.startsWith('http://') ||
+            destination.startsWith('https://'));
 
     final stopwatch = Stopwatch()..start();
 
-    if (destination == '-m') {
-      return await _publishHttp(mavenClient, theArtifact, stopwatch);
-    }
-    if (destination.startsWith('http://') ||
-        destination.startsWith('https://')) {
+    if (toMavenCentral || toHttpRepo) {
+      if (credentials == null) {
+        logger.info(
+          'No HTTP credentials provided (set either SONATYPE_USER_TOKEN '
+          'or MAVEN_USER and MAVEN_PASSWORD to provide it)',
+        );
+      }
       return await _publishHttp(mavenClient, theArtifact, stopwatch);
     }
     await _publishLocal(theArtifact, destination, depsCache, stopwatch);
@@ -176,9 +185,9 @@ class Publisher {
     String pom,
     String jarFile,
   ) async {
-    await File(
-      p.join(destination.path, _fileFor(artifact, extension: '.pom')),
-    ).writeAsString(pom).then(_createChecksumsAndSign);
+    await File(p.join(destination.path, _fileFor(artifact, extension: '.pom')))
+        .writeAsString(pom)
+        .then(_createChecksumsAndSign);
     await File(jarFile)
         .copy(p.join(destination.path, _fileFor(artifact)))
         .then(_createChecksumsAndSign);
@@ -256,22 +265,18 @@ HttpClientCredentials? _mavenCredentials() {
   if (token != null) {
     return HttpClientBearerCredentials(token);
   }
-  logger.info(
-    'No HTTP credentials provided (set either SONATYPE_USER_TOKEN '
-    'or MAVEN_USER and MAVEN_PASSWORD to provide it)',
-  );
   return null;
 }
 
 Future<void> _shaFile(String file, List<int> bytes) async {
   logger.finer(() => 'Computing SHA1 of $file');
-  await File('$file.sha1').writeAsString(sha1.convert(bytes).toString());
+  await File('$file.sha1').writeAsString(await computeSha1(file));
   logger.finer(() => 'Computed SHA1 of $file');
 }
 
 Future<void> _md5File(String file, List<int> bytes) async {
   logger.finer(() => 'Computing MD5 of $file');
-  await File('$file.md5').writeAsString(md5.convert(bytes).toString());
+  await File('$file.md5').writeAsString(await computeMd5(file));
   logger.finer(() => 'Computed MD5 of $file');
 }
 

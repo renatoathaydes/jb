@@ -280,7 +280,6 @@ ResolvedDependency _mavenDep(
   return ResolvedDependency(
     artifact: artifact,
     spec: spec,
-    sha1: '',
     licenses: const [],
     isDirect: false,
     dependencies: const [],

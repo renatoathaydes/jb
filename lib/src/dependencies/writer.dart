@@ -7,6 +7,7 @@ import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:path/path.dart' as paths;
 
+import '../compile/groovy.dart';
 import '../config.dart';
 import '../java_tests.dart';
 import '../jb_files.dart';
@@ -47,9 +48,6 @@ Future<void> writeDependencies(
     forProcessor: true,
   );
 
-  // TODO invoke 'jbuild fetch' to get SHA1:
-  // e.g. jbuild fetch -d sha1-dir group:module:version:jar.sha1
-  // and then read the file sha1-dir/<module>-<version>.jar.sha1
   final mainDeps = await _write(
     'Project dependencies',
     jBuildSender,
@@ -91,6 +89,22 @@ Future<void> writeDependencies(
     const [],
     jbFiles.testRunnerDependenciesFile,
   );
+  final groovydocsDep = await findGroovydocsDependency(mainDeps.dependencies);
+  if (groovydocsDep != null) {
+    await _write(
+      'Groovydocs dependencies',
+      jBuildSender,
+      preArgs,
+      jbFiles,
+      depsCache,
+      {groovydocsDep: const DependencySpec()},
+      const {},
+      const [],
+      jbFiles.groovydocsDependenciesFile,
+    );
+  } else {
+    await ignoreExceptions(jbFiles.groovydocsDependenciesFile.delete);
+  }
 }
 
 Stream<_ExclusionsAndProjectDeps> _projectDepsAndExclusions(
@@ -122,7 +136,6 @@ Stream<_ExclusionsAndProjectDeps> _projectDepsAndExclusions(
     final rd = ResolvedDependency(
       artifact: jar.artifact,
       spec: jar.spec,
-      sha1: '',
       isDirect: true,
       dependencies: const [],
     );
@@ -147,11 +160,11 @@ Future<ResolvedDependencies> _write(
 ) async {
   ResolvedDependencies? results;
   if (nonLocalDeps.isNotEmpty || projectDeps.isNotEmpty) {
-    _checkDependenciesAreNotExcludedDirectly(nonLocalDeps, exclusions);
+    _warnIfExcludingDirectDependency(nonLocalDeps, exclusions);
 
     final nonLocalDepsOptions = nonLocalDeps.entries
-        .map((e) => (e.key, e.value.exclusions))
-        .expand((e) => [e.$1, ...e.$2.expand(_exclusionOption)]);
+        .map((e) => (dep: e.key, ex: e.value.exclusions))
+        .expand((e) => [e.dep, ...e.ex.expand(_exclusionOption)]);
 
     final allDeps = await _collectDependencies(
       nonLocalDeps,
@@ -198,16 +211,20 @@ Future<List<ResolvedDependency>> _collectDependencies(
   );
   try {
     await jBuildSender.send(
-      RunJBuild(writeDepsTaskName, [
-        ...preArgs.where((n) => n != '-V'),
+      RunJBuild(
+        writeDepsTaskName,
+        preArgs.where((n) => n != '-V').toList(growable: false),
         'deps',
-        '--transitive',
-        '--licenses',
-        '--scope',
-        'runtime',
-        ...exclusions.expand(_exclusionOption),
-        ...nonLocalDepsOptions,
-      ], _CollectorSendable(await collector.toSendable())),
+        [
+          '--transitive',
+          '--licenses',
+          '--scope',
+          'runtime',
+          ...exclusions.expand(_exclusionOption),
+          ...nonLocalDepsOptions,
+        ],
+        _CollectorSendable(await collector.toSendable()),
+      ),
     );
 
     // the Done response must NOT be null
@@ -217,7 +234,7 @@ Future<List<ResolvedDependency>> _collectDependencies(
   }
 }
 
-void _checkDependenciesAreNotExcludedDirectly(
+void _warnIfExcludingDirectDependency(
   Map<String, DependencySpec> deps,
   Set<String> exclusions,
 ) {
@@ -227,10 +244,11 @@ void _checkDependenciesAreNotExcludedDirectly(
       .toList();
   if (directExclusions.isNotEmpty) {
     final listMsg = directExclusions.map((dep) => '  - $dep').join('\n');
-    logger.info(
+    logger.fine(
       () =>
           'Direct dependenc${directExclusions.length == 1 ? 'y is' : 'ies are'}'
-          ' explicitly excluded:\n$listMsg',
+          ' explicitly excluded, including it anyway but excluding it from '
+          'transitive dependency resolution:\n$listMsg',
     );
   }
 }

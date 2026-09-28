@@ -6,32 +6,24 @@ import 'package:path/path.dart';
 
 import '../config.dart';
 import '../file_tree.dart';
-import '../jb_files.dart';
 import '../jvm_executor.dart';
 import '../tasks.dart';
 import '../utils.dart';
 
-Future<JavaCommand> jbuildCompileCommand(
-  JbFiles jbFiles,
+Future<RunJBuild> jbuildCompileCommand(
   JbConfiguration config,
   String workingDir,
   bool publication,
   TransitiveChanges? changes,
-  List<String> args,
-  bool isGroovyEnabled,
-) async {
+  List<String> args, {
+  required bool isGroovyEnabled,
+}) async {
   final commandArgs = [
     ...args,
-    ...await config.compileArgs(
-      jbFiles.processorLibsDir,
-      changes,
-      isGroovyEnabled,
-    ),
+    ...await config.compileArgs(changes, isGroovyEnabled),
   ];
 
-  return RunJBuild(compileTaskName, [
-    ...config.preArgs(workingDir),
-    'compile',
+  return RunJBuild(compileTaskName, config.preArgs(workingDir), 'compile', [
     if (publication) ...const ['-sj', '-dj'],
     // the Java compiler runtime args are sent when starting the JVM
     ...commandArgs.notJavaRuntimeArgs(),
@@ -41,7 +33,6 @@ Future<JavaCommand> jbuildCompileCommand(
 extension _JbConfig on JbConfiguration {
   /// Get the compile task arguments from this configuration.
   Future<List<String>> compileArgs(
-    String processorLibsDir,
     TransitiveChanges? changes,
     bool isGroovyEnabled,
   ) async {
@@ -66,13 +57,10 @@ extension _JbConfig on JbConfiguration {
         !_addIncrementalCompileArgs(result, changes, isGroovyEnabled)) {
       result.addAll(sourceDirs);
     }
-    if (javacArgs.isNotEmpty || processorDependencies.isNotEmpty) {
+
+    if (javacArgs.isNotEmpty) {
       result.add('--');
       result.addAll(javacArgs);
-      if (processorDependencies.isNotEmpty) {
-        result.add('-processorpath');
-        (await Directory(processorLibsDir).toClasspath())?.vmap(result.add);
-      }
     }
     return result;
   }
@@ -139,7 +127,7 @@ extension _JbConfig on JbConfiguration {
 
 bool Function(String path) _createSourceFilter(bool isGroovyEnabled) {
   if (isGroovyEnabled) {
-    return (path) => path.endsWith('.java');
+    return (path) => path.endsWith('.java') || path.endsWith('.groovy');
   }
-  return (path) => path.endsWith('.java') || path.endsWith('.groovy');
+  return (path) => path.endsWith('.java');
 }

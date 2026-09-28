@@ -5,10 +5,12 @@ import 'package:path/path.dart' as p;
 
 import 'compute_compilation_path.dart';
 import 'config.dart';
+import 'config_import.dart' show JbConfigWithImports;
 import 'config_source.dart';
 import 'create/create.dart';
 import 'dependencies/deps_cache.dart';
 import 'help.dart';
+import 'java_info.dart';
 import 'jb_actors.dart';
 import 'jb_files.dart';
 import 'jvm_executor.dart';
@@ -33,8 +35,11 @@ Future<bool> runJb(
   final stopwatch = Stopwatch()..start();
   final jbuildJar = await createIfNeededAndGetJBuildJarFile();
   logger.log(profile, () => 'Checked JBuild jar in ${elapsedTime(stopwatch)}');
+
+  final javaInfo = await detectJavaInfo();
+
   if (dartleOptions.showVersion) {
-    await printVersion(jbuildJar);
+    await printVersion(jbuildJar, javaInfo);
     return false;
   }
   var rootDir = jbOptions.rootDirectory;
@@ -53,7 +58,7 @@ Future<bool> runJb(
     logger.fine(() => "Running jb on directory '$rootDir'");
   }
 
-  await _runJb(jbOptions, dartleOptions, configSource, jbuildJar);
+  await _runJb(jbOptions, dartleOptions, configSource, jbuildJar, javaInfo);
 
   return true;
 }
@@ -63,6 +68,7 @@ Future<void> _runJb(
   Options dartleOptions,
   ConfigSource? configSource,
   File jbuildJar,
+  JavaInfo? javaInfo,
 ) async {
   final createOptions = options.createOptions;
   if (createOptions != null) {
@@ -72,7 +78,7 @@ Future<void> _runJb(
     );
   }
 
-  final config = await _createConfig(configSource ?? defaultJbConfigSource);
+  final cwi = await _createConfig(configSource ?? defaultJbConfigSource);
   final jbFiles = JbFiles(
     jbuildJar,
     configSource: configSource ?? defaultJbConfigSource,
@@ -83,7 +89,8 @@ Future<void> _runJb(
     dartleOptions.colorfulLog,
     jbuildJar.path,
     jbFiles.jvmCdsFile.absolute.path,
-    config.javacArgs.javaRuntimeArgs().toList(growable: false),
+    cwi.config.javacArgs.javaRuntimeArgs().toList(growable: false),
+    javaInfo,
   );
 
   final depsCache = createDepsActor(
@@ -99,7 +106,7 @@ Future<void> _runJb(
   try {
     final runner = await JbRunner.create(
       jbFiles,
-      config,
+      cwi,
       JbActors(
         await jvmExecutor.toSendable(),
         await depsCache.toSendable(),
@@ -118,7 +125,7 @@ Future<void> _runJb(
   }
 }
 
-Future<JbConfiguration> _createConfig(ConfigSource configSource) async {
+Future<JbConfigWithImports> _createConfig(ConfigSource configSource) async {
   try {
     return await configSource.load();
   } on DartleException {

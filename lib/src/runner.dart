@@ -1,26 +1,27 @@
-import 'package:dartle/dartle.dart';
-import 'package:dartle/dartle_cache.dart';
+import 'package:dartle/dartle.dart' show runBasic, Options, ParallelTasks;
+import 'package:dartle/dartle_cache.dart' show DartleCache;
 
 import 'config.dart';
+import 'config_import.dart';
 import 'jb_actors.dart';
 import 'jb_dartle.dart';
 import 'jb_files.dart';
 
 class JbRunner {
   final JbFiles files;
-  final JbConfiguration config;
+  final JbConfigWithImports cwi;
   final JbActors _actors;
 
-  JbRunner(this.files, this.config, this._actors);
+  JbRunner(this.files, this.cwi, this._actors);
 
   static Future<JbRunner> create(
     JbFiles files,
-    JbConfiguration config,
+    JbConfigWithImports cwi,
     JbActors actors,
   ) async {
-    logger.fine(() => 'Parsed jb configuration: $config');
-    config.validate();
-    return JbRunner(files, config, actors);
+    logger.fine(() => 'Parsed jb configuration: ${cwi.config}');
+    cwi.config.validate();
+    return JbRunner(files, cwi, actors);
   }
 
   Future<List<ParallelTasks>> run(Options options, {bool isRoot = true}) async {
@@ -28,7 +29,7 @@ class JbRunner {
 
     final jb = JbDartle.create(
       files,
-      config,
+      cwi,
       cache,
       options,
       _actors,

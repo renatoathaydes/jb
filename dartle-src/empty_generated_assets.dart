@@ -10,7 +10,6 @@ final emptyGeneratedAssetsTask = Task(
 );
 
 Future<void> emptyGeneratedAssets(List<String> args) async {
-  await File(
-    p.join('lib', 'src', 'jbuild_jar.g.dart'),
-  ).writeAsString("const jbuildJarB64 = '';");
+  await File(p.join('lib', 'src', 'jbuild_jar.g.dart'))
+      .writeAsString("const jbuildJarB64 = '';");
 }

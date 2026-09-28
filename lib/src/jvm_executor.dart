@@ -3,12 +3,15 @@ import 'dart:io' hide pid;
 import 'dart:isolate';
 
 import 'package:actors/actors.dart';
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
 import 'package:structured_async/structured_async.dart'
     show FutureCancelled, CancellableFuture;
 
 import 'config.dart' show logger;
+import 'java_info.dart';
 import 'output_consumer.dart';
 import 'utils.dart';
 import 'xml_rpc.dart';
@@ -19,7 +22,7 @@ class _Proc {
   final Process _process;
   final int port;
   final String authorizationHeader;
-  final String javaVersion;
+  final int? javaVersion;
   bool _closed = false;
 
   bool get isClosed => _closed;
@@ -36,13 +39,17 @@ class _Proc {
   }
 }
 
-final class _JBuildActor implements Handler<JavaCommand, Object?> {
+final class _JBuildActor implements Handler<JvmExecutorMessage, Object?> {
   final Level _level;
   final bool _colorfulLog;
   final String jbuildJar;
   final String jvmCdsFile;
   final List<String> _javaRuntimeArgs;
+  final JavaInfo? javaInfo;
   final Map<String, Future<_JBuildRpc>> _rpc = {};
+
+  // may be set to true by tasks running before compilation.
+  bool _forceCompilation = false;
 
   _JBuildActor(
     this._level,
@@ -50,6 +57,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     this.jbuildJar,
     this.jvmCdsFile,
     this._javaRuntimeArgs,
+    this.javaInfo,
   );
 
   @override
@@ -57,7 +65,7 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     activateLogging(_level, colorfulLog: _colorfulLog);
   }
 
-  static Future<_JBuildRpc> _startRpc(
+  Future<_JBuildRpc> _startRpc(
     String jbuildJar,
     String jvmCdsFile,
     List<String> javaRuntimeArgs,
@@ -65,13 +73,17 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   ) async {
     final stopwatch = Stopwatch()..start();
 
+    final javaVersion = javaInfo?.majorVersion ?? 0;
+    String? sharedArchiveOption;
+    if (javaVersion >= 12) {
+      sharedArchiveOption = await File(jvmCdsFile).exists()
+          ? '-XX:SharedArchiveFile=$jvmCdsFile'
+          : '-XX:ArchiveClassesAtExit=$jvmCdsFile';
+    }
+
     final args = [
       // See https://docs.oracle.com/en/java/javase/17/docs/specs/man/java.html#application-class-data-sharing
-      // FIXME only use this if Java version is 12+
-      // if (await File(jvmCdsFile).exists())
-      //   '-XX:SharedArchiveFile=$jvmCdsFile'
-      // else
-      //   '-XX:ArchiveClassesAtExit=$jvmCdsFile',
+      ?sharedArchiveOption,
       ...javaRuntimeArgs,
       '-cp',
       jbuildJar,
@@ -86,8 +98,10 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
           'with args: $args',
     );
 
+    final javaHome = javaInfo?.javaHome;
+
     final proc = await Process.start(
-      'java',
+      javaHome.vmapOr((home) => p.join(home, 'bin', 'java'), () => 'java'),
       args,
       runInShell: true,
       workingDirectory: workingDirectory,
@@ -97,7 +111,8 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
     final lines = await pout.take(3).toList();
     final port = lines.isEmpty ? '' : lines.first;
     final token = lines.length >= 2 ? lines[1] : '';
-    final javaVersion = lines.length == 3 ? lines[2] : '';
+    // maybe check the java version printed by JBuild matches?
+    // final javaVersion = lines.length == 3 ? lines[2] : '';
     final portNumber = int.tryParse(port);
     if (portNumber == null) {
       // could be that the JVM process failed to start, so have a look
@@ -153,7 +168,51 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
   }
 
   @override
-  Future<Object?> handle(JavaCommand command) async {
+  Future<Object?> handle(JvmExecutorMessage message) async {
+    return switch (message) {
+      CurrentJavaVersion() => javaInfo?.version,
+      PreviousJavaVersion(version: var v) => _handlePreviousJavaVersion(v),
+      ShouldForceCompilation(force: var f) => f.vmap((force) {
+        if (force != null) {
+          _forceCompilation = force;
+        }
+        return _forceCompilation;
+      }),
+      JavaCommand() => _runCommand(message),
+    };
+  }
+
+  /// Check the current Java version matches the previous version.
+  /// Return the current version if it's different, or null otherwise.
+  Future<String?> _handlePreviousJavaVersion(String? prevVersion) async {
+    final currentVersion = javaInfo?.version;
+    if (currentVersion == null) {
+      logger.warning(
+        'Cannot check current JVM version, check JVM installation',
+      );
+      return null;
+    }
+    if (currentVersion == prevVersion) {
+      logger.fine('JVM version matches previous build JVM version');
+      return null;
+    }
+
+    final prevMessage = prevVersion == null
+        ? 'no previous build information is available.'
+        : 'previous build was on version $prevVersion. ';
+
+    logger.info(
+      () =>
+          'Current JVM version is $currentVersion, $prevMessage '
+          'Will force full recompilation.',
+    );
+
+    _forceCompilation = true;
+
+    return currentVersion;
+  }
+
+  Future<Object?> _runCommand(JavaCommand command) async {
     final rpc = await _getOrStartRpc(command.workingDir);
     final stopwatch = Stopwatch()..start();
     final Future<Object?> result = _run(command, rpc);
@@ -196,7 +255,11 @@ final class _JBuildActor implements Handler<JavaCommand, Object?> {
 Future<Object?> _run(JavaCommand command, _JBuildRpc rpc) {
   final taskName = command.taskName;
   return switch (command) {
-    RunJBuild jb => rpc.runJBuild(taskName, jb.args, jb.stdoutConsumer),
+    RunJBuild jb => rpc.runJBuild(
+      taskName,
+      jb.allArgs.toList(growable: false),
+      jb.stdoutConsumer,
+    ),
     RunJava(
       classpath: var classpath,
       className: var className,
@@ -215,7 +278,34 @@ Future<Object?> _run(JavaCommand command, _JBuildRpc rpc) {
   };
 }
 
-sealed class JavaCommand {
+sealed class JvmExecutorMessage {
+  const JvmExecutorMessage();
+}
+
+/// Message to query for the current Java version.
+final class CurrentJavaVersion extends JvmExecutorMessage {
+  const CurrentJavaVersion();
+}
+
+/// This message is used to ask the JVM Executor whether the Java version
+/// has changed since the last build.
+/// If it did, the new version is returned, otherwise `null` is returned.
+final class PreviousJavaVersion extends JvmExecutorMessage {
+  final String? version;
+
+  const PreviousJavaVersion(this.version);
+}
+
+/// Message for getting or setting the `force` flag.
+/// If non-null is sent, it sets the `force` flag.
+/// The value of the `force` flag is always returned.
+final class ShouldForceCompilation extends JvmExecutorMessage {
+  final bool? force;
+
+  const ShouldForceCompilation([this.force]);
+}
+
+sealed class JavaCommand extends JvmExecutorMessage {
   final String taskName;
   final String classpath;
 
@@ -232,11 +322,25 @@ sealed class JavaCommand {
 }
 
 final class RunJBuild extends JavaCommand {
+  final List<String> preArgs;
+  final String command;
   final List<String> args;
   final Sendable<String, void>? stdoutConsumer;
 
-  RunJBuild(String taskName, this.args, [this.stdoutConsumer])
-    : super(taskName, '');
+  RunJBuild(
+    String taskName,
+    this.preArgs,
+    this.command,
+    this.args, [
+    this.stdoutConsumer,
+  ]) : super(taskName, '');
+
+  /// Put pre-args, JBuild command and command args together.
+  Iterable<String> get allArgs sync* {
+    yield* preArgs;
+    yield command;
+    yield* args;
+  }
 }
 
 final class RunJava extends JavaCommand {
@@ -259,12 +363,13 @@ final class RunJava extends JavaCommand {
 /// arbitrary Java methods (for jb extensions).
 ///
 /// The Actor sender returns whatever the Java method returned.
-Actor<JavaCommand, Object?> createJavaActor(
+Actor<JvmExecutorMessage, Object?> createJavaActor(
   Level level,
   bool colorfulLog,
   String jbuildJar,
   String jvmCdsFile,
   List<String> javaRuntimeArgs,
+  JavaInfo? javaInfo,
 ) {
   return Actor.create(
     wrapHandlerWithCurrentDir(
@@ -274,6 +379,7 @@ Actor<JavaCommand, Object?> createJavaActor(
         jbuildJar,
         jvmCdsFile,
         javaRuntimeArgs,
+        javaInfo,
       ),
     ),
   );
@@ -307,7 +413,7 @@ class _JBuildRpc {
   /// Run a JBuild command.
   Future<void> runJBuild(
     String taskName,
-    List<String> args,
+    Iterable<String> args,
     Sendable<String, void>? stdoutConsumer,
   ) async {
     final trackId = _currentMessageIndex++;
@@ -380,7 +486,7 @@ class _JBuildRpc {
     try {
       final resp = await req.close();
       if (resp.statusCode == 200) {
-        return parseRpcResponse(resp);
+        return await parseRpcResponse(resp);
       }
       throw DartleException(
         message:

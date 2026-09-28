@@ -44,7 +44,7 @@ Future<void> javaRun(
   final compilationPath = await cp.getCompilationPath(
     actors.compPath,
     configContainer.artifactId,
-    config.runtimeLibsDir,
+    config.runtimeLibsDir.asOsPath(),
     compPathFiles.runtimePath,
   );
 

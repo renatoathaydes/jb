@@ -23,14 +23,20 @@ const jsonJbFile = 'jbuild.json';
 
 const jbuild = 'com.athaydes.jbuild:jbuild';
 const jbApi = 'com.athaydes.jbuild:jbuild-api';
-const groovy3 = 'org.codehaus.groovy:groovy';
-const groovy4 = 'org.apache.groovy:groovy';
+const groovy3Group = 'org.codehaus.groovy';
+const groovy4Group = 'org.apache.groovy';
+const groovy3 = '$groovy3Group:groovy';
+const groovy4 = '$groovy4Group:groovy';
 const spockCore = 'org.spockframework:spock-core';
+
+// libs dir stored within the jb-cache
+const junitRunnerLibsDir = 'test-runner';
+const groovydocLibsDir = 'groovydocs-libs';
 
 /// Parse the YAML/JSON jbuild file.
 ///
 /// Applies defaults and resolves properties and imports.
-Future<JbConfiguration> loadConfig(File configFile) async {
+Future<JbConfigWithImports> loadConfig(File configFile) async {
   logger.fine(() => 'Reading config file: ${configFile.path}');
   String configString;
   try {
@@ -43,13 +49,18 @@ Future<JbConfiguration> loadConfig(File configFile) async {
           "Run 'jb --help' to see usage.",
     );
   }
-  return await loadConfigString(configString);
+  return await loadConfigString(configString, configFile);
 }
 
 /// Parse the YAML/JSON jb configuration.
 ///
 /// Applies defaults and resolves properties and imports.
-Future<JbConfiguration> loadConfigString(String config) async {
+///
+/// If the config comes from a config file, use [configFile] to pass it in.
+Future<JbConfigWithImports> loadConfigString(
+  String config, [
+  File? configFile,
+]) async {
   final Object? json;
   try {
     json = loadYaml(config);
@@ -64,9 +75,8 @@ Future<JbConfiguration> loadConfigString(String config) async {
     final resolvedMap = resolvePropertiesFromMap(json);
     final imports = resolvedMap.map.remove('imports');
     try {
-      return await JbConfiguration.fromJson(
-        resolvedMap.map,
-      ).applyImports(imports);
+      return await JbConfiguration.fromJson(resolvedMap.map)
+          .applyImports(imports, configFile?.path);
     } on PropertyTypeException catch (e) {
       final help = _helpForProperty(e.propertyPath);
       if (help.isEmpty) {
@@ -266,25 +276,27 @@ class JbExtensionModel {
 /// A container holding an instance of the generated type [JbConfiguration]
 /// as well as a computed [CompileOutput].
 class JbConfigContainer {
-  final JbConfiguration config;
+  final JbConfigWithImports cwi;
   String artifactId;
   final CompileOutput output;
   final TestConfig testConfig;
   final KnownDependencies knownDeps;
 
-  JbConfigContainer(JbConfiguration config)
-    : config = _processPaths(config),
+  JbConfigContainer(JbConfigWithImports cwi)
+    : cwi = _processPaths(cwi),
       artifactId =
-          "${config.group ?? '?'}:${config.module ?? '?'}:${config.version ?? '?'}",
-      output = config.outputDir.vmapOr(
+          "${cwi.config.group ?? '?'}:${cwi.config.module ?? '?'}:${cwi.config.version ?? '?'}",
+      output = cwi.config.outputDir.vmapOr(
         (d) => CompileOutput.dir(_processPath(d)),
         () => CompileOutput.jar(
-          config.outputJar?.vmap(_processPath) ??
+          cwi.config.outputJar?.vmap(_processPath) ??
               '${p.join('build', p.basename(Directory.current.path))}.jar',
         ),
       ),
-      testConfig = createTestConfig(config.allDependencies),
-      knownDeps = createKnownDeps(config.allDependencies);
+      testConfig = createTestConfig(cwi.config.allDependencies),
+      knownDeps = createKnownDeps(cwi.config.allDependencies);
+
+  JbConfiguration get config => cwi.config;
 
   @override
   String toString() {
@@ -760,17 +772,24 @@ MapEntry<String, ConfigType> _constructorEntry(Object? key, Object? value) {
 }
 
 /// Normalize and ensure paths use the OS-specific path separator.
-JbConfiguration _processPaths(JbConfiguration config) {
-  return config.copyWith(
-    compileLibsDir: _processPath(config.compileLibsDir),
-    outputDir: config.outputDir?.vmap(_processPath),
-    runtimeLibsDir: _processPath(config.runtimeLibsDir),
-    testReportsDir: _processPath(config.testReportsDir),
-    sourceDirs: config.sourceDirs
-        .map(_processPath)
-        .toList(growable: false)
-        .useSourceDirsDefaultIfEmpty(),
-    resourceDirs: config.resourceDirs.map(_processPath).toList(growable: false),
+JbConfigWithImports _processPaths(JbConfigWithImports cwi) {
+  final config = cwi.config;
+  return JbConfigWithImports(
+    cwi.configFile,
+    config.copyWith(
+      compileLibsDir: _processPath(config.compileLibsDir),
+      outputDir: config.outputDir?.vmap(_processPath),
+      runtimeLibsDir: _processPath(config.runtimeLibsDir),
+      testReportsDir: _processPath(config.testReportsDir),
+      sourceDirs: config.sourceDirs
+          .map(_processPath)
+          .toList(growable: false)
+          .useSourceDirsDefaultIfEmpty(),
+      resourceDirs: config.resourceDirs
+          .map(_processPath)
+          .toList(growable: false),
+    ),
+    cwi.imports.map(_processPath).toSet(),
   );
 }
 

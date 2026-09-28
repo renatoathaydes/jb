@@ -9,17 +9,25 @@ const jbExtension = 'jb-extension';
 /// Files and directories used by jb.
 class JbFiles {
   static const String jbCache = '.jb-cache';
+  static const String dependenciesChecksum = 'dependencies.sum';
   final File jbuildJar;
   final ConfigSource configSource;
   final String processorLibsDir;
 
+  File get javaVersionFile => File(p.join(jbCache, 'java-version.txt'));
+
   File get dependenciesFile => File(p.join(jbCache, 'dependencies.json'));
+
+  File get dependenciesChecksumFile => File(dependenciesChecksum);
 
   File get processorDependenciesFile =>
       File(p.join(jbCache, 'processor-dependencies.json'));
 
   File get testRunnerDependenciesFile =>
       File(p.join(jbCache, 'test-runner-dependencies.json'));
+
+  File get groovydocsDependenciesFile =>
+      File(p.join(jbCache, 'groovydocs-dependencies.json'));
 
   File get javaSrcFileTreeFile =>
       File(p.join(jbCache, 'java-src-file-tree.txt'));

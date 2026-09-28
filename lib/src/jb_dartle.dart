@@ -2,11 +2,11 @@ import 'package:collection/collection.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart';
-import 'package:jb/src/extension/cache_model.dart';
 
 import 'compute_compilation_path.dart';
 import 'config.dart';
-import 'config_source.dart';
+import 'config_import.dart';
+import 'extension/cache_model.dart';
 import 'extension/jb_extension.dart';
 import 'jb_actors.dart';
 import 'jb_files.dart';
@@ -16,13 +16,19 @@ import 'resolved_dependency.dart';
 import 'tasks.dart';
 import 'utils.dart';
 
+mixin JbDartleTasks {
+  Set<Task> get tasks;
+
+  Set<Task> get defaultTasks;
+}
+
 /// jb Dartle build definition.
 ///
 /// Users of this class must await on the [init] Future for this class to
 /// be fully initialized before using it.
-class JbDartle {
+class JbDartle with JbDartleTasks {
   final JbFiles _files;
-  final JbConfiguration _config;
+  final JbConfigWithImports _cwi;
   final DartleCache _cache;
   final Options _options;
   final JbActors _actors;
@@ -32,8 +38,10 @@ class JbDartle {
 
   late final Task compile,
       publicationCompile,
+      checkJavaVersion,
       writeDeps,
       verifyDeps,
+      installGroovydocs,
       installCompile,
       installRuntime,
       installProcessor,
@@ -46,6 +54,7 @@ class JbDartle {
       run,
       jshell,
       downloadTestRunner,
+      downloadChecksums,
       test,
       showConfig,
       deps,
@@ -53,14 +62,17 @@ class JbDartle {
       updateJBuild;
 
   /// Get the tasks that are configured as part of a build.
+  @override
   late final Set<Task> tasks;
 
   /// Wait for all sub-projects tasks to be initialized.
   late final Future<void> init;
 
+  JbConfiguration get _config => _cwi.config;
+
   JbDartle._(
     this._files,
-    this._config,
+    this._cwi,
     this._cache,
     this._options,
     this._actors,
@@ -78,14 +90,15 @@ class JbDartle {
 
   JbDartle.create(
     JbFiles files,
-    JbConfiguration config,
+    JbConfigWithImports cwi,
     DartleCache cache,
     Options options,
     JbActors actors, {
     required bool isRoot,
-  }) : this._(files, config, cache, options, actors, isRoot);
+  }) : this._(files, cwi, cache, options, actors, isRoot);
 
   /// Get the default tasks (`{ compile }`).
+  @override
   Set<Task> get defaultTasks {
     return {compile};
   }
@@ -125,22 +138,19 @@ class JbDartle {
     ResolvedLocalDependencies localProcessorDependencies,
   ) async {
     final stopwatch = Stopwatch()..start();
-    final configContainer = JbConfigContainer(_config);
+    final configContainer = JbConfigContainer(_cwi);
 
     final jvmExecutor = _actors.jvmExecutor;
+    final javaExecutor = jvmExecutor.takingJavaCommands();
     final depsCache = _actors.depsCache;
     final compPath = _actors.compPath;
 
-    final FileCollection jbFileInputs;
-    final configSource = _files.configSource;
-    if (configSource is FileConfigSource) {
-      jbFileInputs = file((await configSource.selectFile()).path);
-    } else {
-      jbFileInputs = FileCollection.empty;
-    }
+    final FileCollection jbFileInputs = _inputsFrom(_cwi);
     final artifact = createArtifact(_config);
     final compilationFiles = CompilationPathFiles(_cache);
     final projectTasks = <Task>{};
+
+    checkJavaVersion = createCheckJavaVersionTask(_files, _actors);
 
     compile = createCompileTask(
       _files,
@@ -164,13 +174,28 @@ class JbDartle {
       depsCache,
       _cache,
       jbFileInputs,
-      jvmExecutor,
+      javaExecutor,
+    );
+    downloadChecksums = createDownloadDependenciesChecksumsTask(
+      _files,
+      _config,
+      javaExecutor,
+      depsCache,
+      _cache,
     );
     verifyDeps = createVerifyDependenciesTask(_files, depsCache, _cache);
     installCompile = createInstallCompileDepsTask(
       _files,
       _config,
-      jvmExecutor,
+      javaExecutor,
+      depsCache,
+      _cache,
+      localDependencies,
+    );
+    installGroovydocs = createInstallGroovydocsTask(
+      _files,
+      configContainer,
+      javaExecutor,
       depsCache,
       _cache,
       localDependencies,
@@ -178,7 +203,7 @@ class JbDartle {
     installRuntime = createInstallRuntimeDepsTask(
       _files,
       configContainer,
-      jvmExecutor,
+      javaExecutor,
       depsCache,
       _cache,
       localDependencies,
@@ -186,7 +211,7 @@ class JbDartle {
     installProcessor = createInstallProcessorDepsTask(
       _files,
       _config,
-      jvmExecutor,
+      javaExecutor,
       depsCache,
       _cache,
       localProcessorDependencies,
@@ -194,14 +219,14 @@ class JbDartle {
     createCompilationPath = createJavaCompilationPathTask(
       _files,
       configContainer,
-      jvmExecutor,
+      javaExecutor,
       compPath,
       compilationFiles,
     );
     createRuntimePath = createJavaRuntimePathTask(
       _files,
       configContainer,
-      jvmExecutor,
+      javaExecutor,
       compPath,
       compilationFiles,
     );
@@ -212,11 +237,18 @@ class JbDartle {
       _actors,
       compilationFiles,
     );
-    jshell = createJshellTask(_files, configContainer, _cache);
+    jshell = createJshellTask(
+      this,
+      _files,
+      configContainer,
+      _actors,
+      _options,
+      _cache,
+    );
     downloadTestRunner = createDownloadTestRunnerTask(
       _files,
       configContainer,
-      jvmExecutor,
+      javaExecutor,
       depsCache,
       _cache,
       jbFileInputs,
@@ -251,13 +283,13 @@ class JbDartle {
       configContainer.output.when(dir: (_) => null, jar: (j) => j),
       localDependencies,
     );
-    updateJBuild = createUpdateJBuildTask(jvmExecutor);
+    updateJBuild = createUpdateJBuildTask(javaExecutor);
 
     final extensionProject = await loadExtensionProject(
       _files,
       _actors,
       _options,
-      _config,
+      _cwi,
       _cache,
     );
 
@@ -270,10 +302,12 @@ class JbDartle {
     });
 
     projectTasks.addAll({
+      checkJavaVersion,
       compile,
       publicationCompile,
       writeDeps,
       verifyDeps,
+      installGroovydocs,
       installCompile,
       installRuntime,
       installProcessor,
@@ -281,6 +315,7 @@ class JbDartle {
       createRuntimePath,
       run,
       jshell,
+      downloadChecksums,
       downloadTestRunner,
       test,
       deps,
@@ -290,7 +325,7 @@ class JbDartle {
       generatePom,
       publish,
       updateJBuild,
-      if (extensionTasks != null) ...extensionTasks,
+      ...?extensionTasks,
     });
 
     clean = createCleanTask(
@@ -321,9 +356,20 @@ class JbDartle {
     List<ResolvedProjectDependency> projectDeps,
   ) async {
     for (var dep in projectDeps) {
-      await dep.initialize(_options, _files, _actors);
+      try {
+        await dep.initialize(_options, _files, _actors);
+      } catch (e) {
+        failBuild(
+          reason:
+              'Failed to initialize project dependency at path "${dep.path}": $e',
+        );
+      }
     }
   }
+}
+
+FileCollection _inputsFrom(JbConfigWithImports cwi) {
+  return files([?cwi.configFile, ...cwi.imports]);
 }
 
 void _wireupTasks(ExtensionProject extensionProject, Set<Task> allTasks) {

@@ -9,7 +9,7 @@ void main() {
   group('jb extension', () {
     late JbConfiguration emptyJbConfig;
     setUpAll(() async {
-      emptyJbConfig = await loadConfigString('module: test');
+      emptyJbConfig = (await loadConfigString('module: test')).config;
     });
 
     test('can match empty constructor', () {
@@ -227,7 +227,7 @@ void main() {
   group('jb extension errors', () {
     late JbConfiguration emptyJbConfig;
     setUpAll(() async {
-      emptyJbConfig = await loadConfigString('module: test');
+      emptyJbConfig = (await loadConfigString('module: test')).config;
     });
 
     test('cannot provide value for non-configurable type', () {

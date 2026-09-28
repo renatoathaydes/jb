@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
-import 'package:jb/jb.dart' show CompilationPath;
+import 'package:jb/jb.dart' show CompilationPath, JbFiles;
 import 'package:jb/src/utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
@@ -18,12 +19,15 @@ final jbuildExecutable = p.join(
 void projectGroup(
   String projectDir,
   String name,
-  Function() definition, [
+  Function() definition, {
   List<String> subDirectories = const [],
-]) {
-  final rootDirs = subDirectories.isEmpty
-      ? [projectDir]
-      : subDirectories.map((d) => p.join(projectDir, d));
+  Object? skip,
+  bool deleteChecksums = true,
+}) {
+  final rootDirs = [
+    projectDir,
+    ...subDirectories.map((d) => p.join(projectDir, d)),
+  ];
   final outputDirs = dirs([
     for (final d in rootDirs) ...[
       p.join(d, '.jb-cache'),
@@ -33,16 +37,21 @@ void projectGroup(
       p.join(d, 'runtime-libs'),
     ],
   ], includeHidden: true);
+  final checksumFiles = deleteChecksums
+      ? files([
+          for (final d in rootDirs) p.join(d, JbFiles.dependenciesChecksum),
+        ])
+      : FileCollection.empty;
 
   setUp(() async {
-    await deleteAll(outputDirs);
+    await deleteAll(outputDirs.union(checksumFiles));
   });
 
   tearDownAll(() async {
-    await deleteAll(outputDirs);
+    await deleteAll(outputDirs.union(checksumFiles));
   });
 
-  group(name, definition);
+  group(name, definition, skip: skip);
 }
 
 Future<Directory> createTempFiles(Map<String, String> files) async {
@@ -107,6 +116,25 @@ void expectSuccess(ProcessResult result, {int expectedExitCode = 0}) {
   );
 }
 
+Future<void> verifyDependenciesChecksums(
+  Directory directory,
+  Map<String, String> expectedChecksums,
+) async {
+  final checksumsFile = File(
+    p.join(directory.path, JbFiles.dependenciesChecksum),
+  );
+  expect(
+    await checksumsFile.exists(),
+    isTrue,
+    reason: 'checksum file not found',
+  );
+  final checksums = await checksumsFile.readAsLines();
+  final actualChecksums = Map.fromEntries(
+    checksums.map((line) => line.split(' ').vmap((e) => MapEntry(e[0], e[1]))),
+  );
+  expect(actualChecksums, equals(expectedChecksums));
+}
+
 List<String> outputOfProjectDependencies(ProcessResult result) {
   final fullOutput = result.stdout as List<String>;
   return fullOutput.sublist(
@@ -120,8 +148,9 @@ List<String> outputOfProjectDependencies(ProcessResult result) {
 Future<ProcessResult> runJb(
   Directory workingDir, [
   List<String> args = const [],
+  Map<String, String> env = const {},
 ]) {
-  return runProcess(jbuildExecutable, workingDir, args);
+  return runProcess(jbuildExecutable, workingDir, args, env);
 }
 
 Future<Process> startJb(
@@ -148,11 +177,17 @@ Future<ProcessResult> runProcess(
   String name,
   Directory workingDir, [
   List<String> args = const [],
+  Map<String, String> env = const {},
 ]) async {
   final stdout = <String>[];
   final stderr = <String>[];
   final exitCode = await exec(
-    Process.start(name, args, workingDirectory: workingDir.path),
+    Process.start(
+      name,
+      args,
+      environment: env,
+      workingDirectory: workingDir.path,
+    ),
     onStdoutLine: stdout.add,
     onStderrLine: stderr.add,
   );
