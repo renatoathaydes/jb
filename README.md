@@ -176,6 +176,8 @@ See the [example-extension CopierTask](test/test-projects/example-extension/src/
 A few demo Java projects, including one using the [Javalin Web Framework](https://javalin.io/), are available in the
 [example/](example/) directory.
 
+There is also a [Spring Boot Demo](https://github.com/renatoathaydes/jb-spring-boot-demo) project.
+
 ## About `jb` (implementation)
 
 This project is the [JBuild](https://github.com/renatoathaydes/jbuild) CLI front-end.
