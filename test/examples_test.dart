@@ -22,6 +22,7 @@ const groovy5Dep = '  $groovy4:$groovy5Version:';
 void main() async {
   final javaInfo = await detectJavaInfo();
   final javaOlderThan17 = (javaInfo?.majorVersion ?? 21) < 17;
+  final java24OrHigher = (javaInfo?.majorVersion ?? 21) >= 24;
 
   projectGroup(
     errorProneProjectDir,
@@ -263,7 +264,7 @@ void main() async {
       test('can publish Groovy project (Groovy 4)', () async {
         const mavenHome = 'mvn-home-groovy-4';
         await runGroovyProjectTestPublishTask(mavenHome, groovy4Version);
-      });
+      }, skip: java24OrHigher ? 'Groovy 4 does not support Java 24+' : false);
 
       test('can publish Groovy project (Groovy 3)', () async {
         const mavenHome = 'mvn-home-groovy-3';
@@ -274,7 +275,7 @@ void main() async {
         } finally {
           await _restoreGroovyProject(originalJbFileLines);
         }
-      });
+      }, skip: java24OrHigher ? 'Groovy 3 does not support Java 24+' : false);
 
       test('can publish Groovy project (Groovy 5)', () async {
         const mavenHome = 'mvn-home-groovy-5';
@@ -309,7 +310,7 @@ void main() async {
           jbResult.stdout.join('\n'),
           anyOf(contains(unicodeResults), contains(asciiResults)),
         );
-      });
+      }, skip: java24OrHigher ? 'Groovy 3 does not support Java 24+' : false);
 
       test(
         'when upgrading library (Groovy 4 to 5) libs directories are updated',
