@@ -159,7 +159,7 @@ runtime-libs-dir: \x1B[34m"all-libs"\x1B[0m
 \x1B[90m# Test reports output dir\x1B[0m
 test-reports-dir: \x1B[34m"reports-dir"\x1B[0m
 \x1B[90m# jb extension project path (for custom tasks)\x1B[0m
-extension-project: \x1B[35mnull\x1B[0m
+extension-projects: []
 ''';
 
 const _basicConfigWithDependencies = '''
@@ -249,7 +249,7 @@ runtime-libs-dir: "build/runtime-libs"
 # Test reports output dir
 test-reports-dir: "build/test-reports"
 # jb extension project path (for custom tasks)
-extension-project: null
+extension-projects: []
 ''';
 
 const _versionsConfig = '''
@@ -332,7 +332,7 @@ runtime-libs-dir: "build/runtime-libs"
 # Test reports output dir
 test-reports-dir: "build/test-reports"
 # jb extension project path (for custom tasks)
-extension-project: null
+extension-projects: []
 ############################
 # Custom tasks configuration
 ############################

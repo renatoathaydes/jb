@@ -265,13 +265,11 @@ class ExtensionTask {
 }
 
 /// jb extension model.
-class JbExtensionModel {
-  final JbConfiguration config;
-  final String classpath;
-  final List<ExtensionTask> extensionTasks;
-
-  const JbExtensionModel(this.config, this.classpath, this.extensionTasks);
-}
+class JbExtensionModel(
+  final JbConfiguration config,
+  final String classpath,
+  final List<ExtensionTask> extensionTasks,
+);
 
 /// A container holding an instance of the generated type [JbConfiguration]
 /// as well as a computed [CompileOutput].
@@ -324,8 +322,8 @@ extension JbConfigExtension on JbConfiguration {
       url: resolveOptionalString(other.url ?? url, props),
       mainClass: resolveOptionalString(other.mainClass ?? mainClass, props),
       manifest: resolveOptionalString(other.manifest ?? manifest, props),
-      extensionProject: resolveOptionalString(
-        other.extensionProject ?? extensionProject,
+      extensionProjects: extensionProjects.merge(
+        other.extensionProjects,
         props,
       ),
       sourceDirs: sourceDirs.merge(other.sourceDirs, props),

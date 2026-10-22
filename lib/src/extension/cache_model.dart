@@ -1,225 +1,18 @@
-import 'dart:convert' show jsonDecode, jsonEncode, utf8;
+import 'dart:convert' show jsonDecode, jsonEncode;
 import 'dart:io';
 
-import 'package:actors/actors.dart' show Sendable;
-import 'package:archive/archive_io.dart';
-import 'package:conveniently/conveniently.dart';
-import 'package:dartle/dartle.dart' show elapsedTime, profile;
 import 'package:dartle/dartle_cache.dart';
-import 'package:jb/src/extension/constructors.dart';
 import 'package:path/path.dart' as p;
 
 import '../config.dart';
-import '../jb_files.dart';
-import '../jvm_executor.dart';
 import '../utils.dart';
+import 'constructors.dart';
 
 /// The name of the file inside the Dartle Cache where the full extension project
 /// data model is cached.
 final modelJsonFile = 'jb-model.json';
 
-final class _JbExtensionConfig {
-  final String path;
-  final String yaml;
-  final String scheme;
-
-  Uri get yamlUri => Uri(scheme: scheme, path: path);
-
-  const _JbExtensionConfig({
-    required this.path,
-    required this.yaml,
-    required this.scheme,
-  });
-}
-
-Future<JbExtensionModel> createJbExtensionModel(
-  JbConfigContainer configContainer,
-  String rootDir,
-  String classpath,
-  DartleCache cache,
-  Sendable<JavaCommand, Object?> jvmExecutor, {
-  required bool extensionUpToDate,
-}) async {
-  final out = configContainer.output.when(dir: dir, jar: file);
-  final jbExtensionConfig = await configContainer.output.when(
-    dir: (d) async => await _jbExtensionFromDir(rootDir, d),
-    jar: (j) async => await _jbExtensionFromJar(rootDir, j),
-  );
-  final config = configContainer.config;
-  final taskConfigs = await loadExtensionTaskConfigs(
-    config,
-    jbExtensionConfig.yaml,
-    jbExtensionConfig.yamlUri,
-  );
-
-  final stopWatch = Stopwatch()..start();
-  List<ExtensionTask>? extensionTasks;
-
-  if (extensionUpToDate && !await cache.hasChanged(out)) {
-    extensionTasks = await _loadExtensionTasksFromCache(
-      config,
-      taskConfigs,
-      cache,
-      rootDir,
-    );
-  }
-
-  if (extensionTasks == null) {
-    extensionTasks = await _loadExtensionTasks(
-      config,
-      classpath,
-      taskConfigs,
-      jvmExecutor,
-    );
-    await _cacheExtensionTasks(cache, rootDir, extensionTasks);
-  }
-
-  logger.log(
-    profile,
-    () => 'Loaded extension tasks in ${elapsedTime(stopWatch)}',
-  );
-
-  return JbExtensionModel(config, classpath, extensionTasks);
-}
-
-void verifyAllExtrasMatchExtensionTasks(
-  JbConfiguration config,
-  List<ExtensionTask> extensionTasks,
-) {
-  final extras = config.extras.keys.toSet();
-  final taskNames = extensionTasks.map((t) => t.name).toSet();
-  final badExtras = extras.difference(taskNames);
-  if (badExtras.isNotEmpty) {
-    failBuild(
-      reason:
-          'The following keys are not jb configuration entries, '
-          'nor custom tasks configurations: '
-          '${badExtras.map((s) => s.quote()).join(', ')}. '
-          'Remove them from your jb file or add the required extensions.',
-    );
-  }
-}
-
-Future<_JbExtensionConfig> _jbExtensionFromJar(
-  String rootDir,
-  String jarPath,
-) async {
-  final path = p.join(rootDir, jarPath);
-  logger.fine(() => 'Loading jb extension from jar: $path');
-  final stream = InputFileStream(path);
-  try {
-    final buffer = ZipDecoder().decodeStream(stream);
-    final extensionEntry = 'META-INF/jb/$jbExtension.yaml';
-    final archiveFile = buffer
-        .findFile(extensionEntry)
-        .orThrow(
-          () => failBuild(
-            reason:
-                'jb extension jar at $jarPath '
-                'is missing metadata file: $extensionEntry',
-          ),
-        );
-    final content = archiveFile.content as List<int>;
-    return _JbExtensionConfig(
-      path: '$path!$extensionEntry',
-      yaml: utf8.decode(content),
-      scheme: 'jar',
-    );
-  } finally {
-    await stream.close();
-  }
-}
-
-Future<_JbExtensionConfig> _jbExtensionFromDir(
-  String rootDir,
-  String outputDir,
-) async {
-  logger.fine(
-    () => 'Loading jb extension from directory: ${p.join(rootDir, outputDir)}',
-  );
-  final yamlFile = File(
-    p.join(rootDir, outputDir, 'META-INF', 'jb', '$jbExtension.yaml'),
-  );
-  return _JbExtensionConfig(
-    path: yamlFile.path,
-    yaml: await yamlFile.readAsString(),
-    scheme: 'file',
-  );
-}
-
-Future<List<ExtensionTask>> _loadExtensionTasks(
-  JbConfiguration config,
-  String classpath,
-  Iterable<BasicExtensionTask> taskConfigs,
-  Sendable<JavaCommand, Object?> jvmExecutor,
-) async {
-  logger.fine(() => 'Loading extension tasks data from Java extension');
-  final futureTasks = taskConfigs.map(
-    (taskConfig) =>
-        _loadExtensionTask(config, classpath, taskConfig, jvmExecutor),
-  );
-  // wait for all Futures to complete now
-  return await Future.wait(futureTasks);
-}
-
-Future<ExtensionTask> _loadExtensionTask(
-  JbConfiguration config,
-  String classpath,
-  BasicExtensionTask taskConfig,
-  Sendable<JavaCommand, Object?> jvmExecutor,
-) async {
-  final constructorData = resolveTaskConstructorData(config, taskConfig);
-  final summary = await jvmExecutor.send(
-    RunJava(
-      '_getSummary_${taskConfig.name}',
-      classpath,
-      taskConfig.className,
-      'getSummary',
-      const [],
-      constructorData,
-    ),
-  );
-  if (summary is List && summary.length == 4) {
-    final [inputs, outputs, dependsOn, dependents] = summary;
-    return ExtensionTask(
-      basicConfig: taskConfig,
-      constructorData: constructorData,
-      extraConfig: ExtensionTaskExtra(
-        // TODO the config may change even if the jb file does not,
-        // so we should check the actual JbConfiguration object if possible.
-        inputs: _addJbFileIfRequiringConfig(
-          taskConfig.constructors,
-          _ensureStrings(inputs),
-        ),
-        outputs: _ensureStrings(outputs),
-        dependsOn: _ensureStrings(dependsOn),
-        dependents: _ensureStrings(dependents),
-      ),
-    );
-  } else {
-    failBuild(
-      reason:
-          'getSummary should return list with 4 elements, '
-          'but got: $summary',
-    );
-  }
-}
-
-List<String> _addJbFileIfRequiringConfig(
-  List<Map<String, ConfigType>> constructors,
-  List<String> inputs,
-) {
-  // if any constructor requires jbConfig, we need to add the jb config file
-  // to the inputs if it's not already there.
-  if (constructors.any((c) => c.values.any((v) => v == ConfigType.jbConfig)) &&
-      !inputs.contains(yamlJbFile) &&
-      !inputs.contains(jsonJbFile)) {
-    return inputs.followedBy([yamlJbFile, jsonJbFile]).toList(growable: false);
-  }
-  return inputs;
-}
-
-Future<List<ExtensionTask>> _loadExtensionTasksFromCache(
+Future<List<ExtensionTask>> loadExtensionTasksFromCache(
   JbConfiguration config,
   Iterable<BasicExtensionTask> taskConfigs,
   DartleCache cache,
@@ -259,7 +52,7 @@ Future<List<ExtensionTask>> _loadExtensionTasksFromCache(
       .toList(growable: false);
 }
 
-Future<void> _cacheExtensionTasks(
+Future<void> cacheExtensionTasks(
   DartleCache cache,
   String rootDir,
   List<ExtensionTask> tasks,
@@ -280,13 +73,4 @@ String _modelCacheLocation(DartleCache cache, String dir) {
     dir.asEncodedPath(),
     modelJsonFile,
   );
-}
-
-List<String> _ensureStrings(dynamic value) {
-  List list = value.toList();
-  final badValues = list.where((e) => e is! String).toList();
-  if (badValues.isNotEmpty) {
-    failBuild(reason: 'Non-string values found in Set<String>: $badValues');
-  }
-  return list.whereType<String>().toList();
 }

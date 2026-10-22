@@ -6,7 +6,7 @@ import 'package:dartle/dartle_cache.dart';
 import 'compute_compilation_path.dart';
 import 'config.dart';
 import 'config_import.dart';
-import 'extension/cache_model.dart';
+import 'extension/extension_tasks.dart';
 import 'extension/jb_extension.dart';
 import 'jb_actors.dart';
 import 'jb_files.dart';
@@ -285,20 +285,19 @@ class JbDartle with JbDartleTasks {
     );
     updateJBuild = createUpdateJBuildTask(javaExecutor);
 
-    final extensionProject = await loadExtensionProject(
+    final extensionProjects = await loadExtensionProjects(
       _files,
       _actors,
       _options,
       _cwi,
       _cache,
-    );
+    ).toList();
 
-    final extensionTasks = extensionProject.vmap((extProject) {
-      verifyAllExtrasMatchExtensionTasks(
-        _config,
-        extProject?.model.extensionTasks ?? const [],
+    final extensionTasks = extensionProjects.vmap((projects) {
+      verifyExtensionTasks(_config, projects);
+      return projects.expand(
+        (p) => createExtensionTasks(p, javaExecutor, _cache),
       );
-      return extProject?.tasks;
     });
 
     projectTasks.addAll({
@@ -325,7 +324,7 @@ class JbDartle with JbDartleTasks {
       generatePom,
       publish,
       updateJBuild,
-      ...?extensionTasks,
+      ...extensionTasks,
     });
 
     clean = createCleanTask(
@@ -335,7 +334,7 @@ class JbDartle with JbDartleTasks {
     );
     projectTasks.add(clean);
 
-    extensionProject?.vmap((p) => _wireupTasks(p, projectTasks));
+    _wireupTasks(extensionProjects, projectTasks);
 
     if (localDependencies.projectDependencies.isNotEmpty) {
       await _initializeProjectDeps(localDependencies.projectDependencies);
@@ -372,30 +371,36 @@ FileCollection _inputsFrom(JbConfigWithImports cwi) {
   return files([?cwi.configFile, ...cwi.imports]);
 }
 
-void _wireupTasks(ExtensionProject extensionProject, Set<Task> allTasks) {
+void _wireupTasks(
+  Iterable<ExtensionProject> extensionProjects,
+  Set<Task> allTasks,
+) {
   final taskMap = allTasks.groupFoldBy((t) => t.name, (a, b) => b);
-  for (final exTask in extensionProject.model.extensionTasks) {
-    for (final dep in exTask.dependents) {
-      final dependent = taskMap[dep].orThrow(
-        () => DartleException(
-          message:
-              "Task '${exTask.name}' of extension project"
-              " '${extensionProject.name}' has non-existent task "
-              "dependent '$dep'",
-        ),
-      );
-      dependent.dependsOn({exTask.name});
-    }
-    for (final dep in exTask.dependsOn) {
-      // no need to add dependencies as they're added when the task is created
-      taskMap[dep].orThrow(
-        () => DartleException(
-          message:
-              "Task '${exTask.name}' of extension project"
-              " '${extensionProject.name}' has non-existent task "
-              "dependency '$dep'",
-        ),
-      );
+  for (final extensionProject in extensionProjects) {
+    for (final exTask in extensionProject.model.extensionTasks) {
+      for (final dep in exTask.dependents) {
+        final dependent = taskMap[dep].orThrow(
+          () => DartleException(
+            message:
+                "Task '${exTask.name}' of extension project"
+                " '${extensionProject.name}' has non-existent task "
+                "dependent '$dep'",
+          ),
+        );
+        dependent.dependsOn({exTask.name});
+
+        for (final dep in exTask.dependsOn) {
+          // no need to add dependencies as they're added when the task is created
+          taskMap[dep].orThrow(
+            () => DartleException(
+              message:
+                  "Task '${exTask.name}' of extension project"
+                  " '${extensionProject.name}' has non-existent task "
+                  "dependency '$dep'",
+            ),
+          );
+        }
+      }
     }
   }
 }

@@ -75,7 +75,7 @@ runtime-libs-dir: ${_quote(config.runtimeLibsDir)}
 ${color('# Test reports output dir', commentColor)}
 test-reports-dir: ${_quote(config.testReportsDir)}
 ${color('# jb extension project path (for custom tasks)', commentColor)}
-extension-project: ${_quote(config.extensionProject)}
+extension-projects:${_multilineList(config.extensionProjects)}
 $extension''';
   }
 

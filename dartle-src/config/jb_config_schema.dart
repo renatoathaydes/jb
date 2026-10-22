@@ -96,9 +96,10 @@ const jbConfig = Objects(
           'Manifest file to pass to the jar tool. '
           'Use "-" to generate no manifest',
     ),
-    'extension-project': Property(
-      Nullable(Strings()),
-      description: 'Path to a jb extension',
+    'extension-projects': Property(
+      Arrays(Strings()),
+      description: 'Paths to jb extensions',
+      defaultValue: [],
     ),
     'source-dirs': Property(
       Arrays(Strings()),

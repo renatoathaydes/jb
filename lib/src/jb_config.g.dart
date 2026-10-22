@@ -31,8 +31,8 @@ final class JbConfiguration {
   /// Manifest file to pass to the jar tool. Use "-" to generate no manifest
   final String? manifest;
 
-  /// Path to a jb extension
-  final String? extensionProject;
+  /// Paths to jb extensions
+  final List<String> extensionProjects;
 
   /// Java Source directories
   final List<String> sourceDirs;
@@ -109,7 +109,7 @@ final class JbConfiguration {
     this.url,
     this.mainClass,
     this.manifest,
-    this.extensionProject,
+    this.extensionProjects = const [],
     this.sourceDirs = const [],
     this.outputDir,
     this.outputJar,
@@ -145,7 +145,7 @@ final class JbConfiguration {
       'url: ${url == null ? "null" : '"$url"'}, '
       'mainClass: ${mainClass == null ? "null" : '"$mainClass"'}, '
       'manifest: ${manifest == null ? "null" : '"$manifest"'}, '
-      'extensionProject: ${extensionProject == null ? "null" : '"$extensionProject"'}, '
+      'extensionProjects: $extensionProjects, '
       'sourceDirs: $sourceDirs, '
       'outputDir: ${outputDir == null ? "null" : '"$outputDir"'}, '
       'outputJar: ${outputJar == null ? "null" : '"$outputJar"'}, '
@@ -183,7 +183,10 @@ final class JbConfiguration {
           url == other.url &&
           mainClass == other.mainClass &&
           manifest == other.manifest &&
-          extensionProject == other.extensionProject &&
+          const ListEquality<String>().equals(
+            extensionProjects,
+            other.extensionProjects,
+          ) &&
           const ListEquality<String>().equals(sourceDirs, other.sourceDirs) &&
           outputDir == other.outputDir &&
           outputJar == other.outputJar &&
@@ -253,7 +256,7 @@ final class JbConfiguration {
       url.hashCode ^
       mainClass.hashCode ^
       manifest.hashCode ^
-      extensionProject.hashCode ^
+      const ListEquality<String>().hash(extensionProjects) ^
       const ListEquality<String>().hash(sourceDirs) ^
       outputDir.hashCode ^
       outputJar.hashCode ^
@@ -286,7 +289,7 @@ final class JbConfiguration {
     String? url,
     String? mainClass,
     String? manifest,
-    String? extensionProject,
+    List<String>? extensionProjects,
     List<String>? sourceDirs,
     String? outputDir,
     String? outputJar,
@@ -318,7 +321,6 @@ final class JbConfiguration {
     bool unsetUrl = false,
     bool unsetMainClass = false,
     bool unsetManifest = false,
-    bool unsetExtensionProject = false,
     bool unsetOutputDir = false,
     bool unsetOutputJar = false,
     bool unsetScm = false,
@@ -332,9 +334,7 @@ final class JbConfiguration {
       url: unsetUrl ? null : url ?? this.url,
       mainClass: unsetMainClass ? null : mainClass ?? this.mainClass,
       manifest: unsetManifest ? null : manifest ?? this.manifest,
-      extensionProject: unsetExtensionProject
-          ? null
-          : extensionProject ?? this.extensionProject,
+      extensionProjects: extensionProjects ?? [...this.extensionProjects],
       sourceDirs: sourceDirs ?? [...this.sourceDirs],
       outputDir: unsetOutputDir ? null : outputDir ?? this.outputDir,
       outputJar: unsetOutputJar ? null : outputJar ?? this.outputJar,
@@ -380,7 +380,7 @@ final class JbConfiguration {
     if (url != null) 'url': url,
     if (mainClass != null) 'main-class': mainClass,
     if (manifest != null) 'manifest': manifest,
-    if (extensionProject != null) 'extension-project': extensionProject,
+    'extension-projects': extensionProjects,
     'source-dirs': sourceDirs,
     if (outputDir != null) 'output-dir': outputDir,
     if (outputJar != null) 'output-jar': outputJar,
@@ -758,10 +758,11 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
         'manifest',
         value,
       ),
-      extensionProject: convertProperty(
-        const Nullable<String, Strings>(Strings()),
-        'extension-project',
+      extensionProjects: convertPropertyOrDefault(
+        const Arrays<String, Strings>(Strings()),
+        'extension-projects',
         value,
+        const [],
       ),
       sourceDirs: convertPropertyOrDefault(
         const Arrays<String, Strings>(Strings()),
@@ -932,8 +933,8 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
         return const Nullable<String, Strings>(Strings());
       case 'manifest':
         return const Nullable<String, Strings>(Strings());
-      case 'extension-project':
-        return const Nullable<String, Strings>(Strings());
+      case 'extension-projects':
+        return const Arrays<String, Strings>(Strings());
       case 'source-dirs':
         return const Arrays<String, Strings>(Strings());
       case 'output-dir':
@@ -1020,7 +1021,7 @@ class _JbConfigurationJsonReviver extends ObjectsBase<JbConfiguration> {
       'url',
       'main-class',
       'manifest',
-      'extension-project',
+      'extension-projects',
       'source-dirs',
       'output-dir',
       'output-jar',

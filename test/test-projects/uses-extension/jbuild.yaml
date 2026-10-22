@@ -1,8 +1,9 @@
-extension-project: ../example-extension
+extension-projects:
+  - ../example-extension
 source-dirs: [ src ]
 resource-dirs: [ resources ]
 javac-args: ["--release", "11"]
 
 # extension tasks
-copyFile:
+copyFile:my-extension:
   extensions: ["*.txt"]
