@@ -237,12 +237,19 @@ class ExtensionTask {
   /// configuration data given to the task via its constructor.
   final List<Object?> constructorData;
 
+  /// The qualified task name, i.e. `"${basicConfig.name}#$projectName"`.
+  ///
+  /// This is the canonical name used to register and wire up the task.
+  final String qualifiedName;
+
   const ExtensionTask({
     required this.basicConfig,
     required this.extraConfig,
     required this.constructorData,
+    required this.qualifiedName,
   });
 
+  /// The basic name of this task (i.e. not including the project name).
   String get name => basicConfig.name;
 
   String get description => basicConfig.description;

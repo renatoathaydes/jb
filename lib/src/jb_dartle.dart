@@ -299,7 +299,6 @@ class JbDartle with JbDartleTasks {
         (p) => createExtensionTasks(p, javaExecutor, _cache),
       );
     });
-
     projectTasks.addAll({
       checkJavaVersion,
       compile,
@@ -387,19 +386,17 @@ void _wireupTasks(
                 "dependent '$dep'",
           ),
         );
-        dependent.dependsOn({exTask.name});
-
-        for (final dep in exTask.dependsOn) {
-          // no need to add dependencies as they're added when the task is created
-          taskMap[dep].orThrow(
-            () => DartleException(
-              message:
-                  "Task '${exTask.name}' of extension project"
-                  " '${extensionProject.name}' has non-existent task "
-                  "dependency '$dep'",
-            ),
-          );
-        }
+        dependent.dependsOn({exTask.qualifiedName});
+      }
+      for (final dep in exTask.dependsOn) {
+        taskMap[dep].orThrow(
+          () => DartleException(
+            message:
+                "Task '${exTask.name}' of extension project"
+                " '${extensionProject.name}' has non-existent task "
+                "dependency '$dep'",
+          ),
+        );
       }
     }
   }

@@ -547,7 +547,10 @@ void main() {
           endsWith("========= jb extension loaded ========="),
         );
         expect(lines[loadingLineIndex++], contains("Executing 1 task"));
-        expect(lines[loadingLineIndex++], endsWith("Running task 'bar'"));
+        expect(
+          lines[loadingLineIndex++],
+          endsWith("Running task 'bar#my-extension'"),
+        );
 
         // the new custom task is run
         expect(

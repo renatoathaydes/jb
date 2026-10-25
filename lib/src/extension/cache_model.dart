@@ -17,6 +17,7 @@ Future<List<ExtensionTask>> loadExtensionTasksFromCache(
   Iterable<BasicExtensionTask> taskConfigs,
   DartleCache cache,
   String rootDir,
+  String projectName,
 ) async {
   final cacheFile = File(_modelCacheLocation(cache, rootDir));
   if (!await cacheFile.exists()) {
@@ -41,12 +42,18 @@ Future<List<ExtensionTask>> loadExtensionTasksFromCache(
           );
         }
 
-        final constructorData = resolveTaskConstructorData(config, taskConfig);
+        final taskName = '${taskConfig.name}#$projectName';
+        final constructorData = resolveTaskConstructorData(
+          config,
+          taskConfig,
+          taskName,
+        );
 
         return ExtensionTask(
           basicConfig: taskConfig,
           constructorData: constructorData,
           extraConfig: ExtensionTaskExtra.fromJson(extra),
+          qualifiedName: taskName,
         );
       })
       .toList(growable: false);
