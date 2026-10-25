@@ -5,5 +5,5 @@ resource-dirs: [ resources ]
 javac-args: ["--release", "11"]
 
 # extension tasks
-copyFile:my-extension:
+"copyFile#my-extension":
   extensions: ["*.txt"]

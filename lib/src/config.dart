@@ -237,7 +237,7 @@ class ExtensionTask {
   /// configuration data given to the task via its constructor.
   final List<Object?> constructorData;
 
-  /// The qualified task name, i.e. `"${basicConfig.name}:$projectName"`.
+  /// The qualified task name, i.e. `"${basicConfig.name}#$projectName"`.
   ///
   /// This is the canonical name used to register and wire up the task.
   final String qualifiedName;

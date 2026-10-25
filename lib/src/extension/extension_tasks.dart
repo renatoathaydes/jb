@@ -88,7 +88,7 @@ void verifyExtensionTasks(
         reason:
             'Configuration of task "$extra" is ambiguous because '
             'it could belong to any of the following extension projects: $ambiguousOwners. '
-            'Use the qualified name of the task, e.g. "$extra:${ambiguousOwners.first}".',
+            'Use the qualified name of the task, e.g. "$extra#${ambiguousOwners.first}".',
       );
     }
   }
@@ -142,7 +142,7 @@ Future<ExtensionTask> _loadExtensionTask(
   Sendable<JavaCommand, Object?> jvmExecutor,
   String projectName,
 ) async {
-  final taskName = '${taskConfig.name}:$projectName';
+  final taskName = '${taskConfig.name}#$projectName';
   final constructorData = resolveTaskConstructorData(
     config,
     taskConfig,

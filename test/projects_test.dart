@@ -549,7 +549,7 @@ void main() {
         expect(lines[loadingLineIndex++], contains("Executing 1 task"));
         expect(
           lines[loadingLineIndex++],
-          endsWith("Running task 'bar:my-extension'"),
+          endsWith("Running task 'bar#my-extension'"),
         );
 
         // the new custom task is run

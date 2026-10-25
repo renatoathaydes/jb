@@ -42,7 +42,7 @@ Future<List<ExtensionTask>> loadExtensionTasksFromCache(
           );
         }
 
-        final taskName = '${taskConfig.name}:$projectName';
+        final taskName = '${taskConfig.name}#$projectName';
         final constructorData = resolveTaskConstructorData(
           config,
           taskConfig,
