@@ -104,8 +104,17 @@ void verifyExtensionTasks(
           reason: "Duplicate extension task name detected: $qualifiedName",
         );
       }
-      final wasRemoved =
-          extras.remove(qualifiedName) || extras.remove(simpleName);
+      // allow users to use either qualified or simple name
+      final removedQualified = extras.remove(qualifiedName);
+      final removedSimple = extras.remove(simpleName);
+      if (removedSimple && removedQualified) {
+        failBuild(
+          reason:
+              'Cannot configure task both by simple name ($simpleName) '
+              'and qualified name ($qualifiedName).',
+        );
+      }
+      final wasRemoved = removedQualified || removedSimple;
       if (logger.isLoggable(Level.FINE)) {
         logger.fine(
           () =>
