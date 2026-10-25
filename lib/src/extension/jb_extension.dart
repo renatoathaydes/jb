@@ -68,6 +68,8 @@ Stream<ExtensionProject> loadExtensionProjects(
 
 Future<JbExtensionModel> createJbExtensionModel(
   JbConfigContainer configContainer,
+  JbConfiguration hostConfig,
+  String projectName,
   String rootDir,
   String classpath,
   DartleCache cache,
@@ -90,19 +92,21 @@ Future<JbExtensionModel> createJbExtensionModel(
 
   if (extensionUpToDate && !await cache.hasChanged(out)) {
     extensionTasks = await loadExtensionTasksFromCache(
-      config,
+      hostConfig,
       taskConfigs,
       cache,
       rootDir,
+      projectName,
     );
   }
 
   if (extensionTasks == null) {
     extensionTasks = await loadExtensionTasks(
-      config,
+      hostConfig,
       classpath,
       taskConfigs,
       jvmExecutor,
+      projectName,
     );
     await cacheExtensionTasks(cache, rootDir, extensionTasks);
   }
@@ -208,7 +212,9 @@ Future<ExtensionProject> _loadExtensionFromDir(
   final stopWatch = Stopwatch()..start();
 
   final rootDir = projectDir.path;
-  logger.fine(() => 'Loading extension project: $rootDir');
+  logger.info(
+    () => '========= Loading jb extension project: $rootDir =========',
+  );
 
   final extensionCwi = await withCurrentDirectory(rootDir, () async {
     return await defaultJbConfigSource.load();
@@ -218,7 +224,7 @@ Future<ExtensionProject> _loadExtensionFromDir(
   final configContainer = await withCurrentDirectory(
     rootDir,
     onError: changedDirectoryOnError(rootDir),
-    () => JbConfigContainer(cwi),
+    () => JbConfigContainer(extensionCwi),
   );
   final runner = JbRunner(files, extensionCwi, actors);
 
@@ -248,6 +254,8 @@ Future<ExtensionProject> _loadExtensionFromDir(
 
   final extensionModel = await createJbExtensionModel(
     configContainer,
+    cwi.config,
+    name,
     rootDir,
     classpath,
     cache,
@@ -262,6 +270,7 @@ Future<ExtensionProject> _loadExtensionFromDir(
     () =>
         "Extension project '$rootDir' model loaded in ${elapsedTime(stopWatch)}",
   );
+  logger.info('========= jb extension loaded =========');
 
   return ExtensionProject(name, absRootDir, classpath, extensionModel);
 }
@@ -283,7 +292,10 @@ void _warnOnUnexpectedConfig(
   JbExtensionModel extensionModel,
   Map<String, Object?> extras,
 ) {
-  final taskNames = extensionModel.extensionTasks.map((t) => t.name).toSet();
+  // extension project's task names including also qualified names
+  final taskNames = extensionModel.extensionTasks
+      .expand((t) => [t.name, t.qualifiedName])
+      .toSet();
   final unknownKeys = extras.keys.where(taskNames.contains.not$);
   if (unknownKeys.isNotEmpty) {
     logger.warning(

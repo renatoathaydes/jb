@@ -299,7 +299,6 @@ class JbDartle with JbDartleTasks {
         (p) => createExtensionTasks(p, javaExecutor, _cache),
       );
     });
-
     projectTasks.addAll({
       checkJavaVersion,
       compile,
@@ -378,6 +377,11 @@ void _wireupTasks(
   final taskMap = allTasks.groupFoldBy((t) => t.name, (a, b) => b);
   for (final extensionProject in extensionProjects) {
     for (final exTask in extensionProject.model.extensionTasks) {
+      // Use the unqualified name if it was registered (non-ambiguous),
+      // otherwise fall back to the pre-computed qualified taskName.
+      final taskName = taskMap.containsKey(exTask.name)
+          ? exTask.name
+          : exTask.qualifiedName;
       for (final dep in exTask.dependents) {
         final dependent = taskMap[dep].orThrow(
           () => DartleException(
@@ -387,19 +391,20 @@ void _wireupTasks(
                 "dependent '$dep'",
           ),
         );
-        dependent.dependsOn({exTask.name});
-
-        for (final dep in exTask.dependsOn) {
-          // no need to add dependencies as they're added when the task is created
-          taskMap[dep].orThrow(
-            () => DartleException(
-              message:
-                  "Task '${exTask.name}' of extension project"
-                  " '${extensionProject.name}' has non-existent task "
-                  "dependency '$dep'",
-            ),
-          );
-        }
+        dependent.dependsOn({taskName});
+      }
+      for (final dep in exTask.dependsOn) {
+        // no need to add dependencies as they're added when the task is created
+        final depTask =
+            taskMap[dep] ?? taskMap["$dep:${extensionProject.name}"];
+        depTask.orThrow(
+          () => DartleException(
+            message:
+                "Task '${exTask.name}' of extension project"
+                " '${extensionProject.name}' has non-existent task "
+                "dependency '$dep'",
+          ),
+        );
       }
     }
   }
