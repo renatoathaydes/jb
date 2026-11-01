@@ -23,6 +23,7 @@ import '../tasks.dart';
 import '../utils.dart';
 import 'cache_model.dart';
 import 'extension_tasks.dart';
+import 'dependency_extension.dart';
 
 final class ExtensionProject(
   final String name,
@@ -61,13 +62,13 @@ Stream<ExtensionProject> loadExtensionProjects(
       _LocalDirectoryExtension(dir: var dir) => //
       await _loadExtensionFromDir(dir, files, actors, options, cwi, cache),
       _DependencyExtension(coordinates: var coord) => //
-      await _loadExtensionFromDep(coord, files, actors, options, cwi, cache),
+      await loadExtensionFromDep(coord, files, actors, options, cwi, cache),
     };
   }
 }
 
 Future<JbExtensionModel> createJbExtensionModel(
-  JbConfigContainer configContainer,
+  CompileOutput extensionConfigOutput,
   JbConfiguration hostConfig,
   String projectName,
   String rootDir,
@@ -76,14 +77,12 @@ Future<JbExtensionModel> createJbExtensionModel(
   Sendable<JavaCommand, Object?> jvmExecutor, {
   required bool extensionUpToDate,
 }) async {
-  final out = configContainer.output.when(dir: dir, jar: file);
-  final jbExtensionConfig = await configContainer.output.when(
-    dir: (d) async => await _jbExtensionFromDir(rootDir, d),
-    jar: (j) async => await _jbExtensionFromJar(rootDir, j),
+  final out = extensionConfigOutput.when(dir: dir, jar: file);
+  final jbExtensionConfig = await extensionConfigOutput.when(
+    dir: (d) async => await _jbExtensionFromDir(p.join(rootDir, d)),
+    jar: (j) async => await _jbExtensionFromJar(p.join(rootDir, j)),
   );
-  final config = configContainer.config;
   final taskConfigs = await loadExtensionTaskConfigs(
-    config,
     jbExtensionConfig.yaml,
     jbExtensionConfig.yamlUri,
   );
@@ -111,16 +110,12 @@ Future<JbExtensionModel> createJbExtensionModel(
     await cacheExtensionTasks(cache, rootDir, extensionTasks);
   }
 
-  return JbExtensionModel(config, classpath, extensionTasks);
+  return JbExtensionModel(extensionTasks);
 }
 
-Future<_JbExtensionConfig> _jbExtensionFromJar(
-  String rootDir,
-  String jarPath,
-) async {
-  final path = p.join(rootDir, jarPath);
-  logger.fine(() => 'Loading jb extension from jar: $path');
-  final stream = InputFileStream(path);
+Future<_JbExtensionConfig> _jbExtensionFromJar(String jarPath) async {
+  logger.fine(() => 'Loading jb extension from jar: $jarPath');
+  final stream = InputFileStream(jarPath);
   try {
     final buffer = ZipDecoder().decodeStream(stream);
     final extensionEntry = 'META-INF/jb/$jbExtension.yaml';
@@ -135,7 +130,7 @@ Future<_JbExtensionConfig> _jbExtensionFromJar(
         );
     final content = archiveFile.content as List<int>;
     return _JbExtensionConfig(
-      path: '$path!$extensionEntry',
+      path: '$jarPath!$extensionEntry',
       yaml: utf8.decode(content),
       scheme: 'jar',
     );
@@ -144,15 +139,10 @@ Future<_JbExtensionConfig> _jbExtensionFromJar(
   }
 }
 
-Future<_JbExtensionConfig> _jbExtensionFromDir(
-  String rootDir,
-  String outputDir,
-) async {
-  logger.fine(
-    () => 'Loading jb extension from directory: ${p.join(rootDir, outputDir)}',
-  );
+Future<_JbExtensionConfig> _jbExtensionFromDir(String outputDir) async {
+  logger.fine(() => 'Loading jb extension from directory: $outputDir');
   final yamlFile = File(
-    p.join(rootDir, outputDir, 'META-INF', 'jb', '$jbExtension.yaml'),
+    p.join(outputDir, 'META-INF', 'jb', '$jbExtension.yaml'),
   );
   return _JbExtensionConfig(
     path: yamlFile.path,
@@ -187,18 +177,6 @@ Iterable<_ExtensionSource> _extensionSources(
       yield _LocalDirectoryExtension(dir);
     }
   }
-}
-
-Future<ExtensionProject> _loadExtensionFromDep(
-  String coordinates,
-  JbFiles files,
-  JbActors actors,
-  Options options,
-  JbConfigWithImports cwi,
-  DartleCache cache,
-) async {
-  // TODO
-  throw UnimplementedError('_loadExtensionFromDep');
 }
 
 Future<ExtensionProject> _loadExtensionFromDir(
@@ -253,7 +231,7 @@ Future<ExtensionProject> _loadExtensionFromDir(
   final name = configContainer.config.module ?? rootDir;
 
   final extensionModel = await createJbExtensionModel(
-    configContainer,
+    configContainer.output,
     cwi.config,
     name,
     rootDir,
