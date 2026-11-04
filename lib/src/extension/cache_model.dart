@@ -12,7 +12,8 @@ import 'constructors.dart';
 /// data model is cached.
 final modelJsonFile = 'jb-model.json';
 
-Future<List<ExtensionTask>> loadExtensionTasksFromCache(
+/// Returns `null` if the cached model does not exist, so the caller reloads it.
+Future<List<ExtensionTask>?> loadExtensionTasksFromCache(
   JbConfiguration config,
   Iterable<BasicExtensionTask> taskConfigs,
   DartleCache cache,
@@ -26,7 +27,7 @@ Future<List<ExtensionTask>> loadExtensionTasksFromCache(
           'Cannot load extensions tasks from cache '
           'as cached model file does not exist: ${cacheFile.path}',
     );
-    return const [];
+    return null;
   }
   logger.fine(() => 'Loading extension tasks data from cache');
   final extras =

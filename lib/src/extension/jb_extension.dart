@@ -22,8 +22,8 @@ import '../runner.dart';
 import '../tasks.dart';
 import '../utils.dart';
 import 'cache_model.dart';
-import 'extension_tasks.dart';
 import 'dependency_extension.dart';
+import 'extension_tasks.dart';
 
 final class ExtensionProject(
   final String name,
@@ -77,7 +77,11 @@ Future<JbExtensionModel> createJbExtensionModel(
   Sendable<JavaCommand, Object?> jvmExecutor, {
   required bool extensionUpToDate,
 }) async {
-  final out = extensionConfigOutput.when(dir: dir, jar: file);
+  // relative to rootDir, like the output paths used below
+  final out = extensionConfigOutput.when(
+    dir: (d) => dir(p.join(rootDir, d)),
+    jar: (j) => file(p.join(rootDir, j)),
+  );
   final jbExtensionConfig = await extensionConfigOutput.when(
     dir: (d) async => await _jbExtensionFromDir(p.join(rootDir, d)),
     jar: (j) async => await _jbExtensionFromJar(p.join(rootDir, j)),
@@ -161,6 +165,15 @@ Iterable<_ExtensionSource> _extensionSources(
         failBuild(reason: "Extension project does not exist at path '$path'");
       }
       return _LocalDirectoryExtension(dir);
+    }
+    // assume it's a dependency, so it must be of the form group:artifact<:version>
+    if (!path.contains(':')) {
+      failBuild(
+        reason:
+            "Invalid extension declaration: '$path'. "
+            "Must be either a local path starting with '.', or a dependency "
+            "of the form group:artifact<:version>.",
+      );
     }
     return _DependencyExtension(path);
   }
