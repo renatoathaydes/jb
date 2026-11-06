@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:args/args.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart'
     show
@@ -26,32 +27,54 @@ import 'resolved_dependency.dart';
 import 'utils.dart';
 
 /// A Maven repository publisher.
-class Publisher {
+class Publisher(
+  final Result<Artifact> artifact,
+  final File depsFile,
+  final DepsCache depsCache,
+  final ResolvedLocalDependencies localDependencies,
+  final String? jar,
+) {
   static final ArgsValidator argsValidator = const OptionalArgValidator(
-    'One argument may be provided: '
-    'a local dir, a http(s) URL, or '
-    ':-m for Maven Central',
+    'The following arguments may be provided:\n'
+    '  * local dir or http(s) URL,\n'
+    '  * -m for Maven Central\n'
+    '  * --no-sign to skip signing artifacts.',
   );
 
-  final Result<Artifact> artifact;
-  final DepsCache depsCache;
-  final File depsFile;
-  final ResolvedLocalDependencies localDependencies;
-  final String? jar;
+  static const _signFlag = 'sign';
+  static const _mavenCentralFlag = 'maven-central';
 
-  Publisher(
-    this.artifact,
-    this.depsFile,
-    this.depsCache,
-    this.localDependencies,
-    this.jar,
-  );
+  static final _argParser = ArgParser()
+    ..addFlag(
+      _mavenCentralFlag,
+      abbr: 'm',
+      negatable: false,
+      defaultsTo: false,
+      help: 'Publish to Maven Central',
+    )
+    ..addFlag(
+      _signFlag,
+      negatable: true,
+      defaultsTo: true,
+      help: 'Sign artifacts before publishing',
+    );
 
   /// The `publish` task action.
   Future<void> call(List<String> args) async {
     final theArtifact = _getArtifact();
 
-    final destination = args.isEmpty ? _mavenHome() : args[0];
+    final argResults = _argParser.parse(args);
+    final sign = argResults.flag(_signFlag);
+    final toMavenCentral = argResults.flag(_mavenCentralFlag);
+    final rest = argResults.rest;
+    final destination = switch (rest.length) {
+      0 => _mavenHome(),
+      1 => rest[0],
+      _ => throw ArgumentError(
+        'Too many arguments: $rest.\n${_argParser.usage}',
+      ),
+    };
+
     final credentials = _mavenCredentials();
 
     final mavenClient = MavenClient(switch (destination) {
@@ -59,7 +82,6 @@ class Publisher {
       _ => CustomMavenRepo(destination),
     }, credentials: credentials);
 
-    final toMavenCentral = destination == '-m';
     final toHttpRepo =
         !toMavenCentral &&
         (destination.startsWith('http://') ||
@@ -74,9 +96,9 @@ class Publisher {
           'or MAVEN_USER and MAVEN_PASSWORD to provide it)',
         );
       }
-      return await _publishHttp(mavenClient, theArtifact, stopwatch);
+      return await _publishHttp(mavenClient, theArtifact, sign, stopwatch);
     }
-    await _publishLocal(theArtifact, destination, depsCache, stopwatch);
+    await _publishLocal(theArtifact, destination, sign, depsCache, stopwatch);
   }
 
   String _mavenHome() {
@@ -109,17 +131,25 @@ class Publisher {
   Future<void> _publishLocal(
     Artifact theArtifact,
     String repoPath,
+    bool sign,
     DepsCache depsCache,
     Stopwatch stopwatch,
   ) async {
     final destination = Directory(_pathFor(theArtifact, parent: repoPath));
     logger.info(() => 'Publishing artifacts to ${destination.path}');
-    await _publishArtifactToDir(destination, theArtifact, depsCache, stopwatch);
+    await _publishArtifactToDir(
+      destination,
+      theArtifact,
+      sign,
+      depsCache,
+      stopwatch,
+    );
   }
 
   Future<void> _publishHttp(
     MavenClient mavenClient,
     Artifact theArtifact,
+    bool sign,
     Stopwatch stopwatch,
   ) async {
     final destination = tempDir(suffix: '-jb-publish');
@@ -131,6 +161,7 @@ class Publisher {
     await _publishArtifactToDir(
       destination,
       _getArtifact(),
+      sign,
       depsCache,
       stopwatch,
     );
@@ -147,6 +178,7 @@ class Publisher {
   Future<void> _publishArtifactToDir(
     Directory destination,
     Artifact artifact,
+    bool sign,
     DepsCache depsCache,
     Stopwatch stopwatch,
   ) async {
@@ -171,7 +203,7 @@ class Publisher {
     logger.log(profile, () => 'Created POM in ${elapsedTime(stopwatch)}.');
     stopwatch.reset();
 
-    await _publishFiles(destination, artifact, pom, jarFile);
+    await _publishFiles(destination, artifact, sign, pom, jarFile);
 
     logger.log(
       profile,
@@ -182,33 +214,37 @@ class Publisher {
   Future<void> _publishFiles(
     Directory destination,
     Artifact artifact,
+    bool sign,
     String pom,
     String jarFile,
   ) async {
+    final postProcess = parallelize([
+      (File file) => _createChecksums(file),
+      if (sign) _signFile,
+    ]);
     await File(p.join(destination.path, _fileFor(artifact, extension: '.pom')))
         .writeAsString(pom)
-        .then(_createChecksumsAndSign);
+        .then(postProcess);
     await File(jarFile)
         .copy(p.join(destination.path, _fileFor(artifact)))
-        .then(_createChecksumsAndSign);
+        .then(postProcess);
     await File(jarFile.replaceExtension('-sources.jar'))
         .rename(
           p.join(destination.path, _fileFor(artifact, qualifier: '-sources')),
         )
-        .then(_createChecksumsAndSign);
+        .then(postProcess);
     await File(jarFile.replaceExtension('-javadoc.jar'))
         .rename(
           p.join(destination.path, _fileFor(artifact, qualifier: '-javadoc')),
         )
-        .then(_createChecksumsAndSign);
+        .then(postProcess);
   }
 
-  Future<void> _createChecksumsAndSign(File file) async {
+  Future<void> _createChecksums(File file) async {
     final bytes = await file.readAsBytes();
-    final f1 = _signFile(file);
-    final f2 = _shaFile(file.path, bytes);
-    final f3 = _md5File(file.path, bytes);
-    await Future.wait(<Future<Object?>>[f1, f2, f3]);
+    final f1 = _shaFile(file.path, bytes);
+    final f2 = _md5File(file.path, bytes);
+    await Future.wait(<Future<Object?>>[f1, f2]);
   }
 
   Future<File> _createBundle(
