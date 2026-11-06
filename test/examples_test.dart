@@ -229,7 +229,7 @@ void main() async {
         try {
           final jbResult = await runJb(
             Directory(groovyProjectDir),
-            const ['publish'],
+            const ['publish', ':--no-sign'],
             {'MAVEN_LOCAL_HOME': mavenHome},
           );
 
