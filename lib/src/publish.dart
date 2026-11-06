@@ -218,10 +218,7 @@ class Publisher(
     String pom,
     String jarFile,
   ) async {
-    final postProcess = parallelize([
-      (File file) => _createChecksums(file),
-      if (sign) _signFile,
-    ]);
+    final postProcess = parallelize([_createChecksums, if (sign) _signFile]);
     await File(p.join(destination.path, _fileFor(artifact, extension: '.pom')))
         .writeAsString(pom)
         .then(postProcess);
