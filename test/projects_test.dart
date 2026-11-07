@@ -989,10 +989,13 @@ String _changeExtensionProjectYaml(String locationToUse) {
   final originalContents = yamlFile.readAsStringSync();
   // on Windows the file may be checked out with CRLF line endings
   final eol = originalContents.contains('\r\n') ? '\r\n' : '\n';
+  // single-quoted YAML scalar: backslashes in Windows paths are taken literally
+  final repoPath = p.join(Directory.current.path, testMavenRepo);
+  final yamlRepoPath = "'${repoPath.replaceAll("'", "''")}'";
   final lines = originalContents.split(RegExp(r'\r?\n')).map((line) {
     if (line.endsWith(lineMarker)) {
       return '  - $locationToUse $lineMarker$eol'
-          'repositories: ["${p.join(Directory.current.path, testMavenRepo)}"]';
+          'repositories: [$yamlRepoPath]';
     }
     // dependency extensions name their tasks after the artifact (see dependency_extension.dart)
     if (locationToUse.contains(':') && line.startsWith('"copyFile#')) {
