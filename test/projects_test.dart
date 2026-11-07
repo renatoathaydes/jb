@@ -61,6 +61,14 @@ public final class Bar implements JbTask {
 void main() {
   activateLogging(Level.INFO);
 
+  // read before any test modifies it, so it can always be restored
+  final committedUsesExtensionYaml = File(
+    p.join(usesExtensionDir, 'jbuild.yaml'),
+  ).readAsStringSync();
+  // some tests rewrite this file while the tests are being defined, and their
+  // own teardown may not run when tests are filtered out, so restore it here too
+  tearDownAll(() => _restoreExtensionProjectYaml(committedUsesExtensionYaml));
+
   projectGroup(helloProjectDir, 'hello project', () {
     test('can compile basic Java class and cache result', () async {
       final jbResult = await runJb(Directory(helloProjectDir));
@@ -737,6 +745,73 @@ void main() {
     });
   }
 
+  projectGroup(usesExtensionDir, 'uses two extension projects', () {
+    late String otherExtensionPath;
+
+    setUp(() async {
+      otherExtensionPath = await _copyExampleExtension('other-extension');
+      await _useTwoExtensionProjects(otherExtensionPath);
+    });
+
+    tearDown(() async {
+      await _restoreExtensionProjectYaml(committedUsesExtensionYaml);
+      await deleteAll(
+        dirs([
+          p.join(exampleExtensionDir, 'build'),
+          p.join(exampleExtensionDir, '.jb-cache'),
+          p.join(usesExtensionDir, 'output-resources'),
+          p.join('build', 'test-extensions'),
+        ], includeHidden: true),
+      );
+      await deleteAll(
+        files([p.join(exampleExtensionDir, JbFiles.dependenciesChecksum)]),
+      );
+    });
+
+    test('ambiguous extension task must be qualified to run', () async {
+      // 'copyFile' is defined by both extension projects, so it is ambiguous
+      final ambiguous = await runJb(Directory(usesExtensionDir), const [
+        'copyFile',
+        '--no-color',
+      ]);
+      expect(
+        ambiguous.exitCode,
+        isNot(0),
+        reason: 'unqualified ambiguous task should fail',
+      );
+      expect(
+        [...ambiguous.stdout, ...ambiguous.stderr].join('\n'),
+        contains("Invocation problem: Task 'copyFile' does not exist"),
+      );
+      expect(
+        Directory(p.join(usesExtensionDir, 'output-resources')).existsSync(),
+        isFalse,
+        reason: 'ambiguous task must not run',
+      );
+
+      // each qualified name runs its own task without problems
+      for (final qualified in const [
+        'copyFile#my-extension',
+        'copyFile#other-extension',
+      ]) {
+        final jbResult = await runJb(Directory(usesExtensionDir), [
+          qualified,
+          '--no-color',
+        ]);
+        expectSuccess(jbResult);
+        expect(
+          jbResult.stdout,
+          contains(endsWith("Running task '$qualified'")),
+        );
+        await assertDirectoryContents(
+          Directory(p.join(usesExtensionDir, 'output-resources')),
+          ['hello.txt', 'bye.txt'],
+        );
+        await deleteAll(dirs([p.join(usesExtensionDir, 'output-resources')]));
+      }
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  });
+
   projectGroup(runEnvProjectDir, 'Run with Env Var project', () {
     test('can run Java class that uses the environment', () async {
       var jbResult = await runJb(Directory(runEnvProjectDir), const ['run']);
@@ -1005,6 +1080,63 @@ String _changeExtensionProjectYaml(String locationToUse) {
   });
   yamlFile.writeAsStringSync(lines.join(eol));
   return originalContents;
+}
+
+/// Copies the example extension project (its sources and jbuild.yaml) into a
+/// directory under the gitignored `build` directory, renaming its module to
+/// [module]. Returns the path to that copy, relative to [usesExtensionDir].
+///
+/// The copy must live inside the project: jb only accepts local extension paths
+/// starting with `.`, and an absolute path or a path on another drive (the
+/// system temp directory on Windows CI) cannot be expressed relative to it.
+Future<String> _copyExampleExtension(String module) async {
+  final copyDir = p.join('build', 'test-extensions', module);
+  await deleteAll(dirs([copyDir]));
+  await for (final entity in Directory(
+    p.join(exampleExtensionDir, 'src'),
+  ).list(recursive: true)) {
+    if (entity is File) {
+      final target = p.join(
+        copyDir,
+        'src',
+        p.relative(entity.path, from: p.join(exampleExtensionDir, 'src')),
+      );
+      await File(target).parent.create(recursive: true);
+      await entity.copy(target);
+    }
+  }
+  final yaml = await File(p.join(exampleExtensionDir, 'jbuild.yaml'))
+      .readAsString();
+  const originalModule = 'module: my-extension';
+  if (!yaml.contains(originalModule)) {
+    fail('example extension jbuild.yaml does not declare $originalModule');
+  }
+  await File(p.join(copyDir, 'jbuild.yaml'))
+      .writeAsString(yaml.replaceFirst(originalModule, 'module: $module'));
+  return p
+      .relative(p.absolute(copyDir), from: p.absolute(usesExtensionDir))
+      .replaceAll(r'\', '/');
+}
+
+/// Rewrites uses-extension's jbuild.yaml to declare both the example extension
+/// and [otherExtensionPath], and to configure the `copyFile` task of each one.
+/// The caller must restore the file afterwards.
+Future<void> _useTwoExtensionProjects(String otherExtensionPath) async {
+  final yamlFile = File(p.join(usesExtensionDir, 'jbuild.yaml'));
+  await yamlFile.writeAsString('''
+extension-projects:
+  - ../example-extension
+  - $otherExtensionPath
+source-dirs: [ src ]
+resource-dirs: [ resources ]
+javac-args: ["--release", "11"]
+
+# extension tasks
+"copyFile#my-extension":
+  extensions: ["*.txt"]
+"copyFile#other-extension":
+  extensions: ["*.txt"]
+''');
 }
 
 Future<void> _restoreExtensionProjectYaml(String extensionProjectYaml) async {
