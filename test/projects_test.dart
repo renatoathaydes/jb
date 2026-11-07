@@ -987,9 +987,11 @@ String _changeExtensionProjectYaml(String locationToUse) {
   const lineMarker = '# line marker for extension project location';
   final yamlFile = File(p.join(usesExtensionDir, 'jbuild.yaml'));
   final originalContents = yamlFile.readAsStringSync();
-  final lines = originalContents.split('\n').map((line) {
+  // on Windows the file may be checked out with CRLF line endings
+  final eol = originalContents.contains('\r\n') ? '\r\n' : '\n';
+  final lines = originalContents.split(RegExp(r'\r?\n')).map((line) {
     if (line.endsWith(lineMarker)) {
-      return '  - $locationToUse $lineMarker\n'
+      return '  - $locationToUse $lineMarker$eol'
           'repositories: ["${p.join(Directory.current.path, testMavenRepo)}"]';
     }
     // dependency extensions name their tasks after the artifact (see dependency_extension.dart)
@@ -998,7 +1000,7 @@ String _changeExtensionProjectYaml(String locationToUse) {
     }
     return line;
   });
-  yamlFile.writeAsStringSync(lines.join('\n'));
+  yamlFile.writeAsStringSync(lines.join(eol));
   return originalContents;
 }
 
