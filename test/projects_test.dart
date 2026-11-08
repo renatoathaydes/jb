@@ -793,7 +793,10 @@ void main() {
       );
       expect(
         [...ambiguous.stdout, ...ambiguous.stderr].join('\n'),
-        contains("Invocation problem: Task 'copyFile' does not exist"),
+        contains(
+          "Invocation problem: Invocation 'copyFile' is ambiguous, it could match tasks "
+          '"copyFile#other-extension", "copyFile#my-extension"',
+        ),
       );
       expect(
         Directory(p.join(usesExtensionDir, 'output-resources')).existsSync(),
