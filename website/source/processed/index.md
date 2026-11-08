@@ -50,7 +50,8 @@ way of doing things.
 * task results are cached, nothing runs unless actually required.
 * extensions/plugins written in Java or any JVM language.
 * great support for build profiling and introspection.
-* runs [JUnit5](https://junit.org/junit5/) tests.
+* runs [JUnit](https://docs.junit.org/) and [Spock](https://spockframework.org/) tests.
+* automatic support for managing [Java](https://www.java.com/) and [Groovy](https://groovy-lang.org/) projects.
 
 {{ end }}
 

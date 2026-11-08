@@ -1,7 +1,7 @@
 {{ include /processed/fragments/_header.html }}\
 {{ define name "Desktop App" }}
 {{ define path basePath + "/pages/gui.html" }}
-{{ define order 4 }}
+{{ define order 40 }}
 # Desktop App
 
 Coming soon...

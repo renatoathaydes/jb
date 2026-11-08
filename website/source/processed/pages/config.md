@@ -1,7 +1,7 @@
 {{ include /processed/fragments/_header.html }}\
 {{ define name "Configuring jb" }}
 {{ define path basePath + "/pages/config.html" }}
-{{ define order 1 }}
+{{ define order 10 }}
 {{ component /processed/fragments/_main.html }}
 <div class="space-up"></div>
 
@@ -106,7 +106,7 @@ runtime-libs-dir: "build/runtime-libs"
 # Test reports output dir
 test-reports-dir: "build/test-reports"
 # jb extension project path (for custom tasks)
-extension-project: null
+extension-projects: []
 ```
 
 The [Configuration Reference](#reference) section below explains in more detail what each of these fields mean and how to use them.
@@ -485,17 +485,24 @@ Defaults to `build/test-reports`.
 
 Example: `target/test-reports`.
 
-<a id="extension-project" href="#extension-project">extension-project</a>
+<a id="extension-project" href="#extension-project"></a>
+<a id="extension-projects" href="#extension-projects">extension-projects</a>
 
-The path to a jar containing a `jb` extension, or to a local directory containing a `jb` project which is a `jb` extension.
+Each extension project may refer to one of:
+
+* a path to a local jar or directory containing a `jb` extension.
+* dependency coordinates of an artifact that is a `jb` extension.
+
+`jb` expect paths to local files or directories to start with a `.`.
+
+Paths Example: `[./my-extension, ../another-project/build/project.jar]`
+
+Dependency coordinates must contain a `:`.
+
+Dependencies Example: `["com.athaydes.jb:jbuild-extension-example:1.0.0"]`
 
 {{ define extensions path["extensions.md"] }}
 See [{{ eval extensions.name }}]({{ eval extensions.path }}).
-
-> WARNING: this may be changed to become an array in the future.
-
-Example: `jb-extensions/my-extension`.
-
 
 {{ end }}
 {{ include /processed/fragments/_footer.html }}
