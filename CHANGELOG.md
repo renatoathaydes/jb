@@ -1,5 +1,11 @@
 # Next
 
+- **Breaking change**: support for more than one `extension-projects` (rename in config from `extension-project`
+  and make the value a list).
+- **Breaking change**: removed support for `SONATYPE_USER_TOKEN`, `MAVEN_USER` and `MAVEN_PASSWORD` env vars from
+  the `publish` task. Use `SONATYPE_PORTAL_TOKEN_XML_FILE` instead (see documentation for details).
+- support for declaring extension project as dependency coordinates.
+- improved the `publish` task.
 - better error message when invoking ambiguous task name (thanks to Dartle update).
 - the `clean` tasks no longer delete `dependencies.sum`.
 
