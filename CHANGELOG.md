@@ -1,5 +1,8 @@
 # Next
 
+- better error message when invoking ambiguous task name (thanks to Dartle update).
+- the `clean` tasks no longer delete `dependencies.sum`.
+
 # 0.17.0
 
 - improved handling of dependencies checksums: store checksums at the root directory to make it visible.
