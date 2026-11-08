@@ -330,6 +330,8 @@ class JbDartle with JbDartleTasks {
       tasks: projectTasks,
       name: cleanTaskName,
       description: 'deletes the outputs of all other tasks.',
+      // the dependencies.sum files should not be deleted even after clean
+      exclusions: 'dependencies.sum',
     );
     projectTasks.add(clean);
 

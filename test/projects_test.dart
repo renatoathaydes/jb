@@ -359,6 +359,12 @@ void main() {
         ['app', p.join('app', 'App.class')],
         checkLength: false,
       );
+      // the dependencies.sum file must exist after install tasks run
+      expect(
+        await File(p.join(testsProjectDir, 'dependencies.sum')).exists(),
+        isTrue,
+      );
+
       // run the test
       final jbResult = await runJb(Directory(testsProjectDir), const [
         'test',
@@ -399,6 +405,12 @@ void main() {
       await assertDirectoryContents(
         Directory(p.join(testsProjectDir, 'build')),
         const [],
+      );
+
+      // clean tasks do not clean dependencies.sum
+      expect(
+        await File(p.join(testsProjectDir, 'dependencies.sum')).exists(),
+        isTrue,
       );
     });
   });
