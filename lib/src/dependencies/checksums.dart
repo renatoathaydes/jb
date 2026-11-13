@@ -98,9 +98,7 @@ Future<Map<String, String>> computeDependenciesChecksums(
 /// Reads a checksums file (`<dependency> <checksum>` per line).
 ///
 /// Returns an empty map if the file does not exist.
-Future<Map<String, String>> readChecksums(
-  File dependenciesChecksumFile,
-) async {
+Future<Map<String, String>> readChecksums(File dependenciesChecksumFile) async {
   if (!await dependenciesChecksumFile.exists()) {
     return const {};
   }

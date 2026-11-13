@@ -731,7 +731,15 @@ Future<void> _install(
   if (await outDir.exists()) {
     await outDir.delete(recursive: true);
   }
-  await installArtifacts(taskName, jBuildSender, preArgs, deps, outputDir);
+  await installArtifacts(
+    taskName,
+    jBuildSender,
+    preArgs,
+    deps,
+    outputDir,
+    // project dependencies are installed in Maven Local unless disabled
+    installToMavenLocal: 'JB_INSTALL_TO_MAVEN_LOCAL'.envVar().isNotFalse,
+  );
 }
 
 Future<void> _copy(
