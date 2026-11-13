@@ -60,7 +60,7 @@ dart run dartle.dart test     # Run tests
 dart run dartle.dart distribution  # Create distribution artifacts
 ```
 
-## Dartle
+### Dartle
 
 The build file (`dartle.dart`) uses `DartleDart` (Dartle's Dart integration) plus custom tasks
 from `dartle-src/` for code generation, test setup, and distribution.
@@ -79,6 +79,8 @@ To generate the generated Dart files and run the Dart analyzer, run:
 ```bash
 dartle analyzeCode
 ```
+
+The Dart formatter is run automatically by Dartle. Be careful when editing Dart files as they can be re-formatted.
 
 ## Architecture
 
@@ -119,6 +121,9 @@ The projects under `example/` are also used by the tests.
 The `test-repo-prebuilt/` directory contains artifacts like `org/slf4j/slf4j-api/1.7.36/`
 with `.jar`, `.pom`, and `.sha1` files. These are used by tests that need resolved dependencies
 without hitting Maven Central.
+
+> Tests that use the test and example projects must be run with `dartle`, so the binary and
+> the auto-generated files are up-to-date.
 
 ### Test Patterns
 
