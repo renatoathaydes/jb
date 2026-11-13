@@ -75,10 +75,5 @@ Future<void> cacheExtensionTasks(
 }
 
 String _modelCacheLocation(DartleCache cache, String dir) {
-  return p.join(
-    cache.rootDir,
-    'jb-extensions',
-    dir.asEncodedPath(),
-    modelJsonFile,
-  );
+  return p.join(cache.rootDir, dir.asEncodedPath(), modelJsonFile);
 }

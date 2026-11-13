@@ -5,6 +5,7 @@
 - **Breaking change**: removed support for `SONATYPE_USER_TOKEN`, `MAVEN_USER` and `MAVEN_PASSWORD` env vars from
   the `publish` task. Use `SONATYPE_PORTAL_TOKEN_XML_FILE` instead (see documentation for details).
 - support for declaring extension project as dependency coordinates.
+- jb extensions are loaded more efficiently, before the build starts.
 - improved the `publish` task.
 - better error message when invoking ambiguous task name (thanks to Dartle update).
 - the `clean` tasks no longer delete `dependencies.sum`.

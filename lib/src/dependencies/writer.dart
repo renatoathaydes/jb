@@ -19,7 +19,7 @@ import 'deps_cache.dart';
 import 'parse.dart';
 import 'warnings.dart';
 
-typedef _ExclusionsAndProjectDeps = (List<String>, ResolvedDependency);
+typedef ExclusionsAndProjectDeps = (List<String>, ResolvedDependency);
 
 Future<void> writeDependencies(
   JBuildSender jBuildSender,
@@ -48,22 +48,20 @@ Future<void> writeDependencies(
     forProcessor: true,
   );
 
-  final mainDeps = await _write(
+  final mainDeps = await resolveDependencies(
     'Project dependencies',
     jBuildSender,
     preArgs,
-    jbFiles,
     depsCache,
     nonLocalDeps,
     exclusions,
     await projectDeps.toList(),
     jbFiles.dependenciesFile,
   );
-  await _write(
+  await resolveDependencies(
     'Annotation processor dependencies',
     jBuildSender,
     preArgs,
-    jbFiles,
     depsCache,
     nonLocalProcDeps,
     procExclusions,
@@ -78,11 +76,10 @@ Future<void> writeDependencies(
     [?testRunnerLib].map(_testRunnerEntry),
   );
 
-  await _write(
+  await resolveDependencies(
     'Test runner dependencies',
     jBuildSender,
     preArgs,
-    jbFiles,
     depsCache,
     testRunnerLibs,
     const {},
@@ -91,11 +88,10 @@ Future<void> writeDependencies(
   );
   final groovydocsDep = await findGroovydocsDependency(mainDeps.dependencies);
   if (groovydocsDep != null) {
-    await _write(
+    await resolveDependencies(
       'Groovydocs dependencies',
       jBuildSender,
       preArgs,
-      jbFiles,
       depsCache,
       {groovydocsDep: const DependencySpec()},
       const {},
@@ -107,7 +103,7 @@ Future<void> writeDependencies(
   }
 }
 
-Stream<_ExclusionsAndProjectDeps> _projectDepsAndExclusions(
+Stream<ExclusionsAndProjectDeps> _projectDepsAndExclusions(
   ResolvedLocalDependencies localDeps,
   DepsCache depsCache,
   JbFiles jbFiles, {
@@ -147,15 +143,18 @@ MapEntry<String, DependencySpec> _testRunnerEntry(String lib) {
   return MapEntry(lib, DependencySpec(scope: DependencyScope.all));
 }
 
-Future<ResolvedDependencies> _write(
+/// Resolves the transitive dependencies of [nonLocalDeps] (and the given
+/// [projectDeps]) and writes them as JSON to [depsFile].
+///
+/// The result is also registered in [depsCache].
+Future<ResolvedDependencies> resolveDependencies(
   String description,
   JBuildSender jBuildSender,
   List<String> preArgs,
-  JbFiles jbFiles,
   DepsCache depsCache,
   Map<String, DependencySpec> nonLocalDeps,
   Set<String> exclusions,
-  List<_ExclusionsAndProjectDeps> projectDeps,
+  List<ExclusionsAndProjectDeps> projectDeps,
   File depsFile,
 ) async {
   ResolvedDependencies? results;

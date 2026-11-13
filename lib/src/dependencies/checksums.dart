@@ -28,17 +28,21 @@ Future<void> downloadDependenciesChecksums(
       .where((dep) => dep.spec.path == null)
       .map((dep) => dep.artifact);
 
-  final checksums = await _computeDependenciesChecksums(
+  final checksums = await computeDependenciesChecksums(
     jBuildSender,
     preArgs,
     nonLocalDeps,
-    await _parseChecksums(jbFiles.dependenciesChecksumFile),
+    await readChecksums(jbFiles.dependenciesChecksumFile),
   );
 
-  await _writeChecksums(jbFiles.dependenciesChecksumFile, checksums);
+  await writeChecksums(jbFiles.dependenciesChecksumFile, checksums);
 }
 
-Future<Map<String, String>> _computeDependenciesChecksums(
+/// Returns the checksum of each of the [nonLocalDeps] artifacts (`g:a:v`).
+///
+/// Checksums already in [currentChecksums] are re-used, the others are fetched
+/// from the repositories with JBuild.
+Future<Map<String, String>> computeDependenciesChecksums(
   JBuildSender jBuildSender,
   List<String> preArgs,
   Iterable<String> nonLocalDeps,
@@ -91,9 +95,10 @@ Future<Map<String, String>> _computeDependenciesChecksums(
   return result;
 }
 
-Future<Map<String, String>> _parseChecksums(
-  File dependenciesChecksumFile,
-) async {
+/// Reads a checksums file (`<dependency> <checksum>` per line).
+///
+/// Returns an empty map if the file does not exist.
+Future<Map<String, String>> readChecksums(File dependenciesChecksumFile) async {
   if (!await dependenciesChecksumFile.exists()) {
     return const {};
   }
@@ -117,7 +122,10 @@ Future<Map<String, String>> _parseChecksums(
   );
 }
 
-Future<void> _writeChecksums(
+/// Writes the checksums to the file, sorted by dependency.
+///
+/// The file is deleted if there are no checksums.
+Future<void> writeChecksums(
   File dependenciesChecksumFile,
   Map<String, String> checksums,
 ) async {

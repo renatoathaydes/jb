@@ -14,20 +14,9 @@ jb/
 ├── bin/jbuild_cli.dart           # CLI entry point
 ├── lib/src/                      # Core library (~25K lines including generated)
 │   ├── compile/                  # Compilation logic
-│   │   ├── compile.dart          # Build compilation command
-│   │   ├── groovy.dart           # Groovy detection and jar localization
-│   │   └── jbuild_compile.dart   # JBuild compilation integration via XML-RPC
 │   ├── dependencies/             # Dependency resolution
-│   │   ├── parse.dart            # Parse JBuild output for resolved deps
-│   │   ├── deps_cache.dart       # Actor-based caching of resolved deps
-│   │   ├── printer.dart          # Format dependency tree for display
-│   │   ├── writer.dart           # Write deps JSON and download jars
-│   │   └── warnings.dart         # Detect/report version conflicts
 │   ├── create/                   # Project creation (`jb create`)
 │   ├── extension/                # Extension system (custom tasks)
-│   │   ├── jb_extension.dart     # Load and execute extension projects
-│   │   ├── cache_model.dart      # Cache models for extension tasks
-│   │   └── constructors.dart     # Construct extension task arguments
 │   ├── entry_point.dart          # Main entry after CLI parsing
 │   ├── runner.dart               # JbRunner - orchestrates build execution
 │   ├── tasks.dart                # All 20+ jb task definitions
@@ -62,40 +51,45 @@ jb/
 
 ## Building and Running
 
+Using Dart directly:
+
 ```bash
-dart pub get              # Install dependencies
-dart dartle.dart          # Build jb (default task is `build`, outputs to build/bin/jb)
-dart dartle.dart test     # Run tests
-dart dartle.dart distribution  # Create distribution artifacts
+dart pub get                  # Install dependencies
+dart run dartle.dart          # Build jb (default task is `build`, outputs to build/bin/jb)
+dart run dartle.dart test     # Run tests
+dart run dartle.dart distribution  # Create distribution artifacts
 ```
+
+### Dartle
 
 The build file (`dartle.dart`) uses `DartleDart` (Dartle's Dart integration) plus custom tasks
 from `dartle-src/` for code generation, test setup, and distribution.
 
-**Generated files** (committed, regenerated during build):
-- `lib/src/jb_config.g.dart` - Configuration model (schemake)
-- `lib/src/compilation_path.g.dart` - Compilation path model
-- `lib/src/jbuild_jar.g.dart` - Embedded JBuild jar (base64, ~626KB)
-- `lib/src/licenses.g.dart` - SPDX license registry (~153KB)
-- `lib/src/version.g.dart` - Version string
+Using Dartle (build system):
+
+```bash
+dartle -s                     # show the build tasks
+dartle test                   # Run tests
+dartle compileExe -l debug    # Compile executable, enable Dartle DEBUG logging
+dartle test :-n :"POM with Maven dependencies" # Run a single test (Task options are prefixed with ':') 
+```
+
+To generate the generated Dart files and run the Dart analyzer, run:
+
+```bash
+dartle analyzeCode
+```
+
+The Dart formatter is run automatically by Dartle. Be careful when editing Dart files as they can be re-formatted.
 
 ## Architecture
 
-### Task System (Dartle)
+### Basics
 
-jb uses the **Dartle** build framework for task management. Key concepts:
-- **Task**: Unit of work with `dependsOn`, `runCondition`, `TaskPhase`
-- **RunOnChanges**: Track file inputs/outputs for incremental builds
-- **AlwaysRun**: Task runs unconditionally (use with care - bypasses dependency propagation)
-- **TaskPhase**: `depsPhase` → `evaluatePhase` → `publishPhase` (controls execution order)
-- **dependsOn**: Declares task dependencies; Dartle runs them in topological order
-
-Important: When a task has `AlwaysRun` run condition, Dartle's `_createTaskWithStatus` short-circuits,
-bypassing the `_anyDepMustRun` check. This means dependencies won't be triggered. Use `RunOnChanges`
-instead to ensure proper dependency propagation.
-
-Task definitions are in `lib/src/tasks.dart`. The task graph is assembled in `lib/src/jb_dartle.dart`
-(`JbDartle` class). `lib/src/runner.dart` (`JbRunner`) orchestrates execution.
+`jb` is a build system for Java and other JVM languages.
+It uses the Dartle build system not only for its build, but as a Dart library.
+As Dartle, `jb` is task-based. Tasks declare dependencies between each other and
+inputs/outputs so that they can be cached.
 
 ### Actor Model
 
@@ -117,75 +111,19 @@ Actors are properly shut down at end of build, even on errors.
 7. Cache results (file hashes in `.jb-cache/`)
 8. Cleanup actors
 
-## Testing
+## Tests
 
-### Running Tests
+### Test Projects
 
-```bash
-dart dartle.dart test                         # All tests (via Dartle build)
-dart test                                     # All tests (direct)
-dart test test/config_test.dart               # Single test file
-dart test test/projects_test.dart --name "hello"  # Tests matching name
-```
-
-Tests require `build/bin/jb` to exist (built by `dart dartle.dart`).
-Test results are written to `build/test-results.json` (configured in `dart_test.yaml`).
-
-### Test Files
-
-| File | What it tests |
-|------|---------------|
-| `config_test.dart` | Config loading/parsing from YAML/JSON |
-| `projects_test.dart` | Full project compilation, test execution, sub-projects |
-| `examples_test.dart` | Example project builds |
-| `jb_extension_test.dart` | Extension system functionality |
-| `pom_test.dart` | POM file generation |
-| `dependencies/jbuild_deps_collector_test.dart` | Dependency parsing |
-| `dependencies/license_parser_test.dart` | License information extraction |
-| `dependencies/warnings_test.dart` | Version conflict warnings |
-| `compile/groovy_test.dart` | Groovy jar pattern recognition |
-| `file_tree_test.dart` | File tree traversal |
-| `modules_parser_test.dart` | Java modules detection |
-| `patterns_test.dart` | Regex patterns |
-| `options_test.dart` | CLI options parsing |
-| `properties_test.dart` | Property resolution |
-| `util_test.dart` | Utility functions |
-| `xml_rpc_test.dart` | XML-RPC communication |
-
-### Test Infrastructure
-
-**Test helper** (`test/test_helper.dart`):
-- `projectGroup(dir, name, body)` - Sets up test group with setUp/tearDown that cleans build artifacts
-  (deletes `.jb-cache`, `out`, `build`, `compile-libs`, `runtime-libs`)
-- `runJb(dir, args)` - Executes `build/bin/jb` in a directory, returns `ProcessResult`
-- `startJb(dir, args)` - Starts jb process (for long-running)
-- `expectSuccess(result)` - Asserts exit code 0
-- `assertDirectoryContents(dir, expected)` - Validates directory contents
-- `createTempFiles(files)` - Creates temporary test files
-- `expectCompilationPath(result)` - Validates compilation paths
-
-### Test Projects (`test/test-projects/`)
-
-| Directory | Purpose |
-|-----------|---------|
-| `hello/` | Basic Java "Hello World" - single class compilation |
-| `with-deps/` | External dependencies using pre-built test repo |
-| `with-sub-project/` | Multi-module project (main + greeting sub-project) |
-| `with-version-conflicts/` | Dependency conflict resolution testing |
-| `tests/` | JUnit 5 test execution, sub-project dependencies |
-| `java-modules/` | Java module system (module-info.java) |
-| `empty/` | Minimal empty project |
-| `example-extension/` | Custom jb extension task definition |
-| `uses-extension/` | Project consuming an extension |
-| `run-env/` | Runtime environment variables testing |
-| `test-repo-prebuilt/` | Pre-built Maven repo with jars, poms, sha1 checksums |
-| `test-repo/` | Source-based Maven repo (lists project) |
-| `test-repo-src/` | Maven source repository |
-| `java-libs/` | Java libraries for testing |
+Several test projects exist in `test/test-projects/`.
+The projects under `example/` are also used by the tests.
 
 The `test-repo-prebuilt/` directory contains artifacts like `org/slf4j/slf4j-api/1.7.36/`
 with `.jar`, `.pom`, and `.sha1` files. These are used by tests that need resolved dependencies
 without hitting Maven Central.
+
+> Tests that use the test and example projects must be run with `dartle`, so the binary and
+> the auto-generated files are up-to-date.
 
 ### Test Patterns
 
@@ -205,16 +143,12 @@ projectGroup(helloProjectDir, 'hello project', () {
 
 Some tests are platform-specific: `testOn: '!windows'` (e.g., Groovy tests due to path handling).
 
-## Example Projects (`example/`)
-
-- `minimal-java-project/` - Basic Java project, no external dependencies
-- `groovy-example/` - Groovy 4.x with Spock tests
-- `javalin-http-server-sample/` - HTTP server with transitive dependency management
-- `error-prone-java-project/` - Annotation processor integration
-
 ## Groovy Compilation
 
-- Auto-detected by checking for Groovy or Spock dependencies
+`jb` supports both Java and Groovy compilation.
+
+Groovy is auto-detected by checking for Groovy or Spock dependencies.
+
 - Groovy 3.x: `org.codehaus.groovy:groovy`
 - Groovy 4.x: `org.apache.groovy:groovy`
 - Spock: `org.spockframework:spock-core`
@@ -223,6 +157,8 @@ Some tests are platform-specific: `testOn: '!windows'` (e.g., Groovy tests due t
 - JBuild jar handles Groovy classloading internally (not in this repo)
 
 ## Test Discovery (`lib/src/java_tests.dart`)
+
+`jb` discovers tests automatically.
 
 - Tests detected by looking at project dependencies for JUnit or Spock
 - JUnit: dependency on `org.junit.jupiter:junit-jupiter-api:<version>`
@@ -236,7 +172,13 @@ Some tests are platform-specific: `testOn: '!windows'` (e.g., Groovy tests due t
 
 ## Configuration
 
-Projects are configured via `jbuild.yaml` (or `jbuild.json`) files. Key fields:
+Projects are configured via `jbuild.yaml` (or `jbuild.json`) files.
+
+The configuration model is generated from `dartle-src/config/jb_config_schema.dart`, which uses
+the `schemake` package.
+
+Key fields:
+
 - `dependencies` - Maven-style dependency declarations (scope: compile, runtime-only, processor, test)
 - `main-class` - Entry point for `jb run`
 - `output-dir` / `output-jar` - Build output location
@@ -259,34 +201,14 @@ Config supports YAML imports for modular configuration.
 for 5 platforms using matrix strategy: `linux-x86`, `linux-arm64`, `macos-x86`, `macos-arm64`,
 `windows`. Uploads `.tar.gz` artifacts to the GitHub release.
 
-## Key Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `dartle` | Task-based build system (like Make/Gradle) |
-| `actors` | Actor model for safe concurrency (isolate-based) |
-| `args` | CLI argument parsing |
-| `yaml` | Parse YAML configuration files |
-| `xml` | XML parsing (for XML-RPC) |
-| `schemake` | Generate configuration models from schema |
-| `archive` | ZIP archive handling for publishing |
-| `crypto` | SHA256/MD5 checksum verification |
-| `conveniently` | Extension methods and utilities |
-| `structured_async` | Structured concurrency |
-
-## Binary Files
-
-`.gitattributes` marks `*.jar` and `*.pom` as binary to prevent git line-ending normalization,
-which would break SHA1 checksum verification of Maven artifacts.
-
 ## `.jb-cache/` Directory
 
 Per-project cache directory containing:
-- `jbuild.jar` - Extracted JBuild jar
+- `jbuild.jar` - Extracted JBuild jar (which is embedded in the `jb`'s binary')
 - `dependencies.json` - Resolved dependencies
 - `processor-dependencies.json` - Processor dependencies
 - `compilation-path.json` - Compilation classpath
 - `runtime-path.json` - Runtime classpath
 - `java-src-file-tree.txt` - Source file tracking
-- `jvm.cds` - Class Data Sharing archive (Java 12+)
+- `jvm.cds` - Class Data Sharing archive (Java 12+, not reusable across Java versions)
 - Dartle cache files for incremental builds

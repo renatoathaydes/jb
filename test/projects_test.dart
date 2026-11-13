@@ -435,6 +435,62 @@ void main() {
     });
   });
 
+  projectGroup(usesExtensionDir, 'uses dependency extension with wrong checksum', () {
+    final extensionDir = p.join(
+      usesExtensionDir,
+      '.jb-cache',
+      'extension-dependencies',
+      'com.example#example-extension#1.0',
+    );
+    final wrongChecksum = '0' * 40;
+
+    setUp(() async {
+      // start from the committed file, as the loop above may have rewritten it
+      await _restoreExtensionProjectYaml(committedUsesExtensionYaml);
+      _changeExtensionProjectYaml('com.example:example-extension:1.0');
+    });
+
+    tearDown(() async {
+      await _restoreExtensionProjectYaml(committedUsesExtensionYaml);
+      await deleteAll(
+        MultiFileCollection([
+          dirs([extensionDir], includeHidden: true),
+          file(p.join(usesExtensionDir, JbFiles.extensionDependenciesChecksum)),
+        ]),
+      );
+    });
+
+    test(
+      'fails when downloaded jar does not match the recorded checksum',
+      () async {
+        // record a wrong checksum, and make sure the extension is downloaded again
+        await File(
+          p.join(usesExtensionDir, JbFiles.extensionDependenciesChecksum),
+        ).writeAsString('com.example:example-extension:1.0 $wrongChecksum\n');
+        await deleteAll(dir(extensionDir));
+
+        final result = await runJb(Directory(usesExtensionDir), const [
+          'sample-task',
+          '--no-color',
+        ]);
+
+        expect(result.exitCode, isNot(0));
+        expect(
+          [...result.stdout, ...result.stderr].join('\n'),
+          contains(
+            'Checksum mismatch for com.example:example-extension:1.0: '
+            'expected $wrongChecksum',
+          ),
+        );
+        expect(
+          Directory(extensionDir).existsSync(),
+          isFalse,
+          reason: 'the jars that do not match must not be kept',
+        );
+      },
+    );
+  });
+
   for (var i = 0; i < 2; i++) {
     // first iteration: use the extension as a dependency
     final kind = (i == 0) ? 'dependency' : 'local';
@@ -460,6 +516,9 @@ void main() {
             ], includeHidden: true),
             // these files are created by the test
             file(p.join(usesExtensionDir, 'input-resources', 'new.txt')),
+            file(
+              p.join(usesExtensionDir, JbFiles.extensionDependenciesChecksum),
+            ),
           ]),
         );
       });
@@ -556,9 +615,22 @@ void main() {
                     .firstOrNull ??
                 fail('Could not find line for Loading extension');
 
-            // the extension project is re-compiled
+            // the extension project is loaded by its own build run first
             expect(lines.length, greaterThan(loadingLineIndex + 8));
             loadingLineIndex++;
+            expect(
+              lines[loadingLineIndex++],
+              endsWith(
+                'Executing 3 tasks out of a total of 3 tasks: '
+                '1 task selected, 2 dependencies',
+              ),
+            );
+            expect(
+              lines[loadingLineIndex++],
+              endsWith("Running task 'buildExtension#my-extension'"),
+            );
+
+            // the extension project is re-compiled
             expect(
               lines[loadingLineIndex++],
               endsWith(
@@ -578,6 +650,14 @@ void main() {
             expect(
               lines[loadingLineIndex++],
               endsWith(" Running task 'installRuntimeDependencies'"),
+            );
+            expect(
+              lines[loadingLineIndex++],
+              endsWith("Running task 'checkExtensionJavaVersion#my-extension'"),
+            );
+            expect(
+              lines[loadingLineIndex++],
+              endsWith("Running task 'loadExtension#my-extension'"),
             );
             expect(
               lines[loadingLineIndex++],
