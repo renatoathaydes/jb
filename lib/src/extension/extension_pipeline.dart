@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:actors/actors.dart' show Sendable;
+import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart';
 import 'package:dartle/dartle_cache.dart' show DartleCache;
 import 'package:path/path.dart' as p;
@@ -120,8 +121,9 @@ Future<List<ExtensionProject>> loadExtensionProjects(
 
   return [
     for (final name in loadTaskNames)
-      context.loaded[name] ??
-          (throw StateError('Extension was not loaded by task $name')),
+      context.loaded[name].orThrow(
+        () => StateError('Extension was not loaded by task $name'),
+      ),
   ];
 }
 
