@@ -87,7 +87,7 @@ class MavenClient {
     this.bundleStatus = 'status',
   }) : _client = HttpClient()
          ..userAgent = "JBuild-$jbVersion"
-         ..idleTimeout = Duration(minutes: 5);
+         ..idleTimeout = Duration(minutes: 1);
 
   Future<void> publish(Artifact artifact, File bundle) async {
     Uri uri;
@@ -262,7 +262,7 @@ class MavenClient {
     Future<T> Function() action, {
     required String error,
   }) async {
-    final endTime = DateTime.now().add(const Duration(minutes: 5));
+    final endTime = DateTime.now().add(const Duration(minutes: 15));
     do {
       await Future.delayed(const Duration(seconds: 3));
       final result = await action();

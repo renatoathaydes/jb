@@ -32,6 +32,14 @@ final class EnvVar {
   bool get isNotFalse => !isFalse;
 }
 
+/// Run all the given functions in parallel.
+/// Passes the same argument to all functions.
+Future<void> Function(T) parallelize<T>(List<Future<void> Function(T)> tasks) {
+  return (T arg) async {
+    await Future.wait(tasks.map((task) => task(arg)));
+  };
+}
+
 Future<File> createIfNeededAndGetJBuildJarFile() async {
   final jbuildJar = File(jbuildJarPath()).absolute;
   final tsStats = await _tsFile(jbuildJar).stat();

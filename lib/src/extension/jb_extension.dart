@@ -22,6 +22,7 @@ import '../runner.dart';
 import '../tasks.dart';
 import '../utils.dart';
 import 'cache_model.dart';
+import 'dependency_extension.dart';
 import 'extension_tasks.dart';
 
 final class ExtensionProject(
@@ -61,27 +62,31 @@ Stream<ExtensionProject> loadExtensionProjects(
       _LocalDirectoryExtension(dir: var dir) => //
       await _loadExtensionFromDir(dir, files, actors, options, cwi, cache),
       _DependencyExtension(coordinates: var coord) => //
-      await _loadExtensionFromDep(coord, files, actors, options, cwi, cache),
+      await loadExtensionFromDep(coord, files, actors, options, cwi, cache),
     };
   }
 }
 
 Future<JbExtensionModel> createJbExtensionModel(
-  JbConfigContainer configContainer,
+  CompileOutput extensionConfigOutput,
+  JbConfiguration hostConfig,
+  String projectName,
   String rootDir,
   String classpath,
   DartleCache cache,
   Sendable<JavaCommand, Object?> jvmExecutor, {
   required bool extensionUpToDate,
 }) async {
-  final out = configContainer.output.when(dir: dir, jar: file);
-  final jbExtensionConfig = await configContainer.output.when(
-    dir: (d) async => await _jbExtensionFromDir(rootDir, d),
-    jar: (j) async => await _jbExtensionFromJar(rootDir, j),
+  // relative to rootDir, like the output paths used below
+  final out = extensionConfigOutput.when(
+    dir: (d) => dir(p.join(rootDir, d)),
+    jar: (j) => file(p.join(rootDir, j)),
   );
-  final config = configContainer.config;
+  final jbExtensionConfig = await extensionConfigOutput.when(
+    dir: (d) async => await _jbExtensionFromDir(p.join(rootDir, d)),
+    jar: (j) async => await _jbExtensionFromJar(p.join(rootDir, j)),
+  );
   final taskConfigs = await loadExtensionTaskConfigs(
-    config,
     jbExtensionConfig.yaml,
     jbExtensionConfig.yamlUri,
   );
@@ -90,33 +95,31 @@ Future<JbExtensionModel> createJbExtensionModel(
 
   if (extensionUpToDate && !await cache.hasChanged(out)) {
     extensionTasks = await loadExtensionTasksFromCache(
-      config,
+      hostConfig,
       taskConfigs,
       cache,
       rootDir,
+      projectName,
     );
   }
 
   if (extensionTasks == null) {
     extensionTasks = await loadExtensionTasks(
-      config,
+      hostConfig,
       classpath,
       taskConfigs,
       jvmExecutor,
+      projectName,
     );
     await cacheExtensionTasks(cache, rootDir, extensionTasks);
   }
 
-  return JbExtensionModel(config, classpath, extensionTasks);
+  return JbExtensionModel(extensionTasks);
 }
 
-Future<_JbExtensionConfig> _jbExtensionFromJar(
-  String rootDir,
-  String jarPath,
-) async {
-  final path = p.join(rootDir, jarPath);
-  logger.fine(() => 'Loading jb extension from jar: $path');
-  final stream = InputFileStream(path);
+Future<_JbExtensionConfig> _jbExtensionFromJar(String jarPath) async {
+  logger.fine(() => 'Loading jb extension from jar: $jarPath');
+  final stream = InputFileStream(jarPath);
   try {
     final buffer = ZipDecoder().decodeStream(stream);
     final extensionEntry = 'META-INF/jb/$jbExtension.yaml';
@@ -131,7 +134,7 @@ Future<_JbExtensionConfig> _jbExtensionFromJar(
         );
     final content = archiveFile.content as List<int>;
     return _JbExtensionConfig(
-      path: '$path!$extensionEntry',
+      path: '$jarPath!$extensionEntry',
       yaml: utf8.decode(content),
       scheme: 'jar',
     );
@@ -140,15 +143,10 @@ Future<_JbExtensionConfig> _jbExtensionFromJar(
   }
 }
 
-Future<_JbExtensionConfig> _jbExtensionFromDir(
-  String rootDir,
-  String outputDir,
-) async {
-  logger.fine(
-    () => 'Loading jb extension from directory: ${p.join(rootDir, outputDir)}',
-  );
+Future<_JbExtensionConfig> _jbExtensionFromDir(String outputDir) async {
+  logger.fine(() => 'Loading jb extension from directory: $outputDir');
   final yamlFile = File(
-    p.join(rootDir, outputDir, 'META-INF', 'jb', '$jbExtension.yaml'),
+    p.join(outputDir, 'META-INF', 'jb', '$jbExtension.yaml'),
   );
   return _JbExtensionConfig(
     path: yamlFile.path,
@@ -168,6 +166,15 @@ Iterable<_ExtensionSource> _extensionSources(
       }
       return _LocalDirectoryExtension(dir);
     }
+    // assume it's a dependency, so it must be of the form group:artifact<:version>
+    if (!path.contains(':')) {
+      failBuild(
+        reason:
+            "Invalid extension declaration: '$path'. "
+            "Must be either a local path starting with '.', or a dependency "
+            "of the form group:artifact<:version>.",
+      );
+    }
     return _DependencyExtension(path);
   }
 
@@ -185,18 +192,6 @@ Iterable<_ExtensionSource> _extensionSources(
   }
 }
 
-Future<ExtensionProject> _loadExtensionFromDep(
-  String coordinates,
-  JbFiles files,
-  JbActors actors,
-  Options options,
-  JbConfigWithImports cwi,
-  DartleCache cache,
-) async {
-  // TODO
-  throw UnimplementedError('_loadExtensionFromDep');
-}
-
 Future<ExtensionProject> _loadExtensionFromDir(
   Directory projectDir,
   JbFiles files,
@@ -208,7 +203,9 @@ Future<ExtensionProject> _loadExtensionFromDir(
   final stopWatch = Stopwatch()..start();
 
   final rootDir = projectDir.path;
-  logger.fine(() => 'Loading extension project: $rootDir');
+  logger.info(
+    () => '========= Loading jb extension project: $rootDir =========',
+  );
 
   final extensionCwi = await withCurrentDirectory(rootDir, () async {
     return await defaultJbConfigSource.load();
@@ -218,7 +215,7 @@ Future<ExtensionProject> _loadExtensionFromDir(
   final configContainer = await withCurrentDirectory(
     rootDir,
     onError: changedDirectoryOnError(rootDir),
-    () => JbConfigContainer(cwi),
+    () => JbConfigContainer(extensionCwi),
   );
   final runner = JbRunner(files, extensionCwi, actors);
 
@@ -247,7 +244,9 @@ Future<ExtensionProject> _loadExtensionFromDir(
   final name = configContainer.config.module ?? rootDir;
 
   final extensionModel = await createJbExtensionModel(
-    configContainer,
+    configContainer.output,
+    cwi.config,
+    name,
     rootDir,
     classpath,
     cache,
@@ -262,6 +261,7 @@ Future<ExtensionProject> _loadExtensionFromDir(
     () =>
         "Extension project '$rootDir' model loaded in ${elapsedTime(stopWatch)}",
   );
+  logger.info('========= jb extension loaded =========');
 
   return ExtensionProject(name, absRootDir, classpath, extensionModel);
 }
@@ -283,7 +283,10 @@ void _warnOnUnexpectedConfig(
   JbExtensionModel extensionModel,
   Map<String, Object?> extras,
 ) {
-  final taskNames = extensionModel.extensionTasks.map((t) => t.name).toSet();
+  // extension project's task names including also qualified names
+  final taskNames = extensionModel.extensionTasks
+      .expand((t) => [t.name, t.qualifiedName])
+      .toSet();
   final unknownKeys = extras.keys.where(taskNames.contains.not$);
   if (unknownKeys.isNotEmpty) {
     logger.warning(

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:args/args.dart';
 import 'package:conveniently/conveniently.dart';
 import 'package:dartle/dartle.dart'
     show
@@ -16,6 +17,7 @@ import 'package:dartle/dartle.dart'
         elapsedTime;
 import 'package:jb/src/crypto.dart';
 import 'package:path/path.dart' as p;
+import 'package:xml/xml.dart';
 
 import 'config.dart';
 import 'dependencies/deps_cache.dart';
@@ -25,72 +27,105 @@ import 'pom.dart';
 import 'resolved_dependency.dart';
 import 'utils.dart';
 
+enum _EnvVars(final String name) {
+  mavenLocalHome("MAVEN_LOCAL_HOME"),
+  portalTokenXmlFile("SONATYPE_PORTAL_TOKEN_XML_FILE"),
+}
+
 /// A Maven repository publisher.
-class Publisher {
+class Publisher(
+  final Result<Artifact> artifact,
+  final File depsFile,
+  final DepsCache depsCache,
+  final ResolvedLocalDependencies localDependencies,
+  final String? jar,
+) {
   static final ArgsValidator argsValidator = const OptionalArgValidator(
-    'One argument may be provided: '
-    'a local dir, a http(s) URL, or '
-    ':-m for Maven Central',
+    'The following arguments may be provided:\n'
+    '    - local dir or http(s) URL,\n'
+    '    - -m for Maven Central\n'
+    '    - --no-sign to skip signing artifacts.',
   );
 
-  final Result<Artifact> artifact;
-  final DepsCache depsCache;
-  final File depsFile;
-  final ResolvedLocalDependencies localDependencies;
-  final String? jar;
+  static const _signFlag = 'sign';
+  static const _mavenCentralFlag = 'maven-central';
 
-  Publisher(
-    this.artifact,
-    this.depsFile,
-    this.depsCache,
-    this.localDependencies,
-    this.jar,
-  );
+  static final _argParser = ArgParser()
+    ..addFlag(
+      _mavenCentralFlag,
+      abbr: 'm',
+      negatable: false,
+      defaultsTo: false,
+      help: 'Publish to Maven Central',
+    )
+    ..addFlag(
+      _signFlag,
+      negatable: true,
+      defaultsTo: true,
+      help: 'Sign artifacts before publishing',
+    );
 
   /// The `publish` task action.
   Future<void> call(List<String> args) async {
     final theArtifact = _getArtifact();
 
-    final destination = args.isEmpty ? _mavenHome() : args[0];
-    final credentials = _mavenCredentials();
+    final argResults = _argParser.parse(args);
+    final sign = argResults.flag(_signFlag);
+    final toMavenCentral = argResults.flag(_mavenCentralFlag);
+    final rest = argResults.rest;
 
-    final mavenClient = MavenClient(switch (destination) {
-      '-m' => Sonatype.s01Oss,
-      _ => CustomMavenRepo(destination),
-    }, credentials: credentials);
-
-    final toMavenCentral = destination == '-m';
-    final toHttpRepo =
-        !toMavenCentral &&
-        (destination.startsWith('http://') ||
-            destination.startsWith('https://'));
+    // the destination is only used if toMavenCentral is false
+    final (MavenRepo destination, bool isHttp) = switch (rest.length) {
+      0 =>
+        toMavenCentral
+            ? (Sonatype.s01Oss, true)
+            : (CustomMavenRepo(_mavenHome()), false),
+      1 => toMavenCentral.vmap((toMvnC) {
+        if (toMvnC) {
+          throw ArgumentError(
+            'The -m option cannot be used together with custom location: "${rest[0]}"',
+          );
+        }
+        final url = rest[0];
+        return (
+          CustomMavenRepo(url),
+          url.startsWith('http://') || url.startsWith('https://'),
+        );
+      }),
+      _ => throw ArgumentError(
+        'Too many arguments: $rest.\n${_argParser.usage}',
+      ),
+    };
 
     final stopwatch = Stopwatch()..start();
 
-    if (toMavenCentral || toHttpRepo) {
-      if (credentials == null) {
-        logger.info(
-          'No HTTP credentials provided (set either SONATYPE_USER_TOKEN '
-          'or MAVEN_USER and MAVEN_PASSWORD to provide it)',
-        );
-      }
-      return await _publishHttp(mavenClient, theArtifact, stopwatch);
+    if (isHttp) {
+      final credentials = _mavenCredentials();
+      final mavenClient = MavenClient(destination, credentials: credentials);
+      return await _publishHttp(mavenClient, theArtifact, sign, stopwatch);
     }
-    await _publishLocal(theArtifact, destination, depsCache, stopwatch);
+
+    return await _publishLocal(
+      theArtifact,
+      destination.url,
+      sign,
+      depsCache,
+      stopwatch,
+    );
   }
 
   String _mavenHome() {
-    final mavenHome = Platform.environment['MAVEN_LOCAL_HOME'];
+    final mavenHome = Platform.environment[_EnvVars.mavenLocalHome.name];
     if (mavenHome != null) {
       logger.finer(
         () =>
-            'MAVEN_LOCAL_HOME environment variable will be used for publishing: $mavenHome',
+            '${_EnvVars.mavenLocalHome.name} environment variable will be used for publishing: $mavenHome',
       );
       return mavenHome;
     }
-    logger.finer(
+    logger.fine(
       () =>
-          'MAVEN_HOME environment variable is not set, will use '
+          '${_EnvVars.mavenLocalHome.name} environment variable is not set, will use '
           '~/.m2/repository for publishing',
     );
     final home = homeDir().orThrow(
@@ -109,17 +144,25 @@ class Publisher {
   Future<void> _publishLocal(
     Artifact theArtifact,
     String repoPath,
+    bool sign,
     DepsCache depsCache,
     Stopwatch stopwatch,
   ) async {
     final destination = Directory(_pathFor(theArtifact, parent: repoPath));
     logger.info(() => 'Publishing artifacts to ${destination.path}');
-    await _publishArtifactToDir(destination, theArtifact, depsCache, stopwatch);
+    await _publishArtifactToDir(
+      destination,
+      theArtifact,
+      sign,
+      depsCache,
+      stopwatch,
+    );
   }
 
   Future<void> _publishHttp(
     MavenClient mavenClient,
     Artifact theArtifact,
+    bool sign,
     Stopwatch stopwatch,
   ) async {
     final destination = tempDir(suffix: '-jb-publish');
@@ -131,12 +174,12 @@ class Publisher {
     await _publishArtifactToDir(
       destination,
       _getArtifact(),
+      sign,
       depsCache,
       stopwatch,
     );
     logger.fine(() => 'Creating bundle.jar with publication artifacts');
     final bundle = await _createBundle(_getArtifact(), destination, stopwatch);
-    logger.info(() => 'Publishing artifacts to ${mavenClient.repo.url}');
     try {
       await mavenClient.publish(theArtifact, bundle);
     } finally {
@@ -147,6 +190,7 @@ class Publisher {
   Future<void> _publishArtifactToDir(
     Directory destination,
     Artifact artifact,
+    bool sign,
     DepsCache depsCache,
     Stopwatch stopwatch,
   ) async {
@@ -171,7 +215,7 @@ class Publisher {
     logger.log(profile, () => 'Created POM in ${elapsedTime(stopwatch)}.');
     stopwatch.reset();
 
-    await _publishFiles(destination, artifact, pom, jarFile);
+    await _publishFiles(destination, artifact, sign, pom, jarFile);
 
     logger.log(
       profile,
@@ -182,33 +226,34 @@ class Publisher {
   Future<void> _publishFiles(
     Directory destination,
     Artifact artifact,
+    bool sign,
     String pom,
     String jarFile,
   ) async {
+    final postProcess = parallelize([_createChecksums, if (sign) _signFile]);
     await File(p.join(destination.path, _fileFor(artifact, extension: '.pom')))
         .writeAsString(pom)
-        .then(_createChecksumsAndSign);
+        .then(postProcess);
     await File(jarFile)
         .copy(p.join(destination.path, _fileFor(artifact)))
-        .then(_createChecksumsAndSign);
+        .then(postProcess);
     await File(jarFile.replaceExtension('-sources.jar'))
         .rename(
           p.join(destination.path, _fileFor(artifact, qualifier: '-sources')),
         )
-        .then(_createChecksumsAndSign);
+        .then(postProcess);
     await File(jarFile.replaceExtension('-javadoc.jar'))
         .rename(
           p.join(destination.path, _fileFor(artifact, qualifier: '-javadoc')),
         )
-        .then(_createChecksumsAndSign);
+        .then(postProcess);
   }
 
-  Future<void> _createChecksumsAndSign(File file) async {
+  Future<void> _createChecksums(File file) async {
     final bytes = await file.readAsBytes();
-    final f1 = _signFile(file);
-    final f2 = _shaFile(file.path, bytes);
-    final f3 = _md5File(file.path, bytes);
-    await Future.wait(<Future<Object?>>[f1, f2, f3]);
+    final f1 = _shaFile(file.path, bytes);
+    final f2 = _md5File(file.path, bytes);
+    await Future.wait(<Future<Object?>>[f1, f2]);
   }
 
   Future<File> _createBundle(
@@ -249,23 +294,49 @@ class Publisher {
 }
 
 HttpClientCredentials? _mavenCredentials() {
-  final mavenUser = Platform.environment['MAVEN_USER'];
-  final mavenPassword = Platform.environment['MAVEN_PASSWORD'];
-  String? token;
-  if (mavenUser != null && mavenPassword != null) {
-    logger.info('Using MAVEN_USER and MAVEN_PASSWORD for HTTP credentials');
-    token = base64Encode(utf8.encode("$mavenUser:$mavenPassword"));
+  final xmlFile = Platform.environment[_EnvVars.portalTokenXmlFile.name];
+  if (xmlFile == null) {
+    logger.info(
+      () =>
+          'Environment variable ${_EnvVars.portalTokenXmlFile.name} is not set, '
+          'Will attempt to publish artifact without presenting credentials.',
+    );
+    return null;
   }
-  if (token == null) {
-    token = Platform.environment['SONATYPE_USER_TOKEN'];
-    if (token != null) {
-      logger.info('Using SONATYPE_USER_TOKEN for HTTP credentials');
-    }
+  final file = File(xmlFile);
+  if (!file.existsSync()) {
+    failBuild(
+      reason:
+          'The specified Sonatype Portal Token XML file does not exist: "$xmlFile"',
+    );
   }
-  if (token != null) {
-    return HttpClientBearerCredentials(token);
+  logger.info(
+    'Parsing XML file "$xmlFile" with Sonatype Portal Token for HTTP credentials',
+  );
+  final XmlDocument doc;
+  try {
+    doc = XmlDocument.parse(file.readAsStringSync());
+  } on XmlException catch (e) {
+    failBuild(reason: 'XML file "$xmlFile" could not be parsed: $e');
   }
-  return null;
+  String token;
+  try {
+    final server = doc
+        .getElement('server')
+        .orThrow(() => XmlParserException('root element missing: "server"'));
+    final username = server
+        .getElement('username')
+        .orThrow(() => XmlParserException('root element missing: "server"'))
+        .innerText;
+    final password = server
+        .getElement('password')
+        .orThrow(() => XmlParserException('root element missing: "server"'))
+        .innerText;
+    token = base64Encode(utf8.encode("$username:$password"));
+  } catch (e) {
+    failBuild(reason: 'Failed to parse XML File "$xmlFile": $e');
+  }
+  return HttpClientBearerCredentials(token);
 }
 
 Future<void> _shaFile(String file, List<int> bytes) async {

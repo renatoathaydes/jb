@@ -136,7 +136,6 @@ String _helpForProperty(List<String> propertyPath) {
 ///
 /// Applies defaults and resolves properties and imports.
 Future<List<BasicExtensionTask>> loadExtensionTaskConfigs(
-  JbConfiguration jbConfig,
   String config,
   Uri yamlUri,
 ) async {
@@ -237,12 +236,19 @@ class ExtensionTask {
   /// configuration data given to the task via its constructor.
   final List<Object?> constructorData;
 
+  /// The qualified task name, i.e. `"${basicConfig.name}#$projectName"`.
+  ///
+  /// This is the canonical name used to register and wire up the task.
+  final String qualifiedName;
+
   const ExtensionTask({
     required this.basicConfig,
     required this.extraConfig,
     required this.constructorData,
+    required this.qualifiedName,
   });
 
+  /// The basic name of this task (i.e. not including the project name).
   String get name => basicConfig.name;
 
   String get description => basicConfig.description;
@@ -265,11 +271,7 @@ class ExtensionTask {
 }
 
 /// jb extension model.
-class JbExtensionModel(
-  final JbConfiguration config,
-  final String classpath,
-  final List<ExtensionTask> extensionTasks,
-);
+class JbExtensionModel(final List<ExtensionTask> extensionTasks);
 
 /// A container holding an instance of the generated type [JbConfiguration]
 /// as well as a computed [CompileOutput].
@@ -648,6 +650,18 @@ Use the following syntax to declare 'developers':
       organization-url: https://acme.example.org
 ''';
 
+const taskSyntaxHelp = '''
+Tasks should be declared as follows:
+
+tasks:
+  my-task:
+    class-name: my.java.ClassName           (mandatory)
+    description: description of the task    (optional)
+    phase: build                            (optional)
+  other-task:
+    class-name: my.java.OtherClass
+''';
+
 List<BasicExtensionTask> _extensionTasks(Map<String, Object?> map) {
   final tasks = map['tasks'];
   if (tasks is Map<String, Object?>) {
@@ -661,23 +675,11 @@ List<BasicExtensionTask> _extensionTasks(Map<String, Object?> map) {
   } else {
     throw DartleException(
       message:
-          "expecting a List of tasks for value 'tasks', "
-          "but got '$tasks'.",
+          "expecting a Map of tasks for value 'tasks', "
+          "but got '$tasks'.\n$taskSyntaxHelp",
     );
   }
 }
-
-const taskSyntaxHelp = '''
-Tasks should be declared as follows:
-
-tasks:
-  my-task:
-    class-name: my.java.ClassName           (mandatory)
-    description: description of the task    (optional)
-    phase: build                            (optional)
-  other-task:
-    class-name: my.java.OtherClass
-''';
 
 BasicExtensionTask _extensionTask(MapEntry<String, Object?> task) {
   final spec = task.value;

@@ -1051,7 +1051,9 @@ Task createDownloadTestRunnerTask(
       cache: cache,
     ),
     name: downloadTestRunnerTaskName,
-    description: 'Download a test runner. JBuild automatically detects JUnit5.',
+    description:
+        'Download a test runner. JBuild automatically detects '
+        'JUnit and Spock in the project dependencies.',
   );
 }
 

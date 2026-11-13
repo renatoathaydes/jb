@@ -61,6 +61,14 @@ public final class Bar implements JbTask {
 void main() {
   activateLogging(Level.INFO);
 
+  // read before any test modifies it, so it can always be restored
+  final committedUsesExtensionYaml = File(
+    p.join(usesExtensionDir, 'jbuild.yaml'),
+  ).readAsStringSync();
+  // some tests rewrite this file while the tests are being defined, and their
+  // own teardown may not run when tests are filtered out, so restore it here too
+  tearDownAll(() => _restoreExtensionProjectYaml(committedUsesExtensionYaml));
+
   projectGroup(helloProjectDir, 'hello project', () {
     test('can compile basic Java class and cache result', () async {
       final jbResult = await runJb(Directory(helloProjectDir));
@@ -351,6 +359,12 @@ void main() {
         ['app', p.join('app', 'App.class')],
         checkLength: false,
       );
+      // the dependencies.sum file must exist after install tasks run
+      expect(
+        await File(p.join(testsProjectDir, 'dependencies.sum')).exists(),
+        isTrue,
+      );
+
       // run the test
       final jbResult = await runJb(Directory(testsProjectDir), const [
         'test',
@@ -392,6 +406,12 @@ void main() {
         Directory(p.join(testsProjectDir, 'build')),
         const [],
       );
+
+      // clean tasks do not clean dependencies.sum
+      expect(
+        await File(p.join(testsProjectDir, 'dependencies.sum')).exists(),
+        isTrue,
+      );
     });
   });
 
@@ -415,303 +435,396 @@ void main() {
     });
   });
 
-  projectGroup(usesExtensionDir, 'uses extension project', () {
+  for (var i = 0; i < 2; i++) {
+    // first iteration: use the extension as a dependency
+    final kind = (i == 0) ? 'dependency' : 'local';
+    String extensionProjectYaml = '';
+    if (kind == 'dependency') {
+      extensionProjectYaml = _changeExtensionProjectYaml(
+        'com.example:example-extension:1.0',
+      );
+    }
+    projectGroup(usesExtensionDir, 'uses $kind extension project', () {
+      tearDown(() async {
+        if (kind == 'dependency') {
+          await _restoreExtensionProjectYaml(extensionProjectYaml);
+        }
+        await deleteAll(
+          MultiFileCollection([
+            dirs([
+              // uses the example extension project
+              p.join(exampleExtensionDir, 'build'),
+              p.join(exampleExtensionDir, '.jb-cache'),
+              p.join(usesExtensionDir, 'output-resources'),
+              p.join(exampleExtensionDir, 'src', 'foo'),
+            ], includeHidden: true),
+            // these files are created by the test
+            file(p.join(usesExtensionDir, 'input-resources', 'new.txt')),
+          ]),
+        );
+      });
+
+      test('can run custom task defined by extension project', () async {
+        var jbResult = await runJb(Directory(usesExtensionDir), const [
+          'sample-task',
+          '--no-color',
+        ]);
+        expectSuccess(jbResult);
+        expect(
+          jbResult.stdout.join('\n'),
+          contains('Extension task running: SampleTask'),
+        );
+      }, timeout: const Timeout(Duration(seconds: 10)));
+
+      test(
+        'can run custom task defined by extension project from another dir',
+        () async {
+          var jbResult = await runJb(Directory(projectsDir), [
+            'copyFile',
+            '--no-color',
+            '-p',
+            p.basename(usesExtensionDir),
+          ]);
+          expectSuccess(jbResult);
+
+          // ensure we did not copy the file to the wrong place
+          expect(
+            await Directory(p.join(projectsDir, 'output-resources')).exists(),
+            isFalse,
+          );
+
+          await assertDirectoryContents(
+            Directory(p.join(usesExtensionDir, 'output-resources')),
+            ['hello.txt', 'bye.txt'],
+          );
+          expect(
+            await File(
+              p.join(usesExtensionDir, 'output-resources', 'hello.txt'),
+            ).readAsString(),
+            equals('Hello'),
+          );
+          expect(
+            await File(p.join(usesExtensionDir, 'output-resources', 'bye.txt'))
+                .readAsString(),
+            equals('Bye'),
+          );
+
+          // should not run again as the task output is cached
+          jbResult = await runJb(Directory(projectsDir), [
+            'copyFile',
+            '--no-color',
+            '-p',
+            p.basename(usesExtensionDir),
+          ]);
+          expectSuccess(jbResult);
+          expect(
+            jbResult.stdout.where(
+              (String line) => line.endsWith('to output-resources directory'),
+            ),
+            isEmpty,
+          );
+          expect(jbResult.stdout, hasLength(greaterThan(2)));
+          expect(lastItems(2, jbResult.stdout), [
+            endsWith('${toCurrentOsPath(usesExtensionDir)} is up-to-date'),
+            startsWith('Build succeeded in '),
+          ]);
+
+          if (kind == 'local') {
+            // modify a file in the extension project (adds task "bar")
+            await Directory(p.join(exampleExtensionDir, 'src', 'foo')).create();
+            await File(p.join(exampleExtensionDir, 'src', 'foo', 'Bar.java'))
+                .writeAsString(_fooJavaFileContents);
+
+            // run the task "bar" newly defined by the extension project
+            jbResult = await runJb(Directory(projectsDir), [
+              'bar',
+              '--no-color',
+              '-p',
+              p.basename(usesExtensionDir),
+            ]);
+            expectSuccess(jbResult);
+            expect(jbResult.stdout, isA<List<String>>());
+            var lines = jbResult.stdout as List<String>;
+            var loadingLineIndex =
+                lines.indexed
+                    .where(
+                      (e) => e.$2.endsWith(
+                        '========= Loading jb extension project: ../example-extension =========',
+                      ),
+                    )
+                    .map((e) => e.$1)
+                    .firstOrNull ??
+                fail('Could not find line for Loading extension');
+
+            // the extension project is re-compiled
+            expect(lines.length, greaterThan(loadingLineIndex + 8));
+            loadingLineIndex++;
+            expect(
+              lines[loadingLineIndex++],
+              endsWith(
+                'Executing 3 tasks out of a '
+                'total of 24 tasks: 2 tasks selected, 1 requirement, '
+                '6 dependencies, 6 up-to-date',
+              ),
+            );
+            expect(
+              lines[loadingLineIndex++],
+              endsWith(" Running task 'checkJavaVersion'"),
+            );
+            expect(
+              lines[loadingLineIndex++],
+              endsWith(" Running task 'compile'"),
+            );
+            expect(
+              lines[loadingLineIndex++],
+              endsWith(" Running task 'installRuntimeDependencies'"),
+            );
+            expect(
+              lines[loadingLineIndex++],
+              endsWith("========= jb extension loaded ========="),
+            );
+            expect(lines[loadingLineIndex++], contains("Executing 1 task"));
+            expect(
+              lines[loadingLineIndex++],
+              endsWith("Running task 'bar#my-extension'"),
+            );
+
+            // the new custom task is run
+            expect(
+              lines[loadingLineIndex++],
+              matches(RegExp(r'^\?:stdout \[jvm \d+]: Hello from Bar!$')),
+            );
+
+            // change the inputs and make sure the previous task runs incrementally
+            await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
+                .writeAsString('hello there');
+
+            jbResult = await runJb(Directory(projectsDir), [
+              'copyFile',
+              '--no-color',
+              '-p',
+              p.basename(usesExtensionDir),
+            ]);
+            expectSuccess(jbResult);
+
+            expect(
+              jbResult.stdout,
+              contains(
+                matches(
+                  RegExp(
+                    r'^copyFile:stdout \[jvm \d+]: '
+                    r'Copying 1 file\(s\) to output-resources directory$',
+                  ),
+                ),
+              ),
+            );
+            await assertDirectoryContents(
+              Directory(p.join(usesExtensionDir, 'output-resources')),
+              ['hello.txt', 'bye.txt', 'new.txt'],
+            );
+
+            // remove the new task
+            await deleteAll(dir(p.join(exampleExtensionDir, 'src', 'foo')));
+          }
+
+          // ensure that the task no longer exists
+          jbResult = await runJb(Directory(projectsDir), [
+            'bar',
+            '--no-color',
+            '-p',
+            p.basename(usesExtensionDir),
+          ]);
+
+          expect(jbResult.exitCode, isNot(0));
+          expect(
+            jbResult.stdout,
+            contains(matches(RegExp(r" Task 'bar' does not exist$"))),
+          );
+        },
+        timeout: const Timeout(Duration(seconds: 15)),
+      );
+
+      test(
+        'can run custom task with config defined by extension project',
+        () async {
+          var jbResult = await runJb(Directory(usesExtensionDir), const [
+            'copyFile',
+            '--no-color',
+          ]);
+          expectSuccess(jbResult);
+          expect(
+            jbResult.stdout,
+            contains(
+              matches(
+                RegExp(
+                  r'^copyFile:stdout \[jvm \d+]: '
+                  r'Copying 2 file\(s\) to output-resources directory$',
+                ),
+              ),
+            ),
+          );
+          await assertDirectoryContents(
+            Directory(p.join(usesExtensionDir, 'output-resources')),
+            ['hello.txt', 'bye.txt'],
+          );
+          expect(
+            await File(
+              p.join(usesExtensionDir, 'output-resources', 'hello.txt'),
+            ).readAsString(),
+            equals('Hello'),
+          );
+          expect(
+            await File(p.join(usesExtensionDir, 'output-resources', 'bye.txt'))
+                .readAsString(),
+            equals('Bye'),
+          );
+
+          // should not run again as the task output is cached
+          jbResult = await runJb(Directory(usesExtensionDir), const [
+            'copyFile',
+            '--no-color',
+          ]);
+          expectSuccess(jbResult);
+          expect(
+            jbResult.stdout.where(
+              (String line) => line.endsWith('to output-resources directory'),
+            ),
+            isEmpty,
+          );
+          expect(jbResult.stdout, hasLength(greaterThan(2)));
+          expect(lastItems(2, jbResult.stdout), [
+            endsWith('${toCurrentOsPath(usesExtensionDir)} is up-to-date'),
+            startsWith('Build succeeded in '),
+          ]);
+
+          // change the inputs and make sure the task runs incrementally
+          await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
+              .writeAsString('hello there');
+
+          jbResult = await runJb(Directory(usesExtensionDir), const [
+            'copyFile',
+            '--no-color',
+          ]);
+          expectSuccess(jbResult);
+
+          expect(
+            jbResult.stdout,
+            contains(
+              matches(
+                RegExp(
+                  r'^copyFile:stdout \[jvm \d+]: '
+                  r'Copying 1 file\(s\) to output-resources directory$',
+                ),
+              ),
+            ),
+          );
+          await assertDirectoryContents(
+            Directory(p.join(usesExtensionDir, 'output-resources')),
+            ['hello.txt', 'bye.txt', 'new.txt'],
+          );
+
+          await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
+              .delete();
+
+          jbResult = await runJb(Directory(usesExtensionDir), const [
+            'copyFile',
+            '--no-color',
+          ]);
+          expectSuccess(jbResult);
+
+          expect(
+            jbResult.stdout,
+            contains(
+              matches(
+                RegExp(
+                  r'^copyFile:stdout \[jvm \d+]: '
+                  r'Deleted new.txt$',
+                ),
+              ),
+            ),
+          );
+          await assertDirectoryContents(
+            Directory(p.join(usesExtensionDir, 'output-resources')),
+            ['hello.txt', 'bye.txt'],
+          );
+
+          // skip on Windows because the jar command fails due to the jar being
+          // used by another process.
+        },
+        timeout: const Timeout(Duration(seconds: 20)),
+        testOn: '!windows',
+      );
+    });
+  }
+
+  projectGroup(usesExtensionDir, 'uses two extension projects', () {
+    late String otherExtensionPath;
+
+    setUp(() async {
+      otherExtensionPath = await _copyExampleExtension('other-extension');
+      await _useTwoExtensionProjects(otherExtensionPath);
+    });
+
     tearDown(() async {
+      await _restoreExtensionProjectYaml(committedUsesExtensionYaml);
       await deleteAll(
-        MultiFileCollection([
-          dirs([
-            // uses the example extension project
-            p.join(exampleExtensionDir, 'build'),
-            p.join(exampleExtensionDir, '.jb-cache'),
-            p.join(usesExtensionDir, 'output-resources'),
-            p.join(exampleExtensionDir, 'src', 'foo'),
-          ], includeHidden: true),
-          // these files are created by the test
-          file(p.join(usesExtensionDir, 'input-resources', 'new.txt')),
-        ]),
+        dirs([
+          p.join(exampleExtensionDir, 'build'),
+          p.join(exampleExtensionDir, '.jb-cache'),
+          p.join(usesExtensionDir, 'output-resources'),
+          p.join('build', 'test-extensions'),
+        ], includeHidden: true),
+      );
+      await deleteAll(
+        files([p.join(exampleExtensionDir, JbFiles.dependenciesChecksum)]),
       );
     });
 
-    test('can run custom task defined by extension project', () async {
-      var jbResult = await runJb(Directory(usesExtensionDir), const [
-        'sample-task',
+    test('ambiguous extension task must be qualified to run', () async {
+      // 'copyFile' is defined by both extension projects, so it is ambiguous
+      final ambiguous = await runJb(Directory(usesExtensionDir), const [
+        'copyFile',
         '--no-color',
       ]);
-      expectSuccess(jbResult);
       expect(
-        jbResult.stdout.join('\n'),
-        contains('Extension task running: SampleTask'),
+        ambiguous.exitCode,
+        isNot(0),
+        reason: 'unqualified ambiguous task should fail',
       );
-    }, timeout: const Timeout(Duration(seconds: 10)));
+      expect(
+        [...ambiguous.stdout, ...ambiguous.stderr].join('\n'),
+        contains(
+          "Invocation problem: Invocation 'copyFile' is ambiguous, it could match tasks "
+          '"copyFile#other-extension", "copyFile#my-extension"',
+        ),
+      );
+      expect(
+        Directory(p.join(usesExtensionDir, 'output-resources')).existsSync(),
+        isFalse,
+        reason: 'ambiguous task must not run',
+      );
 
-    test(
-      'can run custom task defined by extension project from another dir',
-      () async {
-        var jbResult = await runJb(Directory(projectsDir), [
-          'copyFile',
-          '--no-color',
-          '-p',
-          p.basename(usesExtensionDir),
-        ]);
-        expectSuccess(jbResult);
-
-        // ensure we did not copy the file to the wrong place
-        expect(
-          await Directory(p.join(projectsDir, 'output-resources')).exists(),
-          isFalse,
-        );
-
-        await assertDirectoryContents(
-          Directory(p.join(usesExtensionDir, 'output-resources')),
-          ['hello.txt', 'bye.txt'],
-        );
-        expect(
-          await File(p.join(usesExtensionDir, 'output-resources', 'hello.txt'))
-              .readAsString(),
-          equals('Hello'),
-        );
-        expect(
-          await File(p.join(usesExtensionDir, 'output-resources', 'bye.txt'))
-              .readAsString(),
-          equals('Bye'),
-        );
-
-        // should not run again as the task output is cached
-        jbResult = await runJb(Directory(projectsDir), [
-          'copyFile',
-          '--no-color',
-          '-p',
-          p.basename(usesExtensionDir),
-        ]);
-        expectSuccess(jbResult);
-        expect(
-          jbResult.stdout.where(
-            (String line) => line.endsWith('to output-resources directory'),
-          ),
-          isEmpty,
-        );
-        expect(jbResult.stdout, hasLength(greaterThan(2)));
-        expect(lastItems(2, jbResult.stdout), [
-          endsWith('${toCurrentOsPath(usesExtensionDir)} is up-to-date'),
-          startsWith('Build succeeded in '),
-        ]);
-
-        // modify a file in the extension project (adds task "bar")
-        await Directory(p.join(exampleExtensionDir, 'src', 'foo')).create();
-        await File(p.join(exampleExtensionDir, 'src', 'foo', 'Bar.java'))
-            .writeAsString(_fooJavaFileContents);
-
-        // run the task "bar" newly defined by the extension project
-        jbResult = await runJb(Directory(projectsDir), [
-          'bar',
-          '--no-color',
-          '-p',
-          p.basename(usesExtensionDir),
-        ]);
-        expectSuccess(jbResult);
-        expect(jbResult.stdout, isA<List<String>>());
-        var lines = jbResult.stdout as List<String>;
-        var loadingLineIndex =
-            lines.indexed
-                .where(
-                  (e) => e.$2.endsWith(
-                    '========= Loading jb extension project: ../example-extension =========',
-                  ),
-                )
-                .map((e) => e.$1)
-                .firstOrNull ??
-            fail('Could not find line for Loading extension');
-
-        // the extension project is re-compiled
-        expect(lines.length, greaterThan(loadingLineIndex + 8));
-        loadingLineIndex++;
-        expect(
-          lines[loadingLineIndex++],
-          endsWith(
-            'Executing 3 tasks out of a '
-            'total of 24 tasks: 2 tasks selected, 1 requirement, '
-            '6 dependencies, 6 up-to-date',
-          ),
-        );
-        expect(
-          lines[loadingLineIndex++],
-          endsWith(" Running task 'checkJavaVersion'"),
-        );
-        expect(lines[loadingLineIndex++], endsWith(" Running task 'compile'"));
-        expect(
-          lines[loadingLineIndex++],
-          endsWith(" Running task 'installRuntimeDependencies'"),
-        );
-        expect(
-          lines[loadingLineIndex++],
-          endsWith("========= jb extension loaded ========="),
-        );
-        expect(lines[loadingLineIndex++], contains("Executing 1 task"));
-        expect(lines[loadingLineIndex++], endsWith("Running task 'bar'"));
-
-        // the new custom task is run
-        expect(
-          lines[loadingLineIndex++],
-          matches(RegExp(r'^\?:stdout \[jvm \d+]: Hello from Bar!$')),
-        );
-
-        // change the inputs and make sure the previous task runs incrementally
-        await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
-            .writeAsString('hello there');
-
-        jbResult = await runJb(Directory(projectsDir), [
-          'copyFile',
-          '--no-color',
-          '-p',
-          p.basename(usesExtensionDir),
-        ]);
-        expectSuccess(jbResult);
-
-        expect(
-          jbResult.stdout,
-          contains(
-            matches(
-              RegExp(
-                r'^copyFile:stdout \[jvm \d+]: '
-                r'Copying 1 file\(s\) to output-resources directory$',
-              ),
-            ),
-          ),
-        );
-        await assertDirectoryContents(
-          Directory(p.join(usesExtensionDir, 'output-resources')),
-          ['hello.txt', 'bye.txt', 'new.txt'],
-        );
-
-        // remove the new task
-        await deleteAll(dir(p.join(exampleExtensionDir, 'src', 'foo')));
-
-        // ensure that the task no longer exists
-        jbResult = await runJb(Directory(projectsDir), [
-          'bar',
-          '--no-color',
-          '-p',
-          p.basename(usesExtensionDir),
-        ]);
-
-        expect(jbResult.exitCode, isNot(0));
-        expect(
-          jbResult.stdout,
-          contains(matches(RegExp(r" Task 'bar' does not exist$"))),
-        );
-      },
-      timeout: const Timeout(Duration(seconds: 15)),
-    );
-
-    test(
-      'can run custom task with config defined by extension project',
-      () async {
-        var jbResult = await runJb(Directory(usesExtensionDir), const [
-          'copyFile',
+      // each qualified name runs its own task without problems
+      for (final qualified in const [
+        'copyFile#my-extension',
+        'copyFile#other-extension',
+      ]) {
+        final jbResult = await runJb(Directory(usesExtensionDir), [
+          qualified,
           '--no-color',
         ]);
         expectSuccess(jbResult);
         expect(
           jbResult.stdout,
-          contains(
-            matches(
-              RegExp(
-                r'^copyFile:stdout \[jvm \d+]: '
-                r'Copying 2 file\(s\) to output-resources directory$',
-              ),
-            ),
-          ),
+          contains(endsWith("Running task '$qualified'")),
         );
         await assertDirectoryContents(
           Directory(p.join(usesExtensionDir, 'output-resources')),
           ['hello.txt', 'bye.txt'],
         );
-        expect(
-          await File(p.join(usesExtensionDir, 'output-resources', 'hello.txt'))
-              .readAsString(),
-          equals('Hello'),
-        );
-        expect(
-          await File(p.join(usesExtensionDir, 'output-resources', 'bye.txt'))
-              .readAsString(),
-          equals('Bye'),
-        );
-
-        // should not run again as the task output is cached
-        jbResult = await runJb(Directory(usesExtensionDir), const [
-          'copyFile',
-          '--no-color',
-        ]);
-        expectSuccess(jbResult);
-        expect(
-          jbResult.stdout.where(
-            (String line) => line.endsWith('to output-resources directory'),
-          ),
-          isEmpty,
-        );
-        expect(jbResult.stdout, hasLength(greaterThan(2)));
-        expect(lastItems(2, jbResult.stdout), [
-          endsWith('${toCurrentOsPath(usesExtensionDir)} is up-to-date'),
-          startsWith('Build succeeded in '),
-        ]);
-
-        // change the inputs and make sure the task runs incrementally
-        await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
-            .writeAsString('hello there');
-
-        jbResult = await runJb(Directory(usesExtensionDir), const [
-          'copyFile',
-          '--no-color',
-        ]);
-        expectSuccess(jbResult);
-
-        expect(
-          jbResult.stdout,
-          contains(
-            matches(
-              RegExp(
-                r'^copyFile:stdout \[jvm \d+]: '
-                r'Copying 1 file\(s\) to output-resources directory$',
-              ),
-            ),
-          ),
-        );
-        await assertDirectoryContents(
-          Directory(p.join(usesExtensionDir, 'output-resources')),
-          ['hello.txt', 'bye.txt', 'new.txt'],
-        );
-
-        await File(p.join(usesExtensionDir, 'input-resources', 'new.txt'))
-            .delete();
-
-        jbResult = await runJb(Directory(usesExtensionDir), const [
-          'copyFile',
-          '--no-color',
-        ]);
-        expectSuccess(jbResult);
-
-        expect(
-          jbResult.stdout,
-          contains(
-            matches(
-              RegExp(
-                r'^copyFile:stdout \[jvm \d+]: '
-                r'Deleted new.txt$',
-              ),
-            ),
-          ),
-        );
-        await assertDirectoryContents(
-          Directory(p.join(usesExtensionDir, 'output-resources')),
-          ['hello.txt', 'bye.txt'],
-        );
-
-        // skip on Windows because the jar command fails due to the jar being
-        // used by another process.
-      },
-      timeout: const Timeout(Duration(seconds: 20)),
-      testOn: '!windows',
-    );
+        await deleteAll(dirs([p.join(usesExtensionDir, 'output-resources')]));
+      }
+    }, timeout: const Timeout(Duration(seconds: 60)));
   });
 
   projectGroup(runEnvProjectDir, 'Run with Env Var project', () {
@@ -955,4 +1068,93 @@ void main() {
       );
     }, timeout: const Timeout(Duration(seconds: 15)));
   });
+}
+
+/// Changes the YAML file to use the given location.
+///
+/// Returns the exact contents of the file so it can be restored.
+String _changeExtensionProjectYaml(String locationToUse) {
+  const lineMarker = '# line marker for extension project location';
+  final yamlFile = File(p.join(usesExtensionDir, 'jbuild.yaml'));
+  final originalContents = yamlFile.readAsStringSync();
+  // on Windows the file may be checked out with CRLF line endings
+  final eol = originalContents.contains('\r\n') ? '\r\n' : '\n';
+  // single-quoted YAML scalar: backslashes in Windows paths are taken literally
+  final repoPath = p.join(Directory.current.path, testMavenRepo);
+  final yamlRepoPath = "'${repoPath.replaceAll("'", "''")}'";
+  final lines = originalContents.split(RegExp(r'\r?\n')).map((line) {
+    if (line.endsWith(lineMarker)) {
+      return '  - $locationToUse $lineMarker$eol'
+          'repositories: [$yamlRepoPath]';
+    }
+    // dependency extensions name their tasks after the artifact (see dependency_extension.dart)
+    if (locationToUse.contains(':') && line.startsWith('"copyFile#')) {
+      return '"copyFile#example-extension":';
+    }
+    return line;
+  });
+  yamlFile.writeAsStringSync(lines.join(eol));
+  return originalContents;
+}
+
+/// Copies the example extension project (its sources and jbuild.yaml) into a
+/// directory under the gitignored `build` directory, renaming its module to
+/// [module]. Returns the path to that copy, relative to [usesExtensionDir].
+///
+/// The copy must live inside the project: jb only accepts local extension paths
+/// starting with `.`, and an absolute path or a path on another drive (the
+/// system temp directory on Windows CI) cannot be expressed relative to it.
+Future<String> _copyExampleExtension(String module) async {
+  final copyDir = p.join('build', 'test-extensions', module);
+  await deleteAll(dirs([copyDir]));
+  await for (final entity in Directory(
+    p.join(exampleExtensionDir, 'src'),
+  ).list(recursive: true)) {
+    if (entity is File) {
+      final target = p.join(
+        copyDir,
+        'src',
+        p.relative(entity.path, from: p.join(exampleExtensionDir, 'src')),
+      );
+      await File(target).parent.create(recursive: true);
+      await entity.copy(target);
+    }
+  }
+  final yaml = await File(p.join(exampleExtensionDir, 'jbuild.yaml'))
+      .readAsString();
+  const originalModule = 'module: my-extension';
+  if (!yaml.contains(originalModule)) {
+    fail('example extension jbuild.yaml does not declare $originalModule');
+  }
+  await File(p.join(copyDir, 'jbuild.yaml'))
+      .writeAsString(yaml.replaceFirst(originalModule, 'module: $module'));
+  return p
+      .relative(p.absolute(copyDir), from: p.absolute(usesExtensionDir))
+      .replaceAll(r'\', '/');
+}
+
+/// Rewrites uses-extension's jbuild.yaml to declare both the example extension
+/// and [otherExtensionPath], and to configure the `copyFile` task of each one.
+/// The caller must restore the file afterwards.
+Future<void> _useTwoExtensionProjects(String otherExtensionPath) async {
+  final yamlFile = File(p.join(usesExtensionDir, 'jbuild.yaml'));
+  await yamlFile.writeAsString('''
+extension-projects:
+  - ../example-extension
+  - $otherExtensionPath
+source-dirs: [ src ]
+resource-dirs: [ resources ]
+javac-args: ["--release", "11"]
+
+# extension tasks
+"copyFile#my-extension":
+  extensions: ["*.txt"]
+"copyFile#other-extension":
+  extensions: ["*.txt"]
+''');
+}
+
+Future<void> _restoreExtensionProjectYaml(String extensionProjectYaml) async {
+  final yamlFile = File(p.join(usesExtensionDir, 'jbuild.yaml'));
+  await yamlFile.writeAsString(extensionProjectYaml);
 }

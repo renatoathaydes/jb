@@ -26,6 +26,7 @@ void main(List<String> args) async {
       comp.generateEmbeddedAssetsTask,
       lic.generateLicensesTask,
       tests.buildMvnRepoListsProjectTask,
+      tests.buildMvnRepoExampleExtensionTask,
       tests.setupTestMvnRepoTask,
       emptier.emptyGeneratedAssetsTask,
       dist.distributionTask,

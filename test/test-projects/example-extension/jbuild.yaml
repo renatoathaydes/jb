@@ -1,4 +1,7 @@
+group: jb-tests
 module: my-extension
+name: My jb extension.
+version: 1.0.0
 source-dirs: [ src ]
 resource-dirs: [ resources ]
 javac-args: ["--release", "11"]

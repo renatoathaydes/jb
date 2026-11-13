@@ -38,13 +38,15 @@ Notice how the production source code is in `src/`, while the test source code i
 
 Also notice that `test/` is a `jb` project (because it has a `jbuild.yaml` file in it)!
 Unlike Maven or Gradle, `jb` does not have the notion of multiple _groups of source code_ (`sourceSets` in Gradle).
-`jb` knows a project is a test project because it depends on one of the supported testing frameworks (currently JUnit).
+`jb` knows a project is a test project because it depends on one of the supported testing frameworks
+(currently [JUnit](https://docs.junit.org/) and [Spock](https://spockframework.org/)).
 
 The `jbuild.yaml` file at the root looks like this:
 
 ```yaml
 group: com.athaydes
 module: example
+name: Example Module
 version: '0.0.0'
 
 # default is src
@@ -83,6 +85,7 @@ You can remove most of its contents as it is mostly using defaults, and you'll e
 ```yaml
 group: com.athaydes
 module: example
+name: Example Module
 version: '0.0.0'
 output-jar: build/example.jar
 main-class: com.athaydes.example.Main

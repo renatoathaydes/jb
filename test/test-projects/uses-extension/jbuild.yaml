@@ -1,9 +1,9 @@
 extension-projects:
-  - ../example-extension
+  - ../example-extension # line marker for extension project location
 source-dirs: [ src ]
 resource-dirs: [ resources ]
 javac-args: ["--release", "11"]
 
 # extension tasks
-copyFile:my-extension:
+"copyFile#my-extension":
   extensions: ["*.txt"]

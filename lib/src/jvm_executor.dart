@@ -197,6 +197,13 @@ final class _JBuildActor implements Handler<JvmExecutorMessage, Object?> {
       return null;
     }
 
+    // the JVM version changed, this breaks the CDS file.
+    if (await ignoreExceptions(File(jvmCdsFile).delete)) {
+      logger.fine(
+        () => 'Deleted JVM CSF file since it may be stale: $jvmCdsFile',
+      );
+    }
+
     final prevMessage = prevVersion == null
         ? 'no previous build information is available.'
         : 'previous build was on version $prevVersion. ';

@@ -7,9 +7,10 @@ import '../config.dart';
 List<Object?> resolveTaskConstructorData(
   JbConfiguration config,
   BasicExtensionTask taskConfig,
+  String taskName,
 ) {
   final name = taskConfig.name;
-  final taskConfigData = config.extras[name];
+  final taskConfigData = config.extras[taskName] ?? config.extras[name];
   if (taskConfigData is! Map<String, Object?>?) {
     failBuild(
       reason:

@@ -1,7 +1,7 @@
 {{ include /processed/fragments/_header.html }}\
 {{ define name "Dependency Management" }}
 {{ define path basePath + "/pages/dependency-management.html" }}
-{{ define order 3 }}
+{{ define order 30 }}
 {{ component /processed/fragments/_main.html }}
 <div class="space-up"></div>
 # Dependency Management
