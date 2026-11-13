@@ -76,7 +76,7 @@ Future<void> _generateJbConfigModel(
   });
 
   // format the generated code to avoid making the 'analyse' task to run
-  await formatDart(configFile);
+  await formatDart([dartFile.path, compilationPathFile.path]);
 }
 
 Future<void> _writeTo(File file, void Function(IOSink) write) async {
