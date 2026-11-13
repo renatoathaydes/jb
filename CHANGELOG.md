@@ -8,6 +8,7 @@
 - improved the `publish` task.
 - better error message when invoking ambiguous task name (thanks to Dartle update).
 - the `clean` tasks no longer delete `dependencies.sum`.
+- jb extensions are loaded before the build starts, in their own pipeline: dependency extensions are downloaded with their checksums verified (recorded in `jb-ext-dependencies.sum`), and the Java version required by every extension is checked against the Java compiler.
 
 # 0.17.0
 
