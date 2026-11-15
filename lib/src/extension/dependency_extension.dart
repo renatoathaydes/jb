@@ -231,6 +231,7 @@ Future<void> _loadDependencyExtension(
   final jar = _findJar(coordinates, jars);
   final project = await loadExtensionProject(
     context,
+    taskName: loadTaskName,
     name: artifact,
     rootDir: classpathDir,
     classpath: jars.join(classpathSeparator),

@@ -50,6 +50,7 @@ Future<JbExtensionModel> createJbExtensionModel(
   Sendable<JavaCommand, Object?> jvmExecutor, {
   required bool extensionUpToDate,
   required bool outputMayChange,
+  required String taskName,
 }) async {
   // relative to rootDir, like the output paths used below
   final out = extensionConfigOutput.when(
@@ -67,7 +68,10 @@ Future<JbExtensionModel> createJbExtensionModel(
 
   List<ExtensionTask>? extensionTasks;
 
-  if (extensionUpToDate && (!outputMayChange || !await cache.hasChanged(out))) {
+  // the cache key must be the name of a task of the extension pipeline,
+  // otherwise the cache garbage collection removes the artifact's hash
+  if (extensionUpToDate &&
+      (!outputMayChange || !await cache.hasChanged(out, key: taskName))) {
     extensionTasks = await loadExtensionTasksFromCache(
       hostConfig,
       taskConfigs,
@@ -86,6 +90,10 @@ Future<JbExtensionModel> createJbExtensionModel(
       projectName,
     );
     await cacheExtensionTasks(cache, rootDir, extensionTasks);
+    if (outputMayChange) {
+      // the artifact is only loaded again when it changes (or the model is outdated)
+      await cache(out, key: taskName);
+    }
   }
 
   return JbExtensionModel(extensionTasks);
@@ -165,9 +173,9 @@ Future<ExtensionTasks> createLocalExtensionTasks(
   final compPathFile = context.compilationPathFile(absRootDir);
   // the key names the tasks which load this extension
   final key = configContainer.config.module ?? p.basename(absRootDir);
-  final buildTaskName = 'buildExtension#$key';
-  final javaCheckTaskName = 'checkExtensionJavaVersion#$key';
-  final loadTaskName = 'loadExtension#$key';
+  final buildTaskName = '_buildExtension#$key';
+  final javaCheckTaskName = '_checkExtensionJavaVersion#$key';
+  final loadTaskName = '_loadExtension#$key';
 
   // whether all the extension project's own tasks were up-to-date
   var extensionUpToDate = false;
@@ -235,6 +243,7 @@ Future<ExtensionTasks> createLocalExtensionTasks(
       final classpath = await _toClasspath(rootDir, configContainer);
       final project = await loadExtensionProject(
         context,
+        taskName: loadTaskName,
         name: name,
         rootDir: rootDir,
         classpath: classpath,
@@ -265,6 +274,7 @@ Future<ExtensionTasks> createLocalExtensionTasks(
 /// the same as in the last load, so it is not checked for changes.
 Future<ExtensionProject> loadExtensionProject(
   ExtensionPipelineContext context, {
+  required String taskName,
   required String name,
   required String rootDir,
   required String classpath,
@@ -272,19 +282,21 @@ Future<ExtensionProject> loadExtensionProject(
   required bool extensionUpToDate,
   required bool outputMayChange,
 }) async {
+  final absRootDir = p.canonicalize(rootDir);
   final model = await createJbExtensionModel(
     output,
     context.config,
     name,
-    rootDir,
+    absRootDir,
     classpath,
     context.cache,
     context.actors.jvmExecutor.takingJavaCommands(),
     extensionUpToDate: extensionUpToDate,
     outputMayChange: outputMayChange,
+    taskName: taskName,
   );
   _warnOnUnexpectedConfig(model, context.config.extras);
-  return ExtensionProject(name, p.canonicalize(rootDir), classpath, model);
+  return ExtensionProject(name, absRootDir, classpath, model);
 }
 
 void _verifyJBuildApiDependency(JbConfiguration config) {

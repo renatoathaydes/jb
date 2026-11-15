@@ -12,7 +12,11 @@ import 'constructors.dart';
 /// data model is cached.
 final modelJsonFile = 'jb-model.json';
 
-/// Returns `null` if the cached model does not exist, so the caller reloads it.
+/// Loads the extension tasks from the cached model, without starting the JVM.
+///
+/// Returns `null` if the cached model does not exist, or if it was cached for
+/// different constructor data (i.e. the jb configuration changed), so the caller
+/// must load the model again.
 Future<List<ExtensionTask>?> loadExtensionTasksFromCache(
   JbConfiguration config,
   Iterable<BasicExtensionTask> taskConfigs,
@@ -30,34 +34,34 @@ Future<List<ExtensionTask>?> loadExtensionTasksFromCache(
     return null;
   }
   logger.fine(() => 'Loading extension tasks data from cache');
-  final extras =
+  final cached =
       jsonDecode(await cacheFile.readAsString()) as Map<String, dynamic>;
-  return taskConfigs
-      .map((taskConfig) {
-        final extra = extras[taskConfig.name];
-        if (extra == null) {
-          failBuild(
-            reason:
-                'Cannot find extension task configuration in '
-                'cache ${cacheFile.path}: ${taskConfig.name}',
-          );
-        }
-
-        final taskName = '${taskConfig.name}#$projectName';
-        final constructorData = resolveTaskConstructorData(
-          config,
-          taskConfig,
-          taskName,
-        );
-
-        return ExtensionTask(
-          basicConfig: taskConfig,
-          constructorData: constructorData,
-          extraConfig: ExtensionTaskExtra.fromJson(extra),
-          qualifiedName: taskName,
-        );
-      })
-      .toList(growable: false);
+  final tasks = <ExtensionTask>[];
+  for (final taskConfig in taskConfigs) {
+    final taskName = '${taskConfig.name}#$projectName';
+    final constructorData = resolveTaskConstructorData(
+      config,
+      taskConfig,
+      taskName,
+    );
+    final entry = cached[taskConfig.name];
+    if (entry is! Map<String, dynamic> ||
+        jsonEncode(entry[_constructorDataKey]) != jsonEncode(constructorData)) {
+      logger.fine(
+        () => 'Cached extension model is outdated for task: $taskName',
+      );
+      return null;
+    }
+    tasks.add(
+      ExtensionTask(
+        basicConfig: taskConfig,
+        constructorData: constructorData,
+        extraConfig: ExtensionTaskExtra.fromJson(entry[_extraKey]),
+        qualifiedName: taskName,
+      ),
+    );
+  }
+  return tasks;
 }
 
 Future<void> cacheExtensionTasks(
@@ -68,11 +72,20 @@ Future<void> cacheExtensionTasks(
   logger.fine(() => 'Caching jb extension tasks for project $rootDir');
   final cacheFile = File(_modelCacheLocation(cache, rootDir));
   await cacheFile.parent.create(recursive: true);
-  final toSerialize = tasks.asMap().map(
-    (_, task) => MapEntry(task.name, task.extraConfig),
-  );
+  // the constructor data is part of the model, as the extension's task
+  // summary (inputs, outputs...) depends on it
+  final toSerialize = {
+    for (final task in tasks)
+      task.name: {
+        _constructorDataKey: task.constructorData,
+        _extraKey: task.extraConfig,
+      },
+  };
   await cacheFile.writeAsString(jsonEncode(toSerialize));
 }
+
+const _constructorDataKey = 'constructorData';
+const _extraKey = 'extra';
 
 String _modelCacheLocation(DartleCache cache, String dir) {
   return p.join(cache.rootDir, dir.asEncodedPath(), modelJsonFile);

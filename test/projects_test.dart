@@ -523,6 +523,69 @@ void main() {
         );
       });
 
+      test('does not start the JVM to load an unchanged extension', () async {
+        // the first run loads the extension, which may need the JVM
+        expectSuccess(
+          await runJb(Directory(usesExtensionDir), const [
+            'sample-task',
+            '--no-color',
+          ]),
+        );
+
+        // a task which does not need the JVM must not start it to load the extension
+        final result = await runJb(Directory(usesExtensionDir), const [
+          '-l',
+          'debug',
+          'showJbConfiguration',
+          '--no-color',
+        ]);
+        expectSuccess(result);
+        expect(
+          [...result.stdout, ...result.stderr].join('\n'),
+          isNot(contains('Starting JBuild RPC')),
+        );
+      });
+
+      test('reloads the extension when its task configuration changes', () async {
+        final yamlFile = File(p.join(usesExtensionDir, 'jbuild.yaml'));
+        final original = await yamlFile.readAsString();
+        try {
+          await yamlFile.writeAsString(
+            original.replaceAll(
+              'extensions: ["*.txt"]',
+              'extensions: ["*.md"]',
+            ),
+          );
+          // the task summary depends on the configuration, so the JVM is needed
+          final changed = await runJb(Directory(usesExtensionDir), const [
+            '-l',
+            'debug',
+            'showJbConfiguration',
+            '--no-color',
+          ]);
+          expectSuccess(changed);
+          expect(
+            [...changed.stdout, ...changed.stderr].join('\n'),
+            contains('Starting JBuild RPC'),
+          );
+
+          // and once reloaded, it is not loaded again
+          final unchanged = await runJb(Directory(usesExtensionDir), const [
+            '-l',
+            'debug',
+            'showJbConfiguration',
+            '--no-color',
+          ]);
+          expectSuccess(unchanged);
+          expect(
+            [...unchanged.stdout, ...unchanged.stderr].join('\n'),
+            isNot(contains('Starting JBuild RPC')),
+          );
+        } finally {
+          await yamlFile.writeAsString(original);
+        }
+      });
+
       test('can run custom task defined by extension project', () async {
         var jbResult = await runJb(Directory(usesExtensionDir), const [
           'sample-task',
@@ -597,13 +660,23 @@ void main() {
             // run the task "bar" newly defined by the extension project
             jbResult = await runJb(Directory(projectsDir), [
               'bar',
+              '-l',
+              'debug',
               '--no-color',
               '-p',
               p.basename(usesExtensionDir),
             ]);
             expectSuccess(jbResult);
             expect(jbResult.stdout, isA<List<String>>());
-            var lines = jbResult.stdout as List<String>;
+            var lines = (jbResult.stdout as List<String>)
+                .where(
+                  (line) =>
+                      line.contains('=========') ||
+                      line.contains('INFO - Executing ') ||
+                      line.contains('Running task ') ||
+                      line.endsWith('Hello from Bar!'),
+                )
+                .toList();
             var loadingLineIndex =
                 lines.indexed
                     .where(
@@ -627,7 +700,7 @@ void main() {
             );
             expect(
               lines[loadingLineIndex++],
-              endsWith("Running task 'buildExtension#my-extension'"),
+              endsWith("Running task '_buildExtension#my-extension'"),
             );
 
             // the extension project is re-compiled
@@ -653,11 +726,13 @@ void main() {
             );
             expect(
               lines[loadingLineIndex++],
-              endsWith("Running task 'checkExtensionJavaVersion#my-extension'"),
+              endsWith(
+                "Running task '_checkExtensionJavaVersion#my-extension'",
+              ),
             );
             expect(
               lines[loadingLineIndex++],
-              endsWith("Running task 'loadExtension#my-extension'"),
+              endsWith("Running task '_loadExtension#my-extension'"),
             );
             expect(
               lines[loadingLineIndex++],
