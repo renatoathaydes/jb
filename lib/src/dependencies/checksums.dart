@@ -6,6 +6,7 @@ import 'package:dartle/dartle.dart'
     show deleteAll, file, tempDir, failBuild, profile, elapsedTime;
 import 'package:path/path.dart' as p;
 
+import '../crypto.dart' show computeSha1;
 import '../config.dart' show logger;
 import '../jb_files.dart';
 import '../jvm_executor.dart';
@@ -13,6 +14,7 @@ import '../tasks.dart' show downloadDependenciesChecksumsTaskName;
 import '../utils.dart';
 import 'deps_cache.dart';
 
+/// Downloads the checksums of the dependencies
 Future<void> downloadDependenciesChecksums(
   JbFiles jbFiles,
   List<String> preArgs,
@@ -140,4 +142,33 @@ Future<void> writeChecksums(
       sink.writeln('${entry.key} ${entry.value}');
     }
   });
+}
+
+/// Fails if any downloaded jar does not have the expected checksum.
+Future<void> verifyChecksums(
+  String dir,
+  Map<String, String> checksums,
+  String checksumsFile,
+) async {
+  final errors = <String>[];
+  for (final entry in checksums.entries) {
+    final parts = entry.key.split(':');
+    if (parts.length < 3) continue;
+    final jar = File(p.join(dir, '${parts[1]}-${parts[2]}.jar'));
+    if (!await jar.exists()) continue;
+    final expected = entry.value.trim();
+    final actual = await computeSha1(jar.path);
+    if (actual != expected) {
+      errors.add(
+        'Checksum mismatch for ${entry.key}: expected $expected, '
+        'but the downloaded jar has $actual.\n'
+        '**Delete the jar ${jar.path} as it may be corrupted.**\n'
+        'If you trust the source of the jar, remove its entry from '
+        '$checksumsFile and retry to record the checksum.',
+      );
+    }
+  }
+  if (errors.isNotEmpty) {
+    failBuild(reason: errors.join('\n\n'));
+  }
 }

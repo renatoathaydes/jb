@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 
 import '../compute_compilation_path.dart' show computeLibsCompilationPath;
 import '../config.dart' show logger, CompileOutput, defaultSpec;
-import '../crypto.dart' show computeSha1;
 import '../dependencies/checksums.dart';
 import '../dependencies/deps_cache.dart';
 import '../dependencies/install.dart';
@@ -174,7 +173,7 @@ Future<void> _downloadExtension(
       downloadingDir,
       installToMavenLocal: false,
     );
-    await _verifyChecksums(
+    await verifyChecksums(
       downloadingDir,
       checksums,
       context.files.extensionDependenciesChecksumFile.path,
@@ -194,30 +193,6 @@ Future<void> _downloadExtension(
     () =>
         "Downloaded extension dependency '$coordinates' in ${elapsedTime(stopWatch)}",
   );
-}
-
-/// Fails if any downloaded jar does not have the expected checksum.
-Future<void> _verifyChecksums(
-  String dir,
-  Map<String, String> checksums,
-  String checksumsFile,
-) async {
-  for (final entry in checksums.entries) {
-    final parts = entry.key.split(':');
-    if (parts.length < 3) continue;
-    final jar = File(p.join(dir, '${parts[1]}-${parts[2]}.jar'));
-    if (!await jar.exists()) continue;
-    final expected = entry.value.trim();
-    final actual = await computeSha1(jar.path);
-    if (actual != expected) {
-      failBuild(
-        reason:
-            'Checksum mismatch for ${entry.key}: expected $expected, '
-            'but the downloaded jar has $actual. '
-            'Remove its entry from $checksumsFile to record the checksum again.',
-      );
-    }
-  }
 }
 
 Future<void> _loadDependencyExtension(

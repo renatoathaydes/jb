@@ -2,12 +2,15 @@ import 'dart:io';
 
 import 'package:dartle/dartle.dart';
 import 'package:jb/jb.dart' show groovy3, groovy4;
+import 'package:jb/jb.dart' show JbFiles;
 import 'package:jb/src/java_info.dart';
+import 'package:jb/src/utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'test_helper.dart';
 
+const _errorProneCore = 'com.google.errorprone:error_prone_core';
 const errorProneProjectDir = 'example/error-prone-java-project';
 const minimalProjectDir = 'example/minimal-java-project';
 const groovyProjectDir = 'example/groovy-example';
@@ -158,6 +161,68 @@ void main() async {
           ),
         );
       });
+      test(
+        'processor dependencies are verified against dependencies.sum',
+        () async {
+          final jbResult = await runJb(Directory(errorProneProjectDir), const [
+            '--no-color',
+            'installProcessorDependencies',
+          ]);
+          expectSuccess(jbResult);
+
+          // the install verified the jars against the tracked dependencies.sum,
+          // which must not be changed by the install
+          final committed = await Process.run('git', [
+            'show',
+            'HEAD:$errorProneProjectDir/dependencies.sum',
+          ]);
+          expect(
+            await File(
+              p.join(errorProneProjectDir, JbFiles.dependenciesChecksum),
+            ).readAsString(),
+            equals(committed.stdout as String),
+          );
+        },
+      );
+
+      test('fails when a processor jar does not match dependencies.sum', () async {
+        final projectDir = await _copyErrorProneProject();
+        try {
+          // record a wrong checksum for error_prone_core, so the downloaded jar
+          // does not match it when the processor dependencies are installed
+          final sumFile = File(
+            p.join(projectDir.path, JbFiles.dependenciesChecksum),
+          );
+          final wrongChecksum = '0' * 40;
+          await sumFile.writeAsString(
+            (await sumFile.readAsLines())
+                .map(
+                  (line) => line.startsWith('$_errorProneCore:')
+                      ? '${line.split(' ').first} $wrongChecksum'
+                      : line,
+                )
+                .join('\n'),
+          );
+
+          final jbResult = await runJb(Directory(projectDir.path), const [
+            '--no-color',
+            'installProcessorDependencies',
+          ]);
+          expectSuccess(jbResult, expectedExitCode: 1);
+          expect(
+            [...jbResult.stdout, ...jbResult.stderr].join('\n'),
+            matches(
+              RegExp(
+                'Checksum mismatch for ${RegExp.escape(_errorProneCore)}:\\S+: '
+                'expected $wrongChecksum',
+              ),
+            ),
+          );
+        } finally {
+          await projectDir.delete(recursive: true);
+        }
+      });
+
       // ErrorProne's latest version only works with Java 17+
     },
     skip: javaOlderThan17,
@@ -422,4 +487,12 @@ Future<void> _restoreGroovyProject(List<String> originalLines) async {
     {'MAVEN_LOCAL_HOME': mavenHome},
   );
   expectSuccess(jbResult);
+}
+
+/// Copies the error-prone example into a temporary directory, so tests can
+/// change its files without touching the tracked example.
+Future<Directory> _copyErrorProneProject() async {
+  final target = await Directory.systemTemp.createTemp('jb-error-prone-test');
+  await Directory(errorProneProjectDir).copyContentsInto(target.path).drain();
+  return target;
 }

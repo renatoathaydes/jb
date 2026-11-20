@@ -556,6 +556,7 @@ Task createInstallCompileDepsTask(
       preArgs,
       deps,
       libsDir,
+      JbFiles.dependenciesChecksum,
     );
     await _copy(projectDeps, libsDir, runtime: false);
     await _copyFiles(jarDeps, libsDir);
@@ -605,6 +606,7 @@ Task createInstallRuntimeDepsTask(
       preArgs,
       deps,
       runtimeLibsDir,
+      JbFiles.dependenciesChecksum,
     );
     await _copy(projectDeps, runtimeLibsDir, runtime: true);
     await _copyFiles([
@@ -659,6 +661,7 @@ Task createInstallProcessorDepsTask(
       preArgs,
       deps,
       libsDir,
+      JbFiles.dependenciesChecksum,
     );
     await _copy(projectDeps, libsDir, runtime: true);
     await _copyFiles(jarDeps, libsDir);
@@ -672,7 +675,8 @@ Task createInstallProcessorDepsTask(
     projectDeps,
     jarDeps,
     libsDir,
-    null,
+    // the checksums must be up to date before the jars are verified
+    downloadDependenciesChecksumsTaskName,
     cache,
   );
 }
@@ -724,8 +728,9 @@ Future<void> _install(
   JBuildSender jBuildSender,
   List<String> preArgs,
   Dependencies dependencies,
-  String outputDir,
-) async {
+  String outputDir, [
+  String? checksumFile,
+]) async {
   final deps = await dependencies.resolveArtifacts(includeLocal: false);
   final outDir = Directory(outputDir);
   if (await outDir.exists()) {
@@ -740,6 +745,15 @@ Future<void> _install(
     // project dependencies are installed in Maven Local unless disabled
     installToMavenLocal: 'JB_INSTALL_TO_MAVEN_LOCAL'.envVar().isNotFalse,
   );
+  if (checksumFile != null) {
+    final checksums = await computeDependenciesChecksums(
+      jBuildSender,
+      preArgs,
+      deps,
+      await readChecksums(File(checksumFile)),
+    );
+    await verifyChecksums(outputDir, checksums, checksumFile);
+  }
 }
 
 Future<void> _copy(
