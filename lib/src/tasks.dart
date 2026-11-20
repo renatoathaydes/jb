@@ -1085,7 +1085,7 @@ Task createTestTask(
       outputs: dir(config.config.testReportsDir),
       cache: cache,
     ),
-    description: 'Run tests. JBuild automatically detects JUnit5 and Spock.',
+    description: 'Run tests. JBuild automatically detects JUnit and Spock.',
     phase: evaluatePhase,
   );
 }
