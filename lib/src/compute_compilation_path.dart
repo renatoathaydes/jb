@@ -105,7 +105,7 @@ Future<void> computeCompilationPath(
 ) async {
   final artifactId = config.artifactId;
   final preArgs = config.config.preArgs(Directory.current.path);
-  await _computePaths(
+  await computeLibsCompilationPath(
     taskName,
     artifactId,
     preArgs,
@@ -127,7 +127,7 @@ Future<void> computeRuntimePath(
 ) async {
   final artifactId = config.artifactId;
   final preArgs = config.config.preArgs(workingDir);
-  await _computePaths(
+  await computeLibsCompilationPath(
     taskName,
     artifactId,
     preArgs,
@@ -138,7 +138,12 @@ Future<void> computeRuntimePath(
   );
 }
 
-Future<void> _computePaths(
+/// Computes the compilation path of all jars in [libsDir] and writes it to
+/// [outputFile] (or an empty path if there are no jars).
+///
+/// The compilation path is also made available to [compPath], so
+/// [getCompilationPath] can return it without reading the file.
+Future<void> computeLibsCompilationPath(
   String taskName,
   String artifactId,
   List<String> preArgs,

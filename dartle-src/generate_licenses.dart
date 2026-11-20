@@ -45,7 +45,7 @@ Future<void> _generateLicenses(_) async {
   }
 
   await _generate(licensesContainer['licenses'], File(licensesDartFile));
-  await formatDart(licensesDartFile);
+  await formatDart([licensesDartFile]);
 }
 
 Future<void> _generate(licenses, File output) async {

@@ -12,6 +12,7 @@ import 'compute_compilation_path.dart' as cp;
 import 'compute_compilation_path.dart';
 import 'dependencies/checksums.dart';
 import 'dependencies/deps_cache.dart';
+import 'dependencies/install.dart';
 import 'dependencies/printer.dart';
 import 'dependencies/writer.dart';
 import 'deps.dart';
@@ -246,9 +247,9 @@ Future<void> _compile(
   final artifactId = configContainer.artifactId;
   final compilePath = compPathFiles.compilePath;
 
-  await _checkDepsJavaVersion(
+  await checkDepsJavaVersion(
     jvmExecutor,
-    actors,
+    actors.compPath,
     artifactId,
     libsDir,
     compilePath,
@@ -555,6 +556,7 @@ Task createInstallCompileDepsTask(
       preArgs,
       deps,
       libsDir,
+      JbFiles.dependenciesChecksum,
     );
     await _copy(projectDeps, libsDir, runtime: false);
     await _copyFiles(jarDeps, libsDir);
@@ -604,6 +606,7 @@ Task createInstallRuntimeDepsTask(
       preArgs,
       deps,
       runtimeLibsDir,
+      JbFiles.dependenciesChecksum,
     );
     await _copy(projectDeps, runtimeLibsDir, runtime: true);
     await _copyFiles([
@@ -658,6 +661,7 @@ Task createInstallProcessorDepsTask(
       preArgs,
       deps,
       libsDir,
+      JbFiles.dependenciesChecksum,
     );
     await _copy(projectDeps, libsDir, runtime: true);
     await _copyFiles(jarDeps, libsDir);
@@ -671,7 +675,8 @@ Task createInstallProcessorDepsTask(
     projectDeps,
     jarDeps,
     libsDir,
-    null,
+    // the checksums must be up to date before the jars are verified
+    downloadDependenciesChecksumsTaskName,
     cache,
   );
 }
@@ -723,25 +728,32 @@ Future<void> _install(
   JBuildSender jBuildSender,
   List<String> preArgs,
   Dependencies dependencies,
-  String outputDir,
-) async {
+  String outputDir, [
+  String? checksumFile,
+]) async {
   final deps = await dependencies.resolveArtifacts(includeLocal: false);
   final outDir = Directory(outputDir);
   if (await outDir.exists()) {
     await outDir.delete(recursive: true);
   }
-  if (deps.isEmpty) {
-    return logger.fine("No dependencies to install for '$taskName'.");
-  }
-  await jBuildSender.send(
-    RunJBuild(taskName, preArgs, 'install', [
-      '--non-transitive',
-      if ('JB_INSTALL_TO_MAVEN_LOCAL'.envVar().isNotFalse) '--maven-local',
-      '--directory',
-      outputDir,
-      ...deps,
-    ]),
+  await installArtifacts(
+    taskName,
+    jBuildSender,
+    preArgs,
+    deps,
+    outputDir,
+    // project dependencies are installed in Maven Local unless disabled
+    installToMavenLocal: 'JB_INSTALL_TO_MAVEN_LOCAL'.envVar().isNotFalse,
   );
+  if (checksumFile != null) {
+    final checksums = await computeDependenciesChecksums(
+      jBuildSender,
+      preArgs,
+      deps,
+      await readChecksums(File(checksumFile)),
+    );
+    await verifyChecksums(outputDir, checksums, checksumFile);
+  }
 }
 
 Future<void> _copy(
@@ -825,15 +837,20 @@ Task createJavaCompilationPathTask(
   );
 }
 
-Future<void> _checkDepsJavaVersion(
+/// Fails the build if any jar or module in the compilation path of the libraries
+/// in [libsDir] requires a Java version newer than the current one.
+///
+/// The compilation path is read from [compilePath] (or from [compPath] if
+/// it was computed in this session).
+Future<void> checkDepsJavaVersion(
   Sendable<JvmExecutorMessage, Object?> jvmExecutor,
-  JbActors actors,
+  Sendable<CompilationPathMessage, CompilationPath?> compPath,
   String artifactId,
   String libsDir,
   String compilePath,
 ) async {
   final compilationPath = await getCompilationPath(
-    actors.compPath,
+    compPath,
     artifactId,
     libsDir,
     compilePath,
@@ -1082,7 +1099,7 @@ Task createTestTask(
       outputs: dir(config.config.testReportsDir),
       cache: cache,
     ),
-    description: 'Run tests. JBuild automatically detects JUnit5 and Spock.',
+    description: 'Run tests. JBuild automatically detects JUnit and Spock.',
     phase: evaluatePhase,
   );
 }

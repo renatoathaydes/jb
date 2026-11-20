@@ -63,12 +63,12 @@ extension _ArgsList on List<String> {
 }
 
 extension ExtensionProjectDartleOptions on Options {
-  Options copy({List<String>? tasksInvocation}) {
+  Options copy({List<String>? tasksInvocation, bool? parallelizeTasks}) {
     return Options(
       logLevel: logLevel,
       colorfulLog: colorfulLog,
       forceTasks: forceTasks,
-      parallelizeTasks: parallelizeTasks,
+      parallelizeTasks: parallelizeTasks ?? this.parallelizeTasks,
       resetCache: resetCache,
       logBuildTime: false,
       runPubGet: runPubGet,
