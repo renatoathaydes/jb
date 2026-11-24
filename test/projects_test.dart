@@ -347,6 +347,48 @@ void main() {
       );
     });
 
+    test(
+      'test runner checksum is recorded, and a wrong one fails the build',
+      () async {
+        final checksumFile = File(
+          p.join(testsProjectDir, JbFiles.testRunnerChecksum),
+        );
+        const runnerPrefix =
+            'org.junit.platform:junit-platform-console-standalone:';
+
+        final jbResult = await runJb(Directory(testsProjectDir), const [
+          'downloadTestRunner',
+          '--no-color',
+        ]);
+        expectSuccess(jbResult);
+        final recorded = (await checksumFile.readAsLines()).singleWhere(
+          (line) => line.startsWith(runnerPrefix),
+          orElse: () => fail('no test runner checksum was recorded'),
+        );
+        expect(recorded.split(' ').last, matches(RegExp(r'^[0-9a-f]{40}$')));
+
+        // a wrong recorded checksum must fail the build, as for project dependencies
+        final coordinates = recorded.substring(0, recorded.lastIndexOf(' '));
+        final wrongChecksum = '0' * 40;
+        await checksumFile.writeAsString('$coordinates $wrongChecksum\n');
+        await deleteAll(
+          dirs([
+            p.join(testsProjectDir, '.jb-cache', 'test-runner'),
+          ], includeHidden: true),
+        );
+
+        final result = await runJb(Directory(testsProjectDir), const [
+          'downloadTestRunner',
+          '--no-color',
+        ]);
+        expect(result.exitCode, isNot(0));
+        expect(
+          [...result.stdout, ...result.stderr].join('\n'),
+          contains('Checksum mismatch for $runnerPrefix'),
+        );
+      },
+    );
+
     test('can run single Java test', () async {
       // install compile dependencies and check they are installed
       final jbInstallResult = await runJb(Directory(testsProjectDir), const [

@@ -508,6 +508,8 @@ Task createInstallGroovydocsTask(
       preArgs,
       deps,
       libsDir,
+      checksumFile: JbFiles.groovydocsChecksum,
+      recordChecksums: true,
     );
   }
 
@@ -556,7 +558,7 @@ Task createInstallCompileDepsTask(
       preArgs,
       deps,
       libsDir,
-      JbFiles.dependenciesChecksum,
+      checksumFile: JbFiles.dependenciesChecksum,
     );
     await _copy(projectDeps, libsDir, runtime: false);
     await _copyFiles(jarDeps, libsDir);
@@ -606,7 +608,7 @@ Task createInstallRuntimeDepsTask(
       preArgs,
       deps,
       runtimeLibsDir,
-      JbFiles.dependenciesChecksum,
+      checksumFile: JbFiles.dependenciesChecksum,
     );
     await _copy(projectDeps, runtimeLibsDir, runtime: true);
     await _copyFiles([
@@ -661,7 +663,7 @@ Task createInstallProcessorDepsTask(
       preArgs,
       deps,
       libsDir,
-      JbFiles.dependenciesChecksum,
+      checksumFile: JbFiles.dependenciesChecksum,
     );
     await _copy(projectDeps, libsDir, runtime: true);
     await _copyFiles(jarDeps, libsDir);
@@ -723,15 +725,34 @@ Task _createInstallDepsTask(
   );
 }
 
+/// Installs [dependencies] into [outputDir].
+///
+/// If [checksumFile] is given, the installed jars are verified against the
+/// checksums in it. Checksums of artifacts not in the file are fetched from the
+/// repositories. If [recordChecksums] is `true`, the file is updated with all
+/// those checksums before the installation, so they are pinned for next time.
 Future<void> _install(
   String taskName,
   JBuildSender jBuildSender,
   List<String> preArgs,
   Dependencies dependencies,
-  String outputDir, [
+  String outputDir, {
   String? checksumFile,
-]) async {
+  bool recordChecksums = false,
+}) async {
   final deps = await dependencies.resolveArtifacts(includeLocal: false);
+  Map<String, String>? checksums;
+  if (checksumFile != null) {
+    checksums = await computeDependenciesChecksums(
+      jBuildSender,
+      preArgs,
+      deps,
+      await readChecksums(File(checksumFile)),
+    );
+    if (recordChecksums) {
+      await writeChecksums(File(checksumFile), checksums);
+    }
+  }
   final outDir = Directory(outputDir);
   if (await outDir.exists()) {
     await outDir.delete(recursive: true);
@@ -745,13 +766,7 @@ Future<void> _install(
     // project dependencies are installed in Maven Local unless disabled
     installToMavenLocal: 'JB_INSTALL_TO_MAVEN_LOCAL'.envVar().isNotFalse,
   );
-  if (checksumFile != null) {
-    final checksums = await computeDependenciesChecksums(
-      jBuildSender,
-      preArgs,
-      deps,
-      await readChecksums(File(checksumFile)),
-    );
+  if (checksumFile != null && checksums != null) {
     await verifyChecksums(outputDir, checksums, checksumFile);
   }
 }
@@ -1126,6 +1141,8 @@ Future<void> _downloadTestRunner(
       (scope) => scope.includedAtRuntime(),
     ),
     outDir.path,
+    checksumFile: JbFiles.testRunnerChecksum,
+    recordChecksums: true,
   );
 }
 

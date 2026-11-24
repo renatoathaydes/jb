@@ -10,6 +10,7 @@
 - improved the `publish` task.
 - better error message when invoking ambiguous task name (thanks to Dartle update).
 - the `clean` tasks no longer delete `dependencies.sum`.
+- the `installGroovydocsRuntime` and `downloadTestRunner` tasks verify the jars they install against checksums, recorded in `groovydocs-dependencies.sum` and `test-runner-dependencies.sum`.
 
 # 0.17.0
 

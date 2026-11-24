@@ -39,7 +39,11 @@ void projectGroup(
   ], includeHidden: true);
   final checksumFiles = deleteChecksums
       ? files([
-          for (final d in rootDirs) p.join(d, JbFiles.dependenciesChecksum),
+          for (final d in rootDirs) ...[
+            p.join(d, JbFiles.dependenciesChecksum),
+            p.join(d, JbFiles.groovydocsChecksum),
+            p.join(d, JbFiles.testRunnerChecksum),
+          ],
         ])
       : FileCollection.empty;
 

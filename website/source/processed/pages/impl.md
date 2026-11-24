@@ -243,6 +243,9 @@ except that dependencies come from the `groovydocs-runtime-dependencies` configu
 all dependencies that are scoped for the runtime are installed, and the installation directory
 is `.jb-cache/groovydocs-runtime-dependencies`.
 
+The checksums of the installed jars are recorded in the `groovydocs-dependencies.sum` file, and the jars are
+verified against them, just like the project dependencies are verified against `dependencies.sum`.
+
 This task is executed automatically when publishing Groovy libraries, to generate the `groovydocs` jar.
 
 ### compile
@@ -286,6 +289,9 @@ Depends on: none
 This task reads the test dependencies file created by [writeDependencies](#writeDependencies),
 which contains the test runner to use for this project, if any, and then downloads
 the required artifacts to the directory `.jb-cache/test-runner`.
+
+The checksums of the downloaded jars are recorded in the `test-runner-dependencies.sum` file, and the jars are
+verified against them, just like the project dependencies are verified against `dependencies.sum`.
 
 This task also validates that the test configuration exists (hence, it should only run when this project has tests).
 

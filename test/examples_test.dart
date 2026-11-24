@@ -287,6 +287,32 @@ void main() async {
         );
       });
 
+      test('installs groovydocs tools and records their checksum', () async {
+        final checksumFile = File(
+          p.join(groovyProjectDir, JbFiles.groovydocsChecksum),
+        );
+        try {
+          final jbResult = await runJb(Directory(groovyProjectDir), const [
+            'installGroovydocsRuntime',
+            '--no-color',
+          ]);
+          expectSuccess(jbResult);
+          expect(
+            await checksumFile.readAsString(),
+            contains('org.apache.groovy:groovy-groovydoc:$groovy4Version '),
+          );
+        } finally {
+          await deleteAll(
+            MultiFileCollection([
+              file(checksumFile.path),
+              dirs([
+                p.join(groovyProjectDir, '.jb-cache', 'groovydocs-libs'),
+              ], includeHidden: true),
+            ]),
+          );
+        }
+      });
+
       Future<void> runGroovyProjectTestPublishTask(
         String mavenHome,
         groovyVersion,

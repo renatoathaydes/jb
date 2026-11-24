@@ -11,6 +11,10 @@ class JbFiles {
   static const String jbCache = '.jb-cache';
   static const String dependenciesChecksum = 'dependencies.sum';
   static const String extensionDependenciesChecksum = 'jb-ext-dependencies.sum';
+  // checksums of groovydocs tools and of the test runner, kept apart from
+  // dependencies.sum as they are not project dependencies
+  static const String groovydocsChecksum = 'groovydocs-dependencies.sum';
+  static const String testRunnerChecksum = 'test-runner-dependencies.sum';
   final File jbuildJar;
   final ConfigSource configSource;
   final String processorLibsDir;
