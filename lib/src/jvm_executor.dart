@@ -100,10 +100,12 @@ final class _JBuildActor implements Handler<JvmExecutorMessage, Object?> {
 
     final javaHome = javaInfo?.javaHome;
 
+    // on Windows, run the JVM without a shell, so that destroying the process
+    // also stops the JVM: killing the shell would leave the JVM running
     final proc = await Process.start(
       javaHome.vmapOr((home) => p.join(home, 'bin', 'java'), () => 'java'),
       args,
-      runInShell: true,
+      runInShell: !Platform.isWindows,
       workingDirectory: workingDirectory,
     );
 
