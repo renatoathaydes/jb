@@ -149,12 +149,36 @@ List<String> outputOfProjectDependencies(ProcessResult result) {
   );
 }
 
+/// Pauses between attempts of a `jb` run that was rate limited by a Maven repository.
+const _rateLimitRetryDelays = [
+  Duration(seconds: 10),
+  Duration(seconds: 30),
+  Duration(seconds: 60),
+];
+
+/// Runs `jb`, retrying after a pause when a Maven repository rate limits it.
+///
+/// Maven Central answers HTTP 429 (Too Many Requests) to bursts of requests from
+/// the same IP address, which happens on shared CI runners. Only that failure is
+/// retried, so any other failure is reported right away.
 Future<ProcessResult> runJb(
   Directory workingDir, [
   List<String> args = const [],
   Map<String, String> env = const {},
-]) {
+]) async {
+  for (final delay in _rateLimitRetryDelays) {
+    final result = await runProcess(jbuildExecutable, workingDir, args, env);
+    if (result.exitCode == 0 || !_isRateLimited(result)) return result;
+    await Future.delayed(delay);
+  }
   return runProcess(jbuildExecutable, workingDir, args, env);
+}
+
+bool _isRateLimited(ProcessResult result) {
+  return [
+    ...result.stdout,
+    ...result.stderr,
+  ].any((line) => line.contains('http-status=429'));
 }
 
 Future<Process> startJb(
