@@ -30,6 +30,7 @@ import 'utils.dart';
 enum _EnvVars(final String name) {
   mavenLocalHome("MAVEN_LOCAL_HOME"),
   portalTokenXmlFile("SONATYPE_PORTAL_TOKEN_XML_FILE"),
+  gpgCommand("GPG_COMMAND"),
 }
 
 /// A Maven repository publisher.
@@ -359,7 +360,7 @@ Future<File> _signFile(File file) async {
     logger.info(() => 'Signing $file');
     try {
       await execProc(
-        Process.start('gpg', [
+        Process.start(_gpgCommand(), [
           '--armor',
           '--detach-sign',
           '--pinentry-mode',
@@ -392,3 +393,19 @@ String _fileFor(
   String qualifier = '',
   String extension = '.jar',
 }) => '${artifact.module}-${artifact.version}$qualifier$extension';
+
+String _gpgCommand() {
+  final gpg = Platform.environment[_EnvVars.gpgCommand.name];
+  if (gpg != null) {
+    logger.finer(
+      () =>
+          '${_EnvVars.gpgCommand.name} environment variable will be used for GPG command: $gpg',
+    );
+    return gpg;
+  }
+  logger.finer(
+    () =>
+        '${_EnvVars.gpgCommand.name} environment variable is not set, will use "gpg" command',
+  );
+  return 'gpg';
+}

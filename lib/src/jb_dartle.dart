@@ -36,6 +36,9 @@ class JbDartle with JbDartleTasks {
   /// Whether this project is the root project being executed.
   final bool isRoot;
 
+  /// The jb extensions loaded for this project, before its build starts.
+  final List<ExtensionProject> _extensionProjects;
+
   late final Task compile,
       publicationCompile,
       checkJavaVersion,
@@ -77,6 +80,7 @@ class JbDartle with JbDartleTasks {
     this._options,
     this._actors,
     this.isRoot,
+    this._extensionProjects,
   ) {
     final localDeps = Future.wait([
       _resolveLocalDependencies(_config.allDependencies, name: 'main'),
@@ -95,7 +99,8 @@ class JbDartle with JbDartleTasks {
     Options options,
     JbActors actors, {
     required bool isRoot,
-  }) : this._(files, cwi, cache, options, actors, isRoot);
+    required List<ExtensionProject> extensionProjects,
+  }) : this._(files, cwi, cache, options, actors, isRoot, extensionProjects);
 
   /// Get the default tasks (`{ compile }`).
   @override
@@ -285,13 +290,7 @@ class JbDartle with JbDartleTasks {
     );
     updateJBuild = createUpdateJBuildTask(javaExecutor);
 
-    final extensionProjects = await loadExtensionProjects(
-      _files,
-      _actors,
-      _options,
-      _cwi,
-      _cache,
-    ).toList();
+    final extensionProjects = _extensionProjects;
 
     final extensionTasks = extensionProjects.vmap((projects) {
       verifyExtensionTasks(_config, projects);

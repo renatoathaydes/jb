@@ -10,12 +10,12 @@ import 'utils.dart' show DirectoryExtension, StringExtension;
 
 const jshellHelp = '''Run jshell with this project's runtime classpath.
 
-      This allows quick experimentation with Java code in a REPL.
+      This task allows quick experimentation with Java code in a REPL.
       jb will watch the project sources while the REPL is running, re-compiling as
       necessary.
       Use `/reset` to hot-reload the classpath into the REPL.
       
-      Arguments are passed to jshell.''';
+      Task arguments are passed to jshell.''';
 
 Future<void> jshell(
   jb.JbDartleTasks runner,

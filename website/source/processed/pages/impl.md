@@ -23,12 +23,16 @@ This page explains in detail what each built-in task does, how they do it.
 _Setup Phase_:
 
 * [`clean`](#clean)
+* [`checkJavaVersion`](#checkJavaVersion)
+* [`showJbConfiguration`](#showJbConfiguration)
+* [`updateJBuild`](#updateJBuild)
 
 _Deps Phase_:
 
 * [`writeDependencies`](#writeDependencies)
 * [`verifyDependencies`](#verifyDependencies)
 * [`dependencies`](#dependencies)
+* [`downloadDependenciesChecksums`](#downloadDependenciesChecksums)
 
 _Build Phase_:
 
@@ -37,11 +41,10 @@ _Build Phase_:
 * [`installCompileDependencies`](#installCompileDependencies)
 * [`installRuntimeDependencies`](#installRuntimeDependencies)
 * [`installProcessorDependencies`](#installProcessorDependencies)
+* [`installGroovydocsRuntime`](#installGroovydocsRuntime)
 * [`compile`](#compile)
-* [`updateJBuild`](#updateJBuild)
 * [`downloadTestRunner`](#downloadTestRunner)
 * [`publicationCompile`](#publicationCompile)
-* [`showJbConfiguration`](#showJbConfiguration)
 * [`requirements`](#requirements)
 * [`createEclipseFiles`](#createEclipseFiles)
 
@@ -65,6 +68,14 @@ Phase: `Setup`
 Depends on: none
 
 This task is implemented by `Dartle`.
+
+### checkJavaVersion
+<div id="checkJavaVersion"></div>
+
+Check if the Java executable has the same version as in the previous build.
+
+Phase: `Setup`
+Depends on: none
 
 ### writeDependencies
 <div id="writeDependencies"></div>
@@ -108,7 +119,7 @@ memory for subsequent tasks.
 Fails the build if dependency version conflicts are detected.
 
 Phase: `Deps`
-Depends on: [writeDependencies](#writeDependencies)
+Depends on: [`writeDependencies`](#writeDependencies)
 
 This task reads the dependencies files created by `writeDependencies` and checks if there's any version conflict between
 dependencies.
@@ -123,12 +134,20 @@ the actor reads the dependencies file.
 Shows information about project dependencies.
 
 Phase: `Deps`
-Depends on: [writeDependencies](#writeDependencies)
+Depends on: [`writeDependencies`](#writeDependencies)
 
 The `_DepsCacheHandler` actor is used to get dependencies from memory (if `writeDependencies` has run in the same build)
 or parse the dependencies files.
 
 The `_JBuildDepsPrinter` class is used to print the dependency graph.
+
+### downloadDependenciesChecksums
+<div id="downloadDependenciesChecksums"></div>
+
+Downloads dependencies checksums.
+
+Phase: `Deps`
+Depends on: [`verifyDependencies`](#verifyDependencies)
 
 ### createJavaCompilationPath
 <div id="createJavaCompilationPath"></div>
@@ -136,7 +155,7 @@ The `_JBuildDepsPrinter` class is used to print the dependency graph.
 Computes the Java compile classpath and modulepath.
 
 Phase: `Build`
-Depends on: [installCompileDependencies](#installCompileDependencies)
+Depends on: [`installCompileDependencies`](#installCompileDependencies)
 
 This task looks at the jars in the `compile-libs` directory, which is created by the
 [installCompileDependencies](#installCompileDependencies) task. It then asks JBuild to
@@ -157,7 +176,7 @@ The compilation path is used by the [compile](#compile) task later.
 Computes the Java runtime classpath and modulepath.
 
 Phase: `Build`
-Depends on: [installRuntimeDependencies](#installRuntimeDependencies)
+Depends on: [`installRuntimeDependencies`](#installRuntimeDependencies)
 
 This task is implemented exactly as [createJavaCompilationPath](#createJavaCompilationPath),
 but instead of looking at the `compile-libs`, it looks at the `runtime-libs`, and instead of writing to the file
@@ -171,7 +190,7 @@ The Java runtime path is used by the [runJavaMainClass](#runJavaMainClass) task 
 Install `compile` scoped dependencies.
 
 Phase: `Build`
-Depends on: [verifyDependencies](#verifyDependencies)
+Depends on: [`verifyDependencies`](#verifyDependencies)
 
 By default, dependencies are installed in the configured libs
 directory (given by `compile-libs-dir`) and also on Maven Local.
@@ -180,7 +199,7 @@ Notice that if the dependency was found in Maven Local, JBuild is smart enough t
 
 > To disable Maven Local, set the `JB_INSTALL_TO_MAVEN_LOCAL` env var to `false`.
 
-Information about non-local dependencies is obtained from the data created by `[writeDependencies](#writeDependencies)`,
+Information about non-local dependencies is obtained from the data created by [`writeDependencies`](#writeDependencies),
 then JBuild is asked to install all dependencies on the libs directory.
 
 For local dependencies (i.e. those which define a `path`), their output is copied directly into the libs
@@ -192,7 +211,7 @@ directory.
 Install `runtime` scoped dependencies.
 
 Phase: `Build`
-Depends on: [verifyDependencies](#verifyDependencies), [compile](#compile)
+Depends on: [`verifyDependencies`](#verifyDependencies), [`compile`](#compile)
 
 This task is implemented exactly as [installCompileDependencies](#installCompileDependencies),
 except that all dependencies that are scoped for the runtime are installed, and the installation directory
@@ -204,12 +223,30 @@ is given by `runtime-libs-dir`.
 Install the Java annotation processor dependencies.
 
 Phase: `Build`
-Depends on: [verifyDependencies](#verifyDependencies), [compile](#compile)
+Depends on: [`verifyDependencies`](#verifyDependencies), [`compile`](#compile)
 
 This task is implemented exactly as [installCompileDependencies](#installCompileDependencies),
 except that dependencies come from the `processor-dependencies` configuration, not `dependencies`,
 all dependencies that are scoped for the runtime are installed, and the installation directory
 is `.jb-cache/processor-dependencies`.
+
+### installGroovydocsRuntime
+<div id="installGroovydocsRuntime"></div>
+
+Install the Groovydocs runtime dependencies.
+
+Phase: `Build`
+Depends on: [`verifyDependencies`](#verifyDependencies), [`compile`](#compile)
+
+This task is implemented exactly as [installCompileDependencies](#installCompileDependencies),
+except that dependencies come from the `groovydocs-runtime-dependencies` configuration, not `dependencies`,
+all dependencies that are scoped for the runtime are installed, and the installation directory
+is `.jb-cache/groovydocs-runtime-dependencies`.
+
+The checksums of the installed jars are recorded in the `groovydocs-dependencies.sum` file, and the jars are
+verified against them, just like the project dependencies are verified against `dependencies.sum`.
+
+This task is executed automatically when publishing Groovy libraries, to generate the `groovydocs` jar.
 
 ### compile
 <div id="compile"></div>
@@ -217,7 +254,7 @@ is `.jb-cache/processor-dependencies`.
 Compile Java source code.
 
 Phase: `Build`
-Depends on: [createJavaCompilationPath](#createJavaCompilationPath), [installProcessorDependencies](#installProcessorDependencies)
+Depends on: [`createJavaCompilationPath`](#createJavaCompilationPath), [`installProcessorDependencies`](#installProcessorDependencies)
 
 While the main goal of this task is to compile source code, this task does a few other things as well.
 
@@ -236,6 +273,11 @@ Finally, a new source tree is generated for the next build.
 ### updateJBuild
 <div id="updateJBuild"></div>
 
+Updates the JBuild jar used by jb.
+
+Phase: `Setup`
+Depends on: none
+
 ### downloadTestRunner
 <div id="downloadTestRunner"></div>
 
@@ -248,33 +290,113 @@ This task reads the test dependencies file created by [writeDependencies](#write
 which contains the test runner to use for this project, if any, and then downloads
 the required artifacts to the directory `.jb-cache/test-runner`.
 
+The checksums of the downloaded jars are recorded in the `test-runner-dependencies.sum` file, and the jars are
+verified against them, just like the project dependencies are verified against `dependencies.sum`.
+
 This task also validates that the test configuration exists (hence, it should only run when this project has tests).
 
 ### publicationCompile
-<div id="imports"></div>
+<div id="publicationCompile"></div>
+
+Compile Java source code, javadocs (or groovydocs) and sources jar.
+
+Phase: `Build`
+Depends on: [`compile`](#compile), [`installProcessorDependencies`](#installProcessorDependencies), [`installGroovydocsRuntime`](#installGroovydocsRuntime)
 
 ### test
 <div id="test"></div>
 
+Run tests. JBuild automatically detects the JUnit and Spock frameworks.
+
+Phase: `Evaluate`
+Depends on: [`compile`](#compile), [`downloadTestRunner`](#downloadTestRunner), [`installRuntimeDependencies`](#installRuntimeDependencies)
+
+If a project does not depend on the JUnit or Spock APIs, this task fails as it cannot execute tests.
+Otherwise, it invokes the respective test runner to run the tests.
+
 ### runJavaMainClass
 <div id="runJavaMainClass"></div>
+
+Run the project's main class.
+
+Phase: `Evaluate`
+Depends on: [`compile`](#compile), [`createJavaRuntimePath`](#createJavaRuntimePath)
+
+Task arguments are passed to the Java class.
+
+This task fails unless a `main-class` setting has been configured.
 
 ### jshell
 <div id="jshell"></div>
 
+Start `jshell` with the project's runtime classpath loaded.
+
+Phase: `Evaluate`
+Depends on: [`compile`](#compile), [`installRuntimeDependencies`](#installRuntimeDependencies)
+
+This task allows quick experimentation with Java code in a REPL.
+`jb` will watch the project sources while the REPL is running, re-compiling as
+necessary.
+
+Use `/reset` to hot-reload the classpath into the REPL.
+
+Task arguments are passed to jshell.
+
 ### showJbConfiguration
 <div id="showJbConfiguration"></div>
+
+Shows the fully resolved jb configuration.
+
+Phase: `Setup`
+Depends on: none
 
 ### requirements
 <div id="requirements"></div>
 
+Shows information about project requirements.
+
+Phase: `Build`
+Depends on: [`compile`](#compile)
+
+By default, this task shows the external Java classes required by the project. These are the
+classes provided by dependencies, not by the project's own source code.
+
+The `:-c` option can be used to show requirements, including internal ones, for each individual class in this project.
+
 ### createEclipseFiles
 <div id="createEclipseFiles"></div>
+
+Generate Eclipse IDE files for the project.
+
+Phase: `Build`
+Depends on: [`installCompileDependencies`](#installCompileDependencies)
+
+**This task is experimental**.
 
 ### generatePom
 <div id="generatePom"></div>
 
+Generate a Maven POM for publishing the project.
+
+Phase: `Publish`
+Depends on: [`writeDependencies`](#writeDependencies)
+
 ### publish
 <div id="publish"></div>
 
-TODO
+Publish project to a Maven repository (Maven local by default).
+
+Phase: `Publish`
+Depends on: [`writeDependencies`](#writeDependencies)
+
+Files are signed, if enabled, using `gpg`.
+
+The following arguments may be provided:
+    - local dir or http(s) URL.
+    - `-m` for Maven Central.
+    - `--no-sign` to skip signing artifacts.
+
+Environment variables:
+    - `MAVEN_LOCAL_HOME` - location of the local Maven home.
+    - `SONATYPE_PORTAL_TOKEN_XML_FILE` - location of the Sonatype portal token XML file.
+    - `GPG_COMMAND` - which command to use to invoke `gpg`.

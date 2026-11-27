@@ -3,6 +3,7 @@ import 'package:dartle/dartle_cache.dart' show DartleCache;
 
 import 'config.dart';
 import 'config_import.dart';
+import 'extension/extension_pipeline.dart';
 import 'jb_actors.dart';
 import 'jb_dartle.dart';
 import 'jb_files.dart';
@@ -27,6 +28,14 @@ class JbRunner {
   Future<List<ParallelTasks>> run(Options options, {bool isRoot = true}) async {
     final cache = DartleCache(JbFiles.jbCache);
 
+    // extensions must be loaded before the build because they may define tasks
+    final extensionProjects = await loadExtensionProjects(
+      files,
+      _actors,
+      options,
+      cwi,
+    );
+
     final jb = JbDartle.create(
       files,
       cwi,
@@ -34,6 +43,7 @@ class JbRunner {
       options,
       _actors,
       isRoot: isRoot,
+      extensionProjects: extensionProjects,
     );
 
     await jb.init;

@@ -10,6 +10,11 @@ const jbExtension = 'jb-extension';
 class JbFiles {
   static const String jbCache = '.jb-cache';
   static const String dependenciesChecksum = 'dependencies.sum';
+  static const String extensionDependenciesChecksum = 'jb-ext-dependencies.sum';
+  // checksums of groovydocs tools and of the test runner, kept apart from
+  // dependencies.sum as they are not project dependencies
+  static const String groovydocsChecksum = 'groovydocs-dependencies.sum';
+  static const String testRunnerChecksum = 'test-runner-dependencies.sum';
   final File jbuildJar;
   final ConfigSource configSource;
   final String processorLibsDir;
@@ -19,6 +24,11 @@ class JbFiles {
   File get dependenciesFile => File(p.join(jbCache, 'dependencies.json'));
 
   File get dependenciesChecksumFile => File(dependenciesChecksum);
+
+  /// Checksums of the jb extensions' dependencies, kept apart from
+  /// [dependenciesChecksumFile] as extensions are loaded in a separate pipeline.
+  File get extensionDependenciesChecksumFile =>
+      File(extensionDependenciesChecksum);
 
   File get processorDependenciesFile =>
       File(p.join(jbCache, 'processor-dependencies.json'));

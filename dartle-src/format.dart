@@ -2,9 +2,11 @@ import 'dart:io' show Process;
 
 import 'package:dartle/dartle.dart' show failBuild, exec;
 
-Future<void> formatDart(String path) async {
-  final formatExitCode = await exec(Process.start('dart', ['format', path]));
+Future<void> formatDart(Iterable<String> paths) async {
+  final formatExitCode = await exec(
+    Process.start('dart', ['format', ...paths]),
+  );
   if (formatExitCode != 0) {
-    failBuild(reason: 'Could not format: $path');
+    failBuild(reason: 'Could not format: $paths');
   }
 }

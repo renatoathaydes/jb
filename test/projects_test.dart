@@ -347,6 +347,48 @@ void main() {
       );
     });
 
+    test(
+      'test runner checksum is recorded, and a wrong one fails the build',
+      () async {
+        final checksumFile = File(
+          p.join(testsProjectDir, JbFiles.testRunnerChecksum),
+        );
+        const runnerPrefix =
+            'org.junit.platform:junit-platform-console-standalone:';
+
+        final jbResult = await runJb(Directory(testsProjectDir), const [
+          'downloadTestRunner',
+          '--no-color',
+        ]);
+        expectSuccess(jbResult);
+        final recorded = (await checksumFile.readAsLines()).singleWhere(
+          (line) => line.startsWith(runnerPrefix),
+          orElse: () => fail('no test runner checksum was recorded'),
+        );
+        expect(recorded.split(' ').last, matches(RegExp(r'^[0-9a-f]{40}$')));
+
+        // a wrong recorded checksum must fail the build, as for project dependencies
+        final coordinates = recorded.substring(0, recorded.lastIndexOf(' '));
+        final wrongChecksum = '0' * 40;
+        await checksumFile.writeAsString('$coordinates $wrongChecksum\n');
+        await deleteAll(
+          dirs([
+            p.join(testsProjectDir, '.jb-cache', 'test-runner'),
+          ], includeHidden: true),
+        );
+
+        final result = await runJb(Directory(testsProjectDir), const [
+          'downloadTestRunner',
+          '--no-color',
+        ]);
+        expect(result.exitCode, isNot(0));
+        expect(
+          [...result.stdout, ...result.stderr].join('\n'),
+          contains('Checksum mismatch for $runnerPrefix'),
+        );
+      },
+    );
+
     test('can run single Java test', () async {
       // install compile dependencies and check they are installed
       final jbInstallResult = await runJb(Directory(testsProjectDir), const [
@@ -435,6 +477,62 @@ void main() {
     });
   });
 
+  projectGroup(usesExtensionDir, 'uses dependency extension with wrong checksum', () {
+    final extensionDir = p.join(
+      usesExtensionDir,
+      '.jb-cache',
+      'extension-dependencies',
+      'com.example#example-extension#1.0',
+    );
+    final wrongChecksum = '0' * 40;
+
+    setUp(() async {
+      // start from the committed file, as the loop above may have rewritten it
+      await _restoreExtensionProjectYaml(committedUsesExtensionYaml);
+      _changeExtensionProjectYaml('com.example:example-extension:1.0');
+    });
+
+    tearDown(() async {
+      await _restoreExtensionProjectYaml(committedUsesExtensionYaml);
+      await deleteAll(
+        MultiFileCollection([
+          dirs([extensionDir], includeHidden: true),
+          file(p.join(usesExtensionDir, JbFiles.extensionDependenciesChecksum)),
+        ]),
+      );
+    });
+
+    test(
+      'fails when downloaded jar does not match the recorded checksum',
+      () async {
+        // record a wrong checksum, and make sure the extension is downloaded again
+        await File(
+          p.join(usesExtensionDir, JbFiles.extensionDependenciesChecksum),
+        ).writeAsString('com.example:example-extension:1.0 $wrongChecksum\n');
+        await deleteAll(dir(extensionDir));
+
+        final result = await runJb(Directory(usesExtensionDir), const [
+          'sample-task',
+          '--no-color',
+        ]);
+
+        expect(result.exitCode, isNot(0));
+        expect(
+          [...result.stdout, ...result.stderr].join('\n'),
+          contains(
+            'Checksum mismatch for com.example:example-extension:1.0: '
+            'expected $wrongChecksum',
+          ),
+        );
+        expect(
+          Directory(extensionDir).existsSync(),
+          isFalse,
+          reason: 'the jars that do not match must not be kept',
+        );
+      },
+    );
+  });
+
   for (var i = 0; i < 2; i++) {
     // first iteration: use the extension as a dependency
     final kind = (i == 0) ? 'dependency' : 'local';
@@ -460,8 +558,74 @@ void main() {
             ], includeHidden: true),
             // these files are created by the test
             file(p.join(usesExtensionDir, 'input-resources', 'new.txt')),
+            file(
+              p.join(usesExtensionDir, JbFiles.extensionDependenciesChecksum),
+            ),
           ]),
         );
+      });
+
+      test('does not start the JVM to load an unchanged extension', () async {
+        // the first run loads the extension, which may need the JVM
+        expectSuccess(
+          await runJb(Directory(usesExtensionDir), const [
+            'sample-task',
+            '--no-color',
+          ]),
+        );
+
+        // a task which does not need the JVM must not start it to load the extension
+        final result = await runJb(Directory(usesExtensionDir), const [
+          '-l',
+          'debug',
+          'showJbConfiguration',
+          '--no-color',
+        ]);
+        expectSuccess(result);
+        expect(
+          [...result.stdout, ...result.stderr].join('\n'),
+          isNot(contains('Starting JBuild RPC')),
+        );
+      });
+
+      test('reloads the extension when its task configuration changes', () async {
+        final yamlFile = File(p.join(usesExtensionDir, 'jbuild.yaml'));
+        final original = await yamlFile.readAsString();
+        try {
+          await yamlFile.writeAsString(
+            original.replaceAll(
+              'extensions: ["*.txt"]',
+              'extensions: ["*.md"]',
+            ),
+          );
+          // the task summary depends on the configuration, so the JVM is needed
+          final changed = await runJb(Directory(usesExtensionDir), const [
+            '-l',
+            'debug',
+            'showJbConfiguration',
+            '--no-color',
+          ]);
+          expectSuccess(changed);
+          expect(
+            [...changed.stdout, ...changed.stderr].join('\n'),
+            contains('Starting JBuild RPC'),
+          );
+
+          // and once reloaded, it is not loaded again
+          final unchanged = await runJb(Directory(usesExtensionDir), const [
+            '-l',
+            'debug',
+            'showJbConfiguration',
+            '--no-color',
+          ]);
+          expectSuccess(unchanged);
+          expect(
+            [...unchanged.stdout, ...unchanged.stderr].join('\n'),
+            isNot(contains('Starting JBuild RPC')),
+          );
+        } finally {
+          await yamlFile.writeAsString(original);
+        }
       });
 
       test('can run custom task defined by extension project', () async {
@@ -538,13 +702,23 @@ void main() {
             // run the task "bar" newly defined by the extension project
             jbResult = await runJb(Directory(projectsDir), [
               'bar',
+              '-l',
+              'debug',
               '--no-color',
               '-p',
               p.basename(usesExtensionDir),
             ]);
             expectSuccess(jbResult);
             expect(jbResult.stdout, isA<List<String>>());
-            var lines = jbResult.stdout as List<String>;
+            var lines = (jbResult.stdout as List<String>)
+                .where(
+                  (line) =>
+                      line.contains('=========') ||
+                      line.contains('INFO - Executing ') ||
+                      line.contains('Running task ') ||
+                      line.endsWith('Hello from Bar!'),
+                )
+                .toList();
             var loadingLineIndex =
                 lines.indexed
                     .where(
@@ -556,9 +730,22 @@ void main() {
                     .firstOrNull ??
                 fail('Could not find line for Loading extension');
 
-            // the extension project is re-compiled
+            // the extension project is loaded by its own build run first
             expect(lines.length, greaterThan(loadingLineIndex + 8));
             loadingLineIndex++;
+            expect(
+              lines[loadingLineIndex++],
+              endsWith(
+                'Executing 3 tasks out of a total of 3 tasks: '
+                '1 task selected, 2 dependencies',
+              ),
+            );
+            expect(
+              lines[loadingLineIndex++],
+              endsWith("Running task '_buildExtension#my-extension'"),
+            );
+
+            // the extension project is re-compiled
             expect(
               lines[loadingLineIndex++],
               endsWith(
@@ -578,6 +765,16 @@ void main() {
             expect(
               lines[loadingLineIndex++],
               endsWith(" Running task 'installRuntimeDependencies'"),
+            );
+            expect(
+              lines[loadingLineIndex++],
+              endsWith(
+                "Running task '_checkExtensionJavaVersion#my-extension'",
+              ),
+            );
+            expect(
+              lines[loadingLineIndex++],
+              endsWith("Running task '_loadExtension#my-extension'"),
             );
             expect(
               lines[loadingLineIndex++],

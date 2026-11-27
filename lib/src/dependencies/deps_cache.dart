@@ -30,13 +30,13 @@ sealed class DepsCacheMessage {
   DepsCacheMessage(this.file);
 }
 
-class AddDeps extends DepsCacheMessage {
+final class AddDeps extends DepsCacheMessage {
   final ResolvedDependencies deps;
 
   AddDeps(super.file, this.deps);
 }
 
-class GetDeps extends DepsCacheMessage {
+final class GetDeps extends DepsCacheMessage {
   GetDeps(super.file);
 }
 
